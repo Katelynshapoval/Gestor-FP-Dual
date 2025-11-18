@@ -1,0 +1,15 @@
+# Ignorar todos los node_modules
+**/node_modules/
+
+# Ignorar todos los archivos .env
+**/.env
+
+# Ignorar los archivos temporales del sistema y editores
+.DS_Store
+Thumbs.db
+*.log
+
+# Ignorar archivos de subida temporales
+backend/uploads/
+config.js
+bbdd_config.sql

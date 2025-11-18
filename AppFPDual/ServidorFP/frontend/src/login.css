@@ -1,0 +1,71 @@
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - Login
+-------------------------------------------------------------------------------
+*/
+
+background {
+    background-image: url('../public/fondosalesianos.jpg');
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    position: relative;
+}
+
+content {
+    position: relative;
+    width: 100%;
+    max-width: 400px; /* Ajusta el ancho máximo del formulario */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+form-container {
+    background: rgba(255, 255, 255, 0.9); /* Fondo semitransparente para resaltar el formulario */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+login-form {
+    display: flex;
+    flex-direction: column;
+}
+
+login-form h2 {
+    margin-bottom: 20px;
+}
+
+login-form label {
+    margin-bottom: 5px;
+    text-align: left;
+}
+
+login-form input {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+login-form button {
+    padding: 10px;
+    background-color: #e91e63;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+login-form button:hover {
+    background-color: #d81b60;
+}
+

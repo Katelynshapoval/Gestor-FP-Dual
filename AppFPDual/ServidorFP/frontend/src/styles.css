@@ -1,0 +1,704 @@
+/*
+-------------------------------------------------------------------------------
+                                       CSS - Login
+-------------------------------------------------------------------------------
+*/
+
+.content {
+  position: relative;
+  width: 100%;
+  max-width: 400px; /* Ajusta el ancho máximo del formulario */
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.backgroundlogin {
+  background-image: url("../public/fondosalesianos.jpg");
+  background-size: cover;
+  background-position: center;
+  padding: 8.2%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.form-container {
+  background: rgba(
+    255,
+    255,
+    255,
+    0.9
+  ); /* Fondo semitransparente para resaltar el formulario */
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-form h2 {
+  margin-bottom: 20px;
+}
+
+.login-form label {
+  margin-bottom: 5px;
+  text-align: left;
+}
+
+.login-form input {
+  margin-bottom: 15px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.login-form button {
+  padding: 10px;
+  background-color: #e91e63;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.login-form button:hover {
+  background-color: #d81b60;
+}
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - HEADER
+-------------------------------------------------------------------------------
+*/
+.title-link {
+  text-decoration: none; /* Elimina el subrayado del enlace */
+  color: #ffffff;
+}
+header {
+  background-color: rgb(248, 29, 29);
+  color: #fff;
+  padding: 20px;
+  text-align: center;
+}
+
+h1 {
+  margin: -20px 0 0;
+  font-size: 32px;
+}
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - BODY
+-------------------------------------------------------------------------------
+*/
+
+.container {
+  display: flex;
+  justify-content: space-around; /* Distribuye los elementos de manera uniforme */
+  align-items: center; /* Centra verticalmente los elementos */
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background-color: #ffffff;
+}
+
+.button-container {
+  display: flex;
+  flex-wrap: wrap; /* Permite que los botones se envuelvan si no hay suficiente espacio horizontal */
+  justify-content: center; /* Centra los elementos horizontalmente */
+}
+
+.button {
+  margin: 10px auto; /* Centra horizontalmente */
+  padding: 5px 40px; /* Ajusta el padding para hacer los botones más largos y estrechos */
+  font-size: 16px;
+  background-color: rgb(248, 29, 29);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  height: 30px; /* Ajusta la altura de los botones */
+  display: block; /* Cambia a bloque para poder centrar verticalmente */
+  text-align: center; /* Centra horizontalmente */
+}
+
+.button:hover {
+  background-color: rgb(248, 29, 29);
+}
+
+.submenu {
+  display: none;
+  flex-direction: column;
+  position: absolute;
+  background-color: rgb(253, 55, 55);
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+.button:hover .submenu {
+  display: block;
+  margin-top: 10px; /* Añade margen para ajustar la posición */
+}
+
+.subOption {
+  color: rgb(255, 255, 255);
+  padding: 6px 8px;
+  text-decoration: none;
+  display: block;
+  text-align: center; /* Centra el texto horizontalmente */
+}
+
+.subOption:hover {
+  background-color: #ddd;
+}
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - AddStudent // UpdateStudent
+-------------------------------------------------------------------------------
+*/
+.tittle {
+  margin: 0 auto; /* Centra horizontalmente */
+  margin-bottom: 10px;
+  width: 75%; /* Establece el ancho del contenedor al 50% del ancho de la pantalla */
+}
+/* Estilo para el contenedor principal */
+.student-container {
+  margin: 20px auto; /* Centra el contenedor horizontalmente */
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* Estilo para los campos de entrada */
+.input-field {
+  margin: 0 auto; /* Centra horizontalmente */
+  margin-bottom: 10px;
+  width: 75%; /* Establece el ancho del contenedor al 50% del ancho de la pantalla */
+}
+
+.input-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.input-field input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+/* Estilo para los botones */
+.button {
+  background-color: rgb(226, 52, 52);
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.addStudentButton {
+  display: block; /* Convierte el botón en un bloque para centrarlo horizontalmente */
+  background-color: rgb(248, 29, 29);
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin: 0 auto; /* Centra el botón horizontalmente */
+  margin-top: 30px;
+  margin-bottom: 60px;
+}
+
+.button:hover {
+  background-color: #f48f8f;
+}
+
+/* Estilo para las secciones */
+.section {
+  margin-bottom: 20px;
+  margin: 20px auto; /* Centra el contenedor horizontalmente */
+  margin-left: 100px; /* Mueve el contenedor hacia la izquierda 100px */
+  margin-right: 100px; /* Mueve el contenedor hacia la izquierda 100px */
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  padding-left: 100px;
+}
+
+/* Estilo para los campos de idiomas y documentos */
+.input-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.input-group input {
+  flex: 1;
+  margin-right: 10px;
+}
+
+/* Estilo para el botón de agregar */
+.add-button {
+  background-color: rgb(253, 55, 55);
+}
+
+.add-button:hover {
+  background-color: rgb(253, 55, 55);
+}
+
+/* Estilo para mensajes de error */
+.error-message {
+  background-color: rgb(253, 55, 55);
+  margin-top: 5px;
+  font-size: 14px;
+}
+
+/* Estilo para el mensaje emergente de éxito */
+
+/* Hacer que la peticion desparezca y aparezca cuando se pulse el boton o que tenga un tamaño minusculo y luego se agrende
+  */
+.success-message {
+  position: fixed; /* Se posiciona fijo en la pantalla */
+  bottom: 20px; /* Se coloca en la parte inferior de la pantalla */
+  right: 10px; /* Se coloca en la parte derecha de la pantalla */
+  background-color: #72d522; /* Fondo verde */
+  color: rgb(252, 20, 20); /* Texto blanco */
+  padding: 30px; /* Espaciado interno */
+  border-radius: 5px; /* Bordes redondeados */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra */
+  z-index: 999; /* Asegura que esté sobre otros elementos */
+  transform: scale(1.2); /* Tamaño inicial grande */
+  transform-origin: bottom right; /* Define el origen de la transformación */
+  transition: transform 0.5s ease-in-out; /* Animación de cambio de tamaño */
+}
+
+/* Opcional: Agrega estilos de animación para hacer que el mensaje aparezca gradualmente */
+.success-message.fade-in {
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.1); /* Tamaño inicial pequeño */
+  }
+  to {
+    opacity: 1;
+    transform: scale(0.9); /* Tamaño final grande */
+  }
+}
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - GetAllStudents / GetAllCandidates
+-------------------------------------------------------------------------------
+*/
+
+.student-card {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 20px;
+  margin: 10px;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.student-info-list li strong {
+  color: #fc2909;
+}
+
+.student-info-list {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(200px, 1fr)
+  ); /* Crea columnas automáticas con un ancho mínimo de 200px */
+  gap: 10px; /* Espacio entre las celdas de la cuadrícula */
+  list-style: none;
+  padding: 0;
+}
+
+.student-info-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* Cambia a 4 columnas fijas */
+  gap: 10px; /* Espacio entre las celdas de la cuadrícula */
+  list-style: none;
+  padding: 0;
+}
+
+.student-info-list li strong {
+  font-weight: bold;
+}
+
+.students-title {
+  padding-top: 20px;
+  text-align: center;
+}
+/*
+-------------------------------------------------------------------------------
+                                       CSS - Idioms
+-------------------------------------------------------------------------------
+*/
+
+.idioms-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.idiom-form {
+  margin-bottom: 20px;
+}
+
+.idiom-form label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.idiom-form input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.idiom-form button {
+  padding: 8px 16px;
+  background-color: #ff0000;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.idiom-form button:hover {
+  background-color: #ff0000;
+}
+
+.idiom-list {
+  list-style: none;
+  padding: 0;
+}
+
+.idiom-list li {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.idiom-list h2 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - Footer
+-------------------------------------------------------------------------------
+*/
+.school-footer {
+  background-color: rgb(248, 29, 29);
+  color: #fff;
+  padding: 30px 0;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-around;
+}
+
+.footer-section {
+  flex: 1;
+  padding: 0 20px;
+}
+
+.footer-section h3 {
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+.footer-section p {
+  margin-bottom: 10px;
+}
+
+.footer-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-section ul li {
+  margin-bottom: 5px;
+}
+
+.footer-section ul li a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.social-links {
+  display: flex;
+}
+
+.social-links li {
+  margin-right: 10px;
+}
+
+.social-links li a {
+  color: #fff;
+  font-size: 20px;
+}
+
+.footer-bottom {
+  background-color: rgb(253, 55, 55);
+  text-align: center;
+  padding: 10px 0;
+}
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - Main
+-------------------------------------------------------------------------------
+*/
+.main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+section {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.extra-div {
+  height: 410px;
+  width: 626px;
+  margin-left: 10%;
+  background-image: url("../public/homeImage.avif");
+}
+/*
+-------------------------------------------------------------------------------
+                                       CSS - Preferences
+-------------------------------------------------------------------------------
+*/
+
+.preferences-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.preference-form {
+  margin-bottom: 20px;
+}
+
+.preference-form label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.preference-form input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.preference-form button {
+  padding: 8px 16px;
+  background-color: #ff0000;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.preference-form button:hover {
+  background-color: #ff0000;
+}
+
+.preference-list {
+  list-style: none;
+  padding: 0;
+}
+
+.preference-list li {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.preference-list h2 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - SearchStudent
+-------------------------------------------------------------------------------
+*/
+.centered-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.search-container {
+  text-align: center;
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  text-decoration: none;
+}
+
+.search-container h4 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #ffffff;
+}
+
+.search-input {
+  width: 100%;
+  padding: 15px;
+  font-size: 18px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.results-container {
+  margin-top: 20px;
+  text-decoration: none;
+}
+
+.student-card {
+  background-color: #fafafa;
+  padding: 20px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: left;
+  text-decoration: none;
+}
+
+.student-info-list {
+  list-style-type: none;
+  padding: 0;
+  text-decoration: none;
+  color: black;
+}
+
+.student-info-list li {
+  margin-bottom: 8px;
+  text-decoration: none;
+}
+
+.student-info-list li strong {
+  font-weight: bold;
+}
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - GETALLCANDIDATES
+-------------------------------------------------------------------------------
+*/
+
+/* Contenedor principal de resultados */
+.results-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 20px;
+  text-decoration: none;
+}
+
+/* Estilos para cada tarjeta de candidato */
+.candidate-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(254, 4, 4, 0.1);
+  margin: 10px;
+  padding: 20px;
+  width: 300px;
+  transition: transform 0.2s;
+  text-decoration: none;
+}
+
+.candidate-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Lista de información del candidato */
+.candidate-info-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.candidate-info-list li {
+  margin-bottom: 10px;
+}
+
+.candidate-info-list li strong {
+  color: #fc2909;
+}
+
+/* Botones de acción */
+.editButton {
+  background-color: #dc3545; /* Rojo */
+  border: none;
+  border-radius: 4px;
+  color: #fff; /* Letras blancas */
+  cursor: pointer;
+  font-size: 16px;
+  margin: 20px 10px;
+  padding: 10px 20px;
+  margin-left: 47%;
+  text-align: center;
+  transition: background-color 0.3s;
+}
+
+/* Contenedor de botones */
+.button-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px;
+}
+
+.editButton:hover,
+.deleteButton:hover {
+  background-color: #b52b37; /* Rojo más oscuro */
+}
