@@ -375,6 +375,10 @@ const LinkStudents = () => {
                     </div>
 
                     <div className="d-flex flex-wrap gap-1 flex-grow-1 justify-content-end">
+                      <div className="flex gap-2">
+                        <span>A2: {r.anexo2FirmadoRecibido ? "✅" : "❌"}</span>
+                        <span>A3: {r.anexo3FirmadoRecibido ? "✅" : "❌"}</span>
+                      </div>
                       {r.em1 && (
                         <span className="badge bg-secondary text-white px-2 py-1 rounded text-xs">
                           EMPRESA 1: {r.em1}
@@ -571,7 +575,6 @@ const LinkStudents = () => {
                         </div>
                       </div>
 
-                      {/* Resto de la info tal cual la tenías */}
                       <div className="row mt-3">
                         <div className="col-4">
                           <div>
