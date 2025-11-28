@@ -361,12 +361,12 @@ const LinkStudents = () => {
                 className="card border rounded-lg shadow-sm mb-4"
               >
                 <div className="card-body p-2 position-relative">
-                  {/* Cabecera compacta: nombre, NIE y empresas */}
                   <div className="d-flex align-items-center justify-content-between gap-3">
                     <div className="d-flex flex-column">
-                      <h3 className="card-title mb-0 text-sm font-medium">
+                      <h3 className="card-title mb-0 text-xs font-medium">
                         {r.nombre} ({r.dni})
                       </h3>
+
                       {r.nombreEsp && (
                         <span className="text-xs text-muted">
                           {r.nombreEsp}
@@ -401,10 +401,8 @@ const LinkStudents = () => {
                     </button>
                   </div>
 
-                  {/* Contenido expandido: TODO lo anterior (estados, selects, docs, nota, etc.) */}
                   {isExpanded && (
                     <div className="mt-3">
-                      {/* Selección / estado de empresas (mismo código que tenías arriba) */}
                       <div className="row mt-2">
                         <div className="col">
                           {(!isExpanded ||

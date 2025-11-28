@@ -702,3 +702,12 @@ section {
 .deleteButton:hover {
   background-color: #b52b37; /* Rojo más oscuro */
 }
+
+/*
+-------------------------------------------------------------------------------
+                                       CSS - LINKSTUDENTS
+-------------------------------------------------------------------------------
+*/
+.card-title {
+  font-size: 22px; /* or any size you want */
+}
