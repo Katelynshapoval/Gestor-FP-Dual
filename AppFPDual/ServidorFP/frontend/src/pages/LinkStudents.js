@@ -346,6 +346,42 @@ const LinkStudents = () => {
     }
   };
 
+  // Devuelve un emoji que representa el estado de la empresa según el estid
+  const getEmpresaEmoji = (estid) => {
+    switch (estid) {
+      case 5:
+        return "✅"; // Finalizado/Aceptado
+      case 3:
+        return "❌"; // Rechazado
+      case 1:
+        return "🟠"; // Asignado pero no finalizado
+      case 2:
+        return "📤"; // Info enviada
+      case 4:
+        return "⚠️"; // Pendiente/observaciones
+      default:
+        return "⚪"; // Nada / sin asignar
+    }
+  };
+
+  // Devuelve el texto que aparecerá al pasar el cursor por encima del emoji
+  const getEmpresaTooltip = (estid) => {
+    switch (estid) {
+      case 5:
+        return "Finalizado / Aceptado";
+      case 3:
+        return "Rechazado";
+      case 1:
+        return "Asignado (no finalizado)";
+      case 2:
+        return "Información enviada";
+      case 4:
+        return "Pendiente";
+      default:
+        return "Sin asignar";
+    }
+  };
+
   return (
     <div className="container">
       <div className="row">
@@ -375,23 +411,45 @@ const LinkStudents = () => {
                     </div>
 
                     <div className="d-flex flex-wrap gap-1 flex-grow-1 justify-content-end">
-                      <div className="flex gap-2">
-                        <span>A2: {r.anexo2FirmadoRecibido ? "✅" : "❌"}</span>
-                        <span>A3: {r.anexo3FirmadoRecibido ? "✅" : "❌"}</span>
+                      <div
+                        className="d-flex flex-column me-2"
+                        style={{ lineHeight: "1", fontSize: "0.8rem" }}
+                      >
+                        <p className="mb-0">Firmados:</p>
+                        <div className="d-flex gap-1">
+                          <span>
+                            A2: {r.anexo2FirmadoRecibido ? "✅" : "❌"}
+                          </span>
+                          <span>
+                            A3: {r.anexo3FirmadoRecibido ? "✅" : "❌"}
+                          </span>
+                        </div>
                       </div>
+
                       {r.em1 && (
-                        <span className="badge bg-secondary text-white px-2 py-1 rounded text-xs">
-                          EMPRESA 1: {r.em1}
+                        <span
+                          className="empresa-chip"
+                          title={getEmpresaTooltip(r.estid1)}
+                        >
+                          EMPRESA 1: {r.em1} {getEmpresaEmoji(r.estid1)}
                         </span>
                       )}
+
                       {r.em2 && (
-                        <span className="badge bg-secondary text-white px-2 py-1 rounded text-xs">
-                          EMPRESA 2: {r.em2}
+                        <span
+                          className="empresa-chip"
+                          title={getEmpresaTooltip(r.estid2)}
+                        >
+                          EMPRESA 2: {r.em2} {getEmpresaEmoji(r.estid2)}
                         </span>
                       )}
+
                       {r.em3 && (
-                        <span className="badge bg-secondary text-white px-2 py-1 rounded text-xs">
-                          EMPRESA 3: {r.em3}
+                        <span
+                          className="empresa-chip"
+                          title={getEmpresaTooltip(r.estid3)}
+                        >
+                          EMPRESA 3: {r.em3} {getEmpresaEmoji(r.estid3)}
                         </span>
                       )}
                     </div>
