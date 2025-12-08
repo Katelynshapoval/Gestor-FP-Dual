@@ -382,6 +382,16 @@ const LinkStudents = () => {
     }
   };
 
+  const getAnexo = (r) => {
+    if (r.anexo2FirmadoRecibido) {
+      getDoc(r.idGestion, "anexo2");
+    } else if (r.anexo3FirmadoRecibido) {
+      getDoc(r.idGestion, "anexo3");
+    } else {
+      alert("No hay Anexo 2 o 3 disponible.");
+    }
+  };
+
   return (
     <div className="container">
       <div className="row">
@@ -412,16 +422,20 @@ const LinkStudents = () => {
 
                     <div className="d-flex flex-wrap gap-1 flex-grow-1 justify-content-end">
                       <div
-                        className="d-flex flex-column me-2"
+                        className="d-flex flex-column me-2 text-center"
                         style={{ lineHeight: "1", fontSize: "0.8rem" }}
                       >
                         <p className="mb-0">Firmados:</p>
-                        <div className="d-flex gap-1">
+
+                        <div className="d-flex gap-2 justify-content-center mt-1">
                           <span>
-                            A2: {r.anexo2FirmadoRecibido ? "✅" : "❌"}
+                            A2/A3:{" "}
+                            {r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido
+                              ? "✅"
+                              : "❌"}
                           </span>
                           <span>
-                            A3: {r.anexo3FirmadoRecibido ? "✅" : "❌"}
+                            Calendario: {r.calendarioComprobado ? "✅" : "❌"}
                           </span>
                         </div>
                       </div>
@@ -867,42 +881,54 @@ const LinkStudents = () => {
                         </div>
                       </div>
 
+                      <div className="col-12 mt-3">
+                        <p className="mb-1">
+                          Correo electrónico: {r.email || "—"}
+                        </p>
+
+                        <p className="mb-1">
+                          Número de teléfono: {r.telalumno || "—"}
+                        </p>
+
+                        <p className="mb-1">
+                          Carnet de conducir: {r.carnetDeConducir ? "✅" : "❌"}
+                        </p>
+
+                        <p className="mb-1">
+                          Disponibilidad de coche: {r.tieneCoche ? "✅" : "❌"}
+                        </p>
+                      </div>
+
                       <div className="row mt-3">
                         <div className="col-4">
                           <div>
                             <p className="text-sm text-muted mb-0">
                               Documentos:
                             </p>
-                            <div className="flex gap-2">
+
+                            <div className="d-flex gap-2">
                               <button
                                 onClick={() => getDoc(r.idGestion, "cv")}
-                                className="btn btn-sm btn-primary me-2"
+                                className="btn btn-sm btn-primary"
                               >
                                 Ver CV
                               </button>
+
                               <button
-                                onClick={() => getDoc(r.idGestion, "anexo2")}
-                                className="btn btn-sm btn-primary me-2"
-                              >
-                                Ver Anexo 2
-                              </button>
-                              <button
-                                onClick={() => getDoc(r.idGestion, "anexo3")}
+                                onClick={() => getAnexo(r)}
                                 className="btn btn-sm btn-primary"
                               >
-                                Ver Anexo 3
+                                Ver Anexo 2/3
                               </button>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted mb-0">Firmados:</p>
-                            <div className="flex gap-2">
-                              <span>
-                                A2: {r.anexo2FirmadoRecibido ? "✅" : "❌"}
-                              </span>
-                              <span>
-                                A3: {r.anexo3FirmadoRecibido ? "✅" : "❌"}
-                              </span>
+
+                              <button
+                                onClick={() =>
+                                  getDoc(r.idGestion, "calendario")
+                                }
+                                className="btn btn-sm btn-primary"
+                              >
+                                Ver Calendario
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -934,6 +960,25 @@ const LinkStudents = () => {
                               </p>
                             </div>
                           )}
+                        </div>
+                      </div>
+                      <div className="row mt-2">
+                        <div className="col-12">
+                          <p className="text-sm text-muted mb-0">Firmados:</p>
+
+                          <div className="d-flex gap-3 mt-1">
+                            <span>
+                              A2/A3:{" "}
+                              {r.anexo2FirmadoRecibido ||
+                              r.anexo3FirmadoRecibido
+                                ? "✅"
+                                : "❌"}
+                            </span>
+
+                            <span>
+                              Calendario: {r.calendarioComprobado ? "✅" : "❌"}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
