@@ -1,3 +1,26 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main,
+.results-container,
+.container {
+  flex: 0 0 auto;
+}
+
+.app > *:not(.school-footer) {
+  flex: 0;
+}
+
 /*
 -------------------------------------------------------------------------------
                                        CSS - Login
@@ -425,6 +448,8 @@ h1 {
   background-color: rgb(248, 29, 29);
   color: #fff;
   padding: 30px 0;
+  text-align: center;
+  margin-top: auto;
 }
 
 .footer-content {

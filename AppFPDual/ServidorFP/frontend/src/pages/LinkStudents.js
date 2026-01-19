@@ -16,6 +16,12 @@ const LinkStudents = () => {
   const [empresa2, setEmpresa2] = useState([]);
   const [empresa3, setEmpresa3] = useState([]);
 
+  // For filter
+  const [selectedSpeciality, setSelectedSpeciality] = useState("");
+  useEffect(() => {
+    setExpandedCards(new Set());
+  }, [selectedSpeciality]);
+
   // El useCallback debe declararse antes del useEffect para que funcione.
   // esto se usa para que en el hipotético de que user.specialities cambiase
   // la función se volviese a ejecutar.
@@ -71,23 +77,22 @@ const LinkStudents = () => {
             idGestion: r.idGestion,
             idEmpresa1: r.idEmpresa1,
             em1: r.em1,
-          }))
+          })),
         );
         setEmpresa2(
           linkRequests.map((r) => ({
             idGestion: r.idGestion,
             idEmpresa2: r.idEmpresa2,
             em2: r.em2,
-          }))
+          })),
         );
         setEmpresa3(
           linkRequests.map((r) => ({
             idGestion: r.idGestion,
             idEmpresa3: r.idEmpresa3,
             em3: r.em3,
-          }))
+          })),
         );
-        console.log(linkRequests); // Mostrar el contenido en la consola
       })
       .catch((error) => {
         console.error("Error fetching linkRequests data:", error);
@@ -226,7 +231,7 @@ const LinkStudents = () => {
     const idEmpresa = parseInt(event.target.value, 10);
     // Encontrar la empresa seleccionada en companyRequests para obtener el nombre
     const selectedCompany = companyRequests.find(
-      (cr) => cr.idEmpresa === idEmpresa
+      (cr) => cr.idEmpresa === idEmpresa,
     );
     const nombre = selectedCompany ? selectedCompany.empresa : "";
     // Actualizar el array correspondiente según el número recibido
@@ -236,8 +241,8 @@ const LinkStudents = () => {
           prev.map((item) =>
             item.idGestion === idGestion
               ? { ...item, idEmpresa1: idEmpresa, em1: nombre }
-              : item
-          )
+              : item,
+          ),
         );
         break;
       case 2:
@@ -245,8 +250,8 @@ const LinkStudents = () => {
           prev.map((item) =>
             item.idGestion === idGestion
               ? { ...item, idEmpresa2: idEmpresa, em2: nombre }
-              : item
-          )
+              : item,
+          ),
         );
         break;
       case 3:
@@ -254,8 +259,8 @@ const LinkStudents = () => {
           prev.map((item) =>
             item.idGestion === idGestion
               ? { ...item, idEmpresa3: idEmpresa, em3: nombre }
-              : item
-          )
+              : item,
+          ),
         );
         break;
       default:
@@ -268,7 +273,7 @@ const LinkStudents = () => {
     switch (array) {
       case 1:
         const empresa1Data = empresa1.find(
-          (item) => item.idGestion === idGestion
+          (item) => item.idGestion === idGestion,
         );
         if (empresa1Data) {
           const bodyParameters = {
@@ -293,7 +298,7 @@ const LinkStudents = () => {
         break;
       case 2:
         const empresa2Data = empresa2.find(
-          (item) => item.idGestion === idGestion
+          (item) => item.idGestion === idGestion,
         );
         if (empresa2Data) {
           const bodyParameters = {
@@ -318,7 +323,7 @@ const LinkStudents = () => {
         break;
       case 3:
         const empresa3Data = empresa3.find(
-          (item) => item.idGestion === idGestion
+          (item) => item.idGestion === idGestion,
         );
         if (empresa3Data) {
           const bodyParameters = {
@@ -398,575 +403,62 @@ const LinkStudents = () => {
         <h2 className="text-xl font-semibold mb-4 mt-4">
           Peticiones de Alumnos
         </h2>
+        <div className="mb-3">
+          <select
+            className="form-select form-select-sm w-auto"
+            value={selectedSpeciality}
+            onChange={(e) => setSelectedSpeciality(e.target.value)}
+          >
+            <option value="">Todas las especialidades</option>
+
+            {[
+              ...new Set(
+                linkRequests.filter((r) => r.nombreEsp).map((r) => r.nombreEsp),
+              ),
+            ].map((esp) => (
+              <option key={esp} value={esp}>
+                {esp}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid gap-4">
-          {linkRequests.map((r) => {
-            const isExpanded = expandedCards.has(r.idGestion);
-            return (
-              <div
-                key={r.idGestion}
-                className="card border rounded-lg shadow-sm mb-4"
-              >
-                <div className="card-body p-2 position-relative">
-                  <div className="d-flex align-items-center justify-content-between gap-3">
-                    <div className="d-flex flex-column">
-                      <h3 className="card-title mb-0 text-xs font-medium">
-                        {r.nombre} ({r.dni})
-                      </h3>
+          {linkRequests
+            .filter((r) => {
+              return !selectedSpeciality || r.nombreEsp === selectedSpeciality;
+            })
 
-                      {r.nombreEsp && (
-                        <span className="text-xs text-muted">
-                          {r.nombreEsp}
-                        </span>
-                      )}
-                    </div>
+            .map((r) => {
+              const isExpanded = expandedCards.has(r.idGestion);
+              console.log(r.nombreEsp, selectedSpeciality, "lol");
+              return (
+                <div
+                  key={`${r.idGestion}-${r.dni}-${r.nombreEsp}`}
+                  className="card border rounded-lg shadow-sm mb-4"
+                >
+                  <div className="card-body p-2 position-relative">
+                    <div className="d-flex align-items-center justify-content-between gap-3">
+                      <div className="d-flex flex-column">
+                        <h3 className="card-title mb-0 text-xs font-medium">
+                          {r.nombre} ({r.dni})
+                        </h3>
 
-                    <div className="d-flex flex-wrap gap-1 flex-grow-1 justify-content-end">
-                      <div
-                        className="d-flex flex-column me-2 text-center"
-                        style={{ lineHeight: "1", fontSize: "0.8rem" }}
-                      >
-                        <p className="mb-0">Firmados:</p>
-
-                        <div className="d-flex gap-2 justify-content-center mt-1">
-                          <span>
-                            A2/A3:{" "}
-                            {r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido
-                              ? "✅"
-                              : "❌"}
+                        {r.nombreEsp && (
+                          <span className="text-xs text-muted">
+                            {r.nombreEsp}
                           </span>
-                          <span>
-                            Calendario: {r.calendarioComprobado ? "✅" : "❌"}
-                          </span>
-                        </div>
+                        )}
                       </div>
 
-                      {r.em1 && (
-                        <span
-                          className="empresa-chip"
-                          title={getEmpresaTooltip(r.estid1)}
+                      <div className="d-flex flex-wrap gap-1 flex-grow-1 justify-content-end">
+                        <div
+                          className="d-flex flex-column me-2 text-center"
+                          style={{ lineHeight: "1", fontSize: "0.8rem" }}
                         >
-                          EMPRESA 1: {r.em1} {getEmpresaEmoji(r.estid1)}
-                        </span>
-                      )}
+                          <p className="mb-0">Firmados:</p>
 
-                      {r.em2 && (
-                        <span
-                          className="empresa-chip"
-                          title={getEmpresaTooltip(r.estid2)}
-                        >
-                          EMPRESA 2: {r.em2} {getEmpresaEmoji(r.estid2)}
-                        </span>
-                      )}
-
-                      {r.em3 && (
-                        <span
-                          className="empresa-chip"
-                          title={getEmpresaTooltip(r.estid3)}
-                        >
-                          EMPRESA 3: {r.em3} {getEmpresaEmoji(r.estid3)}
-                        </span>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => toggleCard(r.idGestion)}
-                      className="btn btn-sm btn-outline-secondary"
-                      style={{ minWidth: "32px", minHeight: "32px" }}
-                    >
-                      {isExpanded ? "▲" : "▼"}
-                    </button>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="mt-3">
-                      <div className="row mt-2">
-                        <div className="col">
-                          {(!isExpanded ||
-                            r.estid1 === 2 ||
-                            r.estid1 === 3 ||
-                            r.estid1 === 4 ||
-                            r.estid1 === 5) && (
-                            <span
-                              className={`badge ${
-                                r.estid1 === 0
-                                  ? "bg-info"
-                                  : r.estid1 === 1
-                                  ? "bg-secondary"
-                                  : r.estid1 === 2
-                                  ? "bg-primary"
-                                  : r.estid1 === 3
-                                  ? "bg-danger"
-                                  : r.estid1 === 4
-                                  ? "bg-warning"
-                                  : "bg-success"
-                              } text-white px-2 py-1 rounded text-xs`}
-                            >
-                              EMPRESA 1: {r.em1}
-                            </span>
-                          )}
-                          {isExpanded && (r.estid1 === 0 || r.estid1 === 1) && (
-                            <div className="d-flex align-items-center gap-2 mt-1">
-                              <span className="text-nowrap">EMPRESA 1:</span>
-                              <select
-                                className="form-select form-select-sm"
-                                defaultValue={r.idEmpresa1}
-                                onChange={handleCompanyChange(r.idGestion, 1)}
-                              >
-                                <option value="">Selecciona empresa...</option>
-                                {companyRequests
-                                  .filter(
-                                    (cr) =>
-                                      cr.idEspecialidad === r.idEspecialidad
-                                  )
-                                  .map((cr) => (
-                                    <option
-                                      key={cr.idEmpresa}
-                                      value={cr.idEmpresa}
-                                    >
-                                      {cr.empresa} (Disponibilidad:{" "}
-                                      {cr.cantidad})
-                                    </option>
-                                  ))}
-                              </select>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col">
-                          {r.em2 &&
-                            (!isExpanded ||
-                              r.estid2 === 2 ||
-                              r.estid2 === 3 ||
-                              r.estid2 === 4 ||
-                              r.estid2 === 5) && (
-                              <span
-                                className={`badge ${
-                                  r.estid2 === 0
-                                    ? "bg-info"
-                                    : r.estid2 === 1
-                                    ? "bg-secondary"
-                                    : r.estid2 === 2
-                                    ? "bg-primary"
-                                    : r.estid2 === 3
-                                    ? "bg-danger"
-                                    : r.estid2 === 4
-                                    ? "bg-warning"
-                                    : "bg-success"
-                                } text-white px-2 py-1 rounded text-xs`}
-                              >
-                                EMPRESA 2: {r.em2}
-                              </span>
-                            )}
-                          {r.em2 &&
-                            isExpanded &&
-                            (r.estid2 === 0 || r.estid2 === 1) && (
-                              <div className="d-flex align-items-center gap-2 mt-1">
-                                <span className="text-nowrap">EMPRESA 2:</span>
-                                <select
-                                  className="form-select form-select-sm"
-                                  defaultValue={r.idEmpresa2}
-                                  onChange={handleCompanyChange(r.idGestion, 2)}
-                                >
-                                  <option value="">
-                                    Selecciona empresa...
-                                  </option>
-                                  {companyRequests
-                                    .filter(
-                                      (cr) =>
-                                        cr.idEspecialidad === r.idEspecialidad
-                                    )
-                                    .map((cr) => (
-                                      <option
-                                        key={cr.idEmpresa}
-                                        value={cr.idEmpresa}
-                                      >
-                                        {cr.empresa} (Disponibilidad:{" "}
-                                        {cr.cantidad})
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
-                            )}
-                        </div>
-
-                        <div className="col">
-                          {r.em3 &&
-                            (!isExpanded ||
-                              r.estid3 === 2 ||
-                              r.estid3 === 3 ||
-                              r.estid3 === 4 ||
-                              r.estid3 === 5) && (
-                              <span
-                                className={`badge ${
-                                  r.estid3 === 0
-                                    ? "bg-info"
-                                    : r.estid3 === 1
-                                    ? "bg-secondary"
-                                    : r.estid3 === 2
-                                    ? "bg-primary"
-                                    : r.estid3 === 3
-                                    ? "bg-danger"
-                                    : r.estid3 === 4
-                                    ? "bg-warning"
-                                    : "bg-success"
-                                } text-white px-2 py-1 rounded text-xs`}
-                              >
-                                EMPRESA 3: {r.em3}
-                              </span>
-                            )}
-                          {r.em3 &&
-                            isExpanded &&
-                            (r.estid3 === 0 || r.estid3 === 1) && (
-                              <div className="d-flex align-items-center gap-2 mt-1">
-                                <span className="text-nowrap">EMPRESA 3:</span>
-                                <select
-                                  className="form-select form-select-sm"
-                                  defaultValue={r.idEmpresa3}
-                                  onChange={handleCompanyChange(r.idGestion, 3)}
-                                >
-                                  <option value="">
-                                    Selecciona empresa...
-                                  </option>
-                                  {companyRequests
-                                    .filter(
-                                      (cr) =>
-                                        cr.idEspecialidad === r.idEspecialidad
-                                    )
-                                    .map((cr) => (
-                                      <option
-                                        key={cr.idEmpresa}
-                                        value={cr.idEmpresa}
-                                      >
-                                        {cr.empresa} (Disponibilidad:{" "}
-                                        {cr.cantidad})
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
-                            )}
-                        </div>
-                      </div>
-
-                      <div className="row mt-3">
-                        <div className="col-4">
-                          <div>
-                            <span
-                              className={`badge ${
-                                r.estid1 === 0
-                                  ? "bg-info"
-                                  : r.estid1 === 1
-                                  ? "bg-secondary"
-                                  : r.estid1 === 2
-                                  ? "bg-primary"
-                                  : r.estid1 === 3
-                                  ? "bg-danger"
-                                  : r.estid1 === 4
-                                  ? "bg-warning"
-                                  : "bg-success"
-                              } text-white px-2 py-1 rounded text-xs`}
-                              style={{
-                                wordWrap: "break-word",
-                                whiteSpace: "normal",
-                                display: "inline-block",
-                              }}
-                            >
-                              {r.est1}
-                            </span>
-                          </div>
-                          {(r.estid1 === 0 || r.estid1 === 1) && (
-                            <div>
-                              <button
-                                onClick={() => assign(r.idGestion, 1)}
-                                className={"btn btn-sm btn-primary mt-2"}
-                              >
-                                {r.estid1 === 0 ? "Asignar" : "Reasignar"}
-                              </button>
-                            </div>
-                          )}
-                          {user.specialities[0] == null &&
-                            r.estid1 === 1 &&
-                            r.anexo2FirmadoRecibido === 1 && (
-                              <button
-                                onClick={() =>
-                                  sendInfo(
-                                    r.idGestion,
-                                    r.idAlumno,
-                                    r.idEmpresa1
-                                  )
-                                }
-                                className={
-                                  sendingInfo.has(`${r.idGestion}-1`)
-                                    ? "btn btn-sm btn-disabled mt-2"
-                                    : "btn btn-sm btn-primary mt-2"
-                                }
-                                disabled={sendingInfo.has(`${r.idGestion}-1`)}
-                              >
-                                {sendingInfo.has(`${r.idGestion}-1`)
-                                  ? "Enviando..."
-                                  : "Enviar información a la empresa."}
-                              </button>
-                            )}
-                          {r.tipo1 && (
-                            <div>
-                              <p className="text-sm text-muted mb-0 mt-2">
-                                Tipo Contrato
-                              </p>
-                              <p>{r.tipo1}</p>
-                            </div>
-                          )}
-                          {r.obv1 && (
-                            <div className="md:col-span-2 lg:col-span-4 mt-3">
-                              <p className="text-sm text-muted mb-0">
-                                Observaciones
-                              </p>
-                              <p className="text-sm">{r.obv1}</p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-4">
-                          {r.est2 && (
-                            <div>
-                              <span
-                                className={`badge ${
-                                  r.estid2 === 0
-                                    ? "bg-info"
-                                    : r.estid2 === 1
-                                    ? "bg-secondary"
-                                    : r.estid2 === 2
-                                    ? "bg-primary"
-                                    : r.estid2 === 3
-                                    ? "bg-danger"
-                                    : r.estid2 === 4
-                                    ? "bg-warning"
-                                    : "bg-success"
-                                } text-white px-2 py-1 rounded text-xs`}
-                                style={{
-                                  wordWrap: "break-word",
-                                  whiteSpace: "normal",
-                                  display: "inline-block",
-                                }}
-                              >
-                                {r.est2}
-                              </span>
-                            </div>
-                          )}
-                          {(r.estid2 === 0 || r.estid2 === 1) && (
-                            <div>
-                              <button
-                                onClick={() => assign(r.idGestion, 2)}
-                                className={"btn btn-sm btn-primary mt-2"}
-                              >
-                                {r.estid2 === 0 ? "Asignar" : "Reasignar"}
-                              </button>
-                            </div>
-                          )}
-                          {user.specialities[0] == null &&
-                            r.estid2 === 1 &&
-                            r.anexo2FirmadoRecibido === 1 && (
-                              <button
-                                onClick={() =>
-                                  sendInfo(
-                                    r.idGestion,
-                                    r.idAlumno,
-                                    r.idEmpresa2
-                                  )
-                                }
-                                className={
-                                  sendingInfo.has(`${r.idGestion}-2`)
-                                    ? "btn btn-sm btn-disabled mt-2"
-                                    : "btn btn-sm btn-primary mt-2"
-                                }
-                                disabled={sendingInfo.has(`${r.idGestion}-2`)}
-                              >
-                                {sendingInfo.has(`${r.idGestion}-2`)
-                                  ? "Enviando..."
-                                  : "Enviar información a la empresa."}
-                              </button>
-                            )}
-                          {r.tipo2 && (
-                            <div>
-                              <p className="text-sm text-muted mb-0 mt-2">
-                                Tipo Contrato
-                              </p>
-                              <p>{r.tipo2}</p>
-                            </div>
-                          )}
-                          {r.obv2 && (
-                            <div className="md:col-span-2 lg:col-span-4 mt-3">
-                              <p className="text-sm text-muted mb-0">
-                                Observaciones
-                              </p>
-                              <p className="text-sm">{r.obv2}</p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="col-4">
-                          {r.est3 && (
-                            <div>
-                              <span
-                                className={`badge ${
-                                  r.estid3 === 0
-                                    ? "bg-info"
-                                    : r.estid3 === 1
-                                    ? "bg-secondary"
-                                    : r.estid3 === 2
-                                    ? "bg-primary"
-                                    : r.estid3 === 3
-                                    ? "bg-danger"
-                                    : r.estid3 === 4
-                                    ? "bg-warning"
-                                    : "bg-success"
-                                } text-white px-2 py-1 rounded text-xs`}
-                                style={{
-                                  wordWrap: "break-word",
-                                  whiteSpace: "normal",
-                                  display: "inline-block",
-                                }}
-                              >
-                                {r.est3}
-                              </span>
-                            </div>
-                          )}
-                          {(r.estid3 === 0 || r.estid3 === 1) && (
-                            <div>
-                              <button
-                                onClick={() => assign(r.idGestion, 3)}
-                                className={"btn btn-sm btn-primary mt-2"}
-                              >
-                                {r.estid3 === 0 ? "Asignar" : "Reasignar"}
-                              </button>
-                            </div>
-                          )}
-                          {user.specialities[0] == null &&
-                            r.estid3 === 1 &&
-                            r.anexo2FirmadoRecibido === 1 && (
-                              <button
-                                onClick={() =>
-                                  sendInfo(
-                                    r.idGestion,
-                                    r.idAlumno,
-                                    r.idEmpresa3
-                                  )
-                                }
-                                className={
-                                  sendingInfo.has(`${r.idGestion}-3`)
-                                    ? "btn btn-sm btn-disabled mt-2"
-                                    : "btn btn-sm btn-primary mt-2"
-                                }
-                                disabled={sendingInfo.has(`${r.idGestion}-3`)}
-                              >
-                                {sendingInfo.has(`${r.idGestion}-3`)
-                                  ? "Enviando..."
-                                  : "Enviar información a la empresa."}
-                              </button>
-                            )}
-                          {r.tipo3 && (
-                            <div>
-                              <p className="text-sm text-muted mb-0 mt-2">
-                                Tipo Contrato
-                              </p>
-                              <p>{r.tipo3}</p>
-                            </div>
-                          )}
-                          {r.obv3 && (
-                            <div className="md:col-span-2 lg:col-span-4 mt-3">
-                              <p className="text-sm text-muted mb-0">
-                                Observaciones
-                              </p>
-                              <p className="text-sm">{r.obv3}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="col-12 mt-3">
-                        <p className="mb-1">
-                          Correo electrónico: {r.email || "—"}
-                        </p>
-
-                        <p className="mb-1">
-                          Número de teléfono: {r.telalumno || "—"}
-                        </p>
-
-                        <p className="mb-1">
-                          Carnet de conducir: {r.carnetDeConducir ? "✅" : "❌"}
-                        </p>
-
-                        <p className="mb-1">
-                          Disponibilidad de coche: {r.tieneCoche ? "✅" : "❌"}
-                        </p>
-                      </div>
-
-                      <div className="row mt-3">
-                        <div className="col-4">
-                          <div>
-                            <p className="text-sm text-muted mb-0">
-                              Documentos:
-                            </p>
-
-                            <div className="d-flex gap-2">
-                              <button
-                                onClick={() => getDoc(r.idGestion, "cv")}
-                                className="btn btn-sm btn-primary"
-                              >
-                                Ver CV
-                              </button>
-
-                              <button
-                                onClick={() => getAnexo(r)}
-                                className="btn btn-sm btn-primary"
-                              >
-                                Ver Anexo 2/3
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  getDoc(r.idGestion, "calendario")
-                                }
-                                className="btn btn-sm btn-primary"
-                              >
-                                Ver Calendario
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="col-4">
-                          <div>
-                            <p className="text-sm text-muted mb-0">
-                              Evaluación
-                            </p>
-                            <button
-                              onClick={() => getEvaluation(r.idGestion)}
-                              className="btn btn-sm btn-primary"
-                            >
-                              {r.idEvaluacion !== null ? "Ver" : "Evaluar"}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="col-4">
-                          {r.notaTotal && (
-                            <div>
-                              <p className="text-sm text-muted mb-0">
-                                Nota Total
-                              </p>
-                              <p>
-                                {r.notaTotal !== null
-                                  ? r.notaTotal.toFixed(2)
-                                  : "—"}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="row mt-2">
-                        <div className="col-12">
-                          <p className="text-sm text-muted mb-0">Firmados:</p>
-
-                          <div className="d-flex gap-3 mt-1">
+                          <div className="d-flex gap-2 justify-content-center mt-1">
                             <span>
                               A2/A3:{" "}
                               {r.anexo2FirmadoRecibido ||
@@ -974,19 +466,583 @@ const LinkStudents = () => {
                                 ? "✅"
                                 : "❌"}
                             </span>
-
                             <span>
                               Calendario: {r.calendarioComprobado ? "✅" : "❌"}
                             </span>
                           </div>
                         </div>
+
+                        {r.em1 && (
+                          <span
+                            className="empresa-chip"
+                            title={getEmpresaTooltip(r.estid1)}
+                          >
+                            EMPRESA 1: {r.em1} {getEmpresaEmoji(r.estid1)}
+                          </span>
+                        )}
+
+                        {r.em2 && (
+                          <span
+                            className="empresa-chip"
+                            title={getEmpresaTooltip(r.estid2)}
+                          >
+                            EMPRESA 2: {r.em2} {getEmpresaEmoji(r.estid2)}
+                          </span>
+                        )}
+
+                        {r.em3 && (
+                          <span
+                            className="empresa-chip"
+                            title={getEmpresaTooltip(r.estid3)}
+                          >
+                            EMPRESA 3: {r.em3} {getEmpresaEmoji(r.estid3)}
+                          </span>
+                        )}
                       </div>
+
+                      <button
+                        onClick={() => toggleCard(r.idGestion)}
+                        className="btn btn-sm btn-outline-secondary"
+                        style={{ minWidth: "32px", minHeight: "32px" }}
+                      >
+                        {isExpanded ? "▲" : "▼"}
+                      </button>
                     </div>
-                  )}
+
+                    {isExpanded && (
+                      <div className="mt-3">
+                        <div className="row mt-2">
+                          <div className="col">
+                            {(!isExpanded ||
+                              r.estid1 === 2 ||
+                              r.estid1 === 3 ||
+                              r.estid1 === 4 ||
+                              r.estid1 === 5) && (
+                              <span
+                                className={`badge ${
+                                  r.estid1 === 0
+                                    ? "bg-info"
+                                    : r.estid1 === 1
+                                      ? "bg-secondary"
+                                      : r.estid1 === 2
+                                        ? "bg-primary"
+                                        : r.estid1 === 3
+                                          ? "bg-danger"
+                                          : r.estid1 === 4
+                                            ? "bg-warning"
+                                            : "bg-success"
+                                } text-white px-2 py-1 rounded text-xs`}
+                              >
+                                EMPRESA 1: {r.em1}
+                              </span>
+                            )}
+                            {isExpanded &&
+                              (r.estid1 === 0 || r.estid1 === 1) && (
+                                <div className="d-flex align-items-center gap-2 mt-1">
+                                  <span className="text-nowrap">
+                                    EMPRESA 1:
+                                  </span>
+                                  <select
+                                    className="form-select form-select-sm"
+                                    defaultValue={r.idEmpresa1}
+                                    onChange={handleCompanyChange(
+                                      r.idGestion,
+                                      1,
+                                    )}
+                                  >
+                                    <option value="">
+                                      Selecciona empresa...
+                                    </option>
+                                    {companyRequests
+                                      .filter(
+                                        (cr) =>
+                                          cr.idEspecialidad ===
+                                          r.idEspecialidad,
+                                      )
+                                      .map((cr) => (
+                                        <option
+                                          key={cr.idEmpresa}
+                                          value={cr.idEmpresa}
+                                        >
+                                          {cr.empresa} (Disponibilidad:{" "}
+                                          {cr.cantidad})
+                                        </option>
+                                      ))}
+                                  </select>
+                                </div>
+                              )}
+                          </div>
+
+                          <div className="col">
+                            {r.em2 &&
+                              (!isExpanded ||
+                                r.estid2 === 2 ||
+                                r.estid2 === 3 ||
+                                r.estid2 === 4 ||
+                                r.estid2 === 5) && (
+                                <span
+                                  className={`badge ${
+                                    r.estid2 === 0
+                                      ? "bg-info"
+                                      : r.estid2 === 1
+                                        ? "bg-secondary"
+                                        : r.estid2 === 2
+                                          ? "bg-primary"
+                                          : r.estid2 === 3
+                                            ? "bg-danger"
+                                            : r.estid2 === 4
+                                              ? "bg-warning"
+                                              : "bg-success"
+                                  } text-white px-2 py-1 rounded text-xs`}
+                                >
+                                  EMPRESA 2: {r.em2}
+                                </span>
+                              )}
+                            {r.em2 &&
+                              isExpanded &&
+                              (r.estid2 === 0 || r.estid2 === 1) && (
+                                <div className="d-flex align-items-center gap-2 mt-1">
+                                  <span className="text-nowrap">
+                                    EMPRESA 2:
+                                  </span>
+                                  <select
+                                    className="form-select form-select-sm"
+                                    defaultValue={r.idEmpresa2}
+                                    onChange={handleCompanyChange(
+                                      r.idGestion,
+                                      2,
+                                    )}
+                                  >
+                                    <option value="">
+                                      Selecciona empresa...
+                                    </option>
+                                    {companyRequests
+                                      .filter(
+                                        (cr) =>
+                                          cr.idEspecialidad ===
+                                          r.idEspecialidad,
+                                      )
+                                      .map((cr) => (
+                                        <option
+                                          key={cr.idEmpresa}
+                                          value={cr.idEmpresa}
+                                        >
+                                          {cr.empresa} (Disponibilidad:{" "}
+                                          {cr.cantidad})
+                                        </option>
+                                      ))}
+                                  </select>
+                                </div>
+                              )}
+                          </div>
+
+                          <div className="col">
+                            {r.em3 &&
+                              (!isExpanded ||
+                                r.estid3 === 2 ||
+                                r.estid3 === 3 ||
+                                r.estid3 === 4 ||
+                                r.estid3 === 5) && (
+                                <span
+                                  className={`badge ${
+                                    r.estid3 === 0
+                                      ? "bg-info"
+                                      : r.estid3 === 1
+                                        ? "bg-secondary"
+                                        : r.estid3 === 2
+                                          ? "bg-primary"
+                                          : r.estid3 === 3
+                                            ? "bg-danger"
+                                            : r.estid3 === 4
+                                              ? "bg-warning"
+                                              : "bg-success"
+                                  } text-white px-2 py-1 rounded text-xs`}
+                                >
+                                  EMPRESA 3: {r.em3}
+                                </span>
+                              )}
+                            {r.em3 &&
+                              isExpanded &&
+                              (r.estid3 === 0 || r.estid3 === 1) && (
+                                <div className="d-flex align-items-center gap-2 mt-1">
+                                  <span className="text-nowrap">
+                                    EMPRESA 3:
+                                  </span>
+                                  <select
+                                    className="form-select form-select-sm"
+                                    defaultValue={r.idEmpresa3}
+                                    onChange={handleCompanyChange(
+                                      r.idGestion,
+                                      3,
+                                    )}
+                                  >
+                                    <option value="">
+                                      Selecciona empresa...
+                                    </option>
+                                    {companyRequests
+                                      .filter(
+                                        (cr) =>
+                                          cr.idEspecialidad ===
+                                          r.idEspecialidad,
+                                      )
+                                      .map((cr) => (
+                                        <option
+                                          key={cr.idEmpresa}
+                                          value={cr.idEmpresa}
+                                        >
+                                          {cr.empresa} (Disponibilidad:{" "}
+                                          {cr.cantidad})
+                                        </option>
+                                      ))}
+                                  </select>
+                                </div>
+                              )}
+                          </div>
+                        </div>
+
+                        <div className="row mt-3">
+                          <div className="col-4">
+                            <div>
+                              <span
+                                className={`badge ${
+                                  r.estid1 === 0
+                                    ? "bg-info"
+                                    : r.estid1 === 1
+                                      ? "bg-secondary"
+                                      : r.estid1 === 2
+                                        ? "bg-primary"
+                                        : r.estid1 === 3
+                                          ? "bg-danger"
+                                          : r.estid1 === 4
+                                            ? "bg-warning"
+                                            : "bg-success"
+                                } text-white px-2 py-1 rounded text-xs`}
+                                style={{
+                                  wordWrap: "break-word",
+                                  whiteSpace: "normal",
+                                  display: "inline-block",
+                                }}
+                              >
+                                {r.est1}
+                              </span>
+                            </div>
+                            {(r.estid1 === 0 || r.estid1 === 1) && (
+                              <div>
+                                <button
+                                  onClick={() => assign(r.idGestion, 1)}
+                                  className={"btn btn-sm btn-primary mt-2"}
+                                >
+                                  {r.estid1 === 0 ? "Asignar" : "Reasignar"}
+                                </button>
+                              </div>
+                            )}
+                            {user.specialities[0] == null &&
+                              r.estid1 === 1 &&
+                              r.anexo2FirmadoRecibido === 1 && (
+                                <button
+                                  onClick={() =>
+                                    sendInfo(
+                                      r.idGestion,
+                                      r.idAlumno,
+                                      r.idEmpresa1,
+                                    )
+                                  }
+                                  className={
+                                    sendingInfo.has(`${r.idGestion}-1`)
+                                      ? "btn btn-sm btn-disabled mt-2"
+                                      : "btn btn-sm btn-primary mt-2"
+                                  }
+                                  disabled={sendingInfo.has(`${r.idGestion}-1`)}
+                                >
+                                  {sendingInfo.has(`${r.idGestion}-1`)
+                                    ? "Enviando..."
+                                    : "Enviar información a la empresa."}
+                                </button>
+                              )}
+                            {r.tipo1 && (
+                              <div>
+                                <p className="text-sm text-muted mb-0 mt-2">
+                                  Tipo Contrato
+                                </p>
+                                <p>{r.tipo1}</p>
+                              </div>
+                            )}
+                            {r.obv1 && (
+                              <div className="md:col-span-2 lg:col-span-4 mt-3">
+                                <p className="text-sm text-muted mb-0">
+                                  Observaciones
+                                </p>
+                                <p className="text-sm">{r.obv1}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="col-4">
+                            {r.est2 && (
+                              <div>
+                                <span
+                                  className={`badge ${
+                                    r.estid2 === 0
+                                      ? "bg-info"
+                                      : r.estid2 === 1
+                                        ? "bg-secondary"
+                                        : r.estid2 === 2
+                                          ? "bg-primary"
+                                          : r.estid2 === 3
+                                            ? "bg-danger"
+                                            : r.estid2 === 4
+                                              ? "bg-warning"
+                                              : "bg-success"
+                                  } text-white px-2 py-1 rounded text-xs`}
+                                  style={{
+                                    wordWrap: "break-word",
+                                    whiteSpace: "normal",
+                                    display: "inline-block",
+                                  }}
+                                >
+                                  {r.est2}
+                                </span>
+                              </div>
+                            )}
+                            {(r.estid2 === 0 || r.estid2 === 1) && (
+                              <div>
+                                <button
+                                  onClick={() => assign(r.idGestion, 2)}
+                                  className={"btn btn-sm btn-primary mt-2"}
+                                >
+                                  {r.estid2 === 0 ? "Asignar" : "Reasignar"}
+                                </button>
+                              </div>
+                            )}
+                            {user.specialities[0] == null &&
+                              r.estid2 === 1 &&
+                              r.anexo2FirmadoRecibido === 1 && (
+                                <button
+                                  onClick={() =>
+                                    sendInfo(
+                                      r.idGestion,
+                                      r.idAlumno,
+                                      r.idEmpresa2,
+                                    )
+                                  }
+                                  className={
+                                    sendingInfo.has(`${r.idGestion}-2`)
+                                      ? "btn btn-sm btn-disabled mt-2"
+                                      : "btn btn-sm btn-primary mt-2"
+                                  }
+                                  disabled={sendingInfo.has(`${r.idGestion}-2`)}
+                                >
+                                  {sendingInfo.has(`${r.idGestion}-2`)
+                                    ? "Enviando..."
+                                    : "Enviar información a la empresa."}
+                                </button>
+                              )}
+                            {r.tipo2 && (
+                              <div>
+                                <p className="text-sm text-muted mb-0 mt-2">
+                                  Tipo Contrato
+                                </p>
+                                <p>{r.tipo2}</p>
+                              </div>
+                            )}
+                            {r.obv2 && (
+                              <div className="md:col-span-2 lg:col-span-4 mt-3">
+                                <p className="text-sm text-muted mb-0">
+                                  Observaciones
+                                </p>
+                                <p className="text-sm">{r.obv2}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="col-4">
+                            {r.est3 && (
+                              <div>
+                                <span
+                                  className={`badge ${
+                                    r.estid3 === 0
+                                      ? "bg-info"
+                                      : r.estid3 === 1
+                                        ? "bg-secondary"
+                                        : r.estid3 === 2
+                                          ? "bg-primary"
+                                          : r.estid3 === 3
+                                            ? "bg-danger"
+                                            : r.estid3 === 4
+                                              ? "bg-warning"
+                                              : "bg-success"
+                                  } text-white px-2 py-1 rounded text-xs`}
+                                  style={{
+                                    wordWrap: "break-word",
+                                    whiteSpace: "normal",
+                                    display: "inline-block",
+                                  }}
+                                >
+                                  {r.est3}
+                                </span>
+                              </div>
+                            )}
+                            {(r.estid3 === 0 || r.estid3 === 1) && (
+                              <div>
+                                <button
+                                  onClick={() => assign(r.idGestion, 3)}
+                                  className={"btn btn-sm btn-primary mt-2"}
+                                >
+                                  {r.estid3 === 0 ? "Asignar" : "Reasignar"}
+                                </button>
+                              </div>
+                            )}
+                            {user.specialities[0] == null &&
+                              r.estid3 === 1 &&
+                              r.anexo2FirmadoRecibido === 1 && (
+                                <button
+                                  onClick={() =>
+                                    sendInfo(
+                                      r.idGestion,
+                                      r.idAlumno,
+                                      r.idEmpresa3,
+                                    )
+                                  }
+                                  className={
+                                    sendingInfo.has(`${r.idGestion}-3`)
+                                      ? "btn btn-sm btn-disabled mt-2"
+                                      : "btn btn-sm btn-primary mt-2"
+                                  }
+                                  disabled={sendingInfo.has(`${r.idGestion}-3`)}
+                                >
+                                  {sendingInfo.has(`${r.idGestion}-3`)
+                                    ? "Enviando..."
+                                    : "Enviar información a la empresa."}
+                                </button>
+                              )}
+                            {r.tipo3 && (
+                              <div>
+                                <p className="text-sm text-muted mb-0 mt-2">
+                                  Tipo Contrato
+                                </p>
+                                <p>{r.tipo3}</p>
+                              </div>
+                            )}
+                            {r.obv3 && (
+                              <div className="md:col-span-2 lg:col-span-4 mt-3">
+                                <p className="text-sm text-muted mb-0">
+                                  Observaciones
+                                </p>
+                                <p className="text-sm">{r.obv3}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="col-12 mt-3">
+                          <p className="mb-1">
+                            Correo electrónico: {r.email || "—"}
+                          </p>
+
+                          <p className="mb-1">
+                            Número de teléfono: {r.telalumno || "—"}
+                          </p>
+
+                          <p className="mb-1">
+                            Carnet de conducir:{" "}
+                            {r.carnetDeConducir ? "✅" : "❌"}
+                          </p>
+
+                          <p className="mb-1">
+                            Disponibilidad de coche:{" "}
+                            {r.tieneCoche ? "✅" : "❌"}
+                          </p>
+                        </div>
+
+                        <div className="row mt-3">
+                          <div className="col-4">
+                            <div>
+                              <p className="text-sm text-muted mb-0">
+                                Documentos:
+                              </p>
+
+                              <div className="d-flex gap-2">
+                                <button
+                                  onClick={() => getDoc(r.idGestion, "cv")}
+                                  className="btn btn-sm btn-primary"
+                                >
+                                  Ver CV
+                                </button>
+
+                                <button
+                                  onClick={() => getAnexo(r)}
+                                  className="btn btn-sm btn-primary"
+                                >
+                                  Ver Anexo 2/3
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    getDoc(r.idGestion, "calendario")
+                                  }
+                                  className="btn btn-sm btn-primary"
+                                >
+                                  Ver Calendario
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="col-4">
+                            <div>
+                              <p className="text-sm text-muted mb-0">
+                                Evaluación
+                              </p>
+                              <button
+                                onClick={() => getEvaluation(r.idGestion)}
+                                className="btn btn-sm btn-primary"
+                              >
+                                {r.idEvaluacion !== null ? "Ver" : "Evaluar"}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="col-4">
+                            {r.notaTotal && (
+                              <div>
+                                <p className="text-sm text-muted mb-0">
+                                  Nota Total
+                                </p>
+                                <p>
+                                  {r.notaTotal !== null
+                                    ? r.notaTotal.toFixed(2)
+                                    : "—"}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="row mt-2">
+                          <div className="col-12">
+                            <p className="text-sm text-muted mb-0">Firmados:</p>
+
+                            <div className="d-flex gap-3 mt-1">
+                              <span>
+                                A2/A3:{" "}
+                                {r.anexo2FirmadoRecibido ||
+                                r.anexo3FirmadoRecibido
+                                  ? "✅"
+                                  : "❌"}
+                              </span>
+
+                              <span>
+                                Calendario:{" "}
+                                {r.calendarioComprobado ? "✅" : "❌"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
         {showDoc && (
           <div
