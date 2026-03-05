@@ -1,44 +1,54 @@
 import "./Footer.css";
-
-// PIE DE PÁGINA con información de contacto y redes sociales.
 function Footer() {
   return (
-    <footer className="site-footer">
-      <div className="footer-top">
-        <div className="footer-section">
-          <h3>Contacto</h3>
-          <p>C/ María Auxiliadora, 13</p>
-          <p>Teléfono: 123-456-789</p>
-          <p>info@colegio.com</p>
+    <footer className="bg-brand-500 text-white mt-auto">
+      <div className="max-w-7xl mx-auto px-6 py-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <h3 className="footer-title">Contacto</h3>
+          <p className="footer-text">C/ María Auxiliadora, 13</p>
+          <p className="footer-text">Tel: 123-456-789</p>
+          <p className="footer-text">info@colegio.com</p>
         </div>
-        <div className="footer-section">
-          <h3>Enlaces útiles</h3>
-          <ul>
+
+        <div>
+          <h3 className="footer-title">Enlaces útiles</h3>
+          <ul className="space-y-1 footer-text">
             <li>
-              <a href="/">Acerca de nosotros</a>
+              <a className="footer-link" href="/">
+                Acerca de nosotros
+              </a>
             </li>
             <li>
-              <a href="/">Programas académicos</a>
+              <a className="footer-link" href="/">
+                Programas académicos
+              </a>
             </li>
             <li>
-              <a href="/">Prácticas en empresas</a>
+              <a className="footer-link" href="/">
+                Prácticas en empresas
+              </a>
             </li>
             <li>
-              <a href="/">Contacto</a>
+              <a className="footer-link" href="/">
+                Contacto
+              </a>
             </li>
           </ul>
         </div>
-        <div className="footer-section">
-          <h3>Síguenos</h3>
-          <div className="footer-social">
-            <a href="/">Facebook</a>
-            <a href="/">Twitter</a>
-            <a href="/">Instagram</a>
+
+        <div>
+          <h3 className="footer-title">Síguenos</h3>
+
+          <div className="flex gap-2 flex-wrap">
+            <a className="footer-social-pill">Facebook</a>
+            <a className="footer-social-pill">Twitter</a>
+            <a className="footer-social-pill">Instagram</a>
           </div>
         </div>
       </div>
-      <div className="footer-bottom">
-        © 2024 Colegio Salesianos Zaragoza. Todos los derechos reservados.
+
+      <div className="border-t border-white/20 text-center text-xs py-4 opacity-80">
+        © 2026 Salesianos Zaragoza · Gestor FP Dual
       </div>
     </footer>
   );
