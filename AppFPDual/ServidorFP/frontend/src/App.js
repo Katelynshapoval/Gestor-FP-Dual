@@ -1,108 +1,38 @@
-import React from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { User } from "./globales/User"; // Importa nuestra global para cargar el usuario
+import React from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { User } from './globales/User';
+import PageLayout from './components/layout/PageLayout.jsx';
 
-import Header from "./components/Header"; // Importa el componente Header
-import Home from "./components/Home";
-import Footer from "./components/Footer";
+import Home from './components/Home';
+import Login from './pages/Login';
+import AddDualStudent from './pages/AddDualStudent';
+import AddCompanyRequest from './pages/AddCompanyRequest';
+import AddConvenio from './pages/AddConvenio';
+import Evaluation from './components/Evaluation';
+import LinkStudents from './pages/LinkStudents';
+import CompanyView from './pages/CompanyView';
 
-import AddDualStudent from "./pages/AddDualStudent";
-import AddCompanyRequest from "./pages/AddCompanyRequest";
-import AddConvenio from "./pages/AddConvenio";
-import Evaluation from "./components/Evaluation";
-import LinkStudents from "./pages/LinkStudents";
-import Login from "./pages/Login";
+import './styles.css';
 
-import "./styles.css"; // Importa el archivo de estilos CSS global
-import "bootstrap/dist/css/bootstrap.min.css";
-import CompanyView from "./pages/CompanyView";
 
+// Envuelve una página en el layout general (Header + Footer)
+const Page = ({ children }) => <PageLayout>{children}</PageLayout>;
+
+// COMPONENTE RAÍZ con el enrutador y el proveedor de usuario global
 function App() {
   return (
     <User>
       <div className="app">
         <BrowserRouter>
           <Routes>
-            <Route
-              path="/login"
-              element={
-                <>
-                  <Header />
-                  <Login />
-                  <Footer />
-                </>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <>
-                  <Header />
-                  <Home />
-                  <Footer />
-                </>
-              }
-            />
-            <Route
-              path="/addDualStudent"
-              element={
-                <>
-                  <Header />
-                  <AddDualStudent />
-                  <Footer />
-                </>
-              }
-            />
-            <Route
-              path="/addCompanyRequest"
-              element={
-                <>
-                  <Header />
-                  <AddCompanyRequest />
-                  <Footer />
-                </>
-              }
-            />
-            <Route
-              path="/addConvenio/:id"
-              element={
-                <>
-                  <Header />
-                  <AddConvenio />
-                  <Footer />
-                </>
-              }
-            />
-            <Route
-              path="/evaluate/:id"
-              element={
-                <>
-                  <Header />
-                  <Evaluation />
-                  <Footer />
-                </>
-              }
-            />
-            <Route
-              path="/linkStudents"
-              element={
-                <>
-                  <Header />
-                  <LinkStudents />
-                  <Footer />
-                </>
-              }
-            />
-            <Route
-              path="/companyMain"
-              element={
-                <>
-                  <Header />
-                  <CompanyView />
-                  <Footer />
-                </>
-              }
-            />
+            <Route path="/login"          element={<Page><Login /></Page>} />
+            <Route path="/"               element={<Page><Home /></Page>} />
+            <Route path="/addDualStudent" element={<Page><AddDualStudent /></Page>} />
+            <Route path="/addCompanyRequest" element={<Page><AddCompanyRequest /></Page>} />
+            <Route path="/addConvenio/:id"   element={<Page><AddConvenio /></Page>} />
+            <Route path="/evaluate/:id"      element={<Page><Evaluation /></Page>} />
+            <Route path="/linkStudents"      element={<Page><LinkStudents /></Page>} />
+            <Route path="/companyMain"       element={<Page><CompanyView /></Page>} />
           </Routes>
         </BrowserRouter>
       </div>

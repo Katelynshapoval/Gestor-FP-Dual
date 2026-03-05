@@ -1,752 +1,210 @@
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
+/* FUENTES DE GOOGLE */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+/* TAILWIND */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* VARIABLES GLOBALES */
+:root {
+  --brand:        #f81d1d;
+  --brand-dark:   #bc0808;
+  --brand-light:  #fff1f1;
+  --brand-shadow: 0 4px 14px 0 rgb(248 29 29 / .28);
+  --surface:      #ffffff;
+  --surface-alt:  #fafafa;
+  --border:       #e8e8e8;
+  --text:         #1a1a1a;
+  --text-muted:   #6b7280;
+  --radius:       0.75rem;
+  --radius-sm:    0.5rem;
+  --transition:   0.18s ease;
 }
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: var(--surface-alt);
+  -webkit-font-smoothing: antialiased;
 }
+.app { min-height: 100vh; display: flex; flex-direction: column; }
 
-.main,
-.results-container,
-.container {
-  flex: 0 0 auto;
-}
-
-.app > *:not(.school-footer) {
-  flex: 0;
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - Login
--------------------------------------------------------------------------------
-*/
-
-.content {
-  position: relative;
-  width: 100%;
-  max-width: 400px; /* Ajusta el ancho máximo del formulario */
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.backgroundlogin {
-  background-image: url("../public/images/fondosalesianos.jpg");
-  background-size: cover;
-  background-position: center;
-  padding: 8.2%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  position: relative;
-}
-
-.form-container {
-  background: rgba(
-    255,
-    255,
-    255,
-    0.9
-  ); /* Fondo semitransparente para resaltar el formulario */
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-}
-
-.login-form h2 {
-  margin-bottom: 20px;
-}
-
-.login-form label {
-  margin-bottom: 5px;
-  text-align: left;
-}
-
-.login-form input {
-  margin-bottom: 15px;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-.login-form button {
-  padding: 10px;
-  background-color: #e91e63;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.login-form button:hover {
-  background-color: #d81b60;
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - HEADER
--------------------------------------------------------------------------------
-*/
-.title-link {
-  text-decoration: none; /* Elimina el subrayado del enlace */
-  color: #ffffff;
-}
-header {
-  background-color: rgb(248, 29, 29);
+/* HEADER */
+.site-header {
+  background: var(--brand);
+  background-image: repeating-linear-gradient(45deg,transparent,transparent 24px,rgb(0 0 0/.04) 24px,rgb(0 0 0/.04) 25px);
   color: #fff;
-  padding: 20px;
-  text-align: center;
-}
-
-h1 {
-  margin: -20px 0 0;
-  font-size: 32px;
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - BODY
--------------------------------------------------------------------------------
-*/
-
-.container {
-  display: flex;
-  justify-content: space-around; /* Distribuye los elementos de manera uniforme */
-  align-items: center; /* Centra verticalmente los elementos */
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  background-color: #ffffff;
-}
-
-.button-container {
-  display: flex;
-  flex-wrap: wrap; /* Permite que los botones se envuelvan si no hay suficiente espacio horizontal */
-  justify-content: center; /* Centra los elementos horizontalmente */
-}
-
-.button {
-  margin: 10px auto; /* Centra horizontalmente */
-  padding: 5px 40px; /* Ajusta el padding para hacer los botones más largos y estrechos */
-  font-size: 16px;
-  background-color: rgb(248, 29, 29);
-  color: #ffffff;
-  border: none;
-  cursor: pointer;
-  height: 30px; /* Ajusta la altura de los botones */
-  display: block; /* Cambia a bloque para poder centrar verticalmente */
-  text-align: center; /* Centra horizontalmente */
-}
-
-.button:hover {
-  background-color: rgb(248, 29, 29);
-}
-
-.submenu {
-  display: none;
-  flex-direction: column;
-  position: absolute;
-  background-color: rgb(253, 55, 55);
-  min-width: 160px;
-  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
-  z-index: 1;
-}
-
-.button:hover .submenu {
-  display: block;
-  margin-top: 10px; /* Añade margen para ajustar la posición */
-}
-
-.subOption {
-  color: rgb(255, 255, 255);
-  padding: 6px 8px;
-  text-decoration: none;
-  display: block;
-  text-align: center; /* Centra el texto horizontalmente */
-}
-
-.subOption:hover {
-  background-color: #ddd;
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - AddStudent // UpdateStudent
--------------------------------------------------------------------------------
-*/
-.tittle {
-  margin: 0 auto; /* Centra horizontalmente */
-  margin-bottom: 10px;
-  width: 75%; /* Establece el ancho del contenedor al 50% del ancho de la pantalla */
-}
-/* Estilo para el contenedor principal */
-.student-container {
-  margin: 20px auto; /* Centra el contenedor horizontalmente */
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-/* Estilo para los campos de entrada */
-.input-field {
-  margin: 0 auto; /* Centra horizontalmente */
-  margin-bottom: 10px;
-  width: 75%; /* Establece el ancho del contenedor al 50% del ancho de la pantalla */
-}
-
-.input-field label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.input-field input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-}
-
-/* Estilo para los botones */
-.button {
-  background-color: rgb(226, 52, 52);
-  color: #fff;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.addStudentButton {
-  display: block; /* Convierte el botón en un bloque para centrarlo horizontalmente */
-  background-color: rgb(248, 29, 29);
-  color: #fff;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  margin: 0 auto; /* Centra el botón horizontalmente */
-  margin-top: 30px;
-  margin-bottom: 60px;
-}
-
-.button:hover {
-  background-color: #f48f8f;
-}
-
-/* Estilo para las secciones */
-.section {
-  margin-bottom: 20px;
-  margin: 20px auto; /* Centra el contenedor horizontalmente */
-  margin-left: 100px; /* Mueve el contenedor hacia la izquierda 100px */
-  margin-right: 100px; /* Mueve el contenedor hacia la izquierda 100px */
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-.section-title {
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  padding-left: 100px;
-}
-
-/* Estilo para los campos de idiomas y documentos */
-.input-group {
+  padding: 0 2rem;
+  height: 64px;
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.input-group input {
-  flex: 1;
-  margin-right: 10px;
-}
-
-/* Estilo para el botón de agregar */
-.add-button {
-  background-color: rgb(253, 55, 55);
-}
-
-.add-button:hover {
-  background-color: rgb(253, 55, 55);
-}
-
-/* Estilo para mensajes de error */
-.error-message {
-  background-color: rgb(253, 55, 55);
-  margin-top: 5px;
-  font-size: 14px;
-}
-
-/* Estilo para el mensaje emergente de éxito */
-
-/* Hacer que la peticion desparezca y aparezca cuando se pulse el boton o que tenga un tamaño minusculo y luego se agrende
-  */
-.success-message {
-  position: fixed; /* Se posiciona fijo en la pantalla */
-  bottom: 20px; /* Se coloca en la parte inferior de la pantalla */
-  right: 10px; /* Se coloca en la parte derecha de la pantalla */
-  background-color: #72d522; /* Fondo verde */
-  color: rgb(252, 20, 20); /* Texto blanco */
-  padding: 30px; /* Espaciado interno */
-  border-radius: 5px; /* Bordes redondeados */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra */
-  z-index: 999; /* Asegura que esté sobre otros elementos */
-  transform: scale(1.2); /* Tamaño inicial grande */
-  transform-origin: bottom right; /* Define el origen de la transformación */
-  transition: transform 0.5s ease-in-out; /* Animación de cambio de tamaño */
-}
-
-/* Opcional: Agrega estilos de animación para hacer que el mensaje aparezca gradualmente */
-.success-message.fade-in {
-  animation: fadeIn 0.5s ease-in-out forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.1); /* Tamaño inicial pequeño */
-  }
-  to {
-    opacity: 1;
-    transform: scale(0.9); /* Tamaño final grande */
-  }
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - GetAllStudents / GetAllCandidates
--------------------------------------------------------------------------------
-*/
-
-.student-card {
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 20px;
-  margin: 10px;
-  max-width: 100%;
-  text-decoration: none;
-}
-
-.student-info-list li strong {
-  color: #fc2909;
-}
-
-.student-info-list {
-  display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(200px, 1fr)
-  ); /* Crea columnas automáticas con un ancho mínimo de 200px */
-  gap: 10px; /* Espacio entre las celdas de la cuadrícula */
-  list-style: none;
-  padding: 0;
-}
-
-.student-info-list {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr); /* Cambia a 4 columnas fijas */
-  gap: 10px; /* Espacio entre las celdas de la cuadrícula */
-  list-style: none;
-  padding: 0;
-}
-
-.student-info-list li strong {
-  font-weight: bold;
-}
-
-.students-title {
-  padding-top: 20px;
-  text-align: center;
-}
-/*
--------------------------------------------------------------------------------
-                                       CSS - Idioms
--------------------------------------------------------------------------------
-*/
-
-.idioms-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.idiom-form {
-  margin-bottom: 20px;
-}
-
-.idiom-form label {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.idiom-form input[type="text"] {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.idiom-form button {
-  padding: 8px 16px;
-  background-color: #ff0000;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.idiom-form button:hover {
-  background-color: #ff0000;
-}
-
-.idiom-list {
-  list-style: none;
-  padding: 0;
-}
-
-.idiom-list li {
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-.idiom-list h2 {
-  margin-top: 0;
-  margin-bottom: 5px;
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - Footer
--------------------------------------------------------------------------------
-*/
-.school-footer {
-  background-color: rgb(248, 29, 29);
-  color: #fff;
-  padding: 30px 0;
-  text-align: center;
-  margin-top: auto;
-}
-
-.footer-content {
-  display: flex;
-  justify-content: space-around;
-}
-
-.footer-section {
-  flex: 1;
-  padding: 0 20px;
-}
-
-.footer-section h3 {
-  font-size: 18px;
-  margin-bottom: 15px;
-}
-
-.footer-section p {
-  margin-bottom: 10px;
-}
-
-.footer-section ul {
-  list-style: none;
-  padding: 0;
-}
-
-.footer-section ul li {
-  margin-bottom: 5px;
-}
-
-.footer-section ul li a {
-  color: #fff;
-  text-decoration: none;
-}
-
-.social-links {
-  display: flex;
-}
-
-.social-links li {
-  margin-right: 10px;
-}
-
-.social-links li a {
-  color: #fff;
-  font-size: 20px;
-}
-
-.footer-bottom {
-  background-color: rgb(253, 55, 55);
-  text-align: center;
-  padding: 10px 0;
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - Main
--------------------------------------------------------------------------------
-*/
-.main {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-section {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.extra-div {
-  height: 410px;
-  width: 626px;
-  margin-left: 10%;
-  background-image: url("../public/images/homeImage.avif");
-}
-/*
--------------------------------------------------------------------------------
-                                       CSS - Preferences
--------------------------------------------------------------------------------
-*/
-
-.preferences-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.preference-form {
-  margin-bottom: 20px;
-}
-
-.preference-form label {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.preference-form input[type="text"] {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.preference-form button {
-  padding: 8px 16px;
-  background-color: #ff0000;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.preference-form button:hover {
-  background-color: #ff0000;
-}
-
-.preference-list {
-  list-style: none;
-  padding: 0;
-}
-
-.preference-list li {
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-.preference-list h2 {
-  margin-top: 0;
-  margin-bottom: 5px;
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - SearchStudent
--------------------------------------------------------------------------------
-*/
-.centered-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-
-.search-container {
-  text-align: center;
-  background-color: #fff;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  text-decoration: none;
-}
-
-.search-container h4 {
-  margin-bottom: 20px;
-  font-size: 24px;
-  color: #ffffff;
-}
-
-.search-input {
-  width: 100%;
-  padding: 15px;
-  font-size: 18px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin-bottom: 20px;
-}
-
-.results-container {
-  margin-top: 20px;
-  text-decoration: none;
-}
-
-.student-card {
-  background-color: #fafafa;
-  padding: 20px;
-  margin-bottom: 10px;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  text-align: left;
-  text-decoration: none;
-}
-
-.student-info-list {
-  list-style-type: none;
-  padding: 0;
-  text-decoration: none;
-  color: black;
-}
-
-.student-info-list li {
-  margin-bottom: 8px;
-  text-decoration: none;
-}
-
-.student-info-list li strong {
-  font-weight: bold;
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - GETALLCANDIDATES
--------------------------------------------------------------------------------
-*/
-
-/* Contenedor principal de resultados */
-.results-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin: 20px;
-  text-decoration: none;
-}
-
-/* Estilos para cada tarjeta de candidato */
-.candidate-card {
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(254, 4, 4, 0.1);
-  margin: 10px;
-  padding: 20px;
-  width: 300px;
-  transition: transform 0.2s;
-  text-decoration: none;
-}
-
-.candidate-card:hover {
-  transform: translateY(-5px);
-}
-
-/* Lista de información del candidato */
-.candidate-info-list {
-  list-style-type: none;
-  padding: 0;
-}
-
-.candidate-info-list li {
-  margin-bottom: 10px;
-}
-
-.candidate-info-list li strong {
-  color: #fc2909;
-}
-
-/* Botones de acción */
-.editButton {
-  background-color: #dc3545; /* Rojo */
-  border: none;
-  border-radius: 4px;
-  color: #fff; /* Letras blancas */
-  cursor: pointer;
-  font-size: 16px;
-  margin: 20px 10px;
-  padding: 10px 20px;
-  margin-left: 47%;
-  text-align: center;
-  transition: background-color 0.3s;
-}
-
-/* Contenedor de botones */
-.button-container {
-  display: flex;
-  justify-content: center;
-  margin: 20px;
-}
-
-.editButton:hover,
-.deleteButton:hover {
-  background-color: #b52b37; /* Rojo más oscuro */
-}
-
-/*
--------------------------------------------------------------------------------
-                                       CSS - LINKSTUDENTS
--------------------------------------------------------------------------------
-*/
-.card-title {
-  font-size: 22px;
-}
-
-.empresa-chip {
-  border: 1px solid #d0d0d0;
-  background: #f7f7f7;
-  font-size: 0.76rem;
-  line-height: 1;
-  padding: 2px 6px;
-  border-radius: 6px;
-  cursor: help;
-  display: inline-block;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-}
+  justify-content: space-between;
+  box-shadow: 0 2px 12px rgb(248 29 29 / .35);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.site-header .brand { display:flex;align-items:center;gap:.75rem;text-decoration:none;color:#fff; }
+.site-header .brand img { width:38px;height:38px;object-fit:contain;filter:brightness(0) invert(1);border-radius:4px; }
+.site-header .brand-name { font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;letter-spacing:.01em;line-height:1.1; }
+.site-header .brand-sub { font-size:.65rem;font-weight:300;letter-spacing:.12em;text-transform:uppercase;opacity:.8; }
+.site-header nav { display:flex;align-items:center;gap:.25rem; }
+.nav-link { display:flex;align-items:center;gap:.35rem;padding:.4rem .85rem;border-radius:999px;font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgb(255 255 255/.85);text-decoration:none;transition:background var(--transition),color var(--transition);border:none;background:none;cursor:pointer; }
+.nav-link:hover { background:rgb(255 255 255/.15);color:#fff; }
+.nav-link-logout { background:rgb(255 255 255/.12);border:1px solid rgb(255 255 255/.3); }
+.nav-link-logout:hover { background:rgb(255 255 255/.25); }
+.nav-welcome { font-size:.8rem;font-weight:500;opacity:.85;margin-right:.5rem;padding:0 .75rem;border-right:1px solid rgb(255 255 255/.25); }
+
+/* FOOTER */
+.site-footer { background:#1a1a1a;color:#fff;margin-top:auto; }
+.footer-top { display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;padding:2.5rem 3rem;border-bottom:1px solid rgb(255 255 255/.08); }
+.footer-section h3 { font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--brand);margin:0 0 .75rem;letter-spacing:.03em; }
+.footer-section p,.footer-section li { font-size:.82rem;color:rgb(255 255 255/.6);margin:0 0 .35rem;list-style:none; }
+.footer-section a { color:rgb(255 255 255/.6);text-decoration:none;transition:color var(--transition); }
+.footer-section a:hover { color:#fff; }
+.footer-section ul { padding:0;margin:0; }
+.footer-social { display:flex;gap:.5rem; }
+.footer-social a { display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:600;letter-spacing:.05em;padding:.3rem .7rem;border:1px solid rgb(255 255 255/.15);border-radius:999px;color:rgb(255 255 255/.6);transition:all var(--transition); }
+.footer-social a:hover { border-color:var(--brand);color:var(--brand); }
+.footer-bottom { text-align:center;padding:.75rem;font-size:.75rem;color:rgb(255 255 255/.3); }
+
+/* HOME */
+.home-page { flex:1;display:flex;flex-direction:column; }
+.home-hero { background:linear-gradient(135deg,var(--brand) 0%,var(--brand-dark) 100%);color:#fff;padding:5rem 3rem 4rem;position:relative;overflow:hidden; }
+.home-hero::before { content:'';position:absolute;right:-80px;top:-80px;width:420px;height:420px;border-radius:50%;background:rgb(255 255 255/.06); }
+.home-hero::after { content:'';position:absolute;right:80px;bottom:-120px;width:280px;height:280px;border-radius:50%;background:rgb(255 255 255/.04); }
+.home-hero h1 { font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;line-height:1.2;margin:0 0 1rem;position:relative;z-index:1;max-width:640px; }
+.home-hero p { font-size:1.05rem;font-weight:300;letter-spacing:.04em;opacity:.85;position:relative;z-index:1; }
+.home-body { display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;padding:2.5rem 3rem;max-width:960px; }
+.home-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;box-shadow:0 1px 3px rgb(0 0 0/.05);transition:box-shadow var(--transition),transform var(--transition);text-decoration:none;color:inherit;display:block; }
+.home-card:hover { box-shadow:0 6px 20px rgb(0 0 0/.09);transform:translateY(-2px); }
+.home-card-icon { width:40px;height:40px;background:var(--brand-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:.85rem; }
+.home-card h3 { font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;margin:0 0 .4rem;color:var(--text); }
+.home-card p { font-size:.85rem;color:var(--text-muted);margin:0;line-height:1.5; }
+
+/* LOGIN */
+.login-page { flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 70% 20%,rgb(248 29 29/.12) 0%,transparent 60%),radial-gradient(ellipse at 20% 80%,rgb(248 29 29/.07) 0%,transparent 50%),var(--surface-alt);min-height:calc(100vh - 64px - 200px);padding:2rem; }
+.login-card { background:var(--surface);border:1px solid var(--border);border-radius:calc(var(--radius)*1.5);padding:2.75rem 2.5rem;width:100%;max-width:380px;box-shadow:0 8px 40px rgb(0 0 0/.08);animation:fadeIn .35s ease-out;text-align:center; }
+.login-card .logo-mark { width:56px;height:56px;background:var(--brand);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;box-shadow:var(--brand-shadow); }
+.login-card h2 { font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin:0 0 .35rem; }
+.login-card .subtitle { font-size:.85rem;color:var(--text-muted);margin:0 0 1.75rem; }
+.login-divider { height:1px;background:var(--border);margin:1.5rem 0; }
+.login-error { background:#fff1f1;border:1px solid rgb(248 29 29/.25);border-radius:var(--radius-sm);padding:.65rem 1rem;font-size:.82rem;color:var(--brand-dark);margin-top:1rem; }
+
+/* FORMULARIOS */
+.page-container { padding:2rem 2.5rem;max-width:860px;margin:0 auto;width:100%;flex:1; }
+.page-title { font-family:'Playfair Display',serif;font-size:1.55rem;font-weight:700;color:var(--text);margin:0 0 .35rem; }
+.page-subtitle { font-size:.85rem;color:var(--text-muted);margin:0 0 2rem;line-height:1.6; }
+.form-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem 2rem;box-shadow:0 1px 3px rgb(0 0 0/.04);margin-bottom:1.25rem; }
+.form-section-title { font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);margin:0 0 1.25rem;padding-bottom:.5rem;border-bottom:2px solid var(--brand-light); }
+.field { margin-bottom:1.1rem; }
+.field label { display:block;font-size:.82rem;font-weight:600;color:#374151;margin-bottom:.35rem;letter-spacing:.01em; }
+.field-hint { font-size:.78rem;color:var(--text-muted);margin-bottom:.4rem;line-height:1.5; }
+.field-hint strong { color:var(--brand); }
+.input,.textarea,.select-input { width:100%;padding:.55rem .85rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.875rem;color:var(--text);background:var(--surface);transition:border-color var(--transition),box-shadow var(--transition);outline:none; }
+.input:focus,.textarea:focus,.select-input:focus { border-color:var(--brand);box-shadow:0 0 0 3px rgb(248 29 29/.1); }
+.textarea { resize:vertical;min-height:90px; }
+.radio-group { display:flex;flex-direction:column;gap:.45rem; }
+.radio-option { display:flex;align-items:flex-start;gap:.55rem;cursor:pointer; }
+.radio-option input[type="radio"] { accent-color:var(--brand);margin-top:3px;flex-shrink:0; }
+.radio-option span { font-size:.875rem;color:var(--text); }
+.checkbox-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.5rem; }
+.checkbox-item { display:flex;align-items:center;justify-content:space-between;padding:.6rem .85rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color var(--transition),background var(--transition);background:var(--surface); }
+.checkbox-item:hover { border-color:var(--brand);background:var(--brand-light); }
+.checkbox-item.checked { border-color:var(--brand);background:var(--brand-light); }
+.checkbox-item input[type="checkbox"] { accent-color:var(--brand); }
+.checkbox-item .item-label { font-size:.85rem;font-weight:500; }
+.count-input { display:flex;align-items:center;gap:.35rem; }
+.count-input label { font-size:.75rem;color:var(--text-muted);white-space:nowrap; }
+.count-input input { width:60px;padding:.25rem .4rem; }
+
+/* BOTONES */
+.btn { display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.35rem;border-radius:999px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:all var(--transition);border:1.5px solid transparent;text-decoration:none;outline:none; }
+.btn-primary { background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:var(--brand-shadow); }
+.btn-primary:hover { background:var(--brand-dark);border-color:var(--brand-dark);box-shadow:0 6px 18px rgb(248 29 29/.35);transform:translateY(-1px); }
+.btn-secondary { background:var(--surface);color:var(--text);border-color:var(--border); }
+.btn-secondary:hover { border-color:#aaa;background:var(--surface-alt); }
+.btn-ghost { background:transparent;color:var(--text-muted);border-color:transparent; }
+.btn-ghost:hover { background:var(--surface-alt);color:var(--text); }
+.btn-outline-brand { background:transparent;color:var(--brand);border-color:var(--brand); }
+.btn-outline-brand:hover { background:var(--brand);color:#fff; }
+.btn-sm { padding:.3rem .75rem;font-size:.78rem; }
+.btn:disabled,.btn-disabled { opacity:.5;cursor:not-allowed;pointer-events:none;transform:none;box-shadow:none; }
+
+/* MENSAJES */
+.form-message { display:flex;align-items:center;gap:.6rem;padding:.75rem 1rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-sm);font-size:.85rem;color:#166534;margin-top:1rem;animation:slideIn .2s ease-out; }
+
+/* LINK STUDENTS */
+.link-page { padding:2rem 2.5rem;max-width:1100px;margin:0 auto;width:100%;flex:1; }
+.link-page-header { display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:1.5rem; }
+.filter-bar { display:flex;align-items:center;gap:.65rem; }
+.filter-bar label { font-size:.8rem;font-weight:600;color:var(--text-muted);white-space:nowrap; }
+.filter-select { padding:.45rem 2rem .45rem .75rem;border:1.5px solid var(--border);border-radius:999px;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--text);background:var(--surface);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65rem center;cursor:pointer;transition:border-color var(--transition);outline:none; }
+.filter-select:focus { border-color:var(--brand); }
+.student-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 1px 3px rgb(0 0 0/.05);margin-bottom:.65rem;overflow:hidden;transition:box-shadow var(--transition); }
+.student-card:hover { box-shadow:0 3px 10px rgb(0 0 0/.08); }
+.student-card-header { display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.1rem;gap:1rem;user-select:none; }
+.student-card-header:hover { background:var(--surface-alt); }
+.student-name { font-size:.92rem;font-weight:600;color:var(--text);margin:0; }
+.student-esp { font-size:.75rem;color:var(--text-muted); }
+.student-chips { display:flex;flex-wrap:wrap;gap:.4rem;flex:1;justify-content:flex-end; }
+.signed-badge { display:flex;align-items:center;gap:.5rem;font-size:.73rem;color:var(--text-muted);padding:.25rem .6rem;background:var(--surface-alt);border:1px solid var(--border);border-radius:6px; }
+.empresa-chip { display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:500;padding:.25rem .6rem;background:var(--surface-alt);border:1px solid var(--border);border-radius:6px;cursor:help;white-space:nowrap; }
+.toggle-btn { width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--text-muted);cursor:pointer;flex-shrink:0;transition:all var(--transition); }
+.toggle-btn:hover { border-color:var(--brand);color:var(--brand);background:var(--brand-light); }
+.student-card-body { padding:1.25rem 1.1rem;border-top:1px solid var(--border);background:var(--surface-alt);animation:fadeIn .18s ease-out; }
+.empresas-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem; }
+.empresa-slot { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.85rem; }
+.empresa-slot-label { font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.5rem; }
+.estado-badge { display:inline-block;padding:.2rem .6rem;border-radius:999px;font-size:.72rem;font-weight:600;letter-spacing:.02em; }
+.estado-0 { background:#e0f2fe;color:#0369a1; }
+.estado-1 { background:#f3f4f6;color:#374151; }
+.estado-2 { background:#eff6ff;color:#1d4ed8; }
+.estado-3 { background:#fef2f2;color:#dc2626; }
+.estado-4 { background:#fffbeb;color:#d97706; }
+.estado-5 { background:#f0fdf4;color:#15803d; }
+.contact-grid { display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1.5rem;margin-bottom:1.1rem; }
+.contact-item { font-size:.82rem;color:var(--text); }
+.contact-item span { font-weight:600;color:var(--text-muted); }
+.docs-row { display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;padding-top:1rem;border-top:1px solid var(--border); }
+.docs-label { font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.5rem; }
+
+/* MODAL VISOR */
+.modal-overlay { position:fixed;inset:0;background:rgb(0 0 0/.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem;animation:fadeIn .15s ease-out; }
+.modal-box { background:var(--surface);border-radius:var(--radius);width:100%;max-width:92%;height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgb(0 0 0/.25);animation:slideIn .2s ease-out; }
+.modal-header { display:flex;align-items:center;justify-content:space-between;padding:.85rem 1.25rem;border-bottom:1px solid var(--border);gap:1rem; }
+.modal-title { font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;margin:0;color:var(--text); }
+.modal-actions { display:flex;align-items:center;gap:.5rem; }
+.modal-close { width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem;color:var(--text-muted);transition:all var(--transition); }
+.modal-close:hover { border-color:var(--brand);color:var(--brand); }
+.modal-body { flex:1;overflow:hidden; }
+.modal-body iframe { display:block;width:100%;height:100%;border:none; }
+
+/* EVALUACIÓN */
+.eval-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;padding-bottom:1rem;border-bottom:2px solid var(--brand-light); }
+.eval-meta { display:flex;gap:.5rem; }
+.eval-badge { font-size:.75rem;padding:.25rem .65rem;border-radius:6px;background:var(--surface-alt);border:1px solid var(--border);color:var(--text-muted); }
+.eval-score-box { background:linear-gradient(135deg,var(--brand) 0%,var(--brand-dark) 100%);border-radius:var(--radius);padding:1.25rem 1.5rem;color:#fff;margin-bottom:1.25rem; }
+.eval-score-box .score-label { font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;opacity:.75; }
+.eval-score-box .score-value { font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;line-height:1;margin:.25rem 0 0; }
+.eval-score-box .score-formula { font-size:.73rem;opacity:.65;margin-top:.35rem; }
+
+/* ADD CONVENIO */
+.convenio-page { flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--surface-alt); }
+.convenio-card { background:var(--surface);border:1px solid var(--border);border-radius:calc(var(--radius)*1.5);padding:2.5rem;max-width:480px;width:100%;box-shadow:0 4px 24px rgb(0 0 0/.07); }
+.file-drop { border:2px dashed var(--border);border-radius:var(--radius-sm);padding:1.75rem;text-align:center;cursor:pointer;transition:border-color var(--transition),background var(--transition); }
+.file-drop:hover { border-color:var(--brand);background:var(--brand-light); }
+
+/* UTILIDADES */
+.text-muted { color:var(--text-muted); }
+.text-brand { color:var(--brand); }
+.divider { height:1px;background:var(--border);margin:1.25rem 0; }
+.grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:1rem; }
+.grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem; }
+
+@keyframes slideIn { from{transform:translateY(-6px);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes fadeIn  { from{opacity:0} to{opacity:1} }

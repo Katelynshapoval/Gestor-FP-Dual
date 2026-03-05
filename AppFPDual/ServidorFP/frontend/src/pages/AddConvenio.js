@@ -1,92 +1,61 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { verificarId } from '../utils/idObfuscation.js';
 
+// PÁGINA para que las empresas suban el convenio firmado.
 function AddConvenio() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
 
   useEffect(() => {
-    const numero = id.slice(0, -1);
-    const letraControl = id.slice(-1);
-    const letras = "QRBMUHPWACKZFJLVDXSYIGTNOE";
-    if (numero % 23 !== 0) {
-      navigate("/");
-    } else {
-      if (letraControl !== letras[(numero / 23) % 26]) {
-        navigate("/");
-      }
-    }
+    if (!verificarId(id)) navigate('/');
   }, [id, navigate]);
 
-  function ButtonClickUpdate() {
-    if (file) {
-      UpdateRequest(file);
-    } else {
-      alert("Por favor, selecciona un archivo PDF.");
-    }
-  }
-
-  const UpdateRequest = async (file) => {
+  const handleUpload = () => {
+    if (!file) { alert('Por favor, selecciona un archivo PDF.'); return; }
     const blob = new FormData();
-    blob.append("convenio", file);
-
-    const options = {
-      method: "POST",
-      body: blob,
-    };
-
-    try {
-      const response = await fetch("/updateConvenio/" + id, options);
-      if (!response.ok) {
-        throw new Error("Error al subir el archivo");
-      }
-      const jsonResponse = await response.json();
-      console.log(JSON.stringify(jsonResponse));
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error al subir el archivo");
-    }
-  };
-
-  const HandleFileChange = (event) => {
-    setFile(event.target.files[0]);
+    blob.append('convenio', file);
+    fetch(`/updateConvenio/${id}`, { method: 'POST', body: blob })
+      .then((r) => { if (!r.ok) throw new Error('Error al subir el archivo'); return r.json(); })
+      .catch((err) => { console.error(err); alert('Error al subir el archivo'); });
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-      <h1>Por favor inserte el convenio que recibió por correo firmado:</h1>
-      <form style={{ marginBottom: "20px" }}>
-        <div style={{ marginBottom: "10px" }}>
-          <label
-            htmlFor="file-input"
-            style={{ display: "block", marginBottom: "5px" }}
-          >
-            Selecciona un archivo PDF:
-          </label>
+    <div className="convenio-page">
+      <div className="convenio-card">
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📄</div>
+          <h2 className="page-title">Subir Convenio</h2>
+          <p className="page-subtitle" style={{ margin: 0 }}>
+            Por favor, adjunta el convenio que recibiste por correo debidamente firmado.
+          </p>
+        </div>
+        <div className="file-drop">
+          <p style={{ margin: '0 0 .5rem', fontSize: '.85rem', color: 'var(--text-muted)' }}>
+            Selecciona un archivo PDF
+          </p>
           <input
             type="file"
-            id="file-input"
             accept=".pdf"
-            onChange={HandleFileChange}
-            style={{ marginBottom: "10px" }}
+            onChange={(e) => setFile(e.target.files[0])}
+            style={{ fontSize: '.83rem' }}
           />
+          {file && (
+            <p style={{ margin: '.75rem 0 0', fontSize: '.8rem', color: 'var(--brand)', fontWeight: 600 }}>
+              ✓ {file.name}
+            </p>
+          )}
         </div>
         <button
           type="button"
-          onClick={ButtonClickUpdate}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#4CAF50",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
+          className="btn btn-primary"
+          style={{ marginTop: '1.25rem', width: '100%', justifyContent: 'center' }}
+          onClick={handleUpload}
         >
-          Subir PDF
+          Subir convenio
         </button>
-      </form>
+      </div>
     </div>
   );
 }
