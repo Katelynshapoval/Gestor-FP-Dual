@@ -1,0 +1,137 @@
+/* STUDENT CARD */
+
+.student-card {
+  @apply mb-2 rounded-lg overflow-hidden transition;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.05);
+}
+
+.student-card:hover {
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.08);
+}
+
+.student-card-header {
+  @apply flex items-center justify-between px-4 py-3 gap-4 select-none cursor-pointer;
+}
+
+.student-card-header:hover {
+  background: var(--surface-alt);
+}
+
+.student-name {
+  @apply text-[0.92rem] font-semibold m-0;
+  color: var(--text);
+}
+
+.student-esp {
+  @apply text-[0.75rem];
+  color: var(--text-muted);
+}
+
+.student-chips {
+  @apply flex flex-wrap gap-1.5 flex-1 justify-end;
+}
+
+.status-icon {
+  @apply inline w-[18px] h-[18px] ml-1 align-middle;
+}
+
+/* BADGES */
+
+.signed-badge {
+  @apply flex items-center gap-2 text-[0.73rem] px-2.5 py-1 rounded-md;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+}
+
+.empresa-chip {
+  @apply inline-flex items-center gap-1 text-[0.72rem] font-medium px-2.5 py-1 rounded-md whitespace-nowrap;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  cursor: help;
+}
+
+/* TOGGLE */
+
+.toggle-btn {
+  @apply w-7 h-7 rounded-full flex items-center justify-center cursor-pointer shrink-0
+  transition-transform duration-300 ease-in-out;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.toggle-btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--brand-light);
+}
+
+.toggle-btn.expanded {
+  transform: rotate(180deg);
+}
+
+/* CARD BODY */
+
+.student-card-body {
+  @apply px-4 py-5 border-t;
+  border-color: var(--border);
+  background: var(--surface-alt);
+  animation: fadeIn 0.18s ease-out;
+}
+
+/* EMPRESAS */
+
+.empresas-grid {
+  @apply grid grid-cols-3 gap-4 mb-5;
+}
+
+.empresa-slot {
+  @apply p-3 rounded-md;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.empresa-meta {
+  @apply text-xs mt-1;
+  color: var(--text-muted);
+}
+
+/* ESTADO BADGES */
+.estado-0 {
+  @apply bg-sky-100 text-sky-700;
+}
+.estado-1 {
+  @apply bg-gray-100 text-gray-700;
+}
+.estado-2 {
+  @apply bg-blue-50 text-blue-700;
+}
+.estado-3 {
+  @apply bg-red-50 text-red-600;
+}
+.estado-4 {
+  @apply bg-amber-50 text-amber-600;
+}
+.estado-5 {
+  @apply bg-green-50 text-green-700;
+}
+
+/* CONTACT */
+.contact-item {
+  @apply text-[0.82rem];
+  color: var(--text);
+}
+
+.contact-item span {
+  @apply font-semibold;
+  color: var(--text-muted);
+}
+
+/* DOCS */
+.docs-label {
+  @apply text-[0.7rem] font-bold uppercase tracking-wider mb-2;
+  color: var(--text-muted);
+}

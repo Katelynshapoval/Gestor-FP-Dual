@@ -25,6 +25,11 @@ module.exports = {
           200: "#e8e8e8",
           300: "#d4d4d4",
         },
+        extend: {
+          colors: {
+            muted: "var(--text-muted)",
+          },
+        },
       },
       fontFamily: {
         display: ['"Roboto"', "sans-serif"],

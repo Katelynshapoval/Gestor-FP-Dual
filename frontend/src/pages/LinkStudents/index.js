@@ -5,6 +5,7 @@ import { buildPostOptions, postJSON } from "../../utils/api.js";
 import { ofuscarId } from "../../utils/idObfuscation.js";
 import StudentCard from "./StudentCard.jsx";
 import DocViewer from "./DocViewer.jsx";
+import "./LinkStudents.css";
 
 // PÁGINA principal de vinculación de alumnos con empresas.
 const LinkStudents = () => {
@@ -210,25 +211,22 @@ const LinkStudents = () => {
   const canSendInfo = user?.specialities[0] == null;
 
   return (
-    <div className="link-page">
-      <div className="link-page-header">
+    <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-title">Peticiones de alumnos</h1>
-          <p
-            style={{
-              margin: 0,
-              fontSize: ".85rem",
-              color: "var(--text-muted)",
-            }}
-          >
+          <h1 className="text-2xl font-semibold">Peticiones de alumnos</h1>
+          <p className="text-sm text-gray-500">
             {filtered.length} alumno{filtered.length !== 1 ? "s" : ""}{" "}
             {selectedSpeciality ? `en ${selectedSpeciality}` : "en total"}
           </p>
         </div>
-        <div className="filter-bar">
-          <label>Especialidad:</label>
+
+        <div className="flex items-center gap-2">
+          <label className="text-[0.8rem] font-semibold whitespace-nowrap text-[var(--text-muted)]">
+            Especialidad:
+          </label>
           <select
-            className="filter-select"
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedSpeciality}
             onChange={(e) => setSelectedSpeciality(e.target.value)}
           >
@@ -242,21 +240,13 @@ const LinkStudents = () => {
         </div>
       </div>
 
-      <div>
+      <div className="space-y-4">
         {filtered.length === 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "3rem",
-              color: "var(--text-muted)",
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius)",
-            }}
-          >
+          <div className="text-center p-12 text-gray-500 bg-gray-50 border border-gray-200 rounded-xl">
             No hay alumnos que coincidan con el filtro.
           </div>
         )}
+
         {filtered.map((r) => (
           <StudentCard
             key={`${r.idGestion}-${r.dni}`}
