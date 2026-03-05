@@ -21,8 +21,8 @@ function Header() {
   return (
     <>
       {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-surface-50 shadow-md">
-        <div className="flex items-center justify-between px-8 py-3">
+      <header className="sticky top-0 z-50 bg-surface-50 shadow-md ">
+        <div className="flex items-center justify-between px-6 py-5">
           {/* BRAND */}
           <Link to="/" className="flex items-center gap-3">
             <img src="logo.png" alt="Salesianos" className="w-7 h-7" />

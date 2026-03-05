@@ -32,7 +32,7 @@ function Home() {
   ];
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col flex-1  ">
       {/* HERO */}
       <div className="home-hero relative overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 text-white px-8 py-20">
         <div className="max-w-6xl mx-auto relative z-10">
@@ -47,12 +47,12 @@ function Home() {
       </div>
 
       {/* MODULES SECTION */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 w-full">
+      <div className="max-w-7xl mx-auto px-9 md:px-8 py-12 w-full">
         {" "}
         {/* Section title */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-1">Módulos principales</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 text-base">
             Accede a las funcionalidades principales del sistema
           </p>
         </div>
@@ -68,14 +68,14 @@ function Home() {
                 {c.icon}
               </div>
 
-              <h3 className="font-display text-base font-semibold mb-2">
+              <h3 className="font-display text-lg font-semibold mb-2">
                 {c.title}
               </h3>
 
-              <p className="text-sm text-gray-500 mb-4">{c.desc}</p>
+              <p className="text-base text-gray-500 mb-4">{c.desc}</p>
 
               {/* CTA */}
-              <span className="mt-auto text-sm font-semibold text-brand-500 flex items-center gap-1">
+              <span className="mt-auto text-sm font-semibold text-brand-500 flex items-center gap-1 text-base">
                 Acceder al módulo
                 <FaArrowRightLong className="transition-transform group-hover:translate-x-1  ml-2" />
               </span>
