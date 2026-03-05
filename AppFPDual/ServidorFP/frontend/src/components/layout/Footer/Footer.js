@@ -1,3 +1,5 @@
+import "./Footer.css";
+
 // PIE DE PÁGINA con información de contacto y redes sociales.
 function Footer() {
   return (
@@ -12,10 +14,18 @@ function Footer() {
         <div className="footer-section">
           <h3>Enlaces útiles</h3>
           <ul>
-            <li><a href="/">Acerca de nosotros</a></li>
-            <li><a href="/">Programas académicos</a></li>
-            <li><a href="/">Prácticas en empresas</a></li>
-            <li><a href="/">Contacto</a></li>
+            <li>
+              <a href="/">Acerca de nosotros</a>
+            </li>
+            <li>
+              <a href="/">Programas académicos</a>
+            </li>
+            <li>
+              <a href="/">Prácticas en empresas</a>
+            </li>
+            <li>
+              <a href="/">Contacto</a>
+            </li>
           </ul>
         </div>
         <div className="footer-section">
