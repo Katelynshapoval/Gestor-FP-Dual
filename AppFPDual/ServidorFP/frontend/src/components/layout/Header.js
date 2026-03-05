@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useUser } from '../../globales/User';
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useUser } from "../../globales/User";
 
 // CABECERA de la aplicación, sticky en la parte superior.
 function Header() {
@@ -9,14 +9,16 @@ function Header() {
 
   const NavLink = ({ to, label }) =>
     location !== to ? (
-      <Link to={to} className="nav-link">{label}</Link>
+      <Link to={to} className="nav-link">
+        {label}
+      </Link>
     ) : null;
 
   return (
     <header className="site-header">
       <Link to="/" className="brand">
         <img
-          src="https://salesianosrioja.com/wp-content/uploads/2016/03/Logo-Salesianos_vertical.png"
+          // src="https://salesianosrioja.com/wp-content/uploads/2016/03/Logo-Salesianos_vertical.png"
           alt="Salesianos"
         />
         <div>
@@ -31,9 +33,12 @@ function Header() {
         <NavLink to="/addDualStudent" label="Alumnos" />
         <NavLink to="/addCompanyRequest" label="Empresas" />
         {user && <NavLink to="/linkStudents" label="Enlazar" />}
-        {location !== '/login' && (
-          <button onClick={() => logout(navigate)} className="nav-link nav-link-logout">
-            {user ? 'Salir' : 'Acceder'}
+        {location !== "/login" && (
+          <button
+            onClick={() => logout(navigate)}
+            className="nav-link nav-link-logout"
+          >
+            {user ? "Salir" : "Acceder"}
           </button>
         )}
       </nav>
