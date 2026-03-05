@@ -1,0 +1,183 @@
+/* PAGE LAYOUT */
+
+.page-container {
+  @apply px-4 md:px-8 py-8 max-w-5xl mx-auto w-full flex-1 text-base;
+}
+
+.page-title {
+  @apply text-2xl font-bold text-gray-900 mb-1;
+}
+
+.page-subtitle {
+  @apply text-base text-gray-500 mb-8 leading-relaxed;
+}
+
+/* FORM CARD */
+
+.form-card {
+  @apply bg-white border border-surface-200 rounded-xl2 p-6 md:p-7 shadow-card mb-6;
+}
+
+/* SECTION TITLE */
+
+.form-section-title {
+  @apply text-lg font-semibold tracking-widest text-brand-500 mb-6 border-l-4 border-l-brand-500 pl-3 py-1;
+}
+
+/* FIELD */
+
+.field {
+  @apply mb-4;
+}
+
+.field label {
+  @apply block text-sm font-semibold text-gray-700 mb-3;
+}
+
+.field-hint {
+  @apply text-sm text-gray-500 mb-4 leading-relaxed;
+}
+
+.field-hint strong {
+  @apply text-brand-500;
+}
+
+/* INPUTS */
+
+.input,
+.textarea,
+.select-input {
+  @apply w-full px-3 py-2 border border-surface-200 rounded-lg text-base bg-white outline-none transition;
+}
+
+.input:focus,
+.textarea:focus,
+.select-input:focus {
+  @apply border-brand-500 ring-2 ring-brand-500/20;
+}
+
+.textarea {
+  @apply resize-y min-h-[90px];
+}
+
+/* RADIO */
+
+.radio-group {
+  @apply flex flex-col gap-0;
+}
+
+.radio-option {
+  @apply flex items-center gap-2 cursor-pointer mb-0;
+}
+
+.radio-option input[type="radio"] {
+  @apply align-middle;
+  accent-color: #f81d1d;
+}
+
+.radio-option span {
+  @apply text-sm text-gray-800 font-normal ml-2;
+}
+
+/* CHECKBOX GRID */
+
+.checkbox-grid {
+  @apply grid gap-5;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.checkbox-left {
+  @apply flex items-center gap-2;
+}
+
+.checkbox-item {
+  @apply flex items-center font-normal justify-between px-3 py-2 border border-surface-200 rounded-lg cursor-pointer transition bg-white;
+}
+
+.checkbox-item:hover {
+  @apply border-brand-500 bg-brand-50;
+}
+
+.checkbox-item.checked {
+  @apply border-brand-500 bg-brand-50;
+}
+
+.checkbox-item input[type="checkbox"] {
+  accent-color: #f81d1d;
+}
+
+.checkbox-item .item-label {
+  @apply text-sm font-normal;
+}
+
+/* COUNT INPUT */
+
+.count-input {
+  @apply flex items-center gap-1;
+}
+
+.count-input label {
+  @apply text-sm text-gray-500 whitespace-nowrap;
+}
+
+.count-input input {
+  @apply w-[60px] px-1 py-[2px] text-sm border border-surface-200 rounded;
+}
+
+/* BUTTONS */
+
+.btn {
+  @apply inline-flex items-center gap-1 px-5 py-2 rounded-full text-base font-semibold cursor-pointer transition border border-transparent;
+}
+
+.btn-primary {
+  @apply bg-brand-500 text-white border-brand-500 shadow-brand hover:bg-brand-700;
+}
+
+.btn-secondary {
+  @apply bg-white text-gray-800 border border-surface-200 hover:border-gray-400;
+}
+
+.btn-ghost {
+  @apply bg-transparent text-gray-500 border-transparent hover:bg-gray-100 hover:text-gray-800;
+}
+
+.btn-outline-brand {
+  @apply border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white;
+}
+
+.btn-sm {
+  @apply px-3 py-1 text-xs;
+}
+
+.btn:disabled,
+.btn-disabled {
+  @apply opacity-50 cursor-not-allowed pointer-events-none shadow-none;
+}
+
+/* FORM MESSAGE */
+
+.form-message {
+  @apply flex items-center gap-2 px-4 py-3 rounded-lg text-base mt-4 border bg-green-50 border-green-200 text-green-800 animate-slide-in;
+}
+/* FILE INPUT */
+
+.file-upload {
+  @apply w-full flex flex-row items-center gap-3 px-4 py-4 border-2 border-dashed border-red-200 rounded-xl cursor-pointer text-gray-700 bg-white transition;
+}
+
+.file-upload:hover {
+  @apply border-red-400 bg-red-50;
+}
+
+.file-upload-icon {
+  @apply w-5 h-5 mr-3 text-red-500 inline-block align-middle;
+}
+
+.file-upload-text {
+  @apply text-base font-medium align-middle;
+}
+
+.file-upload input {
+  display: none;
+}

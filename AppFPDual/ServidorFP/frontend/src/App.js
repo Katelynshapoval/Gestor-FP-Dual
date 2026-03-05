@@ -12,7 +12,7 @@ import Evaluation from "./components/Evaluation";
 import LinkStudents from "./pages/LinkStudents";
 import CompanyView from "./pages/CompanyView";
 
-import "./styles.css";
+import "./shared_styles/main.css";
 
 // Envuelve una página en el layout general (Header + Footer)
 const Page = ({ children }) => <PageLayout>{children}</PageLayout>;
