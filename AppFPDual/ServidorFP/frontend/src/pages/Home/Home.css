@@ -1,0 +1,21 @@
+.home-hero::before {
+  content: "";
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.06);
+}
+
+.home-hero::after {
+  content: "";
+  position: absolute;
+  right: 80px;
+  bottom: -120px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.04);
+}

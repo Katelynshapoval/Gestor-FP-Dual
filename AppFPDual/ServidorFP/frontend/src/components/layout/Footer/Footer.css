@@ -6,8 +6,8 @@
   @apply text-sm opacity-90;
 }
 
-.footer-link {
-  @apply hover:opacity-100;
+.footer-link:hover {
+  @apply opacity-100 text-black;
 }
 
 .footer-social-pill {
