@@ -262,6 +262,7 @@ const LinkStudents = () => {
             onGetDoc={getDoc}
             onGetAnexo={getAnexo}
             onGetEvaluation={(id) => navigate(`/evaluate/${ofuscarId(id)}`)}
+            user={user}
           />
         ))}
       </div>
