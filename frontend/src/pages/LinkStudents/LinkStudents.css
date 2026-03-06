@@ -20,7 +20,7 @@
 }
 
 .student-name {
-  @apply text-[0.92rem] font-semibold m-0;
+  @apply text-base font-semibold m-0;
   color: var(--text);
 }
 
@@ -34,20 +34,17 @@
 }
 
 .status-icon {
-  @apply inline w-[18px] h-[18px] ml-1 align-middle;
+  @apply w-[18px] h-[18px] -mt-[1px];
 }
 
 /* BADGES */
 
 .signed-badge {
   @apply flex items-center gap-2 text-[0.73rem] px-2.5 py-1 rounded-md;
-  color: var(--text-muted);
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
 }
 
 .empresa-chip {
-  @apply inline-flex items-center gap-1 text-[0.72rem] font-medium px-2.5 py-1 rounded-md whitespace-nowrap;
+  @apply inline-flex  items-center gap-1 text-[0.72rem] font-medium px-2.5 py-1 rounded-md whitespace-nowrap;
   background: var(--surface-alt);
   border: 1px solid var(--border);
   cursor: help;

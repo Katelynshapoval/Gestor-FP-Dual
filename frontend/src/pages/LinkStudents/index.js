@@ -213,20 +213,20 @@ const LinkStudents = () => {
   return (
     <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="border-l-4 border-red-600 pl-5">
           <h1 className="text-2xl font-semibold">Peticiones de alumnos</h1>
           <p className="text-sm text-gray-500">
-            {filtered.length} alumno{filtered.length !== 1 ? "s" : ""}{" "}
-            {selectedSpeciality ? `en ${selectedSpeciality}` : "en total"}
+            {filtered.length} alumno{filtered.length !== 1 ? "s" : ""}
+            {/* {selectedSpeciality ? `en ${selectedSpeciality}` : "en total"} */}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-[0.8rem] font-semibold whitespace-nowrap text-[var(--text-muted)]">
+          <label className="text-[0.8rem] font-semibold whitespace-nowrap text-[var(--text-muted)] ">
             Especialidad:
           </label>
           <select
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all duration-200 ease-in-out"
             value={selectedSpeciality}
             onChange={(e) => setSelectedSpeciality(e.target.value)}
           >

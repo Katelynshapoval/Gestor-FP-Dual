@@ -5,6 +5,9 @@ import EmpresaControl, {
 
 import { RxCheck, RxCross2 } from "react-icons/rx";
 import { IoMdArrowDropdown } from "react-icons/io";
+import { FaRegCalendarCheck } from "react-icons/fa6";
+import { MdOutlineCancel } from "react-icons/md";
+import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 
 // Tarjeta de alumno con cabecera compacta y panel de detalle expandible.
 const StudentCard = ({
@@ -49,19 +52,35 @@ const StudentCard = ({
         </div>
 
         <div className="student-chips">
-          <span className="signed-badge">
-            A2/A3:
+          <span
+            className={`signed-badge ${
+              !r.anexo2FirmadoRecibido || !r.anexo3FirmadoRecibido
+                ? "bg-red-500/10 text-red-900"
+                : "bg-green-500/20 text-green-900"
+            }`}
+          >
             {r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido ? (
+              <IoIosCheckmarkCircleOutline className="-mt-[1px] text-[13px]" />
+            ) : (
+              <MdOutlineCancel className="-mt-[1px] text-[13px]" />
+            )}
+            A2/A3
+          </span>
+
+          <span
+            className={`signed-badge mr-4 ${
+              !r.calendarioComprobado
+                ? "bg-red-500/10 text-red-900"
+                : "bg-green-500/20 text-green-900"
+            }`}
+          >
+            <FaRegCalendarCheck className={`text-xs -mt-[1px] `} />
+            Cal
+            {/* {r.calendarioComprobado ? (
               <RxCheck className="status-icon text-green-600" />
             ) : (
               <RxCross2 className="status-icon text-red-600" />
-            )}
-            &nbsp;&nbsp;Cal:
-            {r.calendarioComprobado ? (
-              <RxCheck className="status-icon text-green-600" />
-            ) : (
-              <RxCross2 className="status-icon text-red-600" />
-            )}
+            )} */}
           </span>
           {[1, 2, 3].map((slot) => {
             const em = r[`em${slot}`];
@@ -89,7 +108,6 @@ const StudentCard = ({
         </button>
       </div>
 
-      {/* {isExpanded && ( */}
       <div
         className={`grid transition-[grid-template-rows] duration-300 ease-in-out
   ${isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
@@ -173,7 +191,6 @@ const StudentCard = ({
           </div>
         </div>
       </div>
-      {/* )} */}
     </div>
   );
 };

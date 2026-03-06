@@ -24,6 +24,10 @@
 *::after {
   box-sizing: border-box;
 }
+
+html {
+  overflow-y: scroll;
+}
 html,
 body,
 #root {
