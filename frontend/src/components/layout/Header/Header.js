@@ -10,6 +10,7 @@ function Header() {
   const location = useLocation().pathname;
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  console.log(user);
 
   const NavLink = ({ to, label }) =>
     location !== to ? (
@@ -44,8 +45,13 @@ function Header() {
             )}
 
             <NavLink to="/" label="Inicio" />
-            <NavLink to="/addDualStudent" label="Alumnos" />
-            <NavLink to="/addCompanyRequest" label="Empresas" />
+            {user.nombre == "Admin" || !user ? (
+              <>
+                <NavLink to="/addDualStudent" label="Alumnos" />
+                <NavLink to="/addCompanyRequest" label="Empresas" />
+              </>
+            ) : null}
+
             {user && <NavLink to="/linkStudents" label="Enlazar" />}
 
             {location !== "/login" && (
