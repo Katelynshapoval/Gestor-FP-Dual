@@ -8,6 +8,10 @@ import { IoMdArrowDropdown } from "react-icons/io";
 import { FaRegCalendarCheck } from "react-icons/fa6";
 import { MdOutlineCancel } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
+import { MdOutlineEmail } from "react-icons/md";
+
+import { MdOutlineLocalPhone } from "react-icons/md";
+import { MdOutlineDirectionsCar } from "react-icons/md";
 
 // Tarjeta de alumno con cabecera compacta y panel de detalle expandible.
 const StudentCard = ({
@@ -131,33 +135,64 @@ const StudentCard = ({
               <div>
                 <p className="section-label ">Datos rápidos</p>
 
-                <div className="grid grid-cols-2 gap-y-1 gap-x-6 text-sm">
-                  <div className="contact-item">
-                    <span>Email: </span>
-                    {r.email || "—"}
+                <div className="flex flex-col gap-6 text-sm bg-white border border-[var(--border)] rounded-lg p-4">
+                  {/* Email */}
+                  <div className="flex gap-3">
+                    <MdOutlineEmail className="text-red-500 text-xl mt-1" />
+
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-muted">
+                        Email
+                      </span>
+                      <span className="font-medium">{r.email || "—"}</span>
+                    </div>
                   </div>
 
-                  <div className="contact-item">
-                    <span>Teléfono: </span>
-                    {r.telalumno || "—"}
+                  {/* Teléfono */}
+                  <div className="flex gap-3">
+                    <MdOutlineLocalPhone className="text-red-500 text-xl mt-1" />
+
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-muted">
+                        Teléfono
+                      </span>
+                      <span className="font-medium">{r.telalumno || "—"}</span>
+                    </div>
                   </div>
 
-                  <div className="contact-item flex items-center gap-1">
-                    <span>Carnet:</span>
-                    {r.carnetDeConducir ? (
-                      <RxCheck className="status-icon text-green-600" />
-                    ) : (
-                      <RxCross2 className="status-icon text-red-600" />
-                    )}
-                  </div>
+                  {/* Movilidad */}
+                  <div className="flex gap-3">
+                    <MdOutlineDirectionsCar className="text-red-500 text-xl mt-1" />
 
-                  <div className="contact-item flex items-center gap-1">
-                    <span>Vehículo:</span>
-                    {r.tieneCoche ? (
-                      <RxCheck className="status-icon text-green-600" />
-                    ) : (
-                      <RxCross2 className="status-icon text-red-600" />
-                    )}
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-semibold text-muted">
+                        Movilidad
+                      </span>
+
+                      <div className="flex gap-2">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-md font-medium flex items-center gap-1 ${r.carnetDeConducir ? "bg-green-100 text-green-700 " : "bg-red-100 text-red-700 "}`}
+                        >
+                          {r.carnetDeConducir ? (
+                            <IoIosCheckmarkCircleOutline />
+                          ) : (
+                            <MdOutlineCancel />
+                          )}
+                          Carnet
+                        </span>
+
+                        <span
+                          className={`bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-md font-medium flex items-center gap-1 ${r.tieneCoche ? "bg-green-100 text-green-700 " : "bg-red-100 text-red-700 "}`}
+                        >
+                          {r.tieneCoche ? (
+                            <IoIosCheckmarkCircleOutline />
+                          ) : (
+                            <MdOutlineCancel />
+                          )}
+                          Vehículo
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
