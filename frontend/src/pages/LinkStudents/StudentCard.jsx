@@ -7,15 +7,10 @@ import DatosRapidos from "./DatosRapidos";
 import Documentos from "./Documentos";
 import Evaluacion from "./Evaluacion";
 
-import { RxCheck, RxCross2 } from "react-icons/rx";
 import { IoMdArrowDropdown } from "react-icons/io";
 import { FaRegCalendarCheck } from "react-icons/fa6";
 import { MdOutlineCancel } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-import { MdOutlineEmail } from "react-icons/md";
-
-import { MdOutlineLocalPhone } from "react-icons/md";
-import { MdOutlineDirectionsCar } from "react-icons/md";
 
 // Tarjeta de alumno con cabecera compacta y panel de detalle expandible.
 const StudentCard = ({
@@ -127,8 +122,8 @@ const StudentCard = ({
       >
         <div className="overflow-hidden">
           <div
-            className={`student-card-body grid gap-6 ${
-              isEmpresa ? "grid-cols-[1fr_1fr]" : "grid-cols-[1.2fr_1fr]"
+            className={`student-card-body grid gap-6 grid-cols-1 ${
+              isEmpresa ? "md:grid-cols-2" : "md:grid-cols-[1.2fr_1fr]"
             }`}
           >
             {/* LEFT COLUMN */}
