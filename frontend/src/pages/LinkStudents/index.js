@@ -231,7 +231,7 @@ const LinkStudents = () => {
             className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm
       focus:outline-none focus:ring-2 focus:ring-red-500/50
       transition-all duration-200 ease-in-out
-      w-full sm:w-72"
+      w-full sm:w-auto sm:min-w-[320px] lg:min-w-[420px]"
             value={selectedSpeciality}
             onChange={(e) => setSelectedSpeciality(e.target.value)}
           >
@@ -246,12 +246,17 @@ const LinkStudents = () => {
       </div>
 
       <div className="space-y-4">
+        {user?.user_type == "empresa" && (
+          <p className="text-sm text-red-600 font-medium bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+            La asignación de un alumno no es definitiva hasta la firma del Anexo
+            2 o 3. Hasta entonces, el alumno puede ser asignado a otra empresa.
+          </p>
+        )}
         {filtered.length === 0 && (
           <div className="text-center p-12 text-gray-500 bg-gray-50 border border-gray-200 rounded-xl">
             No hay alumnos que coincidan con el filtro.
           </div>
         )}
-
         {filtered.map((r) => (
           <StudentCard
             key={`${r.idGestion}-${r.dni}`}

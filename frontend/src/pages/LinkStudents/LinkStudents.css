@@ -7,7 +7,7 @@
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.05);
 }
 
-.student-card:hover {
+.student-card:not(.student-card-locked):hover {
   box-shadow: 0 3px 10px rgb(0 0 0 / 0.08);
 }
 
@@ -15,7 +15,11 @@
   @apply flex items-center justify-between px-4 py-3 gap-4 select-none cursor-pointer;
 }
 
-.student-card-header:hover {
+.student-card-locked .student-card-header {
+  cursor: default;
+}
+
+.student-card:not(.student-card-locked) .student-card-header:hover {
   background: var(--surface-alt);
 }
 
@@ -35,6 +39,22 @@
 
 .status-icon {
   @apply w-[18px] h-[18px] -mt-[1px];
+}
+
+.student-card-locked {
+  background: var(--surface);
+}
+
+.student-card-locked .student-name {
+  color: #6b7280;
+}
+
+.student-card-locked .student-esp {
+  color: #9ca3af;
+}
+
+.student-card-locked .student-chips {
+  opacity: 0.6;
 }
 
 /* BADGES */
@@ -58,7 +78,7 @@
   color: var(--text-muted);
 }
 
-.toggle-btn:hover {
+.toggle-btn:not(:disabled):hover {
   border-color: var(--brand);
   color: var(--brand);
   background: var(--brand-light);

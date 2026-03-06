@@ -192,15 +192,15 @@ function AddDualStudent() {
               dataPreferences={dataPreferences}
             />
             <PreferenciaSelect
-              label="Preferencia 1"
-              value={preference1}
-              onChange={(e) => setPreference1(e.target.value)}
+              label="Preferencia 2"
+              value={preference2}
+              onChange={(e) => setPreference2(e.target.value)}
               dataPreferences={dataPreferences}
             />
             <PreferenciaSelect
-              label="Preferencia 1"
-              value={preference1}
-              onChange={(e) => setPreference1(e.target.value)}
+              label="Preferencia 3"
+              value={preference3}
+              onChange={(e) => setPreference3(e.target.value)}
               dataPreferences={dataPreferences}
             />
           </div>
