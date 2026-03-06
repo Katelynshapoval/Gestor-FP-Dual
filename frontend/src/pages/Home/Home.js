@@ -7,18 +7,23 @@ function Home() {
   const { user } = useUser();
 
   const cards = [
-    {
-      to: "/addDualStudent",
-      icon: "🎓",
-      title: "Presentar candidatura",
-      desc: "Rellena el formulario de inscripción para el programa FP Dual.",
-    },
-    {
-      to: "/addCompanyRequest",
-      icon: "🏢",
-      title: "Solicitud de empresa",
-      desc: "Registra tu empresa y solicita plazas para estudiantes en prácticas.",
-    },
+    ...(!user
+      ? [
+          {
+            to: "/addDualStudent",
+            icon: "🎓",
+            title: "Presentar candidatura",
+            desc: "Rellena el formulario de inscripción para el programa FP Dual.",
+          },
+          {
+            to: "/addCompanyRequest",
+            icon: "🏢",
+            title: "Solicitud de empresa",
+            desc: "Registra tu empresa y solicita plazas para estudiantes en prácticas.",
+          },
+        ]
+      : []),
+
     ...(user
       ? [
           {

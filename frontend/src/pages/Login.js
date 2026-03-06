@@ -23,6 +23,7 @@ const Login = () => {
         nombre: userData.name,
         email: decoded.email,
         specialities: userData.specialities,
+        user_type: userData.user_type, // added a column
       });
       navigate("/");
     } catch {

@@ -45,7 +45,7 @@ function Header() {
             )}
 
             <NavLink to="/" label="Inicio" />
-            {user.nombre == "Admin" || !user ? (
+            {user?.user_type == "admin" || !user ? (
               <>
                 <NavLink to="/addDualStudent" label="Alumnos" />
                 <NavLink to="/addCompanyRequest" label="Empresas" />

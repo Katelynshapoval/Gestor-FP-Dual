@@ -21,9 +21,6 @@ function AddConvenio() {
     const blob = new FormData();
     blob.append("convenio", file);
 
-    console.log("Uploading to:", `/updateConvenio/${id}`);
-    console.log("File:", file);
-
     fetch(`/updateConvenio/${id}`, {
       method: "POST",
       body: blob,
