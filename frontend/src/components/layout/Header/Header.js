@@ -52,6 +52,10 @@ function Header() {
               </>
             ) : null}
 
+            {user?.user_type === "empresa" && (
+              <NavLink to="/companyMain" label="Mi empresa" />
+            )}
+
             {user && <NavLink to="/linkStudents" label="Enlazar" />}
 
             {location !== "/login" && (
@@ -59,7 +63,7 @@ function Header() {
                 onClick={() => logout(navigate)}
                 className="nav-link nav-link-logout"
               >
-                {user ? "Salir" : "Acceder"}
+                {user ? "Salir" : "Login"}
               </button>
             )}
           </nav>

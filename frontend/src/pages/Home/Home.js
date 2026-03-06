@@ -7,7 +7,7 @@ function Home() {
   const { user } = useUser();
 
   const cards = [
-    ...(!user
+    ...(user?.user_type == "admin" || !user
       ? [
           {
             to: "/addDualStudent",
@@ -20,6 +20,16 @@ function Home() {
             icon: "🏢",
             title: "Solicitud de empresa",
             desc: "Registra tu empresa y solicita plazas para estudiantes en prácticas.",
+          },
+        ]
+      : []),
+    ...(user?.user_type == "empresa"
+      ? [
+          {
+            to: "/companyMain",
+            icon: "🏢",
+            title: "Panel de empresa",
+            desc: "Consulta la información de tu empresa y gestiona los alumnos que has reservado.",
           },
         ]
       : []),
