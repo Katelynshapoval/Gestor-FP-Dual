@@ -113,79 +113,99 @@ const StudentCard = ({
   ${isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
       >
         <div className="overflow-hidden">
-          <div className="student-card-body">
-            {/* Grid de empresas */}
-            <div className="empresas-grid">
-              {[1, 2, 3].map((slot) => (
-                <EmpresaControl key={slot} slot={slot} {...props} />
-              ))}
-            </div>
-            {/* Datos de contacto */}
-            <div className="grid grid-cols-2 gap-y-1 gap-x-6 mb-4">
-              <div className="contact-item">
-                <span>Email: </span>
-                {r.email || "—"}
-              </div>
-              <div className="contact-item">
-                <span>Teléfono: </span>
-                {r.telalumno || "—"}
-              </div>
-              <div className="contact-item">
-                <span>Carnet conducir: </span>
-                {r.carnetDeConducir ? (
-                  <RxCheck className="status-icon text-green-600" />
-                ) : (
-                  <RxCross2 className="status-icon text-red-600" />
-                )}
-              </div>
-              <div className="contact-item">
-                <span>Vehículo: </span>
-                {r.tieneCoche ? (
-                  <RxCheck className="status-icon text-green-600" />
-                ) : (
-                  <RxCross2 className="status-icon text-red-600" />
-                )}
+          <div className="student-card-body grid grid-cols-[1.2fr_1fr] gap-6">
+            {/* LEFT COLUMN — EMPRESAS */}
+            <div>
+              <p className="section-label  ">Empresas</p>
+
+              <div className="empresa-grid flex flex-col gap-3">
+                {[1, 2, 3].map((slot) => (
+                  <EmpresaControl key={slot} slot={slot} {...props} />
+                ))}
               </div>
             </div>
-            {/* Documentos, evaluación y nota */}
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+
+            {/* RIGHT COLUMN */}
+            <div className="space-y-5">
+              {/* DATOS RÁPIDOS */}
               <div>
-                <p className="docs-label">Documentos</p>
-                <div className="flex flex-wrap gap-1.5">
+                <p className="section-label ">Datos rápidos</p>
+
+                <div className="grid grid-cols-2 gap-y-1 gap-x-6 text-sm">
+                  <div className="contact-item">
+                    <span>Email: </span>
+                    {r.email || "—"}
+                  </div>
+
+                  <div className="contact-item">
+                    <span>Teléfono: </span>
+                    {r.telalumno || "—"}
+                  </div>
+
+                  <div className="contact-item flex items-center gap-1">
+                    <span>Carnet:</span>
+                    {r.carnetDeConducir ? (
+                      <RxCheck className="status-icon text-green-600" />
+                    ) : (
+                      <RxCross2 className="status-icon text-red-600" />
+                    )}
+                  </div>
+
+                  <div className="contact-item flex items-center gap-1">
+                    <span>Vehículo:</span>
+                    {r.tieneCoche ? (
+                      <RxCheck className="status-icon text-green-600" />
+                    ) : (
+                      <RxCross2 className="status-icon text-red-600" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* DOCUMENTOS */}
+              <div className="border-t pt-4">
+                <p className="section-label ">Documentos</p>
+
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => onGetDoc(r.idGestion, "cv")}
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm flex items-center gap-1"
                   >
                     CV
                   </button>
+
                   <button
                     onClick={() => onGetAnexo(r)}
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm flex items-center gap-1"
                   >
                     Anexo 2/3
                   </button>
+
                   <button
                     onClick={() => onGetDoc(r.idGestion, "calendario")}
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-secondary btn-sm flex items-center gap-1"
                   >
                     Calendario
                   </button>
                 </div>
               </div>
-              <div>
-                <p className="docs-label">Evaluación</p>
-                <button
-                  onClick={() => onGetEvaluation(r.idGestion)}
-                  className="btn btn-outline-brand btn-sm"
-                >
-                  {r.idEvaluacion !== null ? "Ver evaluación" : "Evaluar"}
-                </button>
-              </div>
-              <div>
-                <p className="docs-label">Nota total</p>
-                <p className="text-[1.3rem] font-bold m-0 text-[var(--brand)]">
-                  {r.notaTotal ? r.notaTotal.toFixed(2) : "—"}
-                </p>
+
+              {/* EVALUACIÓN */}
+              <div className="border-t pt-4">
+                <p className="section-label ">Evaluación</p>
+
+                <div className="flex items-center justify-between">
+                  <p className="text-[1.3rem] font-bold text-[var(--brand)]">
+                    {r.notaTotal ? r.notaTotal.toFixed(2) : "—"}
+                  </p>
+
+                  <button
+                    onClick={() => onGetEvaluation(r.idGestion)}
+                    className="btn btn-outline-brand btn-sm"
+                  >
+                    {r.idEvaluacion !== null ? "Ver evaluación" : "Evaluar"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

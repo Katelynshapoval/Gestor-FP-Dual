@@ -56,10 +56,11 @@ export const EmpresaBadge = ({ estid, label }) => (
 
 // Selector de empresa filtrado por especialidad
 export const EmpresaSelect = ({ label, defaultValue, onChange, options }) => (
-  <div className="flex items-center gap-2 mt-2">
+  <div className="flex items-baseline gap-2 mt-2">
     <span className="text-xs font-semibold whitespace-nowrap text-muted">
       {label}
     </span>
+
     <select
       className="select-input text-[0.8rem] px-2 py-1"
       defaultValue={defaultValue}
@@ -100,44 +101,71 @@ const EmpresaControl = ({
 
   return (
     <div className="empresa-slot">
-      <div className="text-[0.68rem] font-bold uppercase tracking-wider mb-2 text-muted">
-        Empresa {slot}
+      {/* HEADER */}
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col">
+          <span className="text-xs font-semibold text-muted">
+            Empresa {slot}
+          </span>
+
+          <p className="text-base font-semibold">{em || "Sin asignar"}</p>
+        </div>
+
+        <span className="text-xs w-20 break-words text-center">
+          {TOOLTIP[estid]}
+        </span>
       </div>
-      {hasEmpresa && <EmpresaBadge estid={estid} label={em || "Sin asignar"} />}
-      {editable && (
-        <EmpresaSelect
-          label=""
-          defaultValue={idEmpresa}
-          onChange={(e) => onCompanyChange(r.idGestion, slot)(e)}
-          options={companyRequests.filter(
-            (cr) => cr.idEspecialidad === r.idEspecialidad,
-          )}
-        />
+
+      {/* STATUS */}
+      {est && (
+        <div className="pt-1">
+          <EmpresaBadge estid={estid} label={est} />
+        </div>
       )}
-      {editable && (
-        <button
-          onClick={() => onAssign(r.idGestion, slot)}
-          className="btn btn-outline-brand btn-sm mt-2"
-        >
-          {estid === 0 ? "Asignar" : "Reasignar"}
-        </button>
+
+      {/* META INFO */}
+      {(tipo || obv) && (
+        <div className="text-xs text-[var(--text-muted)] space-y-1 pt-1">
+          {tipo && <p>Contrato: {tipo}</p>}
+          {obv && <p>Obs: {obv}</p>}
+        </div>
       )}
+
+      {/* CONTROLS */}
+      {editable && (
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <EmpresaSelect
+              label=""
+              defaultValue={idEmpresa}
+              onChange={(e) => onCompanyChange(r.idGestion, slot)(e)}
+              options={companyRequests.filter(
+                (cr) => cr.idEspecialidad === r.idEspecialidad,
+              )}
+            />
+          </div>
+
+          <button
+            onClick={() => onAssign(r.idGestion, slot)}
+            className="btn btn-outline-brand btn-sm"
+          >
+            {estid === 0 ? "Asignar" : "Reasignar"}
+          </button>
+        </div>
+      )}
+
+      {/* SEND INFO */}
       {canSendInfo && estid === 1 && r.anexo2FirmadoRecibido === 1 && (
         <button
           onClick={() => onSendInfo(r.idGestion, r.idAlumno, idEmpresa)}
-          className={`btn btn-sm mt-2 block ${isSending ? "btn-disabled btn-secondary" : "btn-primary"}`}
+          className={`btn btn-sm w-fit ${
+            isSending ? "btn-disabled btn-secondary" : "btn-primary"
+          }`}
           disabled={isSending}
         >
           {isSending ? "Enviando..." : "Enviar info a empresa"}
         </button>
       )}
-      {est && (
-        <div className="mt-1">
-          <EmpresaBadge estid={estid} label={est} />
-        </div>
-      )}
-      {tipo && <p className="empresa-meta">Contrato: {tipo}</p>}
-      {obv && <p className="empresa-meta">Obs: {obv}</p>}
     </div>
   );
 };
