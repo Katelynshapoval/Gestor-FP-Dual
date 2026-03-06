@@ -1,7 +1,5 @@
-require('dotenv').config();
 const { connection } = require("../db/config");
 const { transporter } = require("../mail/config");
-// Para gestionar los documentos
 const fs = require('fs');
 
 // INSERTAR NUEVO PARTICIPANTE EN EL PROGRAMA DUAL
@@ -31,7 +29,7 @@ exports.addStudent = function (request, response) {
         nombretutorlegal,
         dnitutorlegal
     } = request.body;
-    
+
     if (!file) {
         return response.status(400).json({ error: 'No se ha subido el anexo 2.' });
     }
@@ -40,15 +38,15 @@ exports.addStudent = function (request, response) {
         return response.status(400).json({ error: 'No se ha subido ningún cv.' });
     }
 
-    // Leer los archivos y convertirlos a un formato que se pueda almacenar en la base de datos (blob)
+    // Leer los archivos y convertirlos a BLOB para almacenarlos en la base de datos
     const fileData = fs.readFileSync(file.path);
     const cvData = fs.readFileSync(cv.path);
 
-    // Insertar el archivo y los datos del estudiante en la base de datos
     const query = `INSERT INTO AuxiliarAlumno (emailColegio, dni, nombreCompleto, sexo, fechaNacimiento, nacionalidad, email, 
         telAlumno, carnetConducir, tieneCoche, numeroSS, domicilio, cp, localidad, idEspecialidad, preferencia1, preferencia2, 
         preferencia3, idiomasNivel, cvEuropass, anexo2, tutorLegal, dniTutorLegal) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
     const values = [
         emailinstituto, dniNie, nombre, sexo, fechanacimiento, nacionalidad, email, telalumno, carnetconducir === "true",
         disponibilidad === "true", numeroSS, domicilio, cp, localidad, especialidad, idpreferencia1, idpreferencia2,
@@ -67,16 +65,17 @@ exports.addStudent = function (request, response) {
     });
 };
 
+// ENVIAR CORREO DE CONFIRMACIÓN AL ALUMNO CON SUS DATOS
 function sendMail(request, datosEstudiante){
     const {
         emailinstituto, dniNie, nombre, sexo, fechanacimiento, nacionalidad,
-        email, telalumno, carnetconducir, disponibilidad, idiomas, numeroSS, 
+        email, telalumno, carnetconducir, disponibilidad, idiomas, numeroSS,
         domicilio, cp, localidad, especialidad, idpreferencia1, idpreferencia2,
         idpreferencia3, nombretutorlegal, dnitutorlegal
     } = datosEstudiante;
 
-    // De las preferencias y la especialidad recibo los ids, por lo que necesito recibir 
-    // los nombres para mandarlos en el correo.
+    // Las preferencias y la especialidad llegan como IDs; se consultan sus
+    // nombres para incluirlos en el correo de confirmación.
     const query = `
         SELECT e.nombreEsp AS nomEsp,
         (SELECT p1.preferencia FROM Preferencia p1 WHERE p1.idPreferencia = ?) AS nomPre1,
@@ -145,6 +144,7 @@ function sendMail(request, datosEstudiante){
                 console.log('Correo enviado:', info.response);
             }
 
+            // Eliminar archivos temporales tras el envío
             try {
                 if (request.files.doc) fs.unlinkSync(request.files.doc[0].path);
             } catch (e) {

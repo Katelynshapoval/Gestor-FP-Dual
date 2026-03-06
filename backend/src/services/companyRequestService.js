@@ -1,14 +1,15 @@
 const { connection } = require("../db/config");
 const { transporter } = require("../mail/config");
+const { generarId } = require("../utils/idUtils");
 const fs = require("fs");
 const path = require("path");
-// Para poder convertir a pdf los .docx
+// Conversión de .docx a PDF
 const mammoth = require("mammoth");
 const puppeteer = require("puppeteer");
-// Para modificar la plantilla y crear los convenios.
+// Modificación de la plantilla del convenio
 const { createReport } = require("docx-templates");
 
-// INSERTAR NUEVA PETICIÓN DE ALUMNOS PARA EL PROGRAMA DUAL POR PARTE DE UNA EMPRESA
+// INSERTAR NUEVA PETICIÓN DE EMPRESA PARA EL PROGRAMA DUAL
 exports.addCompanyRequest = function (request, response) {
   const {
     emailCoordinador,
@@ -80,7 +81,7 @@ exports.addCompanyRequest = function (request, response) {
   });
 };
 
-// De las especialidades tengo las ids, para el documento oficial quiero los códigos oficiales.
+// OBTENER LOS CÓDIGOS OFICIALES DE ESPECIALIDAD A PARTIR DE SUS IDS
 async function recibirNombres(specialities) {
   const array = JSON.parse(specialities);
   const values = array[0];
@@ -88,7 +89,7 @@ async function recibirNombres(specialities) {
   const query = `
     SELECT codigoEsp FROM especialidad WHERE idEspecialidad IN (${plantilla});
     `;
-  // Si no se envuelve en una Promise, el await no se efectuará y devolverá undefined
+  // Envuelto en Promise para que el await funcione correctamente
   return new Promise((resolve, reject) => {
     connection.query(query, Object.values(values), (err, result) => {
       if (err) {
@@ -98,14 +99,13 @@ async function recibirNombres(specialities) {
         );
         return reject(err);
       }
-      // En las promise no es return, es resolve.
       resolve(result);
     });
   });
 }
 
+// RELLENAR LA PLANTILLA DEL CONVENIO Y GUARDAR EL DOCX RESULTANTE
 async function editarConvenio(values, specialitiesCodes) {
-  // Ruta la plantilla original del convenio
   const templatePath = path.join(
     __dirname,
     "..",
@@ -114,7 +114,6 @@ async function editarConvenio(values, specialitiesCodes) {
     "CONVENIO_GENERAL_PLANTILLA.docx",
   );
 
-  // Ruta donde se guardará el convenio editado
   const outputPath = path.join(
     __dirname,
     "..",
@@ -124,14 +123,9 @@ async function editarConvenio(values, specialitiesCodes) {
   );
 
   try {
-    // A futuro:
-    // Este código es 100% reusable para el Anexo3. Cambiar la plantilla y los
-    // campos a modificar y lo tienes.
-    // Importante: Sin cmdDelimiter pillaría cualquier instancia de las palabras
-    // ubicadas dentro de data (cualquier instancia de "cargo", por ejemplo).
-    // cmdDelimiter permite que solo recoja las instancias de las palabras que
-    // se encuentren dentro de nuestros delimitadores escogidos (['<<', '>>'],
-    // por ejemplo "<<cargo>>" se reconocerá).
+    // cmdDelimiter evita que se sustituyan palabras comunes fuera de las
+    // marcas delimitadoras (p. ej. solo «<<cargo>>» se reemplazará).
+    // Este patrón es reutilizable para el Anexo 3 cambiando plantilla y datos.
     const buffer = await createReport({
       template: fs.readFileSync(templatePath),
       data: {
@@ -154,7 +148,6 @@ async function editarConvenio(values, specialitiesCodes) {
       cmdDelimiter: ["<<", ">>"],
     });
 
-    // Guardar el archivo editado
     fs.writeFileSync(outputPath, buffer);
     return outputPath;
   } catch (error) {
@@ -163,36 +156,24 @@ async function editarConvenio(values, specialitiesCodes) {
   }
 }
 
+// CONVERTIR UN DOCX A PDF Y ELIMINAR EL DOCX TEMPORAL
 async function docxToPdf(docxPath) {
   const pdfPath = docxPath.replace(/\.docx$/, ".pdf");
 
   try {
-    // Convert DOCX → HTML
     const { value: html } = await mammoth.convertToHtml({ path: docxPath });
 
-    // Launch headless browser
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
-
-    // Set HTML content
     await page.setContent(html, { waitUntil: "networkidle0" });
-
-    // Generate PDF
     await page.pdf({
       path: pdfPath,
       format: "A4",
-      margin: {
-        top: "2cm",
-        bottom: "2cm",
-        left: "2cm",
-        right: "2cm",
-      },
+      margin: { top: "2cm", bottom: "2cm", left: "2cm", right: "2cm" },
       printBackground: true,
     });
-
     await browser.close();
 
-    // Delete DOCX after conversion
     fs.unlink(docxPath, (err) => {
       if (err) console.warn("No se pudo eliminar el DOCX:", err.message);
     });
@@ -204,11 +185,7 @@ async function docxToPdf(docxPath) {
   }
 }
 
-async function generarId(insertId) {
-  const letras = "QRBMUHPWACKZFJLVDXSYIGTNOE";
-  return insertId * 23 + letras[insertId % 26];
-}
-
+// ENVIAR CORREO DE CONFIRMACIÓN CON EL CONVENIO ADJUNTO
 async function mandarMail(values, convenioPath, idGenerado, host) {
   const mail = {
     from: `"Salesianos Zaragoza" <${process.env.EMAIL_USER}>`,
@@ -242,15 +219,13 @@ async function mandarMail(values, convenioPath, idGenerado, host) {
   });
 }
 
-// INSERTAR EL CONVENIO FIRMADO POR UNA EMPRESA QUE QUIERE PARTICIPAR EN EL PROGRAMA DUAL.
+// INSERTAR EL CONVENIO FIRMADO POR LA EMPRESA
 exports.addConvenio = function (request, response) {
-  //El id viene alterado para dificultar que se pueda acceder a la ruta
+  // El ID viene ofuscado para dificultar el acceso a rutas con IDs arbitrarios
   const id = request.params.id.slice(0, -1) / 23;
   const convenio = request.file;
 
-  // Leer el archivo y convertirlo a un formato que se pueda almacenar en la base de datos (blob)
   const convData = fs.readFileSync(convenio.path);
-
   const values = [convData, id];
 
   const query = `
@@ -266,7 +241,38 @@ exports.addConvenio = function (request, response) {
         .status(500)
         .json({ error: "Error al actualizar la peticion." });
     }
-
     response.status(201).json("Solicitud de empresa actualizada correctamente");
+  });
+};
+
+// OBTENER LOS DATOS DE LA EMPRESA POR EMAIL DEL COORDINADOR
+exports.getCompanyDataByEmail = function (request, response) {
+  const email = request.body.email;
+
+  const query = `
+    SELECT ae.idAuxEmpresa, ae.emailCoordinador, ae.nombreCoordinador, ae.telefonoCoordinador,
+           ae.razonSocial, ae.cif, ae.telEmpresa, ae.dirRazSocial, ae.provincia, ae.municipio,
+           ae.cpRazSoc, ae.responsableLegal, ae.cargo, ae.dni AS dniRl,
+           ae.descripcionPuesto, ae.direccionLugarTrabajo, ae.metodosTransporte,
+           ae.fechaPeticion, ae.especialidadYCantAlumnos
+    FROM AuxiliarEmpresa ae
+    WHERE ae.emailCoordinador = ?
+    ORDER BY ae.fechaPeticion DESC
+    LIMIT 1
+  `;
+
+  connection.query(query, [email], (error, results) => {
+    if (error) {
+      console.error("Error al obtener datos de empresa:", error);
+      return response
+        .status(500)
+        .json({ error: "Error al obtener datos de empresa" });
+    }
+    if (results.length === 0) {
+      return response
+        .status(404)
+        .json({ error: "No se encontraron datos de empresa" });
+    }
+    response.status(200).json(results[0]);
   });
 };

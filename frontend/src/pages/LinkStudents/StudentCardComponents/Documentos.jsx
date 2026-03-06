@@ -1,10 +1,8 @@
-import React from "react";
-
 const Documentos = ({ r, user, onGetDoc, onGetAnexo }) => {
   const isEmpresa = user?.user_type === "empresa";
 
   return (
-    <div className="border-t pt-4">
+    <div className={`${!isEmpresa ? "border-t pt-4" : ""}`}>
       <p className="section-label">Documentos</p>
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">

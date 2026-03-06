@@ -1,7 +1,8 @@
 const { connection } = require("../db/config");
 const { transporter } = require("../mail/config");
+const { generarId } = require("../utils/idUtils");
 
-// MOSTRAR TODAS LAS PETICIONES HECHAS POR ALUMNOS
+// MOSTRAR TODAS LAS PETICIONES DE ALUMNOS
 exports.showStudentRequests = function (request, response) {
   const specialities = request.body.specialities;
 
@@ -59,19 +60,16 @@ exports.showStudentRequests = function (request, response) {
     LEFT JOIN calendario c ON c.idAlumno = g.idAlumno
 `;
 
-  // Si no es admin (y por tanto tiene especialidades) filtrar por sus
-  // especialidades
+  // Si el usuario no es admin (tiene especialidades asignadas), filtrar por ellas
   if (specialities && specialities.length > 0 && specialities[0] !== null) {
-    // Esto añade los ? que correspondan según cuantas especialidades haya.
+    // Añadir tantos ? como especialidades haya
     const placeholders = specialities.map(() => "?").join(",");
     query += ` WHERE g.idEspecialidad IN (${placeholders})`;
   }
 
-  // El ORDER BY siempre debe ser lo último de la query.
+  // ORDER BY siempre al final de la query
   query += ` ORDER BY YEAR(g.fechaPeticion) DESC, es.nombreEsp;`;
 
-  // Como specialities es un array de valores, puedo ponerlo directamente
-  // donde de normal pondría values.
   connection.query(query, specialities, (error, results) => {
     if (error) {
       console.error("Error en la consulta:", error);
@@ -83,7 +81,7 @@ exports.showStudentRequests = function (request, response) {
   });
 };
 
-// ENVIAR MAIL A LA EMPRESA PARA INFORMARLE DEL ALUMNO ASIGNADO
+// ENVIAR CORREO A LA EMPRESA CON EL CV DEL ALUMNO ASIGNADO
 exports.sendMail = function (request, response) {
   const idGestion = request.body.idGestion;
   const idAlumno = request.body.idAlumno;
@@ -106,6 +104,7 @@ exports.sendMail = function (request, response) {
         return response.status(404).send("No encontrado");
       const nombreAlumno = results2[0].nombre;
 
+      // Obtener el correo de la empresa a partir de su última petición
       const query3 = `
                 SELECT p.correoAnexos, e.empresa
                 FROM ge_empresas e, peticionempresa p
@@ -133,7 +132,7 @@ exports.sendMail = function (request, response) {
             nombreAlumno,
             idEmpresa,
             idAlumno,
-            request.body.url
+            request.body.url,
           );
           response.status(201).json("Datos enviados correctamente");
         } catch (error) {
@@ -145,11 +144,7 @@ exports.sendMail = function (request, response) {
   });
 };
 
-async function generarId(insertId) {
-  const letras = "QRBMUHPWACKZFJLVDXSYIGTNOE";
-  return insertId * 23 + letras[insertId % 26];
-}
-
+// ENVIAR EL CORREO Y ACTUALIZAR EL ESTADO DE LA GESTIÓN
 async function mandarMail(
   correoAnexos,
   cv,
@@ -157,8 +152,11 @@ async function mandarMail(
   nombreAlumno,
   idEmpresa,
   idAlumno,
-  host
+  host,
 ) {
+  const idEmpresaOfuscado = await generarId(idEmpresa);
+  const idAlumnoOfuscado = await generarId(idAlumno);
+
   const mail = {
     from: `"Salesianos Zaragoza" <${process.env.EMAIL_USER}>`,
     to: correoAnexos,
@@ -168,13 +166,9 @@ async function mandarMail(
         una buena opción para trabajar con ustedes.</p>
         <p>Adjuntamos en este correo su CV, para que puedan proceder a contactar con él y realizar el proceso de selección pertinente.</p>
         <p>Si deciden acoger a ${nombreAlumno} como parte de su equipo, rellenen el siguiente formulario: 
-        ${host}/confirmStudent/${await generarId(idEmpresa)}/${await generarId(
-      idAlumno
-    )} antes del 15 de febrero.</p>
+        ${host}/confirmStudent/${idEmpresaOfuscado}/${idAlumnoOfuscado} antes del 15 de febrero.</p>
         <p>En caso contrario, porfavor notifiquenlo en este otro lo antes posible: 
-        ${host}/denyStudent/${await generarId(idEmpresa)}/${await generarId(
-      idAlumno
-    )}</p>
+        ${host}/denyStudent/${idEmpresaOfuscado}/${idAlumnoOfuscado}</p>
         <p>IMPORTANTE!</p>
         <p>Si recibe un error de seguridad, es porque debe modificar la ruta de https:// a http://</p>
         `,
@@ -195,8 +189,8 @@ async function mandarMail(
         reject(err);
       } else {
         console.log("Correo enviado:", info.response);
-        console.log(idEmpresa);
 
+        // Actualizar el estado del slot correspondiente en GestionDual
         const query = `
                     UPDATE GestionDual
                     SET estadoDual1 = CASE WHEN idEmpresa1 = ? THEN 2 ELSE estadoDual1 END,
@@ -230,7 +224,7 @@ async function mandarMail(
   });
 }
 
-// MOSTRAR TODAS LAS PETICIONES HECHAS POR LAS EMPRESAS
+// MOSTRAR TODAS LAS PETICIONES DE EMPRESAS
 exports.getCompanyRequests = function (request, response) {
   const specialities = request.body.specialities;
 
@@ -246,16 +240,12 @@ exports.getCompanyRequests = function (request, response) {
         )
     `;
 
-  // Si no es admin (y por tanto tiene especialidades) filtrar por sus
-  // especialidades
+  // Si el usuario no es admin, filtrar por sus especialidades asignadas
   if (specialities && specialities.length > 0 && specialities[0] !== null) {
-    // Esto añade los ? que correspondan según cuantas especialidades haya.
     const placeholders = specialities.map(() => "?").join(",");
     query += ` AND a.idEspecialidad IN (${placeholders})`;
   }
 
-  // Como specialities es un array de valores, puedo ponerlo directamente
-  // donde de normal pondría values.
   connection.query(query, specialities, (error, results) => {
     if (error) {
       console.error("Error en la consulta:", error);
@@ -281,21 +271,14 @@ exports.updateCompany1 = function (request, response) {
   connection.query(query, [idEmpresa, idGestion], (error, results) => {
     if (error) {
       console.error("Error al actualizar empresa1:", error);
-      return response.status(500).json({
-        error: "Error interno del servidor",
-      });
+      return response.status(500).json({ error: "Error interno del servidor" });
     }
-
     if (results.affectedRows === 0) {
-      return response.status(404).json({
-        error: "No se encontró el registro especificado",
-      });
+      return response
+        .status(404)
+        .json({ error: "No se encontró el registro especificado" });
     }
-
-    response.json({
-      success: true,
-      message: "Registro actualizado correctamente",
-    });
+    response.json({ success: true, message: "Registro actualizado correctamente" });
   });
 };
 
@@ -313,21 +296,14 @@ exports.updateCompany2 = function (request, response) {
   connection.query(query, [idEmpresa, idGestion], (error, results) => {
     if (error) {
       console.error("Error al actualizar empresa2:", error);
-      return response.status(500).json({
-        error: "Error interno del servidor",
-      });
+      return response.status(500).json({ error: "Error interno del servidor" });
     }
-
     if (results.affectedRows === 0) {
-      return response.status(404).json({
-        error: "No se encontró el registro especificado",
-      });
+      return response
+        .status(404)
+        .json({ error: "No se encontró el registro especificado" });
     }
-
-    response.json({
-      success: true,
-      message: "Registro actualizado correctamente",
-    });
+    response.json({ success: true, message: "Registro actualizado correctamente" });
   });
 };
 
@@ -345,25 +321,18 @@ exports.updateCompany3 = function (request, response) {
   connection.query(query, [idEmpresa, idGestion], (error, results) => {
     if (error) {
       console.error("Error al actualizar empresa3:", error);
-      return response.status(500).json({
-        error: "Error interno del servidor",
-      });
+      return response.status(500).json({ error: "Error interno del servidor" });
     }
-
     if (results.affectedRows === 0) {
-      return response.status(404).json({
-        error: "No se encontró el registro especificado",
-      });
+      return response
+        .status(404)
+        .json({ error: "No se encontró el registro especificado" });
     }
-
-    response.json({
-      success: true,
-      message: "Registro actualizado correctamente",
-    });
+    response.json({ success: true, message: "Registro actualizado correctamente" });
   });
 };
 
-// OBTENER CV POR ID
+// OBTENER CV POR ID DE GESTIÓN
 exports.getCvDoc = function (request, response) {
   const id = request.params.id;
   const query = "SELECT cvDoc FROM gestiondual WHERE idGestion = ?";
@@ -380,7 +349,7 @@ exports.getCvDoc = function (request, response) {
   });
 };
 
-// OBTENER ANEXO2 POR ID
+// OBTENER ANEXO2 POR ID DE GESTIÓN
 exports.getAnexo2Doc = function (request, response) {
   const id = request.params.id;
   const query = "SELECT anexo2Doc FROM gestiondual WHERE idGestion = ?";
@@ -399,7 +368,7 @@ exports.getAnexo2Doc = function (request, response) {
   });
 };
 
-// OBTENER ANEXO3 POR ID
+// OBTENER ANEXO3 POR ID DE GESTIÓN
 exports.getAnexo3Doc = function (request, response) {
   const id = request.params.id;
   const query = "SELECT anexo3Doc FROM gestiondual WHERE idGestion = ?";
@@ -418,7 +387,7 @@ exports.getAnexo3Doc = function (request, response) {
   });
 };
 
-// Obtener anexo3Doc por idGestion
+// VALIDAR (MARCAR COMO RECIBIDO) UN ANEXO POR TIPO
 exports.validate = function (request, response) {
   const id = request.params.id;
   const type = request.params.type;
@@ -428,7 +397,7 @@ exports.validate = function (request, response) {
       query =
         "UPDATE gestiondual SET anexo2FirmadoRecibido = NOT anexo2FirmadoRecibido WHERE idGestion = ?";
       break;
-    case "anexo2":
+    case "anexo3":
       query =
         "UPDATE gestiondual SET anexo3FirmadoRecibido = NOT anexo3FirmadoRecibido WHERE idGestion = ?";
       break;
@@ -439,5 +408,33 @@ exports.validate = function (request, response) {
   connection.query(query, [id], (error, results) => {
     if (error) throw error;
     response.status(200).json(results);
+  });
+};
+
+// OBTENER EL idEmpresa DE UNA EMPRESA POR SU EMAIL
+exports.getCompanyIdByEmail = function (request, response) {
+  const email = request.body.email;
+
+  const query = `
+    SELECT p.idEmpresa
+    FROM peticionempresa p
+    WHERE p.correoAnexos = ?
+    AND p.fecha = (
+      SELECT MAX(p2.fecha)
+      FROM peticionempresa p2
+      WHERE p2.idEmpresa = p.idEmpresa
+    )
+    LIMIT 1
+  `;
+
+  connection.query(query, [email], (error, results) => {
+    if (error) {
+      console.error("Error al obtener idEmpresa:", error);
+      return response.status(500).json({ error: "Error interno" });
+    }
+    if (results.length === 0) {
+      return response.status(404).json({ error: "Empresa no encontrada" });
+    }
+    response.status(200).json(results[0]);
   });
 };

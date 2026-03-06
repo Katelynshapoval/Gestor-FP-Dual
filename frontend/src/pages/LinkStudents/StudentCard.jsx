@@ -117,9 +117,7 @@ const StudentCard = ({
           ) : !isLockedForEmpresa ? (
             <button
               className="text-sm px-4 py-2 rounded-xl
-        border border-red-200 text-red-600 bg-white
-        hover:bg-red-50 hover:border-red-300 hover:text-red-700
-        transition-all duration-200 ease-out"
+                  border transition-all duration-200 ease-out border-red-200 text-red-600 bg-white hover:bg-red-50 hover:border-red-300 hover:text-red-700"
             >
               Reservar alumno
             </button>

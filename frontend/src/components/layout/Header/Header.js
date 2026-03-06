@@ -10,7 +10,6 @@ function Header() {
   const location = useLocation().pathname;
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  console.log(user);
 
   const NavLink = ({ to, label }) =>
     location !== to ? (
@@ -21,10 +20,10 @@ function Header() {
 
   return (
     <>
-      {/* HEADER */}
+      {/* CABECERA PRINCIPAL */}
       <header className="sticky top-0 z-50 bg-surface-50 shadow-md ">
         <div className="flex items-center justify-between px-6 py-5">
-          {/* BRAND */}
+          {/* MARCA */}
           <Link to="/" className="flex items-center gap-3">
             <img src="logo.png" alt="Salesianos" className="w-7 h-7" />
             <div>
@@ -36,7 +35,7 @@ function Header() {
               </div>
             </div>
           </Link>
-          {/* DESKTOP NAV */}
+          {/* NAVEGACIÓN ESCRITORIO */}
           <nav className="hidden md:flex items-center gap-3">
             {user && (
               <span className="nav-welcome">
@@ -67,14 +66,14 @@ function Header() {
               </button>
             )}
           </nav>
-          {/* MOBILE BUTTON */}
+          {/* BOTÓN MENÚ MÓVIL */}
           <button onClick={() => setOpen(true)} className="md:hidden text-2xl">
             <IoMdMenu />
           </button>
         </div>
       </header>
 
-      {/* OVERLAY */}
+      {/* OVERLAY FONDO */}
       <div
         className={`fixed inset-0 bg-black/40 z-40 transition ${
           open ? "opacity-100 visible" : "opacity-0 invisible"
@@ -82,7 +81,7 @@ function Header() {
         onClick={() => setOpen(false)}
       />
 
-      {/* SLIDE MENU */}
+      {/* MENÚ DESLIZANTE MÓVIL */}
       <div
         className={`fixed top-0 right-0 h-full w-[200px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"

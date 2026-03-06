@@ -99,10 +99,6 @@
 
 /* EMPRESAS */
 
-.empresas-grid {
-  @apply flex flex-col gap-4 mb-5;
-}
-
 .empresa-slot {
   @apply p-4 rounded-lg flex flex-col gap-4;
   background: var(--surface);

@@ -1,7 +1,7 @@
 const { connection } = require("../db/config");
 const bcrypt = require("bcrypt");
 
-// Usuario por email
+// OBTENER USUARIO POR EMAIL
 exports.getUserByEmail = function (request, response) {
     const query = `
                     SELECT u.*, JSON_ARRAYAGG(uc.idCourse) AS specialities 
@@ -13,19 +13,17 @@ exports.getUserByEmail = function (request, response) {
                 `;
     const values = [request.body.email];
 
-    console.log(values);
-
-    connection.query( query, values, 
+    connection.query(query, values,
         (error, results) => {
-            if(error)
+            if (error)
                 throw error;
-            if(results == null || results[0] == null) 
-                return response.status(400).json({msg: "User not found"});
+            if (results == null || results[0] == null)
+                return response.status(400).json({ msg: "User not found" });
             response.status(200).json(results[0]);
         });
 };
 
-// Insertar usuarios
+// INSERTAR USUARIO (desactivado en la ruta, disponible para uso futuro)
 exports.addUser = function (request, response) {
     const name = request.body.name;
     const email = request.body.email;
@@ -44,16 +42,16 @@ exports.addUser = function (request, response) {
     );
 };
 
-function addCourses(id, specialities){
+// ASOCIAR ESPECIALIDADES A UN USUARIO RECIÉN CREADO
+function addCourses(id, specialities) {
     const values = specialities.map(specialityId => [id, specialityId]);
-    
+
     connection.query("INSERT INTO userscourses (idUser, idCourse) VALUES (?)",
         [values],
         (error, results) => {
             if (error) {
                 console.error("Error al añadir las especialidades del usuario", error);
             }
-
             console.log("Especialidades del usuario añadidas correctamente");
         }
     );

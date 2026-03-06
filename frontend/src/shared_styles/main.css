@@ -116,7 +116,7 @@ body {
   margin-top: 1rem;
 }
 
-/* MODAL VISOR */
+/* MODAL VISOR DE DOCUMENTOS */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -235,39 +235,6 @@ body {
   font-size: 0.73rem;
   opacity: 0.65;
   margin-top: 0.35rem;
-}
-
-/* ADD CONVENIO */
-.convenio-page {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background: var(--surface-alt);
-}
-.convenio-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius) * 1.5);
-  padding: 2.5rem;
-  max-width: 480px;
-  width: 100%;
-  box-shadow: 0 4px 24px rgb(0 0 0/0.07);
-}
-.file-drop {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius-sm);
-  padding: 1.75rem;
-  text-align: center;
-  cursor: pointer;
-  transition:
-    border-color var(--transition),
-    background var(--transition);
-}
-.file-drop:hover {
-  border-color: var(--brand);
-  background: var(--brand-light);
 }
 
 /* UTILIDADES */

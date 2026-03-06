@@ -10,7 +10,7 @@ import AddCompanyRequest from "./pages/AddCompanyRequest";
 import AddConvenio from "./pages/AddConvenio";
 import Evaluation from "./components/Evaluation";
 import LinkStudents from "./pages/LinkStudents";
-import CompanyView from "./pages/CompanyView";
+import CompanyView from "./pages/CompanyView/";
 
 import "./shared_styles/main.css";
 

@@ -1,5 +1,3 @@
-import React from "react";
-
 const Evaluacion = ({ r, user, onGetEvaluation }) => {
   const isEmpresa = user?.user_type === "empresa";
 
