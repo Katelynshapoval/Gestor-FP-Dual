@@ -33,6 +33,16 @@ function Home() {
           },
         ]
       : []),
+    ...(user?.user_type == "admin"
+      ? [
+          {
+            to: "/companiesView",
+            icon: "🗂️",
+            title: "Empresas colaboradoras",
+            desc: "Administra las empresas registradas en Dual: consulta datos, gestiona anexos.",
+          },
+        ]
+      : []),
 
     ...(user
       ? [
@@ -63,7 +73,6 @@ function Home() {
 
       {/* MODULES SECTION */}
       <div className="max-w-7xl mx-auto px-9 md:px-8 py-12 w-full">
-        {" "}
         {/* Section title */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-1">Módulos principales</h2>

@@ -1,4 +1,3 @@
-import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { User } from "./globales/User";
 import PageLayout from "./components/layout/PageLayout.jsx";
@@ -11,6 +10,7 @@ import AddConvenio from "./pages/AddConvenio";
 import Evaluation from "./components/Evaluation";
 import LinkStudents from "./pages/LinkStudents";
 import CompanyView from "./pages/CompanyView/";
+import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
 
 import "./shared_styles/main.css";
 
@@ -85,6 +85,14 @@ function App() {
               element={
                 <Page>
                   <CompanyView />
+                </Page>
+              }
+            />
+            <Route
+              path="/companiesView"
+              element={
+                <Page>
+                  <AdminCompanyView />
                 </Page>
               }
             />

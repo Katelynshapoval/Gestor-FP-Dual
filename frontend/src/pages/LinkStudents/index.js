@@ -228,10 +228,10 @@ const LinkStudents = () => {
           </label>
 
           <select
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm
+            className="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm
       focus:outline-none focus:ring-2 focus:ring-red-500/50
       transition-all duration-200 ease-in-out
-      w-full sm:w-auto sm:min-w-[320px] lg:min-w-[420px]"
+      w-full sm:w-auto sm:min-w-[320px] lg:min-w-[420px] "
             value={selectedSpeciality}
             onChange={(e) => setSelectedSpeciality(e.target.value)}
           >
