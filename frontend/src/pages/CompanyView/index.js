@@ -14,7 +14,7 @@ import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 
 import "../../shared_styles/forms.css";
 
-// Subida de convenio firmado
+// Este componente gestiona la subida del convenio firmado
 const SubirConvenio = ({ companyData, onUploadSuccess }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -25,38 +25,52 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
 
   const idOfuscado = ofuscarId(companyData.idAuxEmpresa);
 
+  // Maneja la selección de archivo
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
+
     if (selected && selected.type !== "application/pdf") {
       setUploadMsg({ ok: false, text: "Solo se admiten archivos PDF." });
       setFile(null);
       return;
     }
+
     setFile(selected);
     setUploadMsg(null);
   };
 
+  // Maneja la subida del archivo
   const handleUpload = async () => {
     if (!file) {
-      setUploadMsg({ ok: false, text: "Selecciona un archivo PDF primero." });
+      setUploadMsg({
+        ok: false,
+        text: "Selecciona un archivo PDF primero.",
+      });
       return;
     }
+
     setUploading(true);
     setUploadMsg(null);
+
     try {
       const formData = new FormData();
       formData.append("convenio", file);
+
       const res = await fetch(`/updateConvenio/${idOfuscado}`, {
         method: "POST",
         body: formData,
       });
+
       if (!res.ok) throw new Error("Error al subir el convenio");
+
       setUploadMsg({
         ok: true,
         text: "Convenio subido correctamente. Está pendiente de validación por el administrador.",
       });
+
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
+
       onUploadSuccess();
     } catch (err) {
       setUploadMsg({ ok: false, text: err.message });
@@ -65,6 +79,7 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
     }
   };
 
+  // Determina el estado del convenio
   const convenioStatus = companyData.convenio_validado
     ? "validado"
     : companyData.tieneConvenio
@@ -73,7 +88,7 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
 
   return (
     <div className="space-y-4">
-      {/* Estado actual */}
+      {/* Estado actual del convenio */}
       <div
         className={`p-4 rounded-lg border flex items-start gap-3 ${
           convenioStatus === "validado"
@@ -86,12 +101,15 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
         {convenioStatus === "validado" && (
           <IoIosCheckmarkCircleOutline className="text-xl shrink-0 mt-0.5" />
         )}
+
         {convenioStatus === "pendiente" && (
           <MdPendingActions className="text-xl shrink-0 mt-0.5" />
         )}
+
         {convenioStatus === "sin_convenio" && (
           <MdOutlineCancel className="text-xl shrink-0 mt-0.5" />
         )}
+
         <p className="text-sm">
           {convenioStatus === "validado"
             ? "Tu convenio ha sido recibido y validado por el administrador. No es necesario volver a subirlo."
@@ -101,7 +119,7 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
         </p>
       </div>
 
-      {/* Uploader */}
+      {/* Zona de subida */}
       {convenioStatus !== "validado" && (
         <div className="space-y-3">
           <label className="text-sm font-medium text-[var(--text)]">
@@ -109,13 +127,16 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
               ? "Reemplazar convenio (PDF)"
               : "Subir convenio firmado (PDF)"}
           </label>
+
           <div className="flex flex-col sm:flex-row gap-2">
             <label
               className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed
               border-gray-300 cursor-pointer hover:border-red-400 hover:bg-red-50/40 transition-all duration-150 text-sm text-gray-600"
             >
               <FaFilePdf className="text-red-500 text-base shrink-0" />
+
               {file ? file.name : "Haz clic para seleccionar un PDF"}
+
               <input
                 ref={inputRef}
                 type="file"
@@ -124,15 +145,15 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
                 onChange={handleFileChange}
               />
             </label>
+
             <button
               onClick={handleUpload}
               disabled={!file || uploading}
-              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150
-                ${
-                  !file || uploading
-                    ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                    : "bg-[var(--brand)] text-white border border-[var(--brand)] hover:bg-[var(--brand-dark)]"
-                }`}
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                !file || uploading
+                  ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                  : "bg-[var(--brand)] text-white border border-[var(--brand)] hover:bg-[var(--brand-dark)]"
+              }`}
             >
               {uploading ? "Subiendo…" : "Subir convenio"}
             </button>
@@ -156,7 +177,7 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
   );
 };
 
-// Panel de empresa
+// Este es el panel principal de la empresa
 const CompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -168,14 +189,19 @@ const CompanyView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Refresca los datos de la empresa tras subir convenio
   const fetchCompanyData = async () => {
-    const companyRes = await fetch(
+    const res = await fetch(
       "/getCompanyDataByEmail",
       buildPostOptions({ email: user.email }),
     );
-    if (companyRes.ok) setCompanyData(await companyRes.json());
+
+    if (res.ok) {
+      setCompanyData(await res.json());
+    }
   };
 
+  // Carga inicial de datos
   useEffect(() => {
     if (!user || user.user_type !== "empresa") {
       navigate("/login");
@@ -193,9 +219,17 @@ const CompanyView = () => {
           fetch("/getAllPossibleTransports"),
         ]);
 
-        if (companyRes.ok) setCompanyData(await companyRes.json());
-        if (specRes.ok) setSpecialities(await specRes.json());
-        if (transRes.ok) setTransports(await transRes.json());
+        if (companyRes.ok) {
+          setCompanyData(await companyRes.json());
+        }
+
+        if (specRes.ok) {
+          setSpecialities(await specRes.json());
+        }
+
+        if (transRes.ok) {
+          setTransports(await transRes.json());
+        }
       } catch (err) {
         console.error("Error al cargar datos:", err);
         setError("Error al cargar los datos. Inténtalo de nuevo.");
@@ -207,30 +241,35 @@ const CompanyView = () => {
     fetchAll();
   }, [user, navigate]);
 
-  if (loading)
+  // Estado de carga
+  if (loading) {
     return (
       <div className="page-container px-8">
         <p className="text-center text-gray-500 py-12">Cargando datos…</p>
       </div>
     );
+  }
 
-  if (error)
+  // Estado de error
+  if (error) {
     return (
       <div className="page-container px-8">
         <p className="text-center text-red-500 py-12">{error}</p>
       </div>
     );
+  }
 
   return (
     <div className="page-container px-8">
       <h1 className="page-title">Panel de empresa</h1>
+
       <p className="page-subtitle">
         Consulta la información de tu solicitud, sube el convenio firmado y
         revisa los alumnos asignados.
       </p>
 
       <div className="space-y-6">
-        {/* INFORMACIÓN DE LA EMPRESA */}
+        {/* Información de la empresa */}
         <Dropdown
           title="Información de la empresa"
           subtitle={
@@ -247,21 +286,24 @@ const CompanyView = () => {
           />
         </Dropdown>
 
-        {/* CONVENIO FIRMADO */}
+        {/* Convenio firmado */}
         <Dropdown
           title="Convenio firmado"
           subtitle={
             companyData?.convenio_validado ? (
               <div className="flex items-center gap-2">
-                <IoIosCheckmarkCircleOutline className="text-xl" /> Validado
+                <IoIosCheckmarkCircleOutline className="text-xl" />
+                Validado
               </div>
             ) : companyData?.tieneConvenio ? (
               <div className="flex items-center gap-2">
-                <MdPendingActions className="text-xl" /> Pendiente de validación
+                <MdPendingActions className="text-xl" />
+                Pendiente de validación
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <MdOutlineCancel className="text-xl" /> Sin subir
+                <MdOutlineCancel className="text-xl" />
+                Sin subir
               </div>
             )
           }
@@ -273,10 +315,12 @@ const CompanyView = () => {
           />
         </Dropdown>
 
-        {/* ALUMNOS ASIGNADOS */}
+        {/* Alumnos asignados */}
         <Dropdown
           title="Alumnos asignados"
-          subtitle={`${assignedStudents.length} alumno${assignedStudents.length !== 1 ? "s" : ""}`}
+          subtitle={`${assignedStudents.length} alumno${
+            assignedStudents.length !== 1 ? "s" : ""
+          }`}
         >
           <AssignedStudents
             students={assignedStudents}

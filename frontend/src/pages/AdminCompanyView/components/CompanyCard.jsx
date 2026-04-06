@@ -5,7 +5,7 @@ import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { FaRegFileAlt } from "react-icons/fa";
 
-// This component renders the list of requested specialities
+// Este componente muestra la lista de especialidades solicitadas
 const EspecialidadList = ({ raw, allSpecialities }) => {
   const items = parseEspecialidades(raw);
 
@@ -39,7 +39,7 @@ const EspecialidadList = ({ raw, allSpecialities }) => {
   );
 };
 
-// This is the main company card with expandable content
+// Este es el componente principal de la tarjeta de empresa con acordeón
 const CompanyCard = ({
   empresa,
   isExpanded,
@@ -49,14 +49,14 @@ const CompanyCard = ({
   resetResult,
   allSpecialities,
 }) => {
-  // This determines convenio status
+  // Esto determina el estado del convenio
   const convenioStatus = empresa.convenio_validado
     ? "validado"
     : empresa.tieneConvenio
       ? "pendiente"
       : "sin_convenio";
 
-  // This maps status to UI config
+  // Configuración visual según el estado
   const statusConfig = {
     validado: {
       label: "Convenio firmado",
@@ -77,7 +77,7 @@ const CompanyCard = ({
 
   const { label, cls, Icon } = statusConfig[convenioStatus];
 
-  // This builds the full address string
+  // Construcción de la dirección completa
   const direccion = [
     empresa.dirRazSocial,
     empresa.municipio,
@@ -89,7 +89,7 @@ const CompanyCard = ({
 
   return (
     <div className="student-card">
-      {/* Header section */}
+      {/* Cabecera de la tarjeta */}
       <div
         className="student-card-header flex items-center justify-between gap-2"
         onClick={() => onToggle(empresa.idAuxEmpresa)}
@@ -130,7 +130,7 @@ const CompanyCard = ({
         </div>
       </div>
 
-      {/* Expandable content */}
+      {/* Contenido desplegable */}
       <div
         className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
           isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
@@ -138,9 +138,9 @@ const CompanyCard = ({
       >
         <div className="overflow-hidden">
           <div className="student-card-body grid gap-6 grid-cols-1 md:grid-cols-2">
-            {/* Left column */}
+            {/* Columna izquierda */}
             <div className="space-y-5">
-              {/* Company data */}
+              {/* Datos de la empresa */}
               <div>
                 <p className="section-label">Datos de la empresa</p>
                 <div className="space-y-1">
@@ -171,7 +171,7 @@ const CompanyCard = ({
                 </div>
               </div>
 
-              {/* Credentials section */}
+              {/* Credenciales de acceso */}
               <div>
                 <p className="section-label">Credenciales de acceso</p>
 
@@ -204,9 +204,9 @@ const CompanyCard = ({
               </div>
             </div>
 
-            {/* Right column */}
+            {/* Columna derecha */}
             <div className="space-y-5">
-              {/* Specialities */}
+              {/* Especialidades */}
               <div>
                 <p className="section-label">Especialidades solicitadas</p>
                 <EspecialidadList
@@ -215,7 +215,7 @@ const CompanyCard = ({
                 />
               </div>
 
-              {/* Job description */}
+              {/* Descripción del puesto */}
               {empresa.descripcionPuesto && (
                 <div>
                   <p className="section-label">Descripción del puesto</p>
@@ -225,7 +225,7 @@ const CompanyCard = ({
                 </div>
               )}
 
-              {/* Convenio section */}
+              {/* Sección de convenio */}
               <div>
                 <p className="section-label">Convenio</p>
 
