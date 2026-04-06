@@ -102,7 +102,7 @@ async function crearUsuarioEmpresa(idAuxEmpresa, email, razonSocial, cif) {
   const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
   return new Promise((resolve, reject) => {
-    const insertUser = `INSERT INTO users (name, email, password, user_type) VALUES (?, ?, ?, 'empresa')`;
+    const insertUser = `INSERT INTO users (name, email, user_type, password) VALUES (?, ?, 'empresa', ?)`;
     connection.query(
       insertUser,
       [razonSocial, email, hashedPassword],
@@ -155,17 +155,24 @@ exports.getAllCompanies = function (request, response) {
 // OBTENER EL FICHERO DE CONVENIO FIRMADO (para el admin)
 exports.getConvenioFile = function (request, response) {
   const id = parseInt(request.params.id, 10);
+
   const query = `SELECT convenioDoc FROM AuxiliarEmpresa WHERE idAuxEmpresa = ?`;
+
   connection.query(query, [id], (error, results) => {
     if (error || !results[0]?.convenioDoc) {
       return response.status(404).json({ error: "Convenio no encontrado" });
     }
+
+    const pdf = results[0].convenioDoc;
+
     response.setHeader("Content-Type", "application/pdf");
+    response.setHeader("Content-Length", pdf.length);
     response.setHeader(
       "Content-Disposition",
       `inline; filename="convenio_${id}.pdf"`,
     );
-    response.send(results[0].convenioDoc);
+
+    response.send(pdf);
   });
 };
 

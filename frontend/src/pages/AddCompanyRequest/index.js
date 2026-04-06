@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import * as FormatValidation from "../../functions/FormatValidation.js";
 import { useFormMessage } from "../../hooks/useFormMessage.js";
 import { postForm } from "../../utils/api.js";
@@ -7,6 +8,7 @@ import TransportSelector from "./TransportSelector.jsx";
 import FormMessage from "../../components/ui/FormMessage.jsx";
 import "../../shared_styles/forms.css";
 
+// Componente reutilizable para cada campo del formulario
 const Field = ({ id, label, hint, children }) => (
   <div className="field">
     <label htmlFor={id}>{label}</label>
@@ -17,16 +19,24 @@ const Field = ({ id, label, hint, children }) => (
   </div>
 );
 
-// PÁGINA para que las empresas envíen una solicitud de participación en FP Dual.
+// Página para que las empresas envíen una solicitud
 const AddCompanyRequest = () => {
+  const navigate = useNavigate();
+
   const { message, showMessage } = useFormMessage();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const formRef = useRef(null);
+
+  // Datos cargados desde backend
   const [dataSpecialities, setDataSpecialities] = useState([]);
   const [dataTransports, setDataTransports] = useState([]);
+
+  // Estados del formulario
   const [emailCoordinador, setEmailCoordinador] = useState("");
   const [nombreCoordinador, setNombreCoordinador] = useState("");
   const [telefonoCoordinador, setTelefonoCoordinador] = useState("");
+
   const [razonSocial, setRazonSocial] = useState("");
   const [cif, setCif] = useState("");
   const [telEmpresa, setTelEmpresa] = useState("");
@@ -34,83 +44,109 @@ const AddCompanyRequest = () => {
   const [provincia, setProvincia] = useState("");
   const [municipio, setMunicipio] = useState("");
   const [cpRazSoc, setCpRazSoc] = useState("");
+
   const [responsableLegal, setResponsableLegal] = useState("");
   const [cargo, setCargo] = useState("");
   const [dniRl, setDniRl] = useState("");
+
   const [specialities, setSpecialities] = useState([[], []]);
   const [descripcionPuesto, setDescripcionPuesto] = useState("");
   const [direccionLugarTrabajo, setDireccionLugarTrabajo] = useState("");
   const [metodosTransporte, setMetodosTransporte] = useState([]);
 
+  // Carga inicial de datos
   useEffect(() => {
     fetch("/getAllSpecialities")
       .then((r) => r.json())
       .then(setDataSpecialities)
       .catch(console.error);
+
     fetch("/getAllPossibleTransports")
       .then((r) => r.json())
       .then(setDataTransports)
       .catch(console.error);
   }, []);
 
-  const handleTransportToggle = (id) =>
+  // Gestión de transporte
+  const handleTransportToggle = (id) => {
     setMetodosTransporte((prev) =>
       prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
     );
+  };
 
-  const handleSpecialityToggle = (id) =>
+  // Gestión de especialidades
+  const handleSpecialityToggle = (id) => {
     setSpecialities(([ids, amounts]) => {
       const idx = ids.indexOf(id);
-      if (idx === -1)
+
+      if (idx === -1) {
         return [
           [...ids, id],
           [...amounts, 0],
         ];
+      }
+
       return [
         ids.filter((_, i) => i !== idx),
         amounts.filter((_, i) => i !== idx),
       ];
     });
+  };
 
-  const handleAmountChange = (id, newCount) =>
+  const handleAmountChange = (id, newCount) => {
     setSpecialities(([ids, amounts]) => {
       const idx = ids.indexOf(id);
       if (idx === -1) return [ids, amounts];
-      const a = [...amounts];
-      a[idx] = newCount;
-      return [ids, a];
-    });
 
+      const newAmounts = [...amounts];
+      newAmounts[idx] = newCount;
+
+      return [ids, newAmounts];
+    });
+  };
+
+  // Envío del formulario
   const handleSubmit = async () => {
     if (isSubmitting) return;
+
     setIsSubmitting(true);
+
+    // Validación HTML
     if (!formRef.current.checkValidity()) {
       formRef.current.reportValidity();
       setIsSubmitting(false);
       return;
     }
+
+    // Validaciones personalizadas
     if (!FormatValidation.dniNieValido(dniRl)) {
       await showMessage("DNI/NIE del responsable legal no válido.");
       setIsSubmitting(false);
       return;
     }
+
     if (!FormatValidation.cifValido(cif)) {
       await showMessage("CIF de la empresa no válido.");
       setIsSubmitting(false);
       return;
     }
+
     if (specialities[0].length === 0) {
       await showMessage("Selecciona al menos un ciclo de grado.");
       setIsSubmitting(false);
       return;
     }
+
     if (specialities[1].some((c) => c <= 0)) {
       await showMessage("Indica al menos un alumno por grado.");
       setIsSubmitting(false);
       return;
     }
+
     try {
       const data = new FormData();
+
+      // Construcción del payload
       [
         ["emailCoordinador", emailCoordinador],
         ["nombreCoordinador", nombreCoordinador],
@@ -132,8 +168,15 @@ const AddCompanyRequest = () => {
         ["specialities", JSON.stringify(specialities)],
         ["url", window.location.origin],
       ].forEach(([k, v]) => data.append(k, v));
+
       await postForm("/addCompanyRequest", data);
+
       await showMessage("La solicitud se ha enviado correctamente.");
+
+      // Redirección tras envío correcto
+      setTimeout(() => {
+        navigate("/");
+      }, 1200);
     } catch {
       await showMessage("Error al procesar la solicitud. Inténtalo de nuevo.");
     } finally {
@@ -144,17 +187,22 @@ const AddCompanyRequest = () => {
   return (
     <div className="page-container px-8">
       <h1 className="page-title">Solicitud de empresa colaboradora</h1>
+
       <p className="page-subtitle">
         Esta petición no tiene vinculación legal. Es el primer paso para
         formalizar la documentación del programa dual.
       </p>
+
       <form ref={formRef} className="space-y-6">
+        {/* Datos del coordinador */}
         <div className="form-card">
           <div className="form-section-title">Datos del coordinador</div>
-          <p className="field-hint ">
+
+          <p className="field-hint">
             <strong>Importante:</strong> Esta persona recibirá todas las
             notificaciones y documentos del proyecto DUAL.
           </p>
+
           <div className="grid gap-4 md:grid-cols-3">
             <Field id="eCoord" label="Email coordinador">
               <input
@@ -168,6 +216,7 @@ const AddCompanyRequest = () => {
                 required
               />
             </Field>
+
             <Field id="nCoord" label="Nombre coordinador">
               <input
                 id="nCoord"
@@ -179,6 +228,7 @@ const AddCompanyRequest = () => {
                 required
               />
             </Field>
+
             <Field id="tCoord" label="Teléfono coordinador">
               <input
                 id="tCoord"
@@ -193,6 +243,7 @@ const AddCompanyRequest = () => {
           </div>
         </div>
 
+        {/* Datos de la empresa */}
         <div className="form-card">
           <div className="form-section-title">Datos de la empresa</div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -356,12 +407,15 @@ const AddCompanyRequest = () => {
 
         <button
           type="button"
-          className={`btn btn-primary mt-2 mx-auto block ${isSubmitting ? "btn-disabled" : ""}`}
+          className={`btn btn-primary mt-2 mx-auto block ${
+            isSubmitting ? "btn-disabled" : ""
+          }`}
           onClick={handleSubmit}
           disabled={isSubmitting}
         >
           {isSubmitting ? "Enviando..." : "Enviar solicitud"}
         </button>
+
         <FormMessage message={message} />
       </form>
     </div>

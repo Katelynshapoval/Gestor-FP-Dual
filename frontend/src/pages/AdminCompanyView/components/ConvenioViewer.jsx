@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────
 const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
   if (!empresa) return null;
-  const url = `/getConvenioFile/${empresa.idAuxEmpresa}`;
+  const url = `http://localhost:3001/getConvenioFile/${empresa.idAuxEmpresa}`;
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
