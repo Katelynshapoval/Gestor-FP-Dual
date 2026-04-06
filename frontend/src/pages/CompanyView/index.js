@@ -14,9 +14,7 @@ import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 
 import "../../shared_styles/forms.css";
 
-// ──────────────────────────────────────────────────────────
-// SECCIÓN: Subida de convenio firmado
-// ──────────────────────────────────────────────────────────
+// Subida de convenio firmado
 const SubirConvenio = ({ companyData, onUploadSuccess }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -158,9 +156,7 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
   );
 };
 
-// ──────────────────────────────────────────────────────────
-// PÁGINA: Panel de empresa
-// ──────────────────────────────────────────────────────────
+// Panel de empresa
 const CompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -251,15 +247,23 @@ const CompanyView = () => {
           />
         </Dropdown>
 
-        {/* CONVENIO FIRMADO — NUEVA SECCIÓN */}
+        {/* CONVENIO FIRMADO */}
         <Dropdown
           title="Convenio firmado"
           subtitle={
-            companyData?.convenio_validado
-              ? "✅ Validado"
-              : companyData?.tieneConvenio
-                ? "⏳ Pendiente de validación"
-                : "❌ Sin subir"
+            companyData?.convenio_validado ? (
+              <div className="flex items-center gap-2">
+                <IoIosCheckmarkCircleOutline className="text-xl" /> Validado
+              </div>
+            ) : companyData?.tieneConvenio ? (
+              <div className="flex items-center gap-2">
+                <MdPendingActions className="text-xl" /> Pendiente de validación
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <MdOutlineCancel className="text-xl" /> Sin subir
+              </div>
+            )
           }
           defaultOpen={!companyData?.convenio_validado}
         >

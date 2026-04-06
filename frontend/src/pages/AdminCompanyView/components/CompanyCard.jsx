@@ -1,28 +1,36 @@
-import { FaKey, FaFilePdf, FaBuilding } from "react-icons/fa6";
-import { parseEspecialidades, InfoRow, formatDate } from "../helpers";
+import { FaKey, FaBuilding } from "react-icons/fa6";
+import { parseEspecialidades, formatDate, InfoRow } from "../helpers";
 import { IoMdArrowDropdown } from "react-icons/io";
 import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
+import { FaRegFileAlt } from "react-icons/fa";
 
-// Componente: lista de especialidades solicitadas
-// Muestra nombre de la especialidad + número de alumnos
+// This component renders the list of requested specialities
 const EspecialidadList = ({ raw, allSpecialities }) => {
   const items = parseEspecialidades(raw);
-  if (items.length === 0)
+
+  if (items.length === 0) {
     return <p className="text-sm text-[var(--text-muted)]">Sin datos</p>;
+  }
+
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {items.map(({ idEspecialidad, cantidad }) => {
         const esp = allSpecialities.find(
           (s) => s.idEspecialidad === idEspecialidad,
         );
+
         return (
-          <div key={idEspecialidad} className="flex items-center gap-2 text-sm">
-            <span className="inline-block px-2 py-0.5 rounded bg-[var(--surface-alt)] border border-[var(--border)] text-[var(--text-muted)] text-xs">
+          <div
+            key={idEspecialidad}
+            className="flex items-start justify-between gap-2 p-2 rounded-md bg-[var(--surface-alt)]/40"
+          >
+            <span className="text-sm leading-snug">
               {esp ? esp.nombreEsp : `ID ${idEspecialidad}`}
             </span>
-            <span>
-              {cantidad} alumno{cantidad !== 1 ? "s" : ""}
+
+            <span className="text-xs shrink-0 px-2 py-0.5 rounded-full bg-black/5">
+              {cantidad}
             </span>
           </div>
         );
@@ -31,8 +39,7 @@ const EspecialidadList = ({ raw, allSpecialities }) => {
   );
 };
 
-// Tarjeta de empresa (acordeón desplegable)
-// Contiene toda la info + acciones del admin
+// This is the main company card with expandable content
 const CompanyCard = ({
   empresa,
   isExpanded,
@@ -42,12 +49,14 @@ const CompanyCard = ({
   resetResult,
   allSpecialities,
 }) => {
+  // This determines convenio status
   const convenioStatus = empresa.convenio_validado
     ? "validado"
     : empresa.tieneConvenio
       ? "pendiente"
       : "sin_convenio";
 
+  // This maps status to UI config
   const statusConfig = {
     validado: {
       label: "Convenio firmado",
@@ -65,35 +74,50 @@ const CompanyCard = ({
       Icon: MdOutlineCancel,
     },
   };
+
   const { label, cls, Icon } = statusConfig[convenioStatus];
+
+  // This builds the full address string
+  const direccion = [
+    empresa.dirRazSocial,
+    empresa.municipio,
+    empresa.provincia,
+    empresa.cpRazSoc,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <div className="student-card">
-      {/* CABECERA */}
+      {/* Header section */}
       <div
-        className="student-card-header flex flex-col gap-2 sm:flex-row sm:items-center"
+        className="student-card-header flex items-center justify-between gap-2"
         onClick={() => onToggle(empresa.idAuxEmpresa)}
       >
-        {/* LEFT */}
-        <div className="flex-1 min-w-0">
-          <p className="student-name flex items-center gap-2">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <p className="student-name flex items-center gap-2 min-w-0">
             <FaBuilding className="text-[var(--brand)] shrink-0" />
-            {empresa.razonSocial}
-            <span className="font-normal text-[.8rem] text-[var(--text-muted)]">
+
+            <span className="truncate">{empresa.razonSocial}</span>
+
+            <span className="hidden sm:inline text-[.8rem] text-[var(--text-muted)] shrink-0">
               ({empresa.cif})
             </span>
           </p>
-          <p className="student-esp text-sm text-[var(--text-muted)]">
+
+          <p className="student-esp text-sm text-[var(--text-muted)] hidden sm:block truncate">
             {formatDate(empresa.fechaPeticion)} · {empresa.emailCoordinador}
           </p>
         </div>
 
-        {/* RIGHT */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <span className={`signed-badge ${cls}`}>
-            <Icon className="-mt-[1px] text-[13px]" />
-            {label}
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className={`signed-badge ${cls} flex items-center gap-1 whitespace-nowrap`}
+          >
+            <Icon className="text-[13px]" />
+            <span>{label}</span>
           </span>
+
           <button
             className={`toggle-btn ${isExpanded ? "rotate-180" : ""}`}
             onClick={(e) => {
@@ -106,7 +130,7 @@ const CompanyCard = ({
         </div>
       </div>
 
-      {/* PANEL EXPANDIBLE */}
+      {/* Expandable content */}
       <div
         className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
           isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
@@ -114,8 +138,9 @@ const CompanyCard = ({
       >
         <div className="overflow-hidden">
           <div className="student-card-body grid gap-6 grid-cols-1 md:grid-cols-2">
-            {/* COLUMNA IZQUIERDA */}
+            {/* Left column */}
             <div className="space-y-5">
+              {/* Company data */}
               <div>
                 <p className="section-label">Datos de la empresa</p>
                 <div className="space-y-1">
@@ -131,20 +156,12 @@ const CompanyCard = ({
                     value={empresa.telefonoCoordinador}
                   />
                   <InfoRow label="Tel. empresa" value={empresa.telEmpresa} />
-                  <InfoRow
-                    label="Dirección"
-                    value={[
-                      empresa.dirRazSocial,
-                      empresa.municipio,
-                      empresa.provincia,
-                      empresa.cpRazSoc,
-                    ]
-                      .filter(Boolean)
-                      .join(", ")}
-                  />
+                  <InfoRow label="Dirección" value={direccion} />
                   <InfoRow
                     label="Responsable legal"
-                    value={`${empresa.responsableLegal || "—"} · ${empresa.dniRl || "—"}`}
+                    value={`${empresa.responsableLegal || "—"} · ${
+                      empresa.dniRl || "—"
+                    }`}
                   />
                   <InfoRow label="Cargo" value={empresa.cargo} />
                   <InfoRow
@@ -154,15 +171,17 @@ const CompanyCard = ({
                 </div>
               </div>
 
-              {/* CREDENCIALES */}
+              {/* Credentials section */}
               <div>
                 <p className="section-label">Credenciales de acceso</p>
+
                 <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] space-y-2">
                   <InfoRow
                     label="Usuario"
                     value={empresa.username || "Sin usuario creado"}
                     mono={!!empresa.username}
                   />
+
                   <div className="flex items-center gap-2 flex-wrap mt-2">
                     <button
                       onClick={() => onResetPassword(empresa.idAuxEmpresa)}
@@ -173,6 +192,7 @@ const CompanyCard = ({
                       <FaKey className="text-xs" />
                       Resetear contraseña
                     </button>
+
                     {resetResult?.[empresa.idAuxEmpresa] && (
                       <span className="text-xs font-mono bg-yellow-50 border border-yellow-200 text-yellow-800 px-2 py-1 rounded">
                         Nueva contraseña:
@@ -184,9 +204,9 @@ const CompanyCard = ({
               </div>
             </div>
 
-            {/* COLUMNA DERECHA */}
+            {/* Right column */}
             <div className="space-y-5">
-              {/* ESPECIALIDADES */}
+              {/* Specialities */}
               <div>
                 <p className="section-label">Especialidades solicitadas</p>
                 <EspecialidadList
@@ -195,7 +215,7 @@ const CompanyCard = ({
                 />
               </div>
 
-              {/* PUESTO */}
+              {/* Job description */}
               {empresa.descripcionPuesto && (
                 <div>
                   <p className="section-label">Descripción del puesto</p>
@@ -205,9 +225,10 @@ const CompanyCard = ({
                 </div>
               )}
 
-              {/* CONVENIO */}
+              {/* Convenio section */}
               <div>
                 <p className="section-label">Convenio</p>
+
                 <div
                   className={`p-4 rounded-lg border ${
                     convenioStatus === "validado"
@@ -223,50 +244,52 @@ const CompanyCard = ({
                       La empresa aún no ha subido el convenio firmado.
                     </p>
                   ) : (
-                    <div className="space-y-3">
-                      <p
-                        className={`text-sm flex items-center gap-2 ${
-                          convenioStatus === "validado"
-                            ? "text-green-700"
-                            : "text-yellow-700"
-                        }`}
-                      >
-                        {convenioStatus === "validado" ? (
-                          <>
-                            <IoIosCheckmarkCircleOutline className="text-base shrink-0" />
-                            Convenio validado por el administrador.
-                          </>
-                        ) : (
-                          <>
-                            <MdPendingActions className="text-base shrink-0" />
-                            Convenio subido — pendiente de validación.
-                          </>
-                        )}
-                      </p>
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => onViewConvenio(empresa)}
-                          className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border
-                            border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400
-                            transition-all duration-150"
-                        >
-                          <FaFilePdf className="text-red-500" />
-                          Ver convenio
-                        </button>
-                        {!empresa.convenio_validado && (
-                          <button
-                            onClick={() => onViewConvenio(empresa)}
-                            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border
-                              border-green-300 text-green-700 bg-green-50 hover:bg-green-100
-                              transition-all duration-150"
-                          >
-                            ✓ Validar convenio
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    <p
+                      className={`text-sm flex items-center gap-2 ${
+                        convenioStatus === "validado"
+                          ? "text-green-700"
+                          : "text-yellow-700"
+                      }`}
+                    >
+                      {convenioStatus === "validado" ? (
+                        <>
+                          <IoIosCheckmarkCircleOutline className="text-base shrink-0" />
+                          Convenio validado por el administrador.
+                        </>
+                      ) : (
+                        <>
+                          <MdPendingActions className="text-base shrink-0" />
+                          Convenio subido — pendiente de validación.
+                        </>
+                      )}
+                    </p>
                   )}
                 </div>
+
+                {convenioStatus !== "sin_convenio" && (
+                  <div className="flex gap-2 flex-wrap mt-3">
+                    <button
+                      onClick={() => onViewConvenio(empresa)}
+                      className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border
+                        border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400
+                        transition-all duration-150"
+                    >
+                      <FaRegFileAlt className="text-red-500" />
+                      Ver convenio
+                    </button>
+
+                    {!empresa.convenio_validado && (
+                      <button
+                        onClick={() => onViewConvenio(empresa)}
+                        className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border
+                          border-green-300 text-green-700 bg-green-50 hover:bg-green-100
+                          transition-all duration-150"
+                      >
+                        ✓ Validar convenio
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

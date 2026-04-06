@@ -14,8 +14,8 @@ export function parseEspecialidades(raw) {
 }
 
 export const InfoRow = ({ label, value, mono = false }) => (
-  <p className="contact-item text-sm">
-    <span>{label}: </span>
+  <p className="text-sm">
+    <span className="font-bold">{label}: </span>
     <span
       className={
         mono ? "font-mono text-xs bg-gray-100 px-1 py-0.5 rounded" : ""

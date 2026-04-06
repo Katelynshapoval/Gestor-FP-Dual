@@ -67,7 +67,7 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
 
   return (
     <div className="space-y-6">
-      {/* ── Coordinador ── */}
+      {/* Coordinador */}
       <div>
         <p className="section-label">Datos del coordinador</p>
         <p className="text-sm text-gray-500 mb-4 ml-5">
@@ -90,7 +90,7 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
         </div>
       </div>
 
-      {/* ── Empresa ── */}
+      {/* Empresa */}
       <div>
         <p className="section-label">Datos de la empresa</p>
         <div className="grid gap-4 md:grid-cols-2">
@@ -107,7 +107,7 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
         </div>
       </div>
 
-      {/* ── Responsable Legal ── */}
+      {/* Responsable Legal */}
       <div>
         <p className="section-label">Responsable Legal</p>
         <div className="grid gap-4 md:grid-cols-3">
@@ -120,7 +120,7 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
         </div>
       </div>
 
-      {/* ── Puesto de trabajo ── */}
+      {/* Puesto de trabajo */}
       <div>
         <p className="section-label">Puesto de trabajo</p>
         <div className="space-y-4">
@@ -137,7 +137,7 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
         </div>
       </div>
 
-      {/* ── Ciclos solicitados ── */}
+      {/* Ciclos solicitados */}
       <div>
         <p className="section-label">Ciclo(s) de Grado solicitados</p>
         {selectedSpecialities.length > 0 ? (
@@ -161,7 +161,7 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
         )}
       </div>
 
-      {/* ── Transportes ── */}
+      {/* Transportes */}
       <div>
         <p className="section-label">Métodos de Transporte posibles</p>
         <p className="text-sm text-gray-500 mb-4 ml-5">

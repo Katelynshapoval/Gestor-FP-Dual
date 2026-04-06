@@ -140,7 +140,7 @@ const AdminCompanyView = () => {
 
   return (
     <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1">
-      {/* ── CABECERA ── */}
+      {/* CABECERA */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="border-l-4 border-red-600 pl-4 sm:pl-5">
           <h1 className="text-xl sm:text-2xl font-semibold">
@@ -168,14 +168,14 @@ const AdminCompanyView = () => {
         </div>
       </div>
 
-      {/* ── FILTROS Y ORDENACIÓN ── */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex items-center gap-2">
-          <label className="text-[0.8rem] font-semibold whitespace-nowrap text-[var(--text-muted)]">
+      {/* FILTROS Y ORDENACIÓN */}
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-[var(--text-muted)]">
             Especialidad:
           </label>
           <select
-            className={selectCls}
+            className={`${selectCls} w-full sm:w-auto`}
             value={filterEsp}
             onChange={(e) => setFilterEsp(e.target.value)}
           >
@@ -188,28 +188,28 @@ const AdminCompanyView = () => {
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-[0.8rem] font-semibold whitespace-nowrap text-[var(--text-muted)]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-[var(--text-muted)]">
             Convenio:
           </label>
           <select
-            className={selectCls}
+            className={`${selectCls} w-full sm:w-auto`}
             value={filterConvenio}
             onChange={(e) => setFilterConvenio(e.target.value)}
           >
             <option value="">Todos</option>
-            <option value="validado">✅ Validados</option>
-            <option value="pendiente">⏳ Pendientes</option>
-            <option value="sin_convenio">❌ Sin convenio</option>
+            <option value="validado">Validados</option>
+            <option value="pendiente">Pendientes</option>
+            <option value="sin_convenio">Sin convenio</option>
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-[0.8rem] font-semibold whitespace-nowrap text-[var(--text-muted)]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-[var(--text-muted)]">
             Ordenar:
           </label>
           <select
-            className={selectCls}
+            className={`${selectCls} w-full sm:w-auto`}
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
@@ -221,7 +221,7 @@ const AdminCompanyView = () => {
         </div>
       </div>
 
-      {/* ── LISTA DE EMPRESAS ── */}
+      {/* LISTA DE EMPRESAS */}
       <div className="space-y-4">
         {filtered.length === 0 && (
           <div className="text-center p-12 text-gray-500 bg-gray-50 border border-gray-200 rounded-xl">
@@ -242,7 +242,7 @@ const AdminCompanyView = () => {
         ))}
       </div>
 
-      {/* ── MODAL VISOR CONVENIO ── */}
+      {/* MODAL VISOR CONVENIO */}
       <ConvenioViewer
         empresa={viewingConvenio}
         onClose={() => setViewingConvenio(null)}
