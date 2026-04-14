@@ -58,7 +58,7 @@ exports.loginWithCredentials = async function (request, response) {
       }
 
       // Obtener la contraseña hasheada del usuario
-      const queryUser = `SELECT password FROM users WHERE idUser = ?`;
+      const queryUser = `SELECT password, must_change_password FROM users WHERE idUser = ?`;
       connection.query(
         queryUser,
         [empresa.idUser],
@@ -84,7 +84,8 @@ exports.loginWithCredentials = async function (request, response) {
             name: empresa.razonSocial,
             email: empresa.emailCoordinador,
             user_type: "empresa",
-            specialities: [null], // las empresas no tienen especialidades propias
+            specialities: [null],
+            must_change_password: userResults[0].must_change_password,
           });
         },
       );
@@ -129,3 +130,36 @@ function addCourses(id, specialities) {
     },
   );
 }
+
+// CAMBIAR CONTRASEÑA (primer login o manual)
+exports.changePassword = async function (request, response) {
+  const { idUser, newPassword } = request.body;
+
+  if (!idUser || !newPassword) {
+    return response.status(400).json({ msg: "Datos incompletos" });
+  }
+
+  try {
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    connection.query(
+      `UPDATE users 
+       SET password = ?, must_change_password = FALSE 
+       WHERE idUser = ?`,
+      [hashed, idUser],
+      (err) => {
+        if (err) {
+          console.error("Error al cambiar contraseña:", err);
+          return response
+            .status(500)
+            .json({ msg: "Error al cambiar contraseña" });
+        }
+
+        response.status(200).json({ ok: true });
+      },
+    );
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ msg: "Error interno" });
+  }
+};

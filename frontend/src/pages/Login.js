@@ -18,6 +18,10 @@ const CredentialLogin = ({ setUser }) => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [userId, setUserId] = useState(null);
+  const [userType, setUserType] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,12 +38,30 @@ const CredentialLogin = ({ setUser }) => {
         throw new Error(body.msg || "Credenciales incorrectas");
       }
       const userData = await res.json();
+
+      if (userData.must_change_password) {
+        setMustChangePassword(true);
+
+        setUserId(userData.idUser);
+        setUserType(userData.user_type);
+
+        setUser({
+          idUser: userData.idUser,
+          nombre: userData.name,
+          email: userData.email,
+          user_type: userData.user_type,
+        });
+
+        return;
+      }
+
       setUser({
         nombre: userData.name,
         email: userData.email,
         specialities: userData.specialities,
         user_type: userData.user_type,
       });
+
       redirectByRole(userData.user_type, navigate);
     } catch (err) {
       setError(err.message);
@@ -47,6 +69,57 @@ const CredentialLogin = ({ setUser }) => {
       setLoading(false);
     }
   };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/changePassword", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          idUser: userId,
+          newPassword,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Error al cambiar contraseña");
+
+      redirectByRole(userType, navigate);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (mustChangePassword) {
+    return (
+      <form onSubmit={handleChangePassword} className="space-y-4 text-left">
+        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+          Debes cambiar tu contraseña antes de continuar.
+        </p>
+
+        <input
+          type="password"
+          placeholder="Nueva contraseña"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          required
+        />
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Guardando…" : "Cambiar contraseña"}
+        </button>
+
+        {error && <div className="login-error">{error}</div>}
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-left">

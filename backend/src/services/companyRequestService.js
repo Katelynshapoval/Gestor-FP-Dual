@@ -102,7 +102,10 @@ async function crearUsuarioEmpresa(idAuxEmpresa, email, razonSocial, cif) {
   const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
   return new Promise((resolve, reject) => {
-    const insertUser = `INSERT INTO users (name, email, user_type, password) VALUES (?, ?, 'empresa', ?)`;
+    const insertUser = `
+    INSERT INTO users (name, email, user_type, password, must_change_password) 
+    VALUES (?, ?, 'empresa', ?, TRUE)
+  `;
     connection.query(
       insertUser,
       [razonSocial, email, hashedPassword],
