@@ -1,9 +1,7 @@
-/* STUDENT CARD */
+/* TARJETA DE ALUMNO */
 
 .student-card {
-  @apply mb-2 rounded-lg overflow-hidden transition;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  @apply mb-2 rounded-lg overflow-hidden transition bg-white border border-surface-200;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.05);
 }
 
@@ -20,17 +18,15 @@
 }
 
 .student-card:not(.student-card-locked) .student-card-header:hover {
-  background: var(--surface-alt);
+  @apply bg-surface-50;
 }
 
 .student-name {
-  @apply text-base font-semibold m-0;
-  color: var(--text);
+  @apply text-base font-semibold m-0 text-gray-900;
 }
 
 .student-esp {
-  @apply text-[0.75rem];
-  color: var(--text-muted);
+  @apply text-[0.75rem] text-gray-500;
 }
 
 .student-chips {
@@ -42,15 +38,15 @@
 }
 
 .student-card-locked {
-  background: var(--surface);
+  @apply bg-white;
 }
 
 .student-card-locked .student-name {
-  color: #6b7280;
+  @apply text-gray-500;
 }
 
 .student-card-locked .student-esp {
-  color: #9ca3af;
+  @apply text-gray-400;
 }
 
 .student-card-locked .student-chips {
@@ -68,55 +64,43 @@
   @apply border-l-4 border-red-600 pl-4 font-semibold mb-4;
 }
 
-/* TOGGLE */
+/* BOTÓN DESPLEGABLE */
 
 .toggle-btn {
   @apply w-7 h-7 rounded-full flex items-center justify-center cursor-pointer shrink-0
-  transition-transform duration-300 ease-in-out;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
+  transition-transform duration-300 ease-in-out border border-surface-200 bg-white text-gray-500;
 }
 
 .toggle-btn:not(:disabled):hover {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: var(--brand-light);
+  @apply border-brand-500 text-brand-500 bg-brand-50;
 }
 
 .toggle-btn.expanded {
   transform: rotate(180deg);
 }
 
-/* CARD BODY */
+/* CUERPO DE TARJETA */
 
 .student-card-body {
-  @apply px-4 py-5 border-t;
-  border-color: var(--border);
-  background: var(--surface-alt);
+  @apply px-4 py-5 border-t border-surface-200 bg-surface-50;
   animation: fadeIn 0.18s ease-out;
 }
 
 /* EMPRESAS */
 
 .empresa-slot {
-  @apply p-4 rounded-lg flex flex-col gap-4;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  @apply p-4 rounded-lg flex flex-col gap-4 bg-white border border-surface-200;
 }
 .empresa-meta {
-  @apply text-xs mt-1;
-  color: var(--text-muted);
+  @apply text-xs mt-1 text-gray-500;
 }
 
 .empresa-chip {
-  @apply inline-flex  items-center gap-1 text-[0.72rem] font-medium px-2.5 py-1 rounded-md whitespace-nowrap;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
+  @apply inline-flex items-center gap-1 text-[0.72rem] font-medium px-2.5 py-1 rounded-md whitespace-nowrap bg-surface-50 border border-surface-200;
   cursor: help;
 }
 
-/* ESTADO BADGES */
+/* BADGES DE ESTADO */
 .estado-0 {
   @apply bg-sky-100 text-sky-700;
 }
@@ -136,19 +120,16 @@
   @apply bg-green-50 text-green-700;
 }
 
-/* CONTACT */
+/* CONTACTO */
 .contact-item {
-  @apply text-[0.82rem];
-  color: var(--text);
+  @apply text-[0.82rem] text-gray-900;
 }
 
 .contact-item span {
-  @apply font-semibold;
-  color: var(--text-muted);
+  @apply font-semibold text-gray-500;
 }
 
-/* DOCS */
+/* DOCUMENTOS */
 .docs-label {
-  @apply text-[0.7rem] font-bold uppercase tracking-wider mb-2;
-  color: var(--text-muted);
+  @apply text-[0.7rem] font-bold uppercase tracking-wider mb-2 text-gray-500;
 }

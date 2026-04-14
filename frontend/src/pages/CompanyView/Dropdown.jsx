@@ -1,26 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { IoMdArrowDropdown } from "react-icons/io";
 
-// Dropdown colapsable con animación suave de altura.
+// Dropdown colapsable con animación suave de altura mediante grid-template-rows.
 const Dropdown = ({ title, subtitle, children, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
-  const contentRef = useRef(null);
-  const [height, setHeight] = useState(defaultOpen ? "auto" : "0px");
-
-  useEffect(() => {
-    if (open) {
-      const scrollH = contentRef.current.scrollHeight;
-      setHeight(`${scrollH}px`);
-      const timer = setTimeout(() => setHeight("auto"), 350);
-      return () => clearTimeout(timer);
-    } else {
-      const scrollH = contentRef.current.scrollHeight;
-      setHeight(`${scrollH}px`);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setHeight("0px"));
-      });
-    }
-  }, [open]);
 
   return (
     <div className="form-card !mb-0">
@@ -35,25 +18,22 @@ const Dropdown = ({ title, subtitle, children, defaultOpen = false }) => {
           )}
         </div>
         <div
-          className="toggle-btn"
-          style={{
-            transition: "transform 0.3s ease",
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
-          }}
+          className={`toggle-btn transition-transform duration-300 ${
+            open ? "rotate-180" : "rotate-0"
+          }`}
         >
           <IoMdArrowDropdown className="text-lg" />
         </div>
       </div>
 
       <div
-        ref={contentRef}
-        style={{
-          height,
-          overflow: "hidden",
-          transition: "height 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
+        className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
       >
-        <div className="pt-6">{children}</div>
+        <div className="overflow-hidden">
+          <div className="pt-6">{children}</div>
+        </div>
       </div>
     </div>
   );

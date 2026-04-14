@@ -11,7 +11,7 @@ const DatosRapidos = ({ r }) => {
     <div>
       <p className="section-label">Datos rápidos</p>
 
-      <div className="flex flex-col gap-5 text-sm bg-white border border-[var(--border)] rounded-lg p-4">
+      <div className="flex flex-col gap-5 text-sm bg-white border border-gray-200 rounded-lg p-4">
         {/* Email */}
         <div className="flex gap-3 items-start">
           <MdOutlineEmail className="text-red-500 text-xl mt-1 flex-shrink-0" />

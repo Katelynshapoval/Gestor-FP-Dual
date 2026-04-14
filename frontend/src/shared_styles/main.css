@@ -3,22 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* VARIABLES GLOBALES */
-:root {
-  --brand: #f81d1d;
-  --brand-dark: #bc0808;
-  --brand-light: #fff1f1;
-  --brand-shadow: 0 4px 14px 0 rgb(248 29 29 / 0.28);
-  --surface: #ffffff;
-  --surface-alt: #fafafa;
-  --border: #e8e8e8;
-  --text: #1a1a1a;
-  --text-muted: #6b7280;
-  --radius: 0.75rem;
-  --radius-sm: 0.5rem;
-  --transition: 0.18s ease;
-}
-
 *,
 *::before,
 *::after {
@@ -37,8 +21,7 @@ body,
 body {
   font-family: "Roboto", sans-serif;
   font-size: 0.9375rem;
-  color: var(--text);
-  background: var(--surface-alt);
+  @apply text-gray-900 bg-surface-50;
   -webkit-font-smoothing: antialiased;
 }
 .app {
@@ -64,14 +47,13 @@ body {
       rgb(248 29 29/0.07) 0%,
       transparent 50%
     ),
-    var(--surface-alt);
+    #fafafa;
   min-height: calc(100vh - 64px - 200px);
   padding: 2rem;
 }
 .login-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius) * 1.5);
+  @apply bg-white border border-surface-200;
+  border-radius: 1.125rem;
   padding: 2.75rem 2.5rem;
   width: 100%;
   max-width: 380px;
@@ -82,13 +64,13 @@ body {
 .login-card .logo-mark {
   width: 56px;
   height: 56px;
-  background: var(--brand);
+  @apply bg-brand-500;
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 1.25rem;
-  box-shadow: var(--brand-shadow);
+  box-shadow: 0 4px 14px 0 rgb(248 29 29 / 0.28);
 }
 .login-card h2 {
   font-family: "Roboto", sans-serif;
@@ -98,21 +80,18 @@ body {
 }
 .login-card .subtitle {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  @apply text-gray-500;
   margin: 0 0 1.75rem;
 }
 .login-divider {
   height: 1px;
-  background: var(--border);
+  @apply bg-surface-200;
   margin: 1.5rem 0;
 }
 .login-error {
-  background: #fff1f1;
-  border: 1px solid rgb(248 29 29/0.25);
-  border-radius: var(--radius-sm);
+  @apply bg-brand-50 border border-brand-500/25 rounded-lg text-brand-700;
   padding: 0.65rem 1rem;
   font-size: 0.82rem;
-  color: var(--brand-dark);
   margin-top: 1rem;
 }
 
@@ -129,8 +108,7 @@ body {
   animation: fadeIn 0.15s ease-out;
 }
 .modal-box {
-  background: var(--surface);
-  border-radius: var(--radius);
+  @apply bg-white rounded-xl;
   width: 100%;
   max-width: 92%;
   height: 88vh;
@@ -145,7 +123,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--border);
+  @apply border-b border-surface-200;
   gap: 1rem;
 }
 .modal-title {
@@ -153,7 +131,7 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   margin: 0;
-  color: var(--text);
+  @apply text-gray-900;
 }
 .modal-actions {
   display: flex;
@@ -164,19 +142,16 @@ body {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
+  @apply border border-surface-200 bg-white text-gray-500;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   font-size: 0.85rem;
-  color: var(--text-muted);
-  transition: all var(--transition);
+  transition: all 0.18s ease;
 }
 .modal-close:hover {
-  border-color: var(--brand);
-  color: var(--brand);
+  @apply border-brand-500 text-brand-500;
 }
 .modal-body {
   flex: 1;
@@ -196,7 +171,7 @@ body {
   justify-content: space-between;
   margin-bottom: 1.75rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid var(--brand-light);
+  @apply border-b-2 border-brand-50;
 }
 .eval-meta {
   display: flex;
@@ -206,13 +181,10 @@ body {
   font-size: 0.75rem;
   padding: 0.25rem 0.65rem;
   border-radius: 6px;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  @apply bg-surface-50 border border-surface-200 text-gray-500;
 }
 .eval-score-box {
-  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
-  border-radius: var(--radius);
+  @apply bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl;
   padding: 1.25rem 1.5rem;
   color: #fff;
   margin-bottom: 1.25rem;
@@ -239,14 +211,14 @@ body {
 
 /* UTILIDADES */
 .text-muted {
-  color: var(--text-muted);
+  @apply text-gray-500;
 }
 .text-brand {
-  color: var(--brand);
+  @apply text-brand-500;
 }
 .divider {
   height: 1px;
-  background: var(--border);
+  @apply bg-surface-200;
   margin: 1.25rem 0;
 }
 .grid-2 {

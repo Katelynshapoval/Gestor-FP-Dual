@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-// MODAL VISOR DE CONVENIO
+// Modal visor de convenio PDF
 const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -10,7 +10,7 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
 
     let objectUrl = null;
 
-    // Función para obtener el PDF desde el backend
+    // Obtiene el PDF desde el backend y crea una URL local
     const fetchPdf = async () => {
       setLoading(true);
       try {
@@ -18,10 +18,7 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
 
         if (!res.ok) throw new Error("Error al cargar el PDF");
 
-        // Convertimos la respuesta en blob (archivo binario)
         const blob = await res.blob();
-
-        // Creamos una URL local para poder usarla en el iframe
         objectUrl = URL.createObjectURL(blob);
         setPdfUrl(objectUrl);
       } catch (err) {
@@ -34,7 +31,7 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
 
     fetchPdf();
 
-    // Limpieza: liberamos la URL cuando el componente se desmonta
+    // Libera la URL al desmontar el componente
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
@@ -49,7 +46,6 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
           <h2 className="modal-title">Convenio — {empresa.razonSocial}</h2>
 
           <div className="modal-actions">
-            {/* Botón para validar el convenio si aún no está validado */}
             {!empresa.convenio_validado && (
               <button
                 onClick={() => onValidate(empresa.idAuxEmpresa)}
@@ -59,7 +55,6 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
               </button>
             )}
 
-            {/* Abrir el PDF en una nueva pestaña */}
             <button
               onClick={() => pdfUrl && window.open(pdfUrl, "_blank")}
               className="btn btn-secondary btn-sm"
@@ -68,7 +63,6 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
               Nueva pestaña
             </button>
 
-            {/* Cerrar el modal */}
             <button className="modal-close" onClick={onClose}>
               ✕
             </button>
@@ -76,19 +70,16 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
         </div>
 
         <div className="modal-body">
-          {/* Estado de carga */}
           {loading && <p>Cargando PDF...</p>}
 
-          {/* Mostrar el PDF cuando esté listo */}
           {!loading && pdfUrl && (
             <iframe
               src={pdfUrl}
               title={`Convenio de ${empresa.razonSocial}`}
-              style={{ width: "100%", height: "100%" }}
+              className="w-full h-full block border-none"
             />
           )}
 
-          {/* Fallback si falla la carga */}
           {!loading && !pdfUrl && (
             <p>
               No se pudo cargar el PDF.{" "}

@@ -9,9 +9,7 @@ function redirectByRole(userType, navigate) {
   else navigate("/");
 }
 
-// ──────────────────────────────────────────────────────────
-// TAB: Login con credenciales (para empresas)
-// ──────────────────────────────────────────────────────────
+// Pestaña de login con credenciales (para empresas)
 const CredentialLogin = ({ setUser }) => {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
@@ -41,17 +39,14 @@ const CredentialLogin = ({ setUser }) => {
 
       if (userData.must_change_password) {
         setMustChangePassword(true);
-
         setUserId(userData.idUser);
         setUserType(userData.user_type);
-
         setUser({
           idUser: userData.idUser,
           nombre: userData.name,
           email: userData.email,
           user_type: userData.user_type,
         });
-
         return;
       }
 
@@ -74,17 +69,11 @@ const CredentialLogin = ({ setUser }) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     try {
       const res = await fetch("/changePassword", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          idUser: userId,
-          newPassword,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idUser: userId, newPassword }),
       });
 
       if (!res.ok) throw new Error("Error al cambiar contraseña");
@@ -97,22 +86,37 @@ const CredentialLogin = ({ setUser }) => {
     }
   };
 
+  // Formulario de cambio de contraseña obligatorio en el primer acceso
   if (mustChangePassword) {
     return (
       <form onSubmit={handleChangePassword} className="space-y-4 text-left">
-        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+        <p className="text-sm text-gray-500">
           Debes cambiar tu contraseña antes de continuar.
         </p>
 
-        <input
-          type="password"
-          placeholder="Nueva contraseña"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          required
-        />
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Nueva contraseña
+          </label>
+          <input
+            type="password"
+            placeholder="Nueva contraseña"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+          />
+        </div>
 
-        <button type="submit" disabled={loading}>
+        <button
+          type="submit"
+          disabled={loading}
+          className={`w-full py-2.5 rounded-lg text-sm font-semibold text-white transition ${
+            loading
+              ? "bg-gray-300 cursor-not-allowed"
+              : "bg-brand-500 hover:bg-brand-700 cursor-pointer"
+          }`}
+        >
           {loading ? "Guardando…" : "Cambiar contraseña"}
         </button>
 
@@ -134,19 +138,7 @@ const CredentialLogin = ({ setUser }) => {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
-          style={{
-            width: "100%",
-            padding: "0.55rem 0.75rem",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            fontSize: "0.9rem",
-            outline: "none",
-            background: "var(--surface)",
-            color: "var(--text)",
-            transition: "border-color 0.15s",
-          }}
-          onFocus={(e) => (e.target.style.borderColor = "var(--brand)")}
-          onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
+          className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
         />
       </div>
 
@@ -161,37 +153,18 @@ const CredentialLogin = ({ setUser }) => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          style={{
-            width: "100%",
-            padding: "0.55rem 0.75rem",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            fontSize: "0.9rem",
-            outline: "none",
-            background: "var(--surface)",
-            color: "var(--text)",
-            transition: "border-color 0.15s",
-          }}
-          onFocus={(e) => (e.target.style.borderColor = "var(--brand)")}
-          onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
+          className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        style={{
-          width: "100%",
-          padding: "0.6rem",
-          background: loading ? "#ccc" : "var(--brand)",
-          color: "#fff",
-          border: "none",
-          borderRadius: "var(--radius-sm)",
-          fontSize: "0.9rem",
-          fontWeight: 600,
-          cursor: loading ? "not-allowed" : "pointer",
-          transition: "background 0.15s",
-        }}
+        className={`w-full py-2.5 rounded-lg text-sm font-semibold text-white transition ${
+          loading
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-brand-500 hover:bg-brand-700 cursor-pointer"
+        }`}
       >
         {loading ? "Verificando…" : "Entrar"}
       </button>
@@ -202,14 +175,7 @@ const CredentialLogin = ({ setUser }) => {
         </div>
       )}
 
-      <p
-        style={{
-          fontSize: "0.75rem",
-          color: "var(--text-muted)",
-          textAlign: "center",
-          marginTop: "0.5rem",
-        }}
-      >
+      <p className="text-xs text-gray-500 text-center mt-2">
         El usuario es el CIF de tu empresa en minúsculas.
         <br />
         Si olvidaste tu contraseña, contacta con el administrador.
@@ -218,9 +184,7 @@ const CredentialLogin = ({ setUser }) => {
   );
 };
 
-// ──────────────────────────────────────────────────────────
-// TAB: Login Google OAuth (admins y profesores)
-// ──────────────────────────────────────────────────────────
+// Pestaña de login Google OAuth (admins y profesores)
 const GoogleLoginTab = ({ setUser }) => {
   const navigate = useNavigate();
   const [error, setError] = useState(false);
@@ -268,52 +232,38 @@ const GoogleLoginTab = ({ setUser }) => {
   );
 };
 
-// ──────────────────────────────────────────────────────────
-// PÁGINA PRINCIPAL DE LOGIN
-// ──────────────────────────────────────────────────────────
+// Página principal de login con pestañas para Google y empresa
 const Login = () => {
   const { setUser } = useUser();
-  const [tab, setTab] = useState("google"); // "google" | "empresa"
-
-  const tabStyle = (active) => ({
-    flex: 1,
-    padding: "0.5rem",
-    fontSize: "0.82rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    border: "none",
-    borderBottom: active ? "2px solid var(--brand)" : "2px solid transparent",
-    background: "transparent",
-    color: active ? "var(--brand)" : "var(--text-muted)",
-    transition: "all 0.15s",
-  });
+  const [tab, setTab] = useState("google");
 
   return (
     <div className="login-page">
       <div className="login-card">
-        {/* Logo */}
         <div className="logo-mark">
           <img src="logo.png" alt="Salesianos" />
         </div>
         <h2>Bienvenido</h2>
         <p className="subtitle">FP Dual Intensiva · Salesianos Zaragoza</p>
 
-        {/* Tabs */}
-        <div
-          style={{
-            display: "flex",
-            borderBottom: "1px solid var(--border)",
-            marginBottom: "1.25rem",
-          }}
-        >
+        {/* Pestañas de selección de tipo de login */}
+        <div className="flex border-b border-surface-200 mb-5">
           <button
-            style={tabStyle(tab === "google")}
+            className={`flex-1 py-2 text-[0.82rem] font-semibold cursor-pointer border-none bg-transparent transition ${
+              tab === "google"
+                ? "border-b-2 border-brand-500 text-brand-500"
+                : "border-b-2 border-transparent text-gray-400"
+            }`}
             onClick={() => setTab("google")}
           >
             Centro / Admin
           </button>
           <button
-            style={tabStyle(tab === "empresa")}
+            className={`flex-1 py-2 text-[0.82rem] font-semibold cursor-pointer border-none bg-transparent transition ${
+              tab === "empresa"
+                ? "border-b-2 border-brand-500 text-brand-500"
+                : "border-b-2 border-transparent text-gray-400"
+            }`}
             onClick={() => setTab("empresa")}
           >
             Empresa

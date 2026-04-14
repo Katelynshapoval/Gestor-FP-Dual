@@ -5,12 +5,12 @@ import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { FaRegFileAlt } from "react-icons/fa";
 
-// Este componente muestra la lista de especialidades solicitadas
+// Lista de especialidades solicitadas por la empresa
 const EspecialidadList = ({ raw, allSpecialities }) => {
   const items = parseEspecialidades(raw);
 
   if (items.length === 0) {
-    return <p className="text-sm text-[var(--text-muted)]">Sin datos</p>;
+    return <p className="text-sm text-gray-500">Sin datos</p>;
   }
 
   return (
@@ -23,7 +23,7 @@ const EspecialidadList = ({ raw, allSpecialities }) => {
         return (
           <div
             key={idEspecialidad}
-            className="flex items-start justify-between gap-2 p-2 rounded-md bg-[var(--surface-alt)]/40"
+            className="flex items-start justify-between gap-2 p-2 rounded-md bg-surface-50/40"
           >
             <span className="text-sm leading-snug">
               {esp ? esp.nombreEsp : `ID ${idEspecialidad}`}
@@ -39,7 +39,7 @@ const EspecialidadList = ({ raw, allSpecialities }) => {
   );
 };
 
-// Este es el componente principal de la tarjeta de empresa con acordeón
+// Tarjeta de empresa con acordeón expandible para el administrador
 const CompanyCard = ({
   empresa,
   isExpanded,
@@ -49,14 +49,14 @@ const CompanyCard = ({
   resetResult,
   allSpecialities,
 }) => {
-  // Esto determina el estado del convenio
+  // Determina el estado del convenio
   const convenioStatus = empresa.convenio_validado
     ? "validado"
     : empresa.tieneConvenio
       ? "pendiente"
       : "sin_convenio";
 
-  // Configuración visual según el estado
+  // Configuración visual según el estado del convenio
   const statusConfig = {
     validado: {
       label: "Convenio firmado",
@@ -77,7 +77,7 @@ const CompanyCard = ({
 
   const { label, cls, Icon } = statusConfig[convenioStatus];
 
-  // Construcción de la dirección completa
+  // Construye la dirección completa filtrando valores vacíos
   const direccion = [
     empresa.dirRazSocial,
     empresa.municipio,
@@ -89,23 +89,22 @@ const CompanyCard = ({
 
   return (
     <div className="student-card">
-      {/* Cabecera de la tarjeta */}
       <div
         className="student-card-header flex items-center justify-between gap-2"
         onClick={() => onToggle(empresa.idAuxEmpresa)}
       >
         <div className="flex-1 min-w-0 overflow-hidden">
           <p className="student-name flex items-center gap-2 min-w-0">
-            <FaBuilding className="text-[var(--brand)] shrink-0" />
+            <FaBuilding className="text-brand-500 shrink-0" />
 
             <span className="truncate">{empresa.razonSocial}</span>
 
-            <span className="hidden sm:inline text-[.8rem] text-[var(--text-muted)] shrink-0">
+            <span className="hidden sm:inline text-[.8rem] text-gray-500 shrink-0">
               ({empresa.cif})
             </span>
           </p>
 
-          <p className="student-esp text-sm text-[var(--text-muted)] hidden sm:block truncate">
+          <p className="student-esp text-sm text-gray-500 hidden sm:block truncate">
             {formatDate(empresa.fechaPeticion)} · {empresa.emailCoordinador}
           </p>
         </div>
@@ -140,7 +139,6 @@ const CompanyCard = ({
           <div className="student-card-body grid gap-6 grid-cols-1 md:grid-cols-2">
             {/* Columna izquierda */}
             <div className="space-y-5">
-              {/* Datos de la empresa */}
               <div>
                 <p className="section-label">Datos de la empresa</p>
                 <div className="space-y-1">
@@ -175,7 +173,7 @@ const CompanyCard = ({
               <div>
                 <p className="section-label">Credenciales de acceso</p>
 
-                <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] space-y-2">
+                <div className="p-3 rounded-lg border border-surface-200 bg-white space-y-2">
                   <InfoRow
                     label="Usuario"
                     value={empresa.username || "Sin usuario creado"}
@@ -206,7 +204,6 @@ const CompanyCard = ({
 
             {/* Columna derecha */}
             <div className="space-y-5">
-              {/* Especialidades */}
               <div>
                 <p className="section-label">Especialidades solicitadas</p>
                 <EspecialidadList
@@ -215,11 +212,10 @@ const CompanyCard = ({
                 />
               </div>
 
-              {/* Descripción del puesto */}
               {empresa.descripcionPuesto && (
                 <div>
                   <p className="section-label">Descripción del puesto</p>
-                  <p className="text-sm text-[var(--text)]">
+                  <p className="text-sm text-gray-900">
                     {empresa.descripcionPuesto}
                   </p>
                 </div>
