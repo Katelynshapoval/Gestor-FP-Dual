@@ -63,11 +63,10 @@ exports.showStudentRequests = function (request, response) {
   // Filtro base: solo año actual
   query += ` WHERE YEAR(g.fechaPeticion) = YEAR(CURDATE())`;
 
-  // Si el usuario no es admin (tiene especialidades asignadas), filtrar por ellas
+  // Si el usuario no es admin, añadir filtro por especialidades
   if (specialities && specialities.length > 0 && specialities[0] !== null) {
-    // Añadir tantos ? como especialidades haya
     const placeholders = specialities.map(() => "?").join(",");
-    query += ` WHERE g.idEspecialidad IN (${placeholders})`;
+    query += ` AND g.idEspecialidad IN (${placeholders})`;
   }
 
   // ORDER BY siempre al final de la query

@@ -78,15 +78,41 @@ exports.loginWithCredentials = async function (request, response) {
               .json({ msg: "Credenciales incorrectas" });
           }
 
-          // Devolvemos la misma estructura que getUserByEmail espera el frontend
-          response.status(200).json({
-            idUser: empresa.idUser,
-            name: empresa.razonSocial,
-            email: empresa.emailCoordinador,
-            user_type: "empresa",
-            specialities: [null],
-            must_change_password: userResults[0].must_change_password,
-          });
+          const querySpecialities = `
+          SELECT especialidadYCantAlumnos
+          FROM AuxiliarEmpresa
+          WHERE idUser = ?
+        `;
+
+          connection.query(
+            querySpecialities,
+            [empresa.idUser],
+            (err3, specResults) => {
+              if (err3) {
+                console.error("Error obteniendo especialidades:", err3);
+                return response.status(500).json({ msg: "Error interno" });
+              }
+
+              let specialities = [];
+
+              if (specResults[0]?.especialidadYCantAlumnos) {
+                const parsed = JSON.parse(
+                  specResults[0].especialidadYCantAlumnos,
+                );
+
+                specialities = parsed[0] || [];
+              }
+
+              response.status(200).json({
+                idUser: empresa.idUser,
+                name: empresa.razonSocial,
+                email: empresa.emailCoordinador,
+                user_type: "empresa",
+                specialities: specialities,
+                must_change_password: userResults[0].must_change_password,
+              });
+            },
+          );
         },
       );
     },

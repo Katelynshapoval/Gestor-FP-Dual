@@ -208,7 +208,7 @@ const LinkStudents = () => {
   const filtered = linkRequests.filter(
     (r) => !selectedSpeciality || r.nombreEsp === selectedSpeciality,
   );
-  const canSendInfo = user?.specialities[0] == null;
+  const canSendInfo = user?.specialities?.[0] == null;
 
   return (
     <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1">
