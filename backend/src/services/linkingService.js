@@ -60,6 +60,9 @@ exports.showStudentRequests = function (request, response) {
     LEFT JOIN calendario c ON c.idAlumno = g.idAlumno
 `;
 
+  // Filtro base: solo año actual
+  query += ` WHERE YEAR(g.fechaPeticion) = YEAR(CURDATE())`;
+
   // Si el usuario no es admin (tiene especialidades asignadas), filtrar por ellas
   if (specialities && specialities.length > 0 && specialities[0] !== null) {
     // Añadir tantos ? como especialidades haya
@@ -278,7 +281,10 @@ exports.updateCompany1 = function (request, response) {
         .status(404)
         .json({ error: "No se encontró el registro especificado" });
     }
-    response.json({ success: true, message: "Registro actualizado correctamente" });
+    response.json({
+      success: true,
+      message: "Registro actualizado correctamente",
+    });
   });
 };
 
@@ -303,7 +309,10 @@ exports.updateCompany2 = function (request, response) {
         .status(404)
         .json({ error: "No se encontró el registro especificado" });
     }
-    response.json({ success: true, message: "Registro actualizado correctamente" });
+    response.json({
+      success: true,
+      message: "Registro actualizado correctamente",
+    });
   });
 };
 
@@ -328,7 +337,10 @@ exports.updateCompany3 = function (request, response) {
         .status(404)
         .json({ error: "No se encontró el registro especificado" });
     }
-    response.json({ success: true, message: "Registro actualizado correctamente" });
+    response.json({
+      success: true,
+      message: "Registro actualizado correctamente",
+    });
   });
 };
 
