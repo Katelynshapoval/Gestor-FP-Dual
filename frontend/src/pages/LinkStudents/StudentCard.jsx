@@ -39,19 +39,13 @@ const StudentCard = ({
   };
 
   const isEmpresa = user?.user_type === "empresa";
-  const isLockedForEmpresa =
-    isEmpresa && [r.estid1, r.estid2, r.estid3].includes(5);
 
   return (
-    <div
-      className={`student-card ${
-        isLockedForEmpresa ? "student-card-locked cursor-default" : ""
-      }`}
-    >
+    <div className={`student-card`}>
       <div
         className="student-card-header flex flex-col gap-2 sm:flex-row sm:items-center"
         onClick={() => {
-          if (!isLockedForEmpresa) onToggle(r.idGestion);
+          onToggle(r.idGestion);
         }}
       >
         {/* LEFT SIDE */}
@@ -114,26 +108,21 @@ const StudentCard = ({
                 ) : null;
               })}
             </div>
-          ) : !isLockedForEmpresa ? (
+          ) : (
             <button
               className="text-sm px-4 py-2 rounded-xl
                   border transition-all duration-200 ease-out border-red-200 text-red-600 bg-white hover:bg-red-50 hover:border-red-300 hover:text-red-700"
             >
               Reservar alumno
             </button>
-          ) : null}
+          )}
 
           {/* DROPDOWN */}
           <button
-            disabled={isLockedForEmpresa}
-            className={`toggle-btn ${isExpanded ? "rotate-180" : ""} ${
-              isLockedForEmpresa ? "opacity-40" : ""
-            }`}
+            className={`toggle-btn ${isExpanded ? "rotate-180" : ""}`}
             onClick={(e) => {
               e.stopPropagation();
-              if (!isLockedForEmpresa) {
-                onToggle(r.idGestion);
-              }
+              onToggle(r.idGestion);
             }}
           >
             <IoMdArrowDropdown className="text-[1.5rem]" />
