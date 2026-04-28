@@ -18,6 +18,7 @@ const CredentialLogin = ({ setUser }) => {
   const [loading, setLoading] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [userId, setUserId] = useState(null);
   const [userType, setUserType] = useState(null);
 
@@ -68,6 +69,12 @@ const CredentialLogin = ({ setUser }) => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setError(null);
+
+    if (newPassword !== confirmPassword) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/changePassword", {
@@ -103,6 +110,20 @@ const CredentialLogin = ({ setUser }) => {
             placeholder="Nueva contraseña"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Confirmar contraseña
+          </label>
+          <input
+            type="password"
+            placeholder="Repite la contraseña"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
             className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
           />
