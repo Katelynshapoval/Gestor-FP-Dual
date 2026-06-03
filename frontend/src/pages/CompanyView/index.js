@@ -1,12 +1,15 @@
 import { useEffect, useState, useRef } from "react";
 import { useUser } from "../../globales/User";
 import { useNavigate } from "react-router-dom";
-import { buildPostOptions } from "../../utils/api.js";
+import { buildPostOptions, postForm } from "../../utils/api.js";
 import { ofuscarId } from "../../utils/idObfuscation.js";
+import * as FormatValidation from "../../functions/FormatValidation.js";
 
 import Dropdown from "./Dropdown.jsx";
 import CompanyInfo from "./CompanyInfo.jsx";
 import AssignedStudents from "./AssignedStudents.jsx";
+import SpecialitySelector from "../AddCompanyRequest/SpecialitySelector.jsx";
+import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
 
 import { FaFilePdf } from "react-icons/fa6";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
@@ -177,7 +180,270 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
   );
 };
 
-// Este es el panel principal de la empresa
+// ------------------------------------------------------------
+// Formulario de reaplicación al programa
+// ------------------------------------------------------------
+const ReapplyForm = ({ companyData, specialities, transports, onSuccess }) => {
+  // Parsear especialidades existentes
+  const parseExistingSpecialities = () => {
+    if (!companyData?.especialidadYCantAlumnos) return [[], []];
+    try {
+      const parsed = JSON.parse(companyData.especialidadYCantAlumnos);
+      return [parsed[0] || [], parsed[1] || []];
+    } catch {
+      return [[], []];
+    }
+  };
+
+  // Parsear transportes existentes — siempre devuelve un array de números
+  const parseExistingTransports = () => {
+    if (!companyData?.metodosTransporte) return [];
+    try {
+      const raw = companyData.metodosTransporte;
+      let ids;
+      if (Array.isArray(raw)) {
+        ids = raw;
+      } else if (typeof raw === "string") {
+        // Intentar JSON primero, caer en split por coma
+        try {
+          const parsed = JSON.parse(raw);
+          ids = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          ids = raw.split(",");
+        }
+      } else {
+        ids = [raw];
+      }
+      // Coerción a número y filtrado de NaN
+      return ids.map((v) => Number(v)).filter((n) => !isNaN(n));
+    } catch {
+      return [];
+    }
+  };
+
+  const [submitting, setSubmitting] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  // Campos editables — pre-rellenos con datos actuales
+  const [emailCoordinador, setEmailCoordinador] = useState(
+    companyData?.emailCoordinador || "",
+  );
+  const [nombreCoordinador, setNombreCoordinador] = useState(
+    companyData?.nombreCoordinador || "",
+  );
+  const [telefonoCoordinador, setTelefonoCoordinador] = useState(
+    companyData?.telefonoCoordinador || "",
+  );
+  const [descripcionPuesto, setDescripcionPuesto] = useState(
+    companyData?.descripcionPuesto || "",
+  );
+  const [direccionLugarTrabajo, setDireccionLugarTrabajo] = useState(
+    companyData?.direccionLugarTrabajo || "",
+  );
+  const [selectedSpecialities, setSelectedSpecialities] = useState(
+    parseExistingSpecialities,
+  );
+  const [selectedTransports, setSelectedTransports] = useState(
+    parseExistingTransports,
+  );
+
+  const handleSpecialityToggle = (id) => {
+    setSelectedSpecialities(([ids, amounts]) => {
+      const idx = ids.indexOf(id);
+      if (idx === -1) return [[...ids, id], [...amounts, 1]];
+      return [ids.filter((_, i) => i !== idx), amounts.filter((_, i) => i !== idx)];
+    });
+  };
+
+  const handleAmountChange = (id, newCount) => {
+    setSelectedSpecialities(([ids, amounts]) => {
+      const idx = ids.indexOf(id);
+      if (idx === -1) return [ids, amounts];
+      const newAmounts = [...amounts];
+      newAmounts[idx] = newCount;
+      return [ids, newAmounts];
+    });
+  };
+
+  const handleTransportToggle = (id) => {
+    const numId = Number(id);
+    setSelectedTransports((prev) =>
+      prev.includes(numId) ? prev.filter((t) => t !== numId) : [...prev, numId],
+    );
+  };
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+
+    if (selectedSpecialities[0].length === 0) {
+      setMsg({ ok: false, text: "Selecciona al menos un ciclo de grado." });
+      return;
+    }
+    if (selectedSpecialities[1].some((c) => c <= 0)) {
+      setMsg({ ok: false, text: "Indica al menos un alumno por grado." });
+      return;
+    }
+
+    setSubmitting(true);
+    setMsg(null);
+
+    try {
+      const data = new FormData();
+      [
+        ["emailCoordinador", emailCoordinador],
+        ["nombreCoordinador", nombreCoordinador],
+        ["telefonoCoordinador", telefonoCoordinador],
+        ["razonSocial", companyData.razonSocial],
+        ["cif", companyData.cif],
+        ["telEmpresa", companyData.telEmpresa],
+        ["dirRazSocial", companyData.dirRazSocial],
+        ["provincia", companyData.provincia],
+        ["municipio", companyData.municipio],
+        ["cpRazSoc", companyData.cpRazSoc],
+        ["responsableLegal", companyData.responsableLegal],
+        ["cargo", companyData.cargo],
+        ["dniRl", companyData.dniRl],
+        ["descripcionPuesto", descripcionPuesto],
+        ["direccionLugarTrabajo", direccionLugarTrabajo],
+        ["metodosTransporte", JSON.stringify(selectedTransports)],
+        ["fechaPeticion", FormatValidation.validDate(new Date())],
+        ["specialities", JSON.stringify(selectedSpecialities)],
+        ["url", window.location.origin],
+      ].forEach(([k, v]) => data.append(k, v));
+
+      await postForm("/reapplyCompanyRequest", data);
+
+      setMsg({
+        ok: true,
+        text: "Reaplicación enviada correctamente. Recibirás un correo con el nuevo convenio.",
+      });
+      if (onSuccess) onSuccess();
+    } catch {
+      setMsg({ ok: false, text: "Error al enviar la reaplicación. Inténtalo de nuevo." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-gray-500">
+        Puedes modificar los datos que quieras actualizar para esta convocatoria.
+        Los datos de la empresa (razón social, CIF, dirección…) se mantienen igual.
+        Recibirás un nuevo convenio por correo al enviar.
+      </p>
+
+      {/* Coordinador */}
+      <div className="form-card">
+        <div className="form-section-title">Datos del coordinador</div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="field">
+            <label htmlFor="re-eCoord">Email coordinador</label>
+            <input
+              id="re-eCoord"
+              className="input"
+              type="email"
+              value={emailCoordinador}
+              onChange={(e) => setEmailCoordinador(e.target.value)}
+              maxLength={60}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="re-nCoord">Nombre coordinador</label>
+            <input
+              id="re-nCoord"
+              className="input"
+              value={nombreCoordinador}
+              onChange={(e) => setNombreCoordinador(e.target.value)}
+              maxLength={45}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="re-tCoord">Teléfono coordinador</label>
+            <input
+              id="re-tCoord"
+              className="input"
+              value={telefonoCoordinador}
+              onChange={(e) => setTelefonoCoordinador(e.target.value)}
+              maxLength={9}
+              required
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Puesto de trabajo */}
+      <div className="form-card">
+        <div className="form-section-title">Puesto de trabajo</div>
+        <div className="space-y-6">
+          <div className="field">
+            <label htmlFor="re-desc">Descripción del puesto</label>
+            <p className="field-hint">
+              Indica las tareas que se le asignarán al estudiante.
+            </p>
+            <textarea
+              id="re-desc"
+              className="textarea"
+              value={descripcionPuesto}
+              onChange={(e) => setDescripcionPuesto(e.target.value)}
+              maxLength={500}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="re-dir">Dirección del lugar de trabajo</label>
+            <input
+              id="re-dir"
+              className="input"
+              value={direccionLugarTrabajo}
+              onChange={(e) => setDireccionLugarTrabajo(e.target.value)}
+              maxLength={100}
+            />
+          </div>
+
+          <SpecialitySelector
+            dataSpecialities={specialities}
+            specialities={selectedSpecialities}
+            onToggle={handleSpecialityToggle}
+            onAmountChange={handleAmountChange}
+          />
+
+          <TransportSelector
+            dataTransports={transports}
+            metodosTransporte={selectedTransports}
+            onToggle={handleTransportToggle}
+          />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className={`btn btn-primary mt-2 mx-auto block ${submitting ? "btn-disabled" : ""}`}
+        onClick={handleSubmit}
+        disabled={submitting}
+      >
+        {submitting ? "Enviando…" : "Enviar reaplicación"}
+      </button>
+
+      {msg && (
+        <p
+          className={`text-sm px-4 py-2 rounded-lg text-center ${
+            msg.ok
+              ? "bg-green-50 border border-green-200 text-green-800"
+              : "bg-red-50 border border-red-200 text-red-700"
+          }`}
+        >
+          {msg.text}
+        </p>
+      )}
+    </div>
+  );
+};
+
+// ------------------------------------------------------------
+// Panel principal de la empresa
+// ------------------------------------------------------------
 const CompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -188,8 +454,9 @@ const CompanyView = () => {
   const [transports, setTransports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reapplied, setReapplied] = useState(false);
 
-  // Refresca los datos de la empresa tras subir convenio
+  // Refresca los datos de la empresa tras subir convenio o reaplicar
   const fetchCompanyData = async () => {
     const res = await fetch(
       "/getCompanyDataByEmail",
@@ -313,6 +580,29 @@ const CompanyView = () => {
             companyData={companyData}
             onUploadSuccess={fetchCompanyData}
           />
+        </Dropdown>
+
+        {/* Reaplicar al programa */}
+        <Dropdown
+          title="Participar en la nueva convocatoria"
+          subtitle="Envía una nueva solicitud para el próximo curso"
+        >
+          {reapplied ? (
+            <p className="text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+              Tu reaplicación ha sido enviada. Recibirás un correo con el nuevo
+              convenio en breve.
+            </p>
+          ) : (
+            <ReapplyForm
+              companyData={companyData}
+              specialities={specialities}
+              transports={transports}
+              onSuccess={() => {
+                setReapplied(true);
+                fetchCompanyData();
+              }}
+            />
+          )}
         </Dropdown>
 
         {/* Alumnos asignados */}

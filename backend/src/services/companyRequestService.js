@@ -93,6 +93,125 @@ exports.addCompanyRequest = function (request, response) {
   });
 };
 
+// REAPLICAR AL PROGRAMA DESDE LA CUENTA DE EMPRESA
+// Crea una nueva fila en AuxiliarEmpresa reutilizando el usuario existente.
+// Permite actualizar descripción, especialidades, transportes y datos del coordinador.
+exports.reapplyCompanyRequest = function (request, response) {
+  const {
+    emailCoordinador,
+    nombreCoordinador,
+    telefonoCoordinador,
+    razonSocial,
+    cif,
+    telEmpresa,
+    dirRazSocial,
+    provincia,
+    municipio,
+    cpRazSoc,
+    responsableLegal,
+    cargo,
+    dniRl,
+    descripcionPuesto,
+    direccionLugarTrabajo,
+    metodosTransporte,
+    fechaPeticion,
+    specialities,
+    url,
+  } = request.body;
+
+  // Resolver idUser en el servidor usando el CIF (username = cif en minúsculas)
+  // No se confía en el idUser que pueda venir del cliente
+  const username = cif.toLowerCase();
+  connection.query(
+    `SELECT idUser FROM AuxiliarEmpresa WHERE username = ? AND idUser IS NOT NULL ORDER BY fechaPeticion DESC LIMIT 1`,
+    [username],
+    (lookupErr, lookupResults) => {
+      if (lookupErr || lookupResults.length === 0) {
+        console.error("No se encontró el usuario para CIF:", cif, lookupErr);
+        return response
+          .status(404)
+          .json({ error: "No se encontró el usuario vinculado a esta empresa" });
+      }
+
+      const idUser = lookupResults[0].idUser;
+
+      const query = `
+        INSERT INTO AuxiliarEmpresa (
+          emailCoordinador, nombreCoordinador, telefonoCoordinador,
+          razonSocial, cif, telEmpresa, dirRazSocial, provincia, municipio, cpRazSoc,
+          responsableLegal, cargo, dni, descripcionPuesto, direccionLugarTrabajo,
+          metodosTransporte, fechaPeticion, especialidadYCantAlumnos, idUser, username
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+      const values = [
+        emailCoordinador,
+        nombreCoordinador,
+        telefonoCoordinador,
+        razonSocial,
+        cif,
+        telEmpresa,
+        dirRazSocial,
+        provincia,
+        municipio,
+        cpRazSoc,
+        responsableLegal,
+        cargo,
+        dniRl,
+        descripcionPuesto,
+        direccionLugarTrabajo,
+        metodosTransporte,
+        fechaPeticion,
+        specialities,
+        idUser,
+        username,
+      ];
+
+      connection.query(query, values, async (err, result) => {
+        if (err) {
+          console.error("Error al insertar la reaplicación:", err);
+          return response
+            .status(500)
+            .json({ error: "Error al guardar la reaplicación" });
+        }
+
+        const idAuxEmpresa = result.insertId;
+
+        try {
+          const specialitiesCodes = await recibirNombres(specialities);
+          const convenioDocxPath = await editarConvenio(
+            {
+              razonSocial,
+              responsableLegal,
+              dniRl,
+              dirRazSocial,
+              provincia,
+              municipio,
+              cpRazSoc,
+              cif,
+              cargo,
+              fechaPeticion,
+            },
+            specialitiesCodes,
+          );
+          const convenioPdfPath = await docxToPdf(convenioDocxPath);
+          const idGenerado = await generarId(idAuxEmpresa);
+
+          mandarMail(
+            { emailCoordinador, razonSocial },
+            convenioPdfPath,
+            idGenerado,
+            url,
+          );
+        } catch (mailErr) {
+          console.error("Error al generar/enviar convenio en reaplicación:", mailErr);
+        }
+
+        response.status(201).json("Reaplicación enviada correctamente");
+      });
+    },
+  );
+};
+
 // CREAR USUARIO EMPRESA: username = CIF en minúsculas, contraseña aleatoria hasheada
 async function crearUsuarioEmpresa(idAuxEmpresa, email, razonSocial, cif) {
   const username = cif.toLowerCase();

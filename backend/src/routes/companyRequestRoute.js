@@ -25,6 +25,13 @@ router.post(
   CompanyRequestService.getCompanyDataByEmail,
 );
 
+// Ruta autenticada: la empresa reaplica al programa desde su cuenta
+router.post(
+  "/reapplyCompanyRequest",
+  upload.none(),
+  CompanyRequestService.reapplyCompanyRequest,
+);
+
 // Rutas de administración
 router.get("/getAllCompanies", CompanyRequestService.getAllCompanies);
 router.get("/getConvenioFile/:id", CompanyRequestService.getConvenioFile);
