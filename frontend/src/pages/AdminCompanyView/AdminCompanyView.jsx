@@ -11,6 +11,17 @@ import ConvenioViewer from "./components/ConvenioViewer";
 import CompanyCard from "./components/CompanyCard";
 import { parseEspecialidades } from "./helpers";
 
+// El curso es el del año natural de la solicitud: aplicar en 2026 → "2026/2027"
+function getCourseLabel(dateStr) {
+  if (!dateStr) return null;
+  try {
+    const y = new Date(dateStr).getFullYear();
+    return `${y}/${y + 1}`;
+  } catch {
+    return null;
+  }
+}
+
 // Este componente gestiona la vista principal de empresas para el admin
 const AdminCompanyView = () => {
   const { user } = useUser();
@@ -30,6 +41,7 @@ const AdminCompanyView = () => {
   // Estados de filtros
   const [filterEsp, setFilterEsp] = useState("");
   const [filterConvenio, setFilterConvenio] = useState("");
+  const [filterCourse, setFilterCourse] = useState("");
   const [sortBy, setSortBy] = useState("fecha_desc");
 
   // Carga inicial de datos
@@ -103,6 +115,11 @@ const AdminCompanyView = () => {
     }),
   );
 
+  // Cursos académicos disponibles, ordenados de más reciente a más antiguo
+  const availableCourses = [...new Set(
+    companies.map((c) => getCourseLabel(c.fechaPeticion)).filter(Boolean)
+  )].sort((a, b) => b.localeCompare(a));
+
   // Aplicación de filtros
   let filtered = companies.filter((c) => {
     if (filterEsp) {
@@ -120,6 +137,9 @@ const AdminCompanyView = () => {
       return false;
 
     if (filterConvenio === "sin_convenio" && c.tieneConvenio) return false;
+
+    if (filterCourse && getCourseLabel(c.fechaPeticion) !== filterCourse)
+      return false;
 
     return true;
   });
@@ -242,6 +262,24 @@ const AdminCompanyView = () => {
             <option value="validado">Validados</option>
             <option value="pendiente">Pendientes</option>
             <option value="sin_convenio">Sin convenio</option>
+          </select>
+        </div>
+
+        {/* Filtro por curso académico */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-[var(--text-muted)]">
+            Curso:
+          </label>
+
+          <select
+            className={`${selectCls} w-full sm:w-auto`}
+            value={filterCourse}
+            onChange={(e) => setFilterCourse(e.target.value)}
+          >
+            <option value="">Todos los cursos</option>
+            {availableCourses.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
           </select>
         </div>
 

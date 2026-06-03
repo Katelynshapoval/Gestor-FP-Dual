@@ -311,15 +311,23 @@ const ReapplyForm = ({ companyData, specialities, transports, onSuccess }) => {
         ["url", window.location.origin],
       ].forEach(([k, v]) => data.append(k, v));
 
-      await postForm("/reapplyCompanyRequest", data);
+      const res = await fetch("/reapplyCompanyRequest", { method: "POST", body: data });
+      const json = await res.json().catch(() => ({}));
+
+      if (res.status === 409) {
+        setMsg({ ok: false, text: json.error || "Ya existe una solicitud para el curso actual." });
+        return;
+      }
+
+      if (!res.ok) throw new Error(json.error || "Error desconocido");
 
       setMsg({
         ok: true,
         text: "Reaplicación enviada correctamente. Recibirás un correo con el nuevo convenio.",
       });
       if (onSuccess) onSuccess();
-    } catch {
-      setMsg({ ok: false, text: "Error al enviar la reaplicación. Inténtalo de nuevo." });
+    } catch (err) {
+      setMsg({ ok: false, text: err.message || "Error al enviar la reaplicación. Inténtalo de nuevo." });
     } finally {
       setSubmitting(false);
     }

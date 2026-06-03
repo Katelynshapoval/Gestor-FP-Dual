@@ -122,6 +122,15 @@ exports.reapplyCompanyRequest = function (request, response) {
   // Resolver idUser en el servidor usando el CIF (username = cif en minúsculas)
   // No se confía en el idUser que pueda venir del cliente
   const username = cif.toLowerCase();
+
+  // El curso es el del año de solicitud: aplicar en 2026 → curso 2026/2027
+  const courseStart = new Date().getFullYear();
+  const courseLabel = `${courseStart}/${courseStart + 1}`;
+
+  // Rango de fechas: cualquier día del año natural de la solicitud
+  const rangeStart = `${courseStart}-01-01`;
+  const rangeEnd   = `${courseStart}-12-31`;
+
   connection.query(
     `SELECT idUser FROM AuxiliarEmpresa WHERE username = ? AND idUser IS NOT NULL ORDER BY fechaPeticion DESC LIMIT 1`,
     [username],
@@ -135,79 +144,99 @@ exports.reapplyCompanyRequest = function (request, response) {
 
       const idUser = lookupResults[0].idUser;
 
-      const query = `
-        INSERT INTO AuxiliarEmpresa (
-          emailCoordinador, nombreCoordinador, telefonoCoordinador,
-          razonSocial, cif, telEmpresa, dirRazSocial, provincia, municipio, cpRazSoc,
-          responsableLegal, cargo, dni, descripcionPuesto, direccionLugarTrabajo,
-          metodosTransporte, fechaPeticion, especialidadYCantAlumnos, idUser, username
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      // Comprobar si ya existe una solicitud para este curso académico
+      connection.query(
+        `SELECT idAuxEmpresa FROM AuxiliarEmpresa
+         WHERE username = ? AND fechaPeticion BETWEEN ? AND ? LIMIT 1`,
+        [username, rangeStart, rangeEnd],
+        (dupErr, dupResults) => {
+          if (dupErr) {
+            console.error("Error al comprobar duplicado de curso:", dupErr);
+            return response.status(500).json({ error: "Error interno al validar la solicitud" });
+          }
+          if (dupResults.length > 0) {
+            return response.status(409).json({
+              error: `Ya existe una solicitud para el curso ${courseLabel}. Solo se permite una por curso académico.`,
+              courseLabel,
+            });
+          }
 
-      const values = [
-        emailCoordinador,
-        nombreCoordinador,
-        telefonoCoordinador,
-        razonSocial,
-        cif,
-        telEmpresa,
-        dirRazSocial,
-        provincia,
-        municipio,
-        cpRazSoc,
-        responsableLegal,
-        cargo,
-        dniRl,
-        descripcionPuesto,
-        direccionLugarTrabajo,
-        metodosTransporte,
-        fechaPeticion,
-        specialities,
-        idUser,
-        username,
-      ];
+          // --- doInsert: crear la nueva solicitud ---
+          const insertQuery = `
+            INSERT INTO AuxiliarEmpresa (
+              emailCoordinador, nombreCoordinador, telefonoCoordinador,
+              razonSocial, cif, telEmpresa, dirRazSocial, provincia, municipio, cpRazSoc,
+              responsableLegal, cargo, dni, descripcionPuesto, direccionLugarTrabajo,
+              metodosTransporte, fechaPeticion, especialidadYCantAlumnos, idUser, username
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-      connection.query(query, values, async (err, result) => {
-        if (err) {
-          console.error("Error al insertar la reaplicación:", err);
-          return response
-            .status(500)
-            .json({ error: "Error al guardar la reaplicación" });
-        }
+          const insertValues = [
+            emailCoordinador,
+            nombreCoordinador,
+            telefonoCoordinador,
+            razonSocial,
+            cif,
+            telEmpresa,
+            dirRazSocial,
+            provincia,
+            municipio,
+            cpRazSoc,
+            responsableLegal,
+            cargo,
+            dniRl,
+            descripcionPuesto,
+            direccionLugarTrabajo,
+            metodosTransporte,
+            fechaPeticion,
+            specialities,
+            idUser,
+            username,
+          ];
 
-        const idAuxEmpresa = result.insertId;
+          connection.query(insertQuery, insertValues, async (err, result) => {
+            if (err) {
+              console.error("Error al insertar la reaplicación:", err);
+              return response
+                .status(500)
+                .json({ error: "Error al guardar la reaplicación" });
+            }
 
-        try {
-          const specialitiesCodes = await recibirNombres(specialities);
-          const convenioDocxPath = await editarConvenio(
-            {
-              razonSocial,
-              responsableLegal,
-              dniRl,
-              dirRazSocial,
-              provincia,
-              municipio,
-              cpRazSoc,
-              cif,
-              cargo,
-              fechaPeticion,
-            },
-            specialitiesCodes,
-          );
-          const convenioPdfPath = await docxToPdf(convenioDocxPath);
-          const idGenerado = await generarId(idAuxEmpresa);
+            const idAuxEmpresa = result.insertId;
 
-          mandarMail(
-            { emailCoordinador, razonSocial },
-            convenioPdfPath,
-            idGenerado,
-            url,
-          );
-        } catch (mailErr) {
-          console.error("Error al generar/enviar convenio en reaplicación:", mailErr);
-        }
+            try {
+              const specialitiesCodes = await recibirNombres(specialities);
+              const convenioDocxPath = await editarConvenio(
+                {
+                  razonSocial,
+                  responsableLegal,
+                  dniRl,
+                  dirRazSocial,
+                  provincia,
+                  municipio,
+                  cpRazSoc,
+                  cif,
+                  cargo,
+                  fechaPeticion,
+                },
+                specialitiesCodes,
+              );
+              const convenioPdfPath = await docxToPdf(convenioDocxPath);
+              const idGenerado = await generarId(idAuxEmpresa);
 
-        response.status(201).json("Reaplicación enviada correctamente");
-      });
+              mandarMail(
+                { emailCoordinador, razonSocial },
+                convenioPdfPath,
+                idGenerado,
+                url,
+              );
+            } catch (mailErr) {
+              console.error("Error al generar/enviar convenio en reaplicación:", mailErr);
+            }
+
+            response.status(201).json("Reaplicación enviada correctamente");
+          });
+        },
+      );
     },
   );
 };
