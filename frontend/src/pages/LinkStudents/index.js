@@ -7,6 +7,59 @@ import StudentCard from "./StudentCard.jsx";
 import DocViewer from "./DocViewer.jsx";
 import "./LinkStudents.css";
 
+const FILTER_SELECT_CLASS =
+  "bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all duration-200";
+const FILTER_LABEL_CLASS =
+  "text-[0.8rem] font-semibold whitespace-nowrap text-[var(--text-muted)]";
+const SPECIALITY_SELECT_CLASS = `${FILTER_SELECT_CLASS} w-full sm:w-auto sm:min-w-[320px] lg:min-w-[420px]`;
+
+const buildYearOptions = (count) =>
+  Array.from({ length: count }, (_, i) => {
+    const y = new Date().getFullYear() - i;
+    return { value: String(y), label: `${y}/${y + 1}` };
+  });
+
+const RequestFilters = ({
+  selectedYear,
+  onYearChange,
+  selectedSpeciality,
+  onSpecialityChange,
+  specialities,
+  yearOptionCount,
+}) => (
+  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto flex-wrap">
+    <div className="flex items-center gap-2">
+      <label className={FILTER_LABEL_CLASS}>Curso:</label>
+      <select
+        className={FILTER_SELECT_CLASS}
+        value={selectedYear}
+        onChange={(e) => onYearChange(e.target.value)}
+      >
+        {buildYearOptions(yearOptionCount).map(({ value, label }) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </div>
+    <div className="flex items-center gap-2">
+      <label className={FILTER_LABEL_CLASS}>Especialidad:</label>
+      <select
+        className={SPECIALITY_SELECT_CLASS}
+        value={selectedSpeciality}
+        onChange={(e) => onSpecialityChange(e.target.value)}
+      >
+        <option value="">Todas</option>
+        {specialities.map((esp) => (
+          <option key={esp} value={esp}>
+            {esp}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+);
+
 // PÁGINA principal de vinculación de alumnos con empresas.
 const LinkStudents = () => {
   const { user } = useUser();
@@ -18,20 +71,23 @@ const LinkStudents = () => {
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [sendingInfo, setSendingInfo] = useState(new Set());
   const [selectedSpeciality, setSelectedSpeciality] = useState("");
+  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [empresa1, setEmpresa1] = useState([]);
   const [empresa2, setEmpresa2] = useState([]);
   const [empresa3, setEmpresa3] = useState([]);
 
-  // Ref para acceder a las specialities dentro de las funciones de refresco
+  // Refs para acceder a user data dentro de funciones de refresco
   // sin que cambiar de referencia cause re-renders
   const specialitiesRef = useRef(user?.specialities);
+  const userRef = useRef(user);
   useEffect(() => {
     specialitiesRef.current = user?.specialities;
+    userRef.current = user;
   }, [user]);
 
   useEffect(() => {
     setExpandedCards(new Set());
-  }, [selectedSpeciality]);
+  }, [selectedSpeciality, selectedYear]);
 
   // Funciones de fetch definidas fuera de cualquier useEffect y sin deps de arrays,
   // leen las specialities desde el ref para evitar el bucle infinito
@@ -45,11 +101,20 @@ const LinkStudents = () => {
       .catch(console.error);
   };
 
-  const fetchLinkRequests = () => {
-    fetch(
-      "/linkStudents",
-      buildPostOptions({ specialities: specialitiesRef.current }),
-    )
+  // yearRef lets fetchLinkRequests always read the latest selected year
+  const yearRef = useRef(String(new Date().getFullYear()));
+  const skipYearRefetch = useRef(true);
+
+  const fetchLinkRequests = (overrideYear) => {
+    const u = userRef.current;
+    const body = {
+      specialities: specialitiesRef.current,
+      user_type: u?.user_type,
+      idUser: u?.idUser,
+      email: u?.email,
+      year: overrideYear ?? yearRef.current,
+    };
+    fetch("/linkStudents", buildPostOptions(body))
       .then((r) => r.json())
       .then((data) => {
         setLinkRequests(data);
@@ -88,6 +153,16 @@ const LinkStudents = () => {
     fetchLinkRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    yearRef.current = selectedYear;
+    if (skipYearRefetch.current) {
+      skipYearRefetch.current = false;
+      return;
+    }
+    fetchLinkRequests(selectedYear);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear]);
 
   const getDoc = (idGestion, tipo) => {
     const rutas = {
@@ -209,6 +284,8 @@ const LinkStudents = () => {
     (r) => !selectedSpeciality || r.nombreEsp === selectedSpeciality,
   );
   const canSendInfo = user?.specialities?.[0] == null;
+  const isEmpresa = user?.user_type === "empresa";
+  const yearOptionCount = isEmpresa ? 3 : 5;
 
   return (
     <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1">
@@ -222,31 +299,18 @@ const LinkStudents = () => {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-          <label className="text-[0.8rem] font-semibold whitespace-nowrap text-[var(--text-muted)]">
-            Especialidad:
-          </label>
-
-          <select
-            className="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm
-      focus:outline-none focus:ring-2 focus:ring-red-500/50
-      transition-all duration-200 ease-in-out
-      w-full sm:w-auto sm:min-w-[320px] lg:min-w-[420px] "
-            value={selectedSpeciality}
-            onChange={(e) => setSelectedSpeciality(e.target.value)}
-          >
-            <option value="">Todas</option>
-            {specialities.map((esp) => (
-              <option key={esp} value={esp}>
-                {esp}
-              </option>
-            ))}
-          </select>
-        </div>
+        <RequestFilters
+          selectedYear={selectedYear}
+          onYearChange={setSelectedYear}
+          selectedSpeciality={selectedSpeciality}
+          onSpecialityChange={setSelectedSpeciality}
+          specialities={specialities}
+          yearOptionCount={yearOptionCount}
+        />
       </div>
 
       <div className="space-y-4">
-        {user?.user_type == "empresa" && (
+        {isEmpresa && (
           <p className="text-sm text-red-600 font-medium bg-red-50 border border-red-200 rounded-lg px-4 py-2">
             La asignación de un alumno no es definitiva hasta la firma del Anexo
             2 o 3. Hasta entonces, el alumno puede ser asignado a otra empresa.

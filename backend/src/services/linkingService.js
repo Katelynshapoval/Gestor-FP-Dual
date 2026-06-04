@@ -4,9 +4,9 @@ const { generarId } = require("../utils/idUtils");
 
 // MOSTRAR TODAS LAS PETICIONES DE ALUMNOS
 exports.showStudentRequests = function (request, response) {
-  const specialities = request.body.specialities;
+  const { specialities, user_type, idUser, email, year } = request.body;
 
-  let query = `
+  const baseQuery = `
     SELECT 
         g.idGestion, 
         g.idAlumno, 
@@ -58,31 +58,91 @@ exports.showStudentRequests = function (request, response) {
     JOIN especialidad es ON g.idEspecialidad = es.idEspecialidad
     LEFT JOIN evaluacion e ON g.idEvaluacion = e.idEvaluacion
     LEFT JOIN calendario c ON c.idAlumno = g.idAlumno
-`;
+  `;
 
-  // Filtro base: solo año actual
-  query += ` WHERE YEAR(g.fechaPeticion) = YEAR(CURDATE())`;
+  if (user_type === "empresa") {
+    // Empresas ven alumnos de sus especialidades filtrados por año.
+    // El año viene del frontend (selector); si no se manda se usa el año actual
+    // porque los alumnos se matriculan/peticionan en el año natural en curso.
+    //
+    // Las especialidades se leen directamente de AuxiliarEmpresa usando el CIF
+    // (username) como clave porque idUser puede no estar migrado en la tabla.
+    // Si tampoco hay username, fallback a buscar por emailCoordinador.
 
-  // Si el usuario no es admin, añadir filtro por especialidades
+    const targetYear = year ? parseInt(year, 10) : new Date().getFullYear();
+
+    // Buscar por username (= CIF en minúsculas) — más fiable que idUser
+    // porque idUser requiere la columna que añadimos por migración
+    const espQuery = `
+      SELECT especialidadYCantAlumnos
+      FROM AuxiliarEmpresa
+      WHERE (idUser = ? OR emailCoordinador = ?)
+        AND especialidadYCantAlumnos IS NOT NULL
+      ORDER BY fechaPeticion DESC
+      LIMIT 1`;
+
+    connection.query(espQuery, [idUser, email], (espErr, espResults) => {
+      if (espErr || espResults.length === 0) {
+        console.error("No se encontró solicitud de empresa para idUser:", idUser, "email:", email, espErr);
+        return response.status(200).json([]);
+      }
+
+      let empresaSpecialities = [];
+      try {
+        const raw = espResults[0].especialidadYCantAlumnos;
+        const parsed = JSON.parse(raw);
+        // Formato: [[id1,id2,...],[qty1,qty2,...]]  ó  [id1,id2,...]
+        empresaSpecialities = Array.isArray(parsed[0]) ? parsed[0] : parsed;
+        // Coerce to numbers and filter garbage
+        empresaSpecialities = empresaSpecialities.map(Number).filter(n => !isNaN(n) && n > 0);
+      } catch (e) {
+        console.error("Error al parsear especialidadYCantAlumnos:", e);
+        return response.status(200).json([]);
+      }
+
+      if (empresaSpecialities.length === 0) return response.status(200).json([]);
+
+      const placeholders = empresaSpecialities.map(() => "?").join(",");
+      const q = baseQuery +
+        ` WHERE YEAR(g.fechaPeticion) = ?
+          AND g.idEspecialidad IN (${placeholders})
+          ORDER BY es.nombreEsp`;
+
+      connection.query(q, [targetYear, ...empresaSpecialities], (error, results) => {
+        if (error) {
+          console.error("Error en consulta empresa:", error);
+          return response.status(500).json({ error: "Error al obtener las peticiones" });
+        }
+        response.status(200).json(results);
+      });
+    });
+    return;
+  }
+
+  // Usuarios no-empresa (admin, tutores): todos los años con filtro opcional
+  let query = baseQuery + " WHERE 1=1";
+  const params = [];
+
+  const targetYear = year ? parseInt(year, 10) : new Date().getFullYear();
+  query += " AND YEAR(g.fechaPeticion) = ?";
+  params.push(targetYear);
+
   if (specialities && specialities.length > 0 && specialities[0] !== null) {
     const placeholders = specialities.map(() => "?").join(",");
     query += ` AND g.idEspecialidad IN (${placeholders})`;
+    params.push(...specialities);
   }
 
-  // ORDER BY siempre al final de la query
-  query += ` ORDER BY YEAR(g.fechaPeticion) DESC, es.nombreEsp;`;
+  query += " ORDER BY YEAR(g.fechaPeticion) DESC, es.nombreEsp;";
 
-  connection.query(query, specialities, (error, results) => {
+  connection.query(query, params, (error, results) => {
     if (error) {
       console.error("Error en la consulta:", error);
-      return response
-        .status(500)
-        .json({ error: "Error al obtener las peticiones" });
+      return response.status(500).json({ error: "Error al obtener las peticiones" });
     }
     response.status(200).json(results);
   });
-};
-
+}
 // ENVIAR CORREO A LA EMPRESA CON EL CV DEL ALUMNO ASIGNADO
 exports.sendMail = function (request, response) {
   const idGestion = request.body.idGestion;
