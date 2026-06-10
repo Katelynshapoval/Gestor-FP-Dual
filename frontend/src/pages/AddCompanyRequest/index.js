@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import * as FormatValidation from "../../functions/FormatValidation.js";
+import * as FormatValidation from "../../utils/formatValidation.js";
 import { useFormMessage } from "../../hooks/useFormMessage.js";
 import { postForm } from "../../utils/api.js";
 import SpecialitySelector from "./SpecialitySelector.jsx";
 import TransportSelector from "./TransportSelector.jsx";
 import FormMessage from "../../components/ui/FormMessage.jsx";
-import "../../shared_styles/forms.css";
+import "../../styles/forms.css";
 
 // Componente reutilizable para cada campo del formulario
 const Field = ({ id, label, hint, children }) => (

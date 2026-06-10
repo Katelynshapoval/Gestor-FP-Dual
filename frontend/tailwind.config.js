@@ -4,19 +4,25 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Paleta principal Salesianos
         brand: {
+          DEFAULT: "var(--color-brand)",
+          dark: "var(--color-brand-dark)",
           50: "#fff1f1",
           100: "#ffe0e0",
           200: "#ffc5c5",
           300: "#ff9e9e",
           400: "#ff6464",
-          500: "#f81d1d", // rojo principal
+          500: "#f81d1d",
           600: "#e00d0d",
           700: "#bc0808",
           800: "#9b0b0b",
           900: "#810f0f",
           950: "#460303",
+        },
+        muted: "var(--color-muted)",
+        foreground: "var(--color-foreground)",
+        border: {
+          DEFAULT: "var(--color-border)",
         },
         surface: {
           0: "#ffffff",
@@ -24,11 +30,6 @@ module.exports = {
           100: "#f5f5f5",
           200: "#e8e8e8",
           300: "#d4d4d4",
-        },
-        extend: {
-          colors: {
-            muted: "var(--text-muted)",
-          },
         },
       },
       fontFamily: {

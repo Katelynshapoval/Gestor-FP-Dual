@@ -3,7 +3,7 @@ import { useUser } from "../../globales/User";
 import { useNavigate } from "react-router-dom";
 import { buildPostOptions, postForm } from "../../utils/api.js";
 import { ofuscarId } from "../../utils/idObfuscation.js";
-import * as FormatValidation from "../../functions/FormatValidation.js";
+import * as FormatValidation from "../../utils/formatValidation.js";
 
 import Dropdown from "./Dropdown.jsx";
 import CompanyInfo from "./CompanyInfo.jsx";
@@ -15,7 +15,7 @@ import { FaFilePdf } from "react-icons/fa6";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 
-import "../../shared_styles/forms.css";
+import "../../styles/forms.css";
 
 // Este componente gestiona la subida del convenio firmado
 const SubirConvenio = ({ companyData, onUploadSuccess }) => {
@@ -125,7 +125,7 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
       {/* Zona de subida */}
       {convenioStatus !== "validado" && (
         <div className="space-y-3">
-          <label className="text-sm font-medium text-[var(--text)]">
+          <label className="text-sm font-medium text-foreground">
             {convenioStatus === "pendiente"
               ? "Reemplazar convenio (PDF)"
               : "Subir convenio firmado (PDF)"}
@@ -155,7 +155,7 @@ const SubirConvenio = ({ companyData, onUploadSuccess }) => {
               className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                 !file || uploading
                   ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                  : "bg-[var(--brand)] text-white border border-[var(--brand)] hover:bg-[var(--brand-dark)]"
+                  : "border border-brand bg-brand text-white hover:bg-brand-dark"
               }`}
             >
               {uploading ? "Subiendo…" : "Subir convenio"}

@@ -12,7 +12,7 @@ import LinkStudents from "./pages/LinkStudents";
 import CompanyView from "./pages/CompanyView/";
 import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
 
-import "./shared_styles/main.css";
+import "./styles/main.css";
 
 // Envuelve una página en el layout general (Header + Footer)
 const Page = ({ children }) => <PageLayout>{children}</PageLayout>;

@@ -1,12 +1,14 @@
+import { sectionLabelClass } from "../../../../components/ui/cardStyles";
+
 const Evaluacion = ({ r, user, onGetEvaluation }) => {
   const isEmpresa = user?.user_type === "empresa";
 
   return (
     <div className="border-t pt-4">
-      <p className="section-label">Evaluación</p>
+      <p className={sectionLabelClass}>Evaluación</p>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <p className="text-xl sm:text-[1.3rem] font-bold text-[var(--brand)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xl font-bold text-brand sm:text-[1.3rem]">
           {r.notaTotal ? r.notaTotal.toFixed(2) : "—"}
         </p>
 

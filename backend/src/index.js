@@ -1,24 +1,19 @@
-const express = require('express');
-const morgan = require('morgan');
+require("dotenv").config();
+
+const express = require("express");
+const morgan = require("morgan");
+
+const routes = require("./routes");
 
 const app = express();
-app.set('port', 3001);
-app.set('json spaces', 2);
+const PORT = process.env.PORT || 3001;
 
-app.use(morgan('dev'));
-app.use(express.urlencoded({extended:false}));
+app.set("json spaces", 2);
+app.use(morgan("dev"));
+app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+app.use(routes);
 
-app.use(require('./routes/preferencesRoute'));
-app.use(require('./routes/usersRoute'));
-app.use(require('./routes/specialitiesRoute'));
-app.use(require('./routes/possibleTransportsRoute.js'));
-app.use(require('./routes/dualStudentsRoute'));
-app.use(require('./routes/companyRequestRoute'));
-app.use(require('./routes/evaluationsRoute'));
-app.use(require('./routes/linkingRoute'));
-
-
-app.listen(app.get('port'), () => {
-    console.log(`Server listening on port ${app.get('port')}`);
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });

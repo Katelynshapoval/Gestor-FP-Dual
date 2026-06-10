@@ -41,14 +41,14 @@ function AddConvenio() {
 
   return (
     <div className="flex items-center justify-center px-4 bg-gray-50 p-10">
-      <div className="w-full max-w-md bg-white border border-[var(--border)] rounded-xl p-6 shadow-sm">
+      <div className="w-full max-w-md rounded-xl border border-border bg-white p-6 shadow-sm">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="text-3xl mb-2">📄</div>
 
           <h2 className="text-xl font-semibold">Subir convenio</h2>
 
-          <p className="text-sm text-[var(--text-muted)] mt-1">
+          <p className="mt-1 text-sm text-muted">
             Por favor, adjunta el convenio que recibiste por correo debidamente
             firmado.
           </p>
@@ -56,7 +56,7 @@ function AddConvenio() {
 
         {/* Upload */}
         <div className="space-y-3">
-          <label className="text-xs font-semibold text-[var(--text-muted)]">
+          <label className="text-xs font-semibold text-muted">
             Convenio firmado (PDF)
           </label>
 

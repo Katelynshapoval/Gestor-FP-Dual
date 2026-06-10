@@ -1,4 +1,5 @@
-/* TAILWIND */
+@import "./theme.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -21,7 +22,7 @@ body,
 body {
   font-family: "Roboto", sans-serif;
   font-size: 0.9375rem;
-  @apply text-gray-900 bg-surface-50;
+  @apply bg-surface-50 text-foreground;
   -webkit-font-smoothing: antialiased;
 }
 .app {
@@ -30,7 +31,7 @@ body {
   flex-direction: column;
 }
 
-/* LOGIN */
+/* Login */
 .login-page {
   flex: 1;
   display: flex;
@@ -52,8 +53,7 @@ body {
   padding: 2rem;
 }
 .login-card {
-  @apply bg-white border border-surface-200;
-  border-radius: 1.125rem;
+  @apply rounded-xl border border-surface-200 bg-white;
   padding: 2.75rem 2.5rem;
   width: 100%;
   max-width: 380px;
@@ -80,7 +80,7 @@ body {
 }
 .login-card .subtitle {
   font-size: 0.85rem;
-  @apply text-gray-500;
+  @apply text-muted;
   margin: 0 0 1.75rem;
 }
 .login-divider {
@@ -89,13 +89,13 @@ body {
   margin: 1.5rem 0;
 }
 .login-error {
-  @apply bg-brand-50 border border-brand-500/25 rounded-lg text-brand-700;
+  @apply rounded-lg border border-brand-500/25 bg-brand-50 text-brand-700;
   padding: 0.65rem 1rem;
   font-size: 0.82rem;
   margin-top: 1rem;
 }
 
-/* MODAL VISOR DE DOCUMENTOS */
+/* Modal (ConvenioViewer y similares) */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -108,7 +108,7 @@ body {
   animation: fadeIn 0.15s ease-out;
 }
 .modal-box {
-  @apply bg-white rounded-xl;
+  @apply rounded-xl bg-white;
   width: 100%;
   max-width: 92%;
   height: 88vh;
@@ -131,7 +131,7 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   margin: 0;
-  @apply text-gray-900;
+  @apply text-foreground;
 }
 .modal-actions {
   display: flex;
@@ -164,7 +164,7 @@ body {
   border: none;
 }
 
-/* EVALUACIÓN */
+/* Evaluación */
 .eval-header {
   display: flex;
   align-items: center;
@@ -181,10 +181,10 @@ body {
   font-size: 0.75rem;
   padding: 0.25rem 0.65rem;
   border-radius: 6px;
-  @apply bg-surface-50 border border-surface-200 text-gray-500;
+  @apply border border-surface-200 bg-surface-50 text-muted;
 }
 .eval-score-box {
-  @apply bg-gradient-to-br from-brand-500 to-brand-700 rounded-xl;
+  @apply rounded-xl bg-gradient-to-br from-brand-500 to-brand-700;
   padding: 1.25rem 1.5rem;
   color: #fff;
   margin-bottom: 1.25rem;
@@ -209,13 +209,7 @@ body {
   margin-top: 0.35rem;
 }
 
-/* UTILIDADES */
-.text-muted {
-  @apply text-gray-500;
-}
-.text-brand {
-  @apply text-brand-500;
-}
+/* Utilidades de layout */
 .divider {
   height: 1px;
   @apply bg-surface-200;

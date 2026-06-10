@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import * as FormatValidation from "../../functions/FormatValidation.js";
+import * as FormatValidation from "../../utils/formatValidation.js";
 import { useFormMessage } from "../../hooks/useFormMessage.js";
 import { postForm } from "../../utils/api.js";
 import GenderField from "./GenderField.jsx";
@@ -7,7 +7,7 @@ import LegalGuardianFields from "./LegalGuardianFields.jsx";
 import FormMessage from "../../components/ui/FormMessage.jsx";
 import { MdOutlineFileUpload } from "react-icons/md";
 
-import "../../shared_styles/forms.css";
+import "../../styles/forms.css";
 
 function Field({ id, label, children }) {
   return (
@@ -262,14 +262,7 @@ function AddDualStudent() {
           />
           {esMenor && (
             <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mb-4">
-              <p
-                style={{
-                  margin: "0 0 .75rem",
-                  fontSize: ".8rem",
-                  fontWeight: 600,
-                  color: "var(--brand)",
-                }}
-              >
+              <p className="mb-3 text-[0.8rem] font-semibold text-brand">
                 ⚠ El alumno es menor de edad — datos del tutor legal
               </p>
               <LegalGuardianFields
@@ -443,7 +436,7 @@ function AddDualStudent() {
                   href="https://docs.google.com/forms/d/e/1FAIpQLSfnDOKn6jRMtjhdqJTh2FnHTu_sa-ZiuodFvTRvbT-gm082ow/viewform"
                   target="_blank"
                   rel="noreferrer"
-                  style={{ color: "var(--brand)" }}
+                  className="text-brand"
                 >
                   descargar aquí
                 </a>

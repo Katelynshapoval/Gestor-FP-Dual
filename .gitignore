@@ -1,6 +1,9 @@
 # Ignorar todos los node_modules
 **/node_modules/
 
+# Build de producción
+frontend/build/
+
 # Ignorar todos los archivos .env
 **/.env
 

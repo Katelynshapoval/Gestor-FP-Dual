@@ -5,6 +5,17 @@ import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { FaRegFileAlt } from "react-icons/fa";
 
+import {
+  cardBodyClass,
+  cardClass,
+  cardEspClass,
+  cardHeaderClass,
+  cardNameClass,
+  sectionLabelClass,
+  signedBadgeClass,
+  toggleBtnClass,
+} from "../../../components/ui/cardStyles";
+
 // Lista de especialidades solicitadas por la empresa
 const EspecialidadList = ({ raw, allSpecialities }) => {
   const items = parseEspecialidades(raw);
@@ -88,13 +99,13 @@ const CompanyCard = ({
     .join(", ");
 
   return (
-    <div className="student-card">
+    <div className={cardClass}>
       <div
-        className="student-card-header flex items-center justify-between gap-2"
+        className={`${cardHeaderClass} flex items-center justify-between gap-2`}
         onClick={() => onToggle(empresa.idAuxEmpresa)}
       >
         <div className="flex-1 min-w-0 overflow-hidden">
-          <p className="student-name flex items-center gap-2 min-w-0">
+          <p className={`${cardNameClass} flex items-center gap-2 min-w-0`}>
             <FaBuilding className="text-brand-500 shrink-0" />
 
             <span className="truncate">{empresa.razonSocial}</span>
@@ -104,21 +115,21 @@ const CompanyCard = ({
             </span>
           </p>
 
-          <p className="student-esp text-sm text-gray-500 hidden sm:block truncate">
+          <p className={`${cardEspClass} hidden truncate text-sm text-gray-500 sm:block`}>
             {formatDate(empresa.fechaPeticion)} · {empresa.emailCoordinador}
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <span
-            className={`signed-badge ${cls} flex items-center gap-1 whitespace-nowrap`}
+            className={`${signedBadgeClass} ${cls} flex items-center gap-1 whitespace-nowrap`}
           >
             <Icon className="text-[13px]" />
             <span>{label}</span>
           </span>
 
           <button
-            className={`toggle-btn ${isExpanded ? "rotate-180" : ""}`}
+            className={`${toggleBtnClass} ${isExpanded ? "rotate-180" : ""}`}
             onClick={(e) => {
               e.stopPropagation();
               onToggle(empresa.idAuxEmpresa);
@@ -136,11 +147,11 @@ const CompanyCard = ({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="student-card-body grid gap-6 grid-cols-1 md:grid-cols-2">
+          <div className={`${cardBodyClass} grid grid-cols-1 gap-6 md:grid-cols-2`}>
             {/* Columna izquierda */}
             <div className="space-y-5">
               <div>
-                <p className="section-label">Datos de la empresa</p>
+                <p className={sectionLabelClass}>Datos de la empresa</p>
                 <div className="space-y-1">
                   <InfoRow label="Razón social" value={empresa.razonSocial} />
                   <InfoRow label="CIF" value={empresa.cif} />
@@ -171,7 +182,7 @@ const CompanyCard = ({
 
               {/* Credenciales de acceso */}
               <div>
-                <p className="section-label">Credenciales de acceso</p>
+                <p className={sectionLabelClass}>Credenciales de acceso</p>
 
                 <div className="p-3 rounded-lg border border-surface-200 bg-white space-y-2">
                   <InfoRow
@@ -205,7 +216,7 @@ const CompanyCard = ({
             {/* Columna derecha */}
             <div className="space-y-5">
               <div>
-                <p className="section-label">Especialidades solicitadas</p>
+                <p className={sectionLabelClass}>Especialidades solicitadas</p>
                 <EspecialidadList
                   raw={empresa.especialidadYCantAlumnos}
                   allSpecialities={allSpecialities}
@@ -214,7 +225,7 @@ const CompanyCard = ({
 
               {empresa.descripcionPuesto && (
                 <div>
-                  <p className="section-label">Descripción del puesto</p>
+                  <p className={sectionLabelClass}>Descripción del puesto</p>
                   <p className="text-sm text-gray-900">
                     {empresa.descripcionPuesto}
                   </p>
@@ -223,7 +234,7 @@ const CompanyCard = ({
 
               {/* Sección de convenio */}
               <div>
-                <p className="section-label">Convenio</p>
+                <p className={sectionLabelClass}>Convenio</p>
 
                 <div
                   className={`p-4 rounded-lg border ${

@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 
-import "../../shared_styles/forms.css";
-import "../../pages/LinkStudents/LinkStudents.css";
+import "../../styles/forms.css";
+import { signedBadgeClass } from "../../components/ui/cardStyles";
 
 import ConvenioViewer from "./components/ConvenioViewer";
 import CompanyCard from "./components/CompanyCard";
@@ -208,17 +208,17 @@ const AdminCompanyView = () => {
 
         {/* Contadores */}
         <div className="flex flex-wrap gap-2 text-xs">
-          <span className="signed-badge bg-green-500/10 text-green-800">
+          <span className={`${signedBadgeClass} bg-green-500/10 text-green-800`}>
             <IoIosCheckmarkCircleOutline /> {totalValidado} validado
             {totalValidado !== 1 ? "s" : ""}
           </span>
 
-          <span className="signed-badge bg-yellow-400/15 text-yellow-800">
+          <span className={`${signedBadgeClass} bg-yellow-400/15 text-yellow-800`}>
             <MdPendingActions /> {totalPendiente} pendiente
             {totalPendiente !== 1 ? "s" : ""}
           </span>
 
-          <span className="signed-badge bg-red-500/10 text-red-800">
+          <span className={`${signedBadgeClass} bg-red-500/10 text-red-800`}>
             <MdOutlineCancel /> {totalSin} sin convenio
           </span>
         </div>
@@ -228,7 +228,7 @@ const AdminCompanyView = () => {
       <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-center">
         {/* Filtro por especialidad */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
-          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-[var(--text-muted)]">
+          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
             Especialidad:
           </label>
 
@@ -249,7 +249,7 @@ const AdminCompanyView = () => {
 
         {/* Filtro por convenio */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
-          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-[var(--text-muted)]">
+          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
             Convenio:
           </label>
 
@@ -267,7 +267,7 @@ const AdminCompanyView = () => {
 
         {/* Filtro por curso académico */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
-          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-[var(--text-muted)]">
+          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
             Curso:
           </label>
 
@@ -285,7 +285,7 @@ const AdminCompanyView = () => {
 
         {/* Ordenación */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
-          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-[var(--text-muted)]">
+          <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
             Ordenar:
           </label>
 

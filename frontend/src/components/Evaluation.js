@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import * as FormatValidation from '../functions/FormatValidation.js';
+import * as FormatValidation from "../utils/formatValidation.js";
 import { useFormMessage } from '../hooks/useFormMessage.js';
 import { postJSON } from '../utils/api.js';
 import { verificarId } from '../utils/idObfuscation.js';
