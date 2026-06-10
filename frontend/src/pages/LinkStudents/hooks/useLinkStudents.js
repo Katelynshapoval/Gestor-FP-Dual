@@ -235,6 +235,34 @@ export const useLinkStudents = () => {
     (r) => !selectedSpeciality || r.nombreEsp === selectedSpeciality,
   );
 
+  // Reserva un alumno en nombre de la empresa autenticada
+  const reserveStudent = async (idGestion) => {
+    try {
+      await postJSON("/reserveStudent", {
+        idGestion,
+        idUser: user?.idUser,
+        email: user?.email,
+      });
+      fetchLinkRequests();
+    } catch (err) {
+      console.error("Error al reservar alumno:", err);
+    }
+  };
+
+  // Cancela la reserva de un alumno en nombre de la empresa autenticada
+  const unreserveStudent = async (idGestion) => {
+    try {
+      await postJSON("/unreserveStudent", {
+        idGestion,
+        idUser: user?.idUser,
+        email: user?.email,
+      });
+      fetchLinkRequests();
+    } catch (err) {
+      console.error("Error al cancelar la reserva:", err);
+    }
+  };
+
   const canSendInfo = user?.specialities?.[0] == null;
   const isEmpresa = user?.user_type === "empresa";
   const yearOptionCount = isEmpresa ? 3 : 5;
@@ -264,5 +292,7 @@ export const useLinkStudents = () => {
     getAnexo,
     closeDocViewer,
     validateDoc,
+    reserveStudent,
+    unreserveStudent,
   };
 };

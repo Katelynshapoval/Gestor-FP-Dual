@@ -31,6 +31,8 @@ const LinkStudents = () => {
     getAnexo,
     closeDocViewer,
     validateDoc,
+    reserveStudent,
+    unreserveStudent,
   } = useLinkStudents();
 
   return (
@@ -85,6 +87,8 @@ const LinkStudents = () => {
             onGetDoc={getDoc}
             onGetAnexo={getAnexo}
             onGetEvaluation={(id) => navigate(`/evaluate/${ofuscarId(id)}`)}
+            onReserve={reserveStudent}
+            onUnreserve={unreserveStudent}
             user={user}
           />
         ))}

@@ -1,13 +1,13 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useUser } from "../../globales/User";
 import { useNavigate } from "react-router-dom";
-import { buildPostOptions, postForm } from "../../utils/api.js";
+import { buildPostOptions, postForm, postJSON } from "../../utils/api.js";
 import { ofuscarId } from "../../utils/idObfuscation.js";
 import * as FormatValidation from "../../utils/formatValidation.js";
 
 import Dropdown from "./Dropdown.jsx";
 import CompanyInfo from "./CompanyInfo.jsx";
-import AssignedStudents from "./AssignedStudents.jsx";
+import MisReservas from "./MisReservas.jsx";
 import SpecialitySelector from "../AddCompanyRequest/SpecialitySelector.jsx";
 import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
 
@@ -457,7 +457,7 @@ const CompanyView = () => {
   const navigate = useNavigate();
 
   const [companyData, setCompanyData] = useState(null);
-  const [assignedStudents, setAssignedStudents] = useState([]);
+  const [reservations, setReservations] = useState([]);
   const [specialities, setSpecialities] = useState([]);
   const [transports, setTransports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -470,9 +470,33 @@ const CompanyView = () => {
       "/getCompanyDataByEmail",
       buildPostOptions({ email: user.email }),
     );
+    if (res.ok) setCompanyData(await res.json());
+  };
 
-    if (res.ok) {
-      setCompanyData(await res.json());
+  // Refresca las reservas de la empresa
+  const fetchReservations = useCallback(async () => {
+    try {
+      const data = await postJSON("/getMyReservations", {
+        idUser: user?.idUser,
+        email: user?.email,
+      });
+      setReservations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error al obtener reservas:", err);
+    }
+  }, [user]);
+
+  // Cancela la reserva de un alumno
+  const handleCancelReservation = async (idGestion) => {
+    try {
+      await postJSON("/unreserveStudent", {
+        idGestion,
+        idUser: user?.idUser,
+        email: user?.email,
+      });
+      fetchReservations();
+    } catch (err) {
+      console.error("Error al cancelar reserva:", err);
     }
   };
 
@@ -494,17 +518,11 @@ const CompanyView = () => {
           fetch("/getAllPossibleTransports"),
         ]);
 
-        if (companyRes.ok) {
-          setCompanyData(await companyRes.json());
-        }
+        if (companyRes.ok) setCompanyData(await companyRes.json());
+        if (specRes.ok) setSpecialities(await specRes.json());
+        if (transRes.ok) setTransports(await transRes.json());
 
-        if (specRes.ok) {
-          setSpecialities(await specRes.json());
-        }
-
-        if (transRes.ok) {
-          setTransports(await transRes.json());
-        }
+        await fetchReservations();
       } catch (err) {
         console.error("Error al cargar datos:", err);
         setError("Error al cargar los datos. Inténtalo de nuevo.");
@@ -514,7 +532,7 @@ const CompanyView = () => {
     };
 
     fetchAll();
-  }, [user, navigate]);
+  }, [user, navigate, fetchReservations]);
 
   // Estado de carga
   if (loading) {
@@ -613,16 +631,17 @@ const CompanyView = () => {
           )}
         </Dropdown>
 
-        {/* Alumnos asignados */}
+        {/* Alumnos reservados */}
         <Dropdown
-          title="Alumnos asignados"
-          subtitle={`${assignedStudents.length} alumno${
-            assignedStudents.length !== 1 ? "s" : ""
-          }`}
+          title="Mis reservas"
+          subtitle={`${reservations.length} alumno${reservations.length !== 1 ? "s" : ""}`}
+          defaultOpen={reservations.length > 0}
         >
-          <AssignedStudents
-            students={assignedStudents}
-            userName={user.nombre}
+          <MisReservas
+            reservations={reservations}
+            user={user}
+            onUpload={fetchReservations}
+            onCancel={handleCancelReservation}
           />
         </Dropdown>
       </div>

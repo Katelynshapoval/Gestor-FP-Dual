@@ -9,6 +9,7 @@ import { signedBadgeClass } from "../../components/ui/cardStyles";
 
 import ConvenioViewer from "./components/ConvenioViewer";
 import CompanyCard from "./components/CompanyCard";
+import ReservasAdmin from "./components/ReservasAdmin";
 import { parseEspecialidades } from "./helpers";
 
 // El curso es el del año natural de la solicitud: aplicar en 2026 → "2026/2027"
@@ -30,6 +31,8 @@ const AdminCompanyView = () => {
   // Estados principales de datos
   const [companies, setCompanies] = useState([]);
   const [allSpecialities, setAllSpecialities] = useState([]);
+  const [allReservations, setAllReservations] = useState([]);
+  const [showReservas, setShowReservas] = useState(false);
 
   // Estados de UI
   const [loading, setLoading] = useState(true);
@@ -54,10 +57,12 @@ const AdminCompanyView = () => {
     Promise.all([
       fetch("/getAllCompanies").then((r) => r.json()),
       fetch("/getAllSpecialities").then((r) => r.json()),
+      fetch("/getAllReservations").then((r) => r.json()),
     ])
-      .then(([companiesData, specData]) => {
+      .then(([companiesData, specData, reservationsData]) => {
         setCompanies(companiesData);
         setAllSpecialities(specData);
+        setAllReservations(Array.isArray(reservationsData) ? reservationsData : []);
         setLoading(false);
       })
       .catch((err) => {
@@ -300,6 +305,36 @@ const AdminCompanyView = () => {
             <option value="nombre_za">Nombre Z → A</option>
           </select>
         </div>
+      </div>
+
+      {/* Reservas activas de alumnos */}
+      <div className="rounded-xl border bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowReservas((v) => !v)}
+          className="flex w-full items-center justify-between px-5 py-4 text-left"
+        >
+          <div>
+            <p className="font-semibold text-gray-900">Reservas de alumnos</p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {allReservations.length} reserva{allReservations.length !== 1 ? "s" : ""} activa{allReservations.length !== 1 ? "s" : ""}
+              {allReservations.filter((r) => r.documentoSubido && !r.anexo2FirmadoRecibido && !r.anexo3FirmadoRecibido).length > 0 && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                  {allReservations.filter((r) => r.documentoSubido && !r.anexo2FirmadoRecibido && !r.anexo3FirmadoRecibido).length} pendiente{allReservations.filter((r) => r.documentoSubido && !r.anexo2FirmadoRecibido && !r.anexo3FirmadoRecibido).length !== 1 ? "s" : ""} de validar
+                </span>
+              )}
+            </p>
+          </div>
+          <span className={`text-xs text-gray-400 transition-transform duration-200 ${showReservas ? "rotate-180" : ""}`}>
+            ▾
+          </span>
+        </button>
+
+        {showReservas && (
+          <div className="border-t px-5 py-4">
+            <ReservasAdmin reservations={allReservations} />
+          </div>
+        )}
       </div>
 
       {/* Lista de empresas */}

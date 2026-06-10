@@ -2,6 +2,7 @@ import { IoMdArrowDropdown } from "react-icons/io";
 import { FaRegCalendarCheck } from "react-icons/fa6";
 import { MdOutlineCancel } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
+import { RxLockClosed } from "react-icons/rx";
 
 import {
   cardBodyClass,
@@ -22,6 +23,7 @@ import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import Evaluacion from "./student-card/Evaluacion";
 
+// Badge para el estado A2/A3 y calendario (vista admin/tutor)
 const StatusBadge = ({ ok, icon: Icon, label }) => (
   <span
     className={`${signedBadgeClass} ${
@@ -32,6 +34,58 @@ const StatusBadge = ({ ok, icon: Icon, label }) => (
     {label}
   </span>
 );
+
+// Botón de reserva con los tres estados posibles para empresa:
+//  1. alumno asignado definitivamente (bloqueado)
+//  2. reservado por esta empresa (cancelar)
+//  3. disponible (reservar)
+const ReservaButton = ({ r, onReserve, onUnreserve }) => {
+  const asignadoDefinitivo = r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido;
+
+  if (asignadoDefinitivo) {
+    return (
+      <span className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-400">
+        <RxLockClosed className="shrink-0" />
+        Ya asignado
+      </span>
+    );
+  }
+
+  if (r.miReserva) {
+    return (
+      <div className="flex items-center gap-2">
+        {r.totalReservas > 1 && (
+          <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
+            {r.totalReservas} interesadas
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onUnreserve(r.idGestion);
+          }}
+          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+        >
+          Cancelar reserva
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onReserve(r.idGestion);
+      }}
+      className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition-all duration-200 ease-out hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+    >
+      Reservar alumno
+    </button>
+  );
+};
 
 // Tarjeta de alumno con cabecera compacta y panel expandible
 const StudentCard = ({
@@ -47,6 +101,8 @@ const StudentCard = ({
   onGetDoc,
   onGetAnexo,
   onGetEvaluation,
+  onReserve,
+  onUnreserve,
   user,
 }) => {
   const isEmpresa = user?.user_type === "empresa";
@@ -119,12 +175,11 @@ const StudentCard = ({
               })}
             </div>
           ) : (
-            <button
-              type="button"
-              className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition-all duration-200 ease-out hover:border-red-300 hover:bg-red-50 hover:text-red-700"
-            >
-              Reservar alumno
-            </button>
+            <ReservaButton
+              r={r}
+              onReserve={onReserve}
+              onUnreserve={onUnreserve}
+            />
           )}
 
           <button
