@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { FaFilePdf } from "react-icons/fa6";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdPendingActions, MdOutlineCancel } from "react-icons/md";
+import ReservaDocViewer from "./ReservaDocViewer";
 
 // Devuelve la etiqueta de estado del alumno en la reserva
 function estadoLabel(r) {
@@ -14,12 +16,8 @@ function estadoLabel(r) {
 }
 
 // Fila de reserva individual en el panel de admin
-const FilaReserva = ({ r }) => {
+const FilaReserva = ({ r, onVerDoc }) => {
   const { text, cls, Icono } = estadoLabel(r);
-
-  const verDocumento = () => {
-    window.open(`/reservationDoc/${r.idGestion}/${r.idAuxEmpresa}`, "_blank");
-  };
 
   return (
     <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-4 rounded-lg border bg-white px-4 py-3 text-sm">
@@ -48,7 +46,7 @@ const FilaReserva = ({ r }) => {
         {r.documentoSubido === 1 && (
           <button
             type="button"
-            onClick={verDocumento}
+            onClick={() => onVerDoc(r)}
             title="Ver documento firmado"
             className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 transition hover:bg-gray-100"
           >
@@ -62,7 +60,9 @@ const FilaReserva = ({ r }) => {
 };
 
 // Panel completo de reservas para el administrador
-const ReservasAdmin = ({ reservations }) => {
+const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
+  const [viewingDoc, setViewingDoc] = useState(null);
+
   if (!reservations || reservations.length === 0) {
     return (
       <p className="text-sm text-gray-500">
@@ -83,17 +83,29 @@ const ReservasAdmin = ({ reservations }) => {
           {titulo} ({items.length})
         </p>
         {items.map((r) => (
-          <FilaReserva key={`${r.idGestion}-${r.idAuxEmpresa}`} r={r} />
+          <FilaReserva
+            key={`${r.idGestion}-${r.idAuxEmpresa}`}
+            r={r}
+            onVerDoc={setViewingDoc}
+          />
         ))}
       </div>
     );
 
   return (
-    <div className="space-y-6">
-      <Grupo titulo="Documentos pendientes de validación" items={conDoc} />
-      <Grupo titulo="Pendientes de documento" items={sinDoc} />
-      <Grupo titulo="Asignaciones definitivas" items={definitivas} />
-    </div>
+    <>
+      <div className="space-y-6">
+        <Grupo titulo="Documentos pendientes de validación" items={conDoc} />
+        <Grupo titulo="Pendientes de documento" items={sinDoc} />
+        <Grupo titulo="Asignaciones definitivas" items={definitivas} />
+      </div>
+
+      {/* Modal de visualización de documento */}
+      <ReservaDocViewer
+        reserva={viewingDoc}
+        onClose={() => setViewingDoc(null)}
+      />
+    </>
   );
 };
 

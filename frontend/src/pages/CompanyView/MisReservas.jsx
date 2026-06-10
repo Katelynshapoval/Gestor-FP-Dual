@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdPendingActions, MdOutlineFileUpload } from "react-icons/md";
 import { FaFilePdf } from "react-icons/fa6";
@@ -203,8 +203,80 @@ const TarjetaReserva = ({ r, user, onUpload, onCancel, onVerDoc }) => {
   );
 };
 
+// Modal inline para visualizar el documento firmado de la reserva
+const DocModal = ({ idGestion, idAuxEmpresa, onClose }) => {
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let objectUrl = null;
+
+    const fetchPdf = async () => {
+      try {
+        const res = await fetch(`/reservationDoc/${idGestion}/${idAuxEmpresa}`);
+        if (!res.ok) throw new Error("Error al cargar el PDF");
+        const blob = await res.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setPdfUrl(objectUrl);
+      } catch (err) {
+        console.error("Error al obtener el documento:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPdf();
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [idGestion, idAuxEmpresa]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="modal-title">Documento firmado</h2>
+          <div className="modal-actions">
+            {pdfUrl && (
+              <button
+                onClick={() => window.open(pdfUrl, "_blank")}
+                className="btn btn-secondary btn-sm"
+              >
+                Nueva pestaña
+              </button>
+            )}
+            <button className="modal-close" onClick={onClose}>✕</button>
+          </div>
+        </div>
+        <div className="modal-body">
+          {loading && (
+            <p className="py-8 text-center text-sm text-gray-500">
+              Cargando documento…
+            </p>
+          )}
+          {!loading && pdfUrl && (
+            <iframe
+              src={pdfUrl}
+              title="Documento de reserva"
+              className="block h-full w-full border-none"
+            />
+          )}
+          {!loading && !pdfUrl && (
+            <p className="py-8 text-center text-sm text-gray-500">
+              No se pudo cargar el documento.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Panel completo de reservas de la empresa logueada
 const MisReservas = ({ reservations, user, onUpload, onCancel }) => {
+  const [viewingDoc, setViewingDoc] = useState(null);
+
   if (reservations.length === 0) {
     return (
       <p className="text-sm text-gray-500">
@@ -214,24 +286,31 @@ const MisReservas = ({ reservations, user, onUpload, onCancel }) => {
     );
   }
 
-  // Abre el documento firmado en una pestaña nueva
-  const handleVerDoc = (idGestion, idAuxEmpresa) => {
-    window.open(`/reservationDoc/${idGestion}/${idAuxEmpresa}`, "_blank");
-  };
-
   return (
-    <div className="space-y-3">
-      {reservations.map((r) => (
-        <TarjetaReserva
-          key={`${r.idGestion}-${r.idAuxEmpresa}`}
-          r={r}
-          user={user}
-          onUpload={onUpload}
-          onCancel={onCancel}
-          onVerDoc={handleVerDoc}
+    <>
+      <div className="space-y-3">
+        {reservations.map((r) => (
+          <TarjetaReserva
+            key={`${r.idGestion}-${r.idAuxEmpresa}`}
+            r={r}
+            user={user}
+            onUpload={onUpload}
+            onCancel={onCancel}
+            onVerDoc={(idGestion, idAuxEmpresa) =>
+              setViewingDoc({ idGestion, idAuxEmpresa })
+            }
+          />
+        ))}
+      </div>
+
+      {viewingDoc && (
+        <DocModal
+          idGestion={viewingDoc.idGestion}
+          idAuxEmpresa={viewingDoc.idAuxEmpresa}
+          onClose={() => setViewingDoc(null)}
         />
-      ))}
-    </div>
+      )}
+    </>
   );
 };
 

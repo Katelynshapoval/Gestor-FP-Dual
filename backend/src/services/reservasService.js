@@ -29,6 +29,7 @@ exports.getMyReservations = function (request, response) {
       SELECT
         r.idReserva,
         r.idGestion,
+        r.idAuxEmpresa,
         r.fechaReserva,
         r.documentoSubido,
         ae.razonSocial AS miEmpresa,
@@ -118,10 +119,13 @@ exports.getReservationDoc = function (request, response) {
     [idGestion, idAuxEmpresa],
     (err, rows) => {
       if (err) return response.status(500).send("Error en BD");
-      const blob = rows[0]?.documentoFirmado;
-      if (!blob) return response.status(404).send("Documento no encontrado");
+      const raw = rows[0]?.documentoFirmado;
+      if (!raw) return response.status(404).send("Documento no encontrado");
+      const pdf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
       response.setHeader("Content-Type", "application/pdf");
-      response.send(blob);
+      response.setHeader("Content-Length", pdf.length);
+      response.setHeader("Content-Disposition", `inline; filename="acuerdo_reserva_${idGestion}.pdf"`);
+      response.send(pdf);
     },
   );
 };
