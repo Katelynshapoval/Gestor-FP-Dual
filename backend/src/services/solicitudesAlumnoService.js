@@ -174,7 +174,16 @@ exports.getAll = async function (req, res) {
            esp.id_especialidad, esp.codigo AS codigo_especialidad, esp.nombre AS especialidad,
            CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
            c.nombre AS convocatoria,
-           de.id_evaluacion, de.nota_total,
+           de.id_evaluacion,
+           CASE WHEN de.id_evaluacion IS NOT NULL THEN
+             ROUND(LEAST(10, GREATEST(0,
+               0.6  * de.nota_media +
+               0.05 * de.idiomas +
+               0.1  * de.madurez +
+               0.1  * de.competencia +
+               GREATEST(0, -0.1 * ((de.faltas / 1050.0) * 100) + 1.5)
+             )), 2)
+           ELSE NULL END AS nota_total,
            (SELECT id_documento FROM dual_documentos d
              JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
             WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'CV'

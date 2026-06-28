@@ -2,7 +2,7 @@ import { useState } from "react";
 import { IoMdArrowDropdown } from "react-icons/io";
 import { FaRegCalendarCheck } from "react-icons/fa6";
 import { MdOutlineCancel } from "react-icons/md";
-import { IoIosCheckmarkCircleOutline } from "react-icons/io";
+import { IoIosCheckmarkCircleOutline, IoIosCloseCircleOutline } from "react-icons/io";
 import { RxLockClosed, RxClock } from "react-icons/rx";
 
 import {
@@ -22,12 +22,13 @@ import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import Evaluacion from "./student-card/Evaluacion";
 
-// Badge de A2/A3: muestra si el alumno tiene reserva confirmada (equivalente al antiguo "A2/A3 firmado")
+// Badge de A2/A3: muestra si el alumno tiene reserva confirmada con documento validado
 const AnexoBadge = ({ reservas }) => {
   const confirmed = reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
+  const Icon = confirmed ? IoIosCheckmarkCircleOutline : IoIosCloseCircleOutline;
   return (
     <span className={`${signedBadgeClass} ${confirmed ? "bg-green-500/20 text-green-900" : "bg-red-500/10 text-red-900"}`}>
-      <IoIosCheckmarkCircleOutline className="-mt-[1px] text-[13px]" />
+      <Icon className="-mt-[1px] text-[13px]" />
       A2/A3
     </span>
   );
@@ -197,13 +198,17 @@ const StudentCard = ({
               {/* A2/A3 badge */}
               <AnexoBadge reservas={r.reservas} />
 
-              {/* Calendar badge */}
-              {r.calendarioComprobado != null && (
-                <span className={`${signedBadgeClass} ${r.calendarioComprobado ? "bg-green-500/20 text-green-900" : "bg-red-500/10 text-red-900"}`}>
-                  <FaRegCalendarCheck className="-mt-[1px] text-[13px]" />
-                  Cal
-                </span>
-              )}
+              {/* Calendar badge: verde si tiene reserva confirmada */}
+              {(() => {
+                const calOk = r.reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
+                const CalIcon = calOk ? FaRegCalendarCheck : IoIosCloseCircleOutline;
+                return (
+                  <span className={`${signedBadgeClass} ${calOk ? "bg-green-500/20 text-green-900" : "bg-red-500/10 text-red-900"}`}>
+                    <CalIcon className="-mt-[1px] text-[13px]" />
+                    Cal
+                  </span>
+                );
+              })()}
 
               {/* Chips de empresa con icono de estado */}
               <ReservasChips reservas={r.reservas} />

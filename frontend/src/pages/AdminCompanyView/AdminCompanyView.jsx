@@ -213,6 +213,9 @@ const AdminCompanyView = () => {
               <CompanyCard
                 key={empresa.id_solicitud_empresa}
                 empresa={empresa}
+                reservations={allReservations.filter(
+                  r => String(r.idempresa) === String(empresa.id_empresa)
+                )}
                 isExpanded={expandedCards.has(empresa.id_solicitud_empresa)}
                 onToggle={toggleCard}
                 onViewConvenio={setViewingConvenio}

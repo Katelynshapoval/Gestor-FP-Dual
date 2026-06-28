@@ -19,7 +19,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
     const fetchPdf = async () => {
       setLoading(true);
       try {
-        if (!reserva.id_documento) throw new Error("Sin documento");
+        if (!reserva.id_documento_reserva) throw new Error("Sin documento");
         const blob = await getBlob(`/documentos/${reserva.id_documento_reserva}/descargar`);
         objectUrl = URL.createObjectURL(blob);
         setPdfUrl(objectUrl);

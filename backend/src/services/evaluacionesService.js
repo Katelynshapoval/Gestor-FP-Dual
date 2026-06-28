@@ -1,19 +1,18 @@
 const pool = require('../db/pool');
 const { sendSqlError } = require('../helpers/dbHelpers');
 
-// Compute nota_total server-side, ignoring client value
+// Calcula nota_total usando la misma fórmula que el frontend (Evaluation.js)
 function computeNotaTotal(nota_media, idiomas, madurez, competencia, faltas) {
-  const nm = parseFloat(nota_media);
-  const id = parseFloat(idiomas);
-  const ma = parseFloat(madurez);
-  const co = parseFloat(competencia);
-  const fa = parseInt(faltas, 10);
+  const nm = parseFloat(nota_media) || 0;
+  const id = parseFloat(idiomas) || 0;
+  const ma = parseFloat(madurez) || 0;
+  const co = parseFloat(competencia) || 0;
+  const fa = parseInt(faltas, 10) || 0;
 
-  // Attendance component: 0.15 at 0 absences, declining by 0.01 per absence
-  const asistencia = Math.max(0, 0.15 - fa * 0.01);
-
-  const total = 0.6 * nm + 0.05 * id + 0.1 * ma + 0.1 * co + asistencia * 100;
-  return parseFloat(Math.min(100, Math.max(0, total)).toFixed(2));
+  const pf = (fa / 1050) * 100;
+  const vf = Math.max(0, -0.1 * pf + 1.5);
+  const total = 0.6 * nm + 0.05 * id + 0.1 * ma + 0.1 * co + vf;
+  return parseFloat(Math.min(10, Math.max(0, total)).toFixed(2));
 }
 
 // GET /evaluaciones/:idSolicitudAlumno

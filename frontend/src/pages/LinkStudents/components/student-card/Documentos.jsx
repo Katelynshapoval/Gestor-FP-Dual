@@ -1,47 +1,49 @@
+import { FaRegCalendarCheck } from "react-icons/fa6";
+import { IoIosCheckmarkCircleOutline, IoIosCloseCircleOutline } from "react-icons/io";
 import { sectionLabelClass } from "../../../../components/ui/cardStyles";
 
 // Sección de documentos del alumno en la tarjeta de vinculación.
-// Los documentos se identifican por su ID en dual_documentos.
 const Documentos = ({ r, user, onGetDoc }) => {
   const isEmpresa = user?.rol === "EMPRESA";
+  const calOk     = r.reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
 
-  const hasCv = !!r.cv_id;
-  const hasAnexo = !!r.anexo2_id;
+  const DocBtn = ({ label, id, tipo }) =>
+    id ? (
+      <button
+        onClick={() => onGetDoc(id, tipo, r.nombre)}
+        className="btn btn-secondary btn-sm flex w-full items-center justify-center gap-1 sm:w-auto"
+      >
+        {label}
+      </button>
+    ) : (
+      <span className="btn btn-secondary btn-sm flex w-full items-center justify-center gap-1 sm:w-auto opacity-40 cursor-default">
+        {label}
+      </span>
+    );
 
   return (
     <div className={!isEmpresa ? "border-t pt-4" : ""}>
       <p className={sectionLabelClass}>Documentos</p>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        {hasCv ? (
-          <button
-            onClick={() => onGetDoc(r.cv_id, "cv", r.nombre)}
-            className="btn btn-secondary btn-sm flex w-full items-center justify-center gap-1 sm:w-auto"
-          >
-            CV
-          </button>
-        ) : (
-          <span className="btn btn-secondary btn-sm flex w-full items-center justify-center gap-1 sm:w-auto opacity-40 cursor-default">
-            CV
-          </span>
-        )}
+        <DocBtn label="CV" id={r.cv_id} tipo="cv" />
+        {!isEmpresa && <DocBtn label="Anexo 2" id={r.anexo2_id} tipo="anexo2" />}
+      </div>
 
-        {!isEmpresa && (
+      {/* Indicador de calendario (confirmación de reserva) */}
+      <div className="mt-3 flex items-center gap-1.5 text-xs">
+        {calOk ? (
           <>
-            {hasAnexo ? (
-              <button
-                onClick={() => onGetDoc(r.anexo2_id, "anexo2", r.nombre)}
-                className="btn btn-secondary btn-sm flex w-full items-center justify-center gap-1 sm:w-auto"
-              >
-                Anexo 2
-              </button>
-            ) : (
-              <span className="btn btn-secondary btn-sm flex w-full items-center justify-center gap-1 sm:w-auto opacity-40 cursor-default">
-                Anexo 2
-              </span>
-            )}
+            <IoIosCheckmarkCircleOutline className="text-green-600 shrink-0" />
+            <span className="text-green-700">Calendario confirmado</span>
+          </>
+        ) : (
+          <>
+            <IoIosCloseCircleOutline className="text-red-400 shrink-0" />
+            <span className="text-gray-400">Sin confirmación de calendario</span>
           </>
         )}
+        <FaRegCalendarCheck className={`ml-auto ${calOk ? "text-green-500" : "text-gray-300"}`} />
       </div>
     </div>
   );
