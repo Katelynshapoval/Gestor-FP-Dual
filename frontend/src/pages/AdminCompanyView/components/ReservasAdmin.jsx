@@ -4,7 +4,7 @@ import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdPendingActions, MdOutlineCancel } from "react-icons/md";
 import ReservaDocViewer from "./ReservaDocViewer";
 
-// Estado visual de la reserva según los campos del nuevo modelo
+// Derives a display label and style from the reservation's document and confirmation state
 function estadoLabel(r) {
   if (r.estado_reserva === "CONFIRMADA") {
     return {
@@ -34,19 +34,19 @@ function estadoLabel(r) {
   };
 }
 
-// Fila individual de reserva en el panel de admin
+// Single reservation row in the admin panel
 const FilaReserva = ({ r, onVerDoc }) => {
   const { text, cls, Icono } = estadoLabel(r);
 
   return (
     <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-4 rounded-lg border bg-white px-4 py-3 text-sm">
-      {/* Empresa */}
+      {/* Company */}
       <div>
         <p className="font-medium text-gray-900">{r.empresa}</p>
         <p className="text-xs text-gray-400">{r.email_coordinador}</p>
       </div>
 
-      {/* Alumno */}
+      {/* Student */}
       <div>
         <p className="font-medium text-gray-900">{r.alumno}</p>
         <p className="text-xs text-gray-400">
@@ -54,13 +54,13 @@ const FilaReserva = ({ r, onVerDoc }) => {
         </p>
       </div>
 
-      {/* Estado */}
+      {/* Status badge */}
       <span className={`flex w-fit items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-medium ${cls}`}>
         <Icono className="shrink-0 text-sm" />
         {text}
       </span>
 
-      {/* Acciones */}
+      {/* Actions */}
       <div className="flex items-center gap-2">
         {r.id_documento_reserva && (
           <button
@@ -78,7 +78,7 @@ const FilaReserva = ({ r, onVerDoc }) => {
   );
 };
 
-// Panel completo de reservas para el administrador
+// Full admin reservations panel, grouped by action priority
 const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
   const [viewingDoc, setViewingDoc] = useState(null);
 
@@ -90,7 +90,7 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
     );
   }
 
-  // Agrupa por estado para mostrar primero los que necesitan acción
+  // Group by status so reservations that need action appear first
   const conDocPendiente = reservations.filter(
     (r) => r.id_documento_reserva && r.estado_documento === "PENDIENTE"
   );
@@ -129,7 +129,7 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
         <Grupo titulo="Canceladas" items={canceladas} />
       </div>
 
-      {/* Modal de visualización de documento */}
+      {/* Document viewer modal */}
       <ReservaDocViewer
         reserva={viewingDoc}
         onClose={() => setViewingDoc(null)}

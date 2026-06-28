@@ -1,8 +1,6 @@
 import { useState } from 'react';
 
-// HOOK para mostrar mensajes temporales en formularios.
-// Recibe la duración en ms (por defecto 5 segundos) y devuelve
-// el mensaje actual junto con una función para mostrarlo.
+// Displays a temporary message in forms; clears automatically after the given duration
 export function useFormMessage(duration = 5000) {
   const [message, setMessage] = useState('');
 

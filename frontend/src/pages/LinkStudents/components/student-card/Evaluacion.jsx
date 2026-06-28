@@ -1,7 +1,6 @@
 import { sectionLabelClass } from "../../../../components/ui/cardStyles";
 
-// Sección de evaluación en la tarjeta del alumno.
-// Usa id_solicitud_alumno como identificador principal.
+// Evaluation section in the student card — uses id_solicitud_alumno as the primary key
 const Evaluacion = ({ r, user, onGetEvaluation }) => {
   const isEmpresa = user?.rol === "EMPRESA";
 

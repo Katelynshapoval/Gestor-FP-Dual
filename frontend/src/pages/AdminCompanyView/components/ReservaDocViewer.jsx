@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { getBlob, postJSON } from "../../../utils/api.js";
 
-// Modal para visualizar el documento firmado de una reserva.
-// Descarga el PDF autenticado y permite validarlo o rechazarlo.
+// Modal for viewing a reservation's signed document; allows validation or rejection.
 const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -33,7 +32,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
 
     fetchPdf();
 
-    // Libera la URL al desmontar o cambiar de reserva
+    // Release the object URL when the component unmounts or the reservation changes
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
@@ -50,7 +49,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
     setSubmitting(true);
     setActionMsg(null);
     try {
-      // Valida el documento y confirma la reserva
+      // Validating the document also confirms the reservation in the same flow
       await postJSON(`/documentos/${reserva.id_documento_reserva}/validar`, {});
       await postJSON(`/reservas/${reserva.id_reserva}/confirmar`, {});
       setActionMsg({ ok: true, text: "Reserva confirmada correctamente." });
@@ -123,7 +122,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
           </div>
         </div>
 
-        {/* Formulario de rechazo */}
+        {/* Rejection form with motivo field */}
         {showReject && (
           <div className="px-4 py-3 border-b border-gray-200 bg-red-50">
             <p className="text-sm font-medium text-red-700 mb-2">
@@ -155,7 +154,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
           </div>
         )}
 
-        {/* Mensaje de acción */}
+        {/* Action result message */}
         {actionMsg && (
           <p
             className={`px-4 py-2 text-sm ${

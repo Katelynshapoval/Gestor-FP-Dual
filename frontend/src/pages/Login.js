@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "../globales/User";
+import { useUser } from '../context/UserContext';
 
-// Redirige al área correcta según el rol del usuario
+// Redirects the user to their role's home page after a successful login
 function redirectByRole(rol, navigate) {
   if (rol === "EMPRESA") navigate("/companyMain");
   else navigate("/");
@@ -17,7 +17,7 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Estado de cambio de contraseña obligatorio en primer acceso
+  // Tracks the mandatory password-change flow triggered on first login
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [tempToken, setTempToken] = useState(null);
   const [newPassword, setNewPassword] = useState("");
@@ -143,7 +143,7 @@ const Login = () => {
               {loading ? "Guardando…" : "Establecer contraseña"}
             </button>
 
-            {error && <div className="login-error" style={{ display: "block" }}>{error}</div>}
+            {error && <div className="login-error">{error}</div>}
           </form>
         </div>
       </div>
@@ -200,11 +200,7 @@ const Login = () => {
             {loading ? "Verificando…" : "Entrar"}
           </button>
 
-          {error && (
-            <div className="login-error" style={{ display: "block" }}>
-              {error}
-            </div>
-          )}
+          {error && <div className="login-error">{error}</div>}
 
           <p className="text-xs text-gray-400 text-center mt-2">
             Las empresas usan el CIF en minúsculas como usuario.
@@ -218,3 +214,5 @@ const Login = () => {
 };
 
 export default Login;
+
+

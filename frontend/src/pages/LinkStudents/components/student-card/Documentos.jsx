@@ -2,7 +2,7 @@ import { FaRegCalendarCheck } from "react-icons/fa6";
 import { IoIosCheckmarkCircleOutline, IoIosCloseCircleOutline } from "react-icons/io";
 import { sectionLabelClass } from "../../../../components/ui/cardStyles";
 
-// Sección de documentos del alumno en la tarjeta de vinculación.
+// Document section shown in the student card (CV + Anexo 2 + calendar confirmation status)
 const Documentos = ({ r, user, onGetDoc }) => {
   const isEmpresa = user?.rol === "EMPRESA";
   const calOk     = r.reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
@@ -30,7 +30,7 @@ const Documentos = ({ r, user, onGetDoc }) => {
         {!isEmpresa && <DocBtn label="Anexo 2" id={r.anexo2_id} tipo="anexo2" />}
       </div>
 
-      {/* Indicador de calendario (confirmación de reserva) */}
+      {/* Calendar indicator: reflects whether the student has a confirmed reservation */}
       <div className="mt-3 flex items-center gap-1.5 text-xs">
         {calOk ? (
           <>

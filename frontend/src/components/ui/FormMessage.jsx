@@ -1,4 +1,4 @@
-// Mensaje de alerta temporal que aparece debajo de los formularios.
+// Temporary success alert rendered below forms after a successful submission
 const FormMessage = ({ message }) => {
   if (!message) return null;
   return (

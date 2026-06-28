@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useUser } from '../../globales/User';
+import { useUser } from '../../context/UserContext';
 import { getJSON, postJSON, putJSON } from '../../utils/api';
 import '../../styles/forms.css';
 
-// Formatea una fecha de MySQL (puede llegar como Date ISO o solo fecha) sin desplazamiento de zona horaria
+// Anchors to noon to avoid timezone-related day shifts when displaying MySQL date strings
 function formatDate(value) {
   if (!value) return '—';
   const dateStr = typeof value === 'string' ? value.split('T')[0] : value;
@@ -12,7 +12,7 @@ function formatDate(value) {
   return d.toLocaleDateString('es-ES');
 }
 
-// Devuelve true si la convocatoria aún no ha comenzado
+// Returns true if the convocatoria has not started yet (edit is only allowed for future ones)
 function esFutura(fechaInicio) {
   if (!fechaInicio) return false;
   const hoy = new Date();
@@ -158,7 +158,6 @@ export default function Convocatorias() {
             {convocatorias.map((c) => (
               <div key={c.id_convocatoria} className="px-6 py-4">
                 {editingId === c.id_convocatoria ? (
-                  // Formulario de edición inline
                   <div className="space-y-3">
                     <div className="grid gap-3 sm:grid-cols-3">
                       <div className="field !mb-0">
@@ -245,3 +244,5 @@ export default function Convocatorias() {
     </div>
   );
 }
+
+

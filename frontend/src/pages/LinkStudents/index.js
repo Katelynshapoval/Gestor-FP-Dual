@@ -5,7 +5,6 @@ import RequestFilters from "./components/RequestFilters";
 import StudentCard from "./components/StudentCard";
 import { useLinkStudents } from "./hooks/useLinkStudents";
 
-// Página principal de vinculación de alumnos con empresas
 const LinkStudents = () => {
   const {
     user,
@@ -13,7 +12,6 @@ const LinkStudents = () => {
     companyOffers,
     showDoc,
     expandedCards,
-    sendingInfo,
     selectedSpeciality,
     setSelectedSpeciality,
     selectedConvocatoria,
@@ -21,10 +19,8 @@ const LinkStudents = () => {
     filtered,
     specialities,
     convocatorias,
-    canSendInfo,
     isEmpresa,
     toggleCard,
-    sendInfo,
     getDoc,
     closeDocViewer,
     validateDoc,
@@ -36,9 +32,7 @@ const LinkStudents = () => {
     <div className="mx-auto w-full max-w-[1100px] flex-1 space-y-6 px-10 py-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="border-l-4 border-red-600 pl-4 sm:pl-5">
-          <h1 className="text-xl font-semibold sm:text-2xl">
-            Peticiones de alumnos
-          </h1>
+          <h1 className="text-xl font-semibold sm:text-2xl">Peticiones de alumnos</h1>
           <p className="text-sm text-gray-500">
             {filtered.length} alumno{filtered.length !== 1 ? "s" : ""}
           </p>
@@ -59,8 +53,7 @@ const LinkStudents = () => {
         {isEmpresa && (
           <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600">
             La asignación de un alumno no es definitiva hasta la firma del
-            Anexo 2 o 3. Hasta entonces, el alumno puede ser asignado a otra
-            empresa.
+            Anexo 2 o 3. Hasta entonces, el alumno puede ser asignado a otra empresa.
           </p>
         )}
 
@@ -77,9 +70,6 @@ const LinkStudents = () => {
             isExpanded={expandedCards.has(r.id_solicitud_alumno)}
             onToggle={toggleCard}
             companyOffers={companyOffers}
-            sendingInfo={sendingInfo}
-            canSendInfo={canSendInfo}
-            onSendInfo={sendInfo}
             onGetDoc={getDoc}
             onGetEvaluation={(id) => navigate(`/evaluate/${ofuscarId(id)}`)}
             onReserve={reserveStudent}

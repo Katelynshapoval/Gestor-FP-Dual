@@ -22,7 +22,7 @@ async function sendConfirmationEmail(email, nombre, convocatoria) {
       `,
     });
   } catch (err) {
-    console.error('Error enviando email de confirmación:', err.message);
+    console.error('Error sending confirmation email:', err.message);
   }
 }
 
@@ -126,11 +126,11 @@ exports.create = async function (req, res) {
     );
     const idSolicitudAlumno = solResult.insertId;
 
-    // Sube CV (tipo 1) y ANEXO_2 (tipo 2)
+    // tipo 1 = CV, tipo 2 = ANEXO_2
     await conn.query('CALL sp_guardar_documento(?, NULL, NULL, 1, ?)', [idSolicitudAlumno, cvFile.buffer]);
     await conn.query('CALL sp_guardar_documento(?, NULL, NULL, 2, ?)', [idSolicitudAlumno, anexo2File.buffer]);
 
-    // Guarda preferencias si se proporcionaron
+    // Save student preferences if provided (up to 3, ordered)
     const prefs = [idPreferencia1, idPreferencia2, idPreferencia3];
     for (let i = 0; i < prefs.length; i++) {
       const idPref = prefs[i] ? parseInt(prefs[i], 10) : null;
@@ -160,7 +160,7 @@ exports.create = async function (req, res) {
   }
 };
 
-// GET /solicitudes/alumno — admin/coordinador: listado con evaluaciones y reservas incluidas
+// GET /solicitudes/alumno — admin/coordinador: full list; pass ?include=full to embed reservations
 exports.getAll = async function (req, res) {
   const { estado, convocatoria, include } = req.query;
   const includeExtra = include === 'full';
@@ -218,7 +218,7 @@ exports.getAll = async function (req, res) {
     return res.json(rows);
   }
 
-  // Con include=full: adjunta reservas a cada solicitud
+  // With include=full: fetch all reservations and attach them to each solicitud
   const ids = rows.map(r => r.id_solicitud_alumno);
   const [reservas] = await pool.query(
     `SELECT r.id_reserva, r.id_solicitud_alumno, r.motivo,

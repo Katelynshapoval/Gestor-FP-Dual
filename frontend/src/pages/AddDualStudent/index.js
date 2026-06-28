@@ -37,7 +37,7 @@ function PreferenciaSelect({ label, value, onChange, dataPreferences }) {
   );
 }
 
-// PÁGINA para que los alumnos presenten su candidatura al programa de FP Dual.
+// Student application page for the FP Dual programme
 function AddDualStudent() {
   const { message, showMessage } = useFormMessage();
   const formRef = useRef(null);
@@ -139,7 +139,6 @@ function AddDualStudent() {
       if (preference3) data.append("idPreferencia3", preference3);
       data.append("tutorLegal", legalGuardianName);
       data.append("dniTutorLegal", legalGuardianDni);
-      // El archivo de Anexo 2 va en el campo 'anexo2'
       if (file) data.append("anexo2", file);
       if (cv) data.append("cv", cv);
       await postForm("/solicitudes/alumno", data);

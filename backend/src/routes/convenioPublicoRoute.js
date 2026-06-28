@@ -1,25 +1,23 @@
 const { Router } = require('express');
 const multer = require('multer');
 const pool = require('../db/pool');
+const asyncHandler = require('../middleware/asyncHandler');
 const { sendSqlError } = require('../helpers/dbHelpers');
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
-// POST /convenio-publico/:token — subida pública de convenio firmado
-// El token es generado al crear la solicitud y enviado por email
+// Public: company uploads their signed convenio via a one-time secure token sent by email
 router.post('/convenio-publico/:token', upload.single('convenio'), asyncHandler(async (req, res) => {
   const { token } = req.params;
   const file = req.file;
 
-  if (!file) {
-    return res.status(400).json({ error: 'No se ha recibido ningún archivo.' });
-  }
-  if (file.mimetype !== 'application/pdf') {
-    return res.status(400).json({ error: 'Solo se aceptan archivos PDF.' });
-  }
+  if (!file) return res.status(400).json({ error: 'No se ha recibido ningún archivo.' });
+  if (file.mimetype !== 'application/pdf') return res.status(400).json({ error: 'Solo se aceptan archivos PDF.' });
 
   const conn = await pool.getConnection();
   try {
@@ -47,14 +45,12 @@ router.post('/convenio-publico/:token', upload.single('convenio'), asyncHandler(
       return res.status(410).json({ error: 'El enlace ha expirado. Contacta con el centro para obtener uno nuevo.' });
     }
 
-    // Guarda el convenio usando el SP
+    // type 3 = CONVENIO
     await conn.query('CALL sp_guardar_documento(NULL, ?, NULL, 3, ?)', [
       tkn.id_solicitud_empresa, file.buffer,
     ]);
 
-    // Marca el token como usado
     await conn.query('UPDATE dual_convenio_tokens SET usado = 1 WHERE id_token = ?', [tkn.id_token]);
-
     await conn.commit();
 
     return res.json({ message: 'Convenio subido correctamente. Gracias.' });

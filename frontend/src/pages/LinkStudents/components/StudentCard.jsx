@@ -22,7 +22,7 @@ import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import Evaluacion from "./student-card/Evaluacion";
 
-// Badge de A2/A3: muestra si el alumno tiene reserva confirmada con documento validado
+// A2/A3 badge: green when the student has at least one confirmed reservation
 const AnexoBadge = ({ reservas }) => {
   const confirmed = reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
   const Icon = confirmed ? IoIosCheckmarkCircleOutline : IoIosCloseCircleOutline;
@@ -34,7 +34,7 @@ const AnexoBadge = ({ reservas }) => {
   );
 };
 
-// Chips de empresa con estado (clock para PENDIENTE, ✓ para CONFIRMADA, ✗ para CANCELADA)
+// Compact chips showing which companies have reserved this student (with status icons)
 const ReservasChips = ({ reservas }) => {
   if (!reservas || reservas.length === 0) return null;
   return (
@@ -55,7 +55,7 @@ const ReservasChips = ({ reservas }) => {
   );
 };
 
-// Modal de cancelación para la vista empresa
+// Cancellation modal shown to the empresa before a reservation is cancelled
 const CancelModal = ({ alumno, onConfirm, onClose }) => {
   const [motivo, setMotivo] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -102,7 +102,7 @@ const CancelModal = ({ alumno, onConfirm, onClose }) => {
   );
 };
 
-// Botón de reserva/cancelar para la empresa
+// Reserve / cancel button for empresa users
 const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const reservaConfirmada = r.reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
@@ -152,15 +152,12 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
   );
 };
 
-// Tarjeta de alumno con cabecera compacta y panel expandible
+// Expandable student card used in the linking view
 const StudentCard = ({
   r,
   isExpanded,
   onToggle,
   companyOffers,
-  sendingInfo,
-  canSendInfo,
-  onSendInfo,
   onGetDoc,
   onGetEvaluation,
   onReserve,
@@ -168,13 +165,13 @@ const StudentCard = ({
   user,
 }) => {
   const isEmpresa = user?.rol === "EMPRESA";
-  // "info" o "reservas" — solo relevante para staff
+  // "info" or "reservas" — inner tab state, staff only
   const [innerTab, setInnerTab] = useState("info");
   const handleToggle = () => onToggle(r.id_solicitud_alumno);
 
   return (
     <div className={cardClass}>
-      {/* Cabecera */}
+      {/* Card header — always visible, toggles the expanded panel */}
       <div
         className={`${cardHeaderClass} flex flex-col gap-2 sm:flex-row sm:items-center`}
         onClick={handleToggle}
@@ -195,10 +192,9 @@ const StudentCard = ({
         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
           {!isEmpresa ? (
             <div className={cardChipsClass}>
-              {/* A2/A3 badge */}
               <AnexoBadge reservas={r.reservas} />
 
-              {/* Calendar badge: verde si tiene reserva confirmada */}
+              {/* Calendar badge: green when the student has a confirmed reservation */}
               {(() => {
                 const calOk = r.reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
                 const CalIcon = calOk ? FaRegCalendarCheck : IoIosCloseCircleOutline;
@@ -210,7 +206,6 @@ const StudentCard = ({
                 );
               })()}
 
-              {/* Chips de empresa con icono de estado */}
               <ReservasChips reservas={r.reservas} />
             </div>
           ) : (
@@ -232,14 +227,14 @@ const StudentCard = ({
         </div>
       </div>
 
-      {/* Panel expandible */}
+      {/* Expandable details panel */}
       <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
         isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
       }`}>
         <div className="overflow-hidden">
           <div className={cardBodyClass}>
 
-            {/* Pestañas internas solo para staff */}
+            {/* Inner tab navigation — staff only */}
             {!isEmpresa && (
               <div className="flex gap-1 mb-5 border-b border-gray-200">
                 <button
@@ -272,7 +267,7 @@ const StudentCard = ({
               </div>
             )}
 
-            {/* Vista Información */}
+            {/* Information tab */}
             {(isEmpresa || innerTab === "info") && (
               <div className={`grid grid-cols-1 gap-6 ${isEmpresa ? "md:grid-cols-2" : "md:grid-cols-[1.2fr_1fr]"}`}>
                 <div className="space-y-5">
@@ -285,13 +280,10 @@ const StudentCard = ({
               </div>
             )}
 
-            {/* Vista Reservas (solo staff) */}
+            {/* Reservations tab — staff only */}
             {!isEmpresa && innerTab === "reservas" && (
               <EmpresaControl
                 r={r}
-                sendingInfo={sendingInfo}
-                canSendInfo={canSendInfo}
-                onSendInfo={onSendInfo}
               />
             )}
           </div>

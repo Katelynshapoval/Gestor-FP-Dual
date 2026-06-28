@@ -2,13 +2,6 @@ const { Router } = require('express');
 
 const router = Router();
 
-// Manejador de errores asíncrono global para todas las rutas
-router.use((err, req, res, next) => {
-  console.error('Error no controlado en ruta:', err);
-  res.status(500).json({ error: 'Error interno del servidor.' });
-});
-
-// Rutas del nuevo esquema
 router.use(require('./authRoute'));
 router.use(require('./convocatoriasRoute'));
 router.use(require('./especialidadesRoute'));
@@ -19,8 +12,12 @@ router.use(require('./solicitudesEmpresaRoute'));
 router.use(require('./documentosRoute'));
 router.use(require('./reservasRoute'));
 router.use(require('./evaluacionesRoute'));
-
-// Ruta de compatibilidad para la subida pública de convenio
 router.use(require('./convenioPublicoRoute'));
+
+// Global error handler — must come after all routes
+router.use((err, req, res, _next) => {
+  console.error('Unhandled route error:', err);
+  res.status(500).json({ error: 'Error interno del servidor.' });
+});
 
 module.exports = router;

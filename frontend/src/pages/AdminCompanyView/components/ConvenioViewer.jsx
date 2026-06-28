@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { getBlob } from "../../../utils/api.js";
 
-// Modal visor del convenio PDF de una empresa.
-// Descarga el documento autenticado y lo muestra en un iframe.
+// PDF viewer modal for a company's convenio; downloads the authenticated document into an iframe.
 const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -30,7 +29,7 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
 
     fetchPdf();
 
-    // Libera la URL al desmontar el componente
+    // Release the object URL when the component unmounts to avoid memory leaks
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };

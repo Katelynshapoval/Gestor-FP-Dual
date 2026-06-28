@@ -1,5 +1,5 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { User } from "./globales/User";
+import { User } from "./context/UserContext";
 import PageLayout from "./components/layout/PageLayout.jsx";
 
 import Home from "./pages/Home/Home.js";
@@ -15,96 +15,25 @@ import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
 
 import "./styles/main.css";
 
-// Envuelve una página en el layout general (Header + Footer)
+// Wraps a page with the shared Header + Footer layout
 const Page = ({ children }) => <PageLayout>{children}</PageLayout>;
 
-// COMPONENTE RAÍZ con el enrutador y el proveedor de usuario global
 function App() {
   return (
     <User>
       <div className="app">
         <BrowserRouter>
           <Routes>
-            <Route
-              path="/login"
-              element={
-                <Page>
-                  <Login />
-                </Page>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <Page>
-                  <Home />
-                </Page>
-              }
-            />
-            <Route
-              path="/addDualStudent"
-              element={
-                <Page>
-                  <AddDualStudent />
-                </Page>
-              }
-            />
-            <Route
-              path="/addCompanyRequest"
-              element={
-                <Page>
-                  <AddCompanyRequest />
-                </Page>
-              }
-            />
-            <Route
-              path="/addConvenio/:id"
-              element={
-                <Page>
-                  <AddConvenio />
-                </Page>
-              }
-            />
-            <Route
-              path="/evaluate/:id"
-              element={
-                <Page>
-                  <Evaluation />
-                </Page>
-              }
-            />
-            <Route
-              path="/linkStudents"
-              element={
-                <Page>
-                  <LinkStudents />
-                </Page>
-              }
-            />
-            <Route
-              path="/companyMain"
-              element={
-                <Page>
-                  <CompanyView />
-                </Page>
-              }
-            />
-            <Route
-              path="/companiesView"
-              element={
-                <Page>
-                  <AdminCompanyView />
-                </Page>
-              }
-            />
-            <Route
-              path="/convocatorias"
-              element={
-                <Page>
-                  <Convocatorias />
-                </Page>
-              }
-            />
+            <Route path="/login"          element={<Page><Login /></Page>} />
+            <Route path="/"              element={<Page><Home /></Page>} />
+            <Route path="/addDualStudent" element={<Page><AddDualStudent /></Page>} />
+            <Route path="/addCompanyRequest" element={<Page><AddCompanyRequest /></Page>} />
+            <Route path="/addConvenio/:id" element={<Page><AddConvenio /></Page>} />
+            <Route path="/evaluate/:id"  element={<Page><Evaluation /></Page>} />
+            <Route path="/linkStudents"  element={<Page><LinkStudents /></Page>} />
+            <Route path="/companyMain"   element={<Page><CompanyView /></Page>} />
+            <Route path="/companiesView" element={<Page><AdminCompanyView /></Page>} />
+            <Route path="/convocatorias" element={<Page><Convocatorias /></Page>} />
           </Routes>
         </BrowserRouter>
       </div>

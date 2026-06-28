@@ -1,4 +1,4 @@
-// Selector de ciclos de grado con control de cantidad de alumnos por especialidad.
+// Speciality selector with per-speciality student count input
 const SpecialitySelector = ({
   dataSpecialities,
   specialities,

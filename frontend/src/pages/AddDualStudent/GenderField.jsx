@@ -1,4 +1,4 @@
-// Campo de selección de sexo con opción de texto libre para "Otro".
+// Gender selector with free-text input for "Otro"
 const GenderField = ({ gender, onChange }) => {
   const isOther = gender !== 'Hombre' && gender !== 'Mujer' && gender !== '';
   return (

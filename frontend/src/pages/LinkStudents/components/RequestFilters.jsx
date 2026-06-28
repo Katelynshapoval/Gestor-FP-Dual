@@ -4,7 +4,7 @@ import {
   SPECIALITY_SELECT_CLASS,
 } from "../utils/filters";
 
-// Filtros de la vista de vinculación: especialidad y convocatoria (solo staff)
+// Speciality and convocatoria filter controls for the linking view (staff only)
 const RequestFilters = ({
   selectedSpeciality,
   onSpecialityChange,

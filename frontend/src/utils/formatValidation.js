@@ -1,4 +1,4 @@
-// Validación de formatos de documentos y fechas
+// Utility functions for validating DNI/NIE formats and date fields
 
 export function dniNieValido(dniNie) {
   const dniRegex = /^[0-9]{8}[A-Z]$/;

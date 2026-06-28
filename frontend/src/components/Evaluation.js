@@ -5,14 +5,13 @@ import { getJSON, postJSON } from '../utils/api.js';
 import { verificarId } from '../utils/idObfuscation.js';
 import FormMessage from '../components/ui/FormMessage.jsx';
 
-// Decodifica el ID ofuscado para obtener el id_solicitud_alumno real.
-// La función ofuscarId multiplica el ID por 23 y añade una letra de control.
+// Reverses the ofuscarId encoding (multiply by 23 + control letter) to get the real id_solicitud_alumno
 function decodificarId(idOfuscado) {
   const numPart = idOfuscado.slice(0, -1);
   return parseInt(numPart, 10) / 23;
 }
 
-// Página de evaluación de un alumno: crear o actualizar su nota.
+// Evaluation page — creates or updates the nota for a student application
 const Evaluation = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -55,7 +54,7 @@ const Evaluation = () => {
     getEvaluation(idSol);
   }, [id, navigate, getEvaluation]);
 
-  // Recalcula la nota total cuando cambia cualquier campo numérico
+  // Recomputes nota_total in real time so the user sees the projected score while editing
   useEffect(() => {
     const nm = parseFloat(notaMedia) || 0;
     const id2 = parseFloat(idiomas) || 0;

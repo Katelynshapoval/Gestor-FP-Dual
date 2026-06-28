@@ -2,8 +2,7 @@ import { useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { MdOutlineFileUpload } from "react-icons/md";
 
-// Página pública para que la empresa suba el convenio firmado usando el enlace enviado por email.
-// El enlace incluye un token seguro generado por el servidor.
+// Public convenio upload page — accessed via the tokenised link sent to the company by email
 function AddConvenio() {
   const { id } = useParams();
   const [file, setFile] = useState(null);
@@ -67,7 +66,7 @@ function AddConvenio() {
   return (
     <div className="flex items-center justify-center px-4 bg-gray-50 p-10">
       <div className="w-full max-w-md rounded-xl border border-border bg-white p-6 shadow-sm">
-        {/* Cabecera */}
+        {/* Page header */}
         <div className="text-center mb-6">
           <div className="text-3xl mb-2">📄</div>
           <h2 className="text-xl font-semibold">Subir convenio</h2>
@@ -77,7 +76,7 @@ function AddConvenio() {
           </p>
         </div>
 
-        {/* Selector de archivo */}
+        {/* File selector */}
         <div className="space-y-3">
           <label className="text-xs font-semibold text-muted">
             Convenio firmado (PDF)
@@ -113,7 +112,7 @@ function AddConvenio() {
           </p>
         )}
 
-        {/* Botón */}
+        {/* Submit button */}
         <button
           onClick={handleUpload}
           disabled={!file || uploading}

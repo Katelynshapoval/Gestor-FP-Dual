@@ -1,8 +1,7 @@
 const pool = require('../db/pool');
 const { sendSqlError } = require('../helpers/dbHelpers');
 
-// Calcula nota_total a partir de los cinco valores almacenados.
-// Esta es la única implementación de la fórmula en el servidor.
+// Single source of truth for the nota_total formula — keeps frontend and DB in sync.
 function computeNotaTotal(nota_media, idiomas, madurez, competencia, faltas) {
   const nm = parseFloat(nota_media) || 0;
   const id = parseFloat(idiomas) || 0;
@@ -40,7 +39,7 @@ exports.getByIdSolicitudAlumno = async function (req, res) {
   });
 };
 
-// POST /evaluaciones — crear o actualizar evaluación (sin persistir nota_total)
+// POST /evaluaciones — upsert evaluation; nota_total is computed on the fly, not persisted
 exports.guardar = async function (req, res) {
   const { id_solicitud_alumno, nota_media, idiomas, madurez, competencia, faltas } = req.body;
 
@@ -62,7 +61,7 @@ exports.guardar = async function (req, res) {
   }
 
   try {
-    // Seis parámetros: sin nota_total (se eliminó el campo)
+    // six params: nota_total column was removed from the table
     await pool.query('CALL sp_guardar_evaluacion(?, ?, ?, ?, ?, ?)', [
       id_solicitud_alumno, nm, id, ma, co, fa,
     ]);

@@ -1,4 +1,4 @@
-// Modal para visualizar documentos PDF y validar anexos
+// PDF viewer modal with optional validation action for Anexo documents
 const DocViewer = ({ showDoc, onClose, onValidate }) => {
   if (!showDoc) return null;
 

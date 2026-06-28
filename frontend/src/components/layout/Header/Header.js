@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useUser } from "../../../globales/User";
+import { useUser } from '../../../context/UserContext';
 import { useState } from "react";
 import { IoMdMenu } from "react-icons/io";
 import { IoMdClose } from "react-icons/io";
@@ -11,6 +11,7 @@ function Header() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
+  // Suppresses the link if already on that route to avoid no-op navigation
   const NavLink = ({ to, label }) =>
     location !== to ? (
       <Link to={to} onClick={() => setOpen(false)} className="nav-link">
@@ -20,22 +21,18 @@ function Header() {
 
   return (
     <>
-      {/* CABECERA PRINCIPAL */}
-      <header className="sticky top-0 z-50 bg-surface-50 shadow-md ">
+      <header className="sticky top-0 z-50 bg-surface-50 shadow-md">
         <div className="flex items-center justify-between px-6 py-5">
-          {/* MARCA */}
+          {/* Brand logo and name */}
           <Link to="/" className="flex items-center gap-3">
             <img src="logo.png" alt="Salesianos" className="w-7 h-7" />
             <div>
-              <div className="font-display text-lg font-bold">
-                Gestor FP Dual
-              </div>
-              <div className="text-[0.65rem] uppercase tracking-widest opacity-70">
-                Salesianos Zaragoza
-              </div>
+              <div className="font-display text-lg font-bold">Gestor FP Dual</div>
+              <div className="text-[0.65rem] uppercase tracking-widest opacity-70">Salesianos Zaragoza</div>
             </div>
           </Link>
-          {/* NAVEGACIÓN ESCRITORIO */}
+
+          {/* Desktop navigation */}
           <nav className="hidden md:flex items-center gap-3">
             {user && (
               <span className="nav-welcome">
@@ -70,14 +67,15 @@ function Header() {
               </button>
             )}
           </nav>
-          {/* BOTÓN MENÚ MÓVIL */}
+
+          {/* Mobile menu toggle */}
           <button onClick={() => setOpen(true)} className="md:hidden text-2xl">
             <IoMdMenu />
           </button>
         </div>
       </header>
 
-      {/* OVERLAY FONDO */}
+      {/* Backdrop overlay for the mobile drawer */}
       <div
         className={`fixed inset-0 bg-black/40 z-40 transition ${
           open ? "opacity-100 visible" : "opacity-0 invisible"
@@ -85,7 +83,7 @@ function Header() {
         onClick={() => setOpen(false)}
       />
 
-      {/* MENÚ DESLIZANTE MÓVIL */}
+      {/* Mobile slide-in drawer */}
       <div
         className={`fixed top-0 right-0 h-full w-[200px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
@@ -114,10 +112,7 @@ function Header() {
 
           {location !== "/login" && (
             <button
-              onClick={() => {
-                logout(navigate);
-                setOpen(false);
-              }}
+              onClick={() => { logout(navigate); setOpen(false); }}
               className="nav-link nav-link-logout w-fit"
             >
               {user ? "Salir" : "Acceder"}

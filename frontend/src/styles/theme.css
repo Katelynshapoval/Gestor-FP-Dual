@@ -1,4 +1,4 @@
-/* Tokens de color: fuente única para Tailwind (tailwind.config.js) y CSS */
+/* Design tokens — single source of truth for both Tailwind (tailwind.config.js) and raw CSS */
 :root {
   --color-brand: #f81d1d;
   --color-brand-dark: #bc0808;

@@ -1,8 +1,7 @@
 const pool = require('../db/pool');
 const { sendSqlError } = require('../helpers/dbHelpers');
 
-// Activa automáticamente la convocatoria cuyas fechas comprenden el día actual.
-// Desactiva cualquier convocatoria que ya haya expirado.
+// Sets activa=1 for the convocatoria whose date range includes today, clears all others.
 async function autoActivar() {
   await pool.query(`
     UPDATE dual_convocatorias
@@ -13,12 +12,12 @@ async function autoActivar() {
   `);
 }
 
-// GET /convocatorias — lista con activación automática previa
+// GET /convocatorias — runs auto-activation before returning the list
 exports.getAll = async function (req, res) {
   try {
     await autoActivar();
   } catch {
-    // si falla la activación automática se devuelven los datos igual
+    // auto-activation failure is non-fatal; return existing data anyway
   }
   const [rows] = await pool.query(
     'SELECT * FROM dual_convocatorias ORDER BY id_convocatoria DESC'
@@ -35,7 +34,7 @@ exports.getActiva = async function (req, res) {
   return res.json(rows[0]);
 };
 
-// POST /convocatorias — crear nueva (inactiva por defecto)
+// POST /convocatorias — creates a new convocatoria, inactive by default
 exports.create = async function (req, res) {
   const { nombre, fecha_inicio, fecha_fin } = req.body;
   if (!nombre || !fecha_inicio || !fecha_fin) {
@@ -56,7 +55,7 @@ exports.create = async function (req, res) {
   }
 };
 
-// PUT /convocatorias/:id — editar fechas de una convocatoria futura
+// PUT /convocatorias/:id — updates a future (not yet active) convocatoria
 exports.update = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const { nombre, fecha_inicio, fecha_fin } = req.body;

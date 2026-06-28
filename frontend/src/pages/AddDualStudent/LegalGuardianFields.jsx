@@ -1,4 +1,4 @@
-// Campos del tutor legal, visibles únicamente cuando el alumno es menor de edad.
+// Legal guardian fields — shown only when the student is a minor
 const LegalGuardianFields = ({ legalGuardianName, legalGuardianDni, onNameChange, onDniChange }) => (
   <>
     <div className="field">

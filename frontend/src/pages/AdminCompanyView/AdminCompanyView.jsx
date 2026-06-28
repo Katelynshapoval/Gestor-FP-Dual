@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useUser } from "../../globales/User";
+import { useUser } from '../../context/UserContext';
 import { useNavigate } from "react-router-dom";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
@@ -21,7 +21,6 @@ const AdminCompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
 
-  // Vista principal: "empresas" o "reservas"
   const [mainView, setMainView] = useState("empresas");
 
   const [companies, setCompanies] = useState([]);
@@ -73,7 +72,7 @@ const AdminCompanyView = () => {
     } catch (err) { alert("Error al resetear la contraseña"); }
   };
 
-  // Opciones de filtro
+  // Build unique speciality and course options for filter dropdowns
   const allEspecialidades = [];
   const espSeen = new Set();
   for (const c of companies) {
@@ -111,7 +110,7 @@ const AdminCompanyView = () => {
 
   return (
     <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1">
-      {/* Cabecera */}
+      {/* Page header with summary badges */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="border-l-4 border-red-600 pl-4 sm:pl-5">
           <h1 className="text-xl sm:text-2xl font-semibold">Gestión de empresas</h1>
@@ -126,7 +125,7 @@ const AdminCompanyView = () => {
         </div>
       </div>
 
-      {/* Toggle principal Empresas / Reservas */}
+      {/* Primary tab toggle */}
       <div className="flex gap-1 border-b border-gray-200">
         <button
           onClick={() => setMainView("empresas")}
@@ -151,7 +150,7 @@ const AdminCompanyView = () => {
         </button>
       </div>
 
-      {/* Vista: Reservas */}
+      {/* Reservations panel */}
       {mainView === "reservas" && (
         <ReservasAdmin
           reservations={allReservations}
@@ -159,10 +158,10 @@ const AdminCompanyView = () => {
         />
       )}
 
-      {/* Vista: Empresas */}
+      {/* Companies panel */}
       {mainView === "empresas" && (
         <>
-          {/* Filtros */}
+          {/* Filter controls */}
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-center">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
               <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">Especialidad:</label>
@@ -202,7 +201,7 @@ const AdminCompanyView = () => {
             {filtered.length} empresa{filtered.length !== 1 ? "s" : ""} mostradas
           </p>
 
-          {/* Lista de empresas */}
+          {/* Company card list */}
           <div className="space-y-4">
             {filtered.length === 0 && (
               <div className="text-center p-12 text-gray-500 bg-gray-50 border border-gray-200 rounded-xl">
@@ -227,7 +226,7 @@ const AdminCompanyView = () => {
         </>
       )}
 
-      {/* Modal del convenio */}
+      {/* Convenio document viewer modal */}
       <ConvenioViewer
         empresa={viewingConvenio}
         onClose={() => setViewingConvenio(null)}
@@ -238,3 +237,5 @@ const AdminCompanyView = () => {
 };
 
 export default AdminCompanyView;
+
+

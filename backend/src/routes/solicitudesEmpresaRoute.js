@@ -1,35 +1,31 @@
 const { Router } = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const asyncHandler = require('../middleware/asyncHandler');
 const svc = require('../services/solicitudesEmpresaService');
 
 const router = Router();
-const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-// Pública: envío de nueva solicitud de empresa
+// Public: submit new company application
 router.post('/solicitudes/empresa', asyncHandler(svc.create));
 
-// Empresa autenticada: reaplicar en la convocatoria activa
+// Empresa: re-apply for the active convocatoria
 router.post('/solicitudes/empresa/reapply', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.reapply));
 
-// Empresa autenticada: ver su propia solicitud activa
+// Empresa: view own active application
 router.get('/solicitudes/empresa/mia', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.getMia));
 
-// Admin/Coordinador: lista completa normalizada (sustituye a /getAllCompanies)
+// Admin / Coordinador: full normalised list
 router.get('/solicitudes/empresa/todas', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getTodas));
 
-// Admin/Coordinador: lista estándar con filtros
+// Admin / Coordinador: standard list with filters
 router.get('/solicitudes/empresa', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getAll));
 
-// Detalle de una solicitud (admin, coordinador y empresa dueña)
+// Detail (admin, coordinador, and the owning empresa)
 router.get('/solicitudes/empresa/:id', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getById));
-
-// Especialidades y cupos de una solicitud
 router.get('/solicitudes/empresa/:id/especialidades', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getEspecialidades));
-
-// Documentos de una solicitud
 router.get('/solicitudes/empresa/:id/documentos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getDocumentos));
 
-// Validar / rechazar solicitud
+// Validate / reject application
 router.post('/solicitudes/empresa/:id/validar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.validar));
 router.post('/solicitudes/empresa/:id/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.rechazar));
 

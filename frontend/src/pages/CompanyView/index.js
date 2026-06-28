@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useUser } from "../../globales/User";
+import { useUser } from '../../context/UserContext';
 import { useNavigate } from "react-router-dom";
 import { getJSON, postJSON } from "../../utils/api.js";
 import MisReservas from "./MisReservas.jsx";
@@ -7,7 +7,7 @@ import SpecialitySelector from "../AddCompanyRequest/SpecialitySelector.jsx";
 import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
 import "../../styles/forms.css";
 
-// Campo de solo lectura con estilo formulario
+// Read-only field styled to match the rest of the form layout
 const ReadField = ({ label, value }) => (
   <div className="field">
     <label>{label}</label>
@@ -15,7 +15,7 @@ const ReadField = ({ label, value }) => (
   </div>
 );
 
-// Información de empresa en formato form-card
+// Company data panel with optional re-apply form
 const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => {
   const [showReapply, setShowReapply] = useState(false);
   const [reapplyDone, setReapplyDone] = useState(false);
@@ -35,7 +35,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
 
   return (
     <>
-      {/* Coordinador */}
+      {/* Coordinator section */}
       <div className="form-card">
         <p className="form-section-title">Datos del coordinador</p>
         <p className="field-hint">
@@ -48,7 +48,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
         </div>
       </div>
 
-      {/* Empresa */}
+      {/* Company info section */}
       <div className="form-card">
         <p className="form-section-title">Datos de la empresa</p>
         <div className="grid gap-4 md:grid-cols-2">
@@ -62,7 +62,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
         </div>
       </div>
 
-      {/* Responsable Legal */}
+      {/* Legal representative */}
       <div className="form-card">
         <p className="form-section-title">Responsable Legal</p>
         <div className="grid gap-4 md:grid-cols-3">
@@ -72,7 +72,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
         </div>
       </div>
 
-      {/* Puesto */}
+      {/* Job position details */}
       <div className="form-card">
         <p className="form-section-title">Puesto de trabajo</p>
         <div className="space-y-4">
@@ -86,7 +86,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
         </div>
       </div>
 
-      {/* Ciclos */}
+      {/* Requested specialities and student counts */}
       <div className="form-card">
         <p className="form-section-title">Ciclo(s) de Grado solicitados</p>
         {esps.length > 0 ? (
@@ -103,7 +103,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
         )}
       </div>
 
-      {/* Transportes */}
+      {/* Transport options */}
       <div className="form-card">
         <p className="form-section-title">Métodos de Transporte posibles</p>
         <p className="field-hint">Medios de transporte con los que el alumno puede acceder al puesto.</p>
@@ -123,7 +123,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
         )}
       </div>
 
-      {/* Renovar solicitud */}
+      {/* Re-apply section for the next convocatoria */}
       <div className="form-card">
         <div
           className="flex items-center justify-between cursor-pointer"
@@ -154,7 +154,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
   );
 };
 
-// Formulario de reaplicación
+// Re-apply form — lets the empresa re-submit with updated coordinator data and speciality picks
 const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
   const initEsps = () => {
     const ids = (solicitud?.especialidades || []).map(e => e.id_especialidad);
@@ -258,7 +258,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
   );
 };
 
-// Panel principal de empresa con 2 botones: Mis datos / Mis reservas
+// Main empresa portal with two tabs: Mis datos / Mis reservas
 const CompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -320,7 +320,7 @@ const CompanyView = () => {
         {user.nombre} · {user.email}
       </p>
 
-      {/* Navegación */}
+      {/* Tab navigation */}
       <div className="flex border-b border-surface-200 mb-6">
         <button className={tabCls(view === "datos")} onClick={() => setView("datos")}>Mis datos</button>
         <button className={tabCls(view === "reservas")} onClick={() => setView("reservas")}>
@@ -357,3 +357,5 @@ const CompanyView = () => {
 };
 
 export default CompanyView;
+
+

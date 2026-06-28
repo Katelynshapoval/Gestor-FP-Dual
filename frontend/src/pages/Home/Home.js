@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useUser } from "../../globales/User";
+import { useUser } from '../../context/UserContext';
 import "./Home.css";
 import { FaArrowRightLong } from "react-icons/fa6";
 
@@ -60,7 +60,7 @@ function Home() {
 
   return (
     <div className="flex flex-col flex-1  ">
-      {/* HERO */}
+      {/* Hero banner */}
       <div className="home-hero relative overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 text-white px-8 py-20">
         <div className="max-w-6xl mx-auto relative z-10">
           <h1 className="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-4 max-w-[640px]">
@@ -73,16 +73,16 @@ function Home() {
         </div>
       </div>
 
-      {/* MODULES SECTION */}
+      {/* Module cards */}
       <div className="max-w-7xl mx-auto px-9 md:px-8 py-12 w-full">
-        {/* Section title */}
+        {/* Section heading */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-1">Módulos principales</h2>
           <p className="text-sm text-gray-500 text-base">
             Accede a las funcionalidades principales del sistema
           </p>
         </div>
-        {/* Cards */}
+        {/* Navigation cards */}
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((c) => (
             <Link
@@ -100,7 +100,7 @@ function Home() {
 
               <p className="text-base text-gray-500 mb-4">{c.desc}</p>
 
-              {/* CTA */}
+              {/* Card call-to-action link */}
               <span className="mt-auto text-sm font-semibold text-brand-500 flex items-center gap-1 text-base">
                 Acceder al módulo
                 <FaArrowRightLong className="transition-transform group-hover:translate-x-1  ml-2" />
@@ -114,3 +114,5 @@ function Home() {
 }
 
 export default Home;
+
+

@@ -1,6 +1,5 @@
-// UTILIDADES para peticiones HTTP.
-// Todas las funciones autenticadas leen el token JWT del localStorage y lo
-// añaden a la cabecera Authorization para que el backend pueda verificar la sesión.
+// Authenticated HTTP utilities. All functions read the JWT from localStorage
+// and attach it as a Bearer token so the backend can verify the session.
 
 function getToken() {
   try {
@@ -19,7 +18,7 @@ function authHeaders(extra = {}) {
   return headers;
 }
 
-// GET autenticado que devuelve JSON
+// Authenticated GET that returns parsed JSON
 export const getJSON = async (url) => {
   const response = await fetch(url, { headers: authHeaders() });
   if (!response.ok) {
@@ -29,14 +28,14 @@ export const getJSON = async (url) => {
   return response.json();
 };
 
-// GET autenticado que devuelve un Blob (para PDFs)
+// Authenticated GET that returns a Blob (used for PDF downloads)
 export const getBlob = async (url) => {
   const response = await fetch(url, { headers: authHeaders() });
   if (!response.ok) throw new Error(`Error al obtener archivo: ${response.status}`);
   return response.blob();
 };
 
-// POST o PUT autenticado con JSON
+// Authenticated POST or PUT with a JSON body
 export const postJSON = async (url, body, method = 'POST') => {
   const response = await fetch(url, {
     method,
@@ -52,7 +51,7 @@ export const postJSON = async (url, body, method = 'POST') => {
 
 export const putJSON = (url, body) => postJSON(url, body, 'PUT');
 
-// POST autenticado con FormData (multipart)
+// Authenticated POST with FormData (multipart file upload)
 export const postForm = async (url, formData) => {
   const response = await fetch(url, {
     method: 'POST',
@@ -66,7 +65,7 @@ export const postForm = async (url, formData) => {
   return response.json();
 };
 
-// Construcción de opciones para fetch manual (mantiene compatibilidad)
+// Builds fetch options for callers that construct their own request manually
 export const buildPostOptions = (body) => ({
   method: 'POST',
   headers: authHeaders({ 'Content-Type': 'application/json' }),

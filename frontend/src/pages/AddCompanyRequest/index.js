@@ -18,7 +18,7 @@ const Field = ({ id, label, hint, children }) => (
   </div>
 );
 
-// Página para que las empresas envíen una solicitud de colaboración al programa Dual.
+// Company application page for joining the Dual programme
 const AddCompanyRequest = () => {
   const navigate = useNavigate();
   const { message, showMessage } = useFormMessage();
@@ -28,37 +28,31 @@ const AddCompanyRequest = () => {
   const [dataSpecialities, setDataSpecialities] = useState([]);
   const [dataTransports, setDataTransports] = useState([]);
 
-  // Coordinador empresa
   const [emailCoordinador, setEmailCoordinador] = useState("");
   const [nombreCoordinador, setNombreCoordinador] = useState("");
   const [telefonoCoordinador, setTelefonoCoordinador] = useState("");
   const [dniCoordinador] = useState("");
 
-  // Empresa
   const [razonSocial, setRazonSocial] = useState("");
   const [cif, setCif] = useState("");
   const [telEmpresa, setTelEmpresa] = useState("");
 
-  // Domicilio legal
   const [dirRazSocial, setDirRazSocial] = useState("");
   const [provincia, setProvincia] = useState("");
   const [municipio, setMunicipio] = useState("");
   const [cpRazSoc, setCpRazSoc] = useState("");
 
-  // Responsable legal
   const [responsableLegal, setResponsableLegal] = useState("");
   const [cargo, setCargo] = useState("");
   const [dniRl, setDniRl] = useState("");
   const [emailRepresentante] = useState("");
   const [telefonoRepresentante] = useState("");
 
-  // Puesto de trabajo
   const [specialities, setSpecialities] = useState([[], []]);
   const [descripcionPuesto, setDescripcionPuesto] = useState("");
   const [direccionLugarTrabajo, setDireccionLugarTrabajo] = useState("");
   const [metodosTransporte, setMetodosTransporte] = useState([]);
 
-  // Contraseña inicial del coordinador
   const [passwordCoordinador, setPasswordCoordinador] = useState("");
 
   useEffect(() => {
@@ -140,35 +134,30 @@ const AddCompanyRequest = () => {
       }));
 
       await postJSON("/solicitudes/empresa", {
-        // Empresa
         cif: cif.toUpperCase(),
         empresa: razonSocial,
         telefonoEmpresa: telEmpresa,
-        // Domicilio legal
         domicilioLegal: dirRazSocial,
         cpLegal: cpRazSoc,
         provinciaLegal: provincia,
         localidadLegal: municipio || provincia,
         municipioLegal: municipio,
-        // Domicilio trabajo (mismo que legal si no se especifica)
+        // use legal address as work address when no separate address is given
         mismoLugarTrabajo: !direccionLugarTrabajo,
         domicilioTrabajo: direccionLugarTrabajo || dirRazSocial,
         cpTrabajo: cpRazSoc,
         provinciaTrabajo: provincia,
         localidadTrabajo: municipio || provincia,
-        // Representante legal
         dniRepresentante: dniRl,
         nombreRepresentante: responsableLegal,
         emailRepresentante: emailRepresentante || emailCoordinador,
         telefonoRepresentante: telefonoRepresentante || telEmpresa,
         cargoRepresentante: cargo || "REPRESENTANTE LEGAL",
-        // Coordinador
         dniCoordinador: dniCoordinador || dniRl,
         nombreCoordinador,
         emailCoordinador,
         telefonoCoordinador,
         cargoCoordinador: "COORDINADOR DUAL",
-        // Solicitud
         descripcion_puesto: descripcionPuesto,
         especialidades,
         transportes: metodosTransporte,
@@ -193,7 +182,7 @@ const AddCompanyRequest = () => {
       </p>
 
       <form ref={formRef} className="space-y-6">
-        {/* Datos del coordinador */}
+        {/* Coordinator section */}
         <div className="form-card">
           <div className="form-section-title">Datos del coordinador</div>
           <p className="field-hint">
@@ -251,7 +240,7 @@ const AddCompanyRequest = () => {
           </Field>
         </div>
 
-        {/* Datos de la empresa */}
+        {/* Company info section */}
         <div className="form-card">
           <div className="form-section-title">Datos de la empresa</div>
           <div className="grid gap-4 md:grid-cols-2">

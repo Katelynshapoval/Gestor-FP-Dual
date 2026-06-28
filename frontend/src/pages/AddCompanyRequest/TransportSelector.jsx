@@ -1,4 +1,4 @@
-// Selector de medios de transporte disponibles para el puesto de trabajo.
+// Transport selector for the company application form
 const TransportSelector = ({ dataTransports, metodosTransporte, onToggle }) => (
   <div className="field">
     <label>Métodos de Transporte posibles</label>
@@ -11,7 +11,7 @@ const TransportSelector = ({ dataTransports, metodosTransporte, onToggle }) => (
     <div className="checkbox-grid">
       {dataTransports.map((t) => {
         const id = t.id_transporte ?? t.idTransporte;
-        // nombre_mostrar es el texto legible; nombre es el valor técnico estable
+        // nombre_mostrar is the human-readable label; nombre is the stable technical key
         const label = t.nombre_mostrar ?? t.nombre ?? t.transporte ?? `Transporte ${id}`;
         const checked = metodosTransporte?.includes(id) || metodosTransporte?.includes(Number(id));
 

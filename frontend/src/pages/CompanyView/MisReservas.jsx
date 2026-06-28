@@ -11,14 +11,14 @@ const ESTADO_COLOR = {
   CANCELADA:  "bg-red-50 text-red-700 border-red-200",
 };
 
-// Icono según estado del documento firmado
+// Status icon for the signed document attached to a reservation
 const DocStatusIcon = ({ estado }) => {
   if (estado === "VALIDADO")  return <IoIosCheckmarkCircleOutline className="text-green-600 shrink-0" />;
   if (estado === "RECHAZADO") return <MdOutlineCancel className="text-red-500 shrink-0" />;
   return <MdPendingActions className="text-yellow-500 shrink-0" />;
 };
 
-// Subida del documento firmado de una reserva
+// PDF upload widget for the Anexo H document required to confirm a reservation
 const SubirDocReserva = ({ idReserva, onUploaded }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -93,7 +93,7 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
   );
 };
 
-// Modal de cancelación con campo de motivo
+// Cancellation modal with a required motivo field
 const CancelModal = ({ alumno, onConfirm, onClose }) => {
   const [motivo, setMotivo] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -142,7 +142,7 @@ const CancelModal = ({ alumno, onConfirm, onClose }) => {
   );
 };
 
-// Lista de reservas de la empresa
+// Empresa's reservation list with document upload and cancellation actions
 const MisReservas = ({ reservations, onUpload, onCancel }) => {
   const [cancelModal, setCancelModal] = useState(null);
 
@@ -178,7 +178,7 @@ const MisReservas = ({ reservations, onUpload, onCancel }) => {
               key={reserva.id_reserva}
               className="rounded-xl border border-surface-200 bg-white px-5 py-4 shadow-sm space-y-3"
             >
-              {/* Cabecera */}
+              {/* Reservation header */}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-semibold text-sm text-gray-900 truncate">
@@ -193,7 +193,7 @@ const MisReservas = ({ reservations, onUpload, onCancel }) => {
                 </span>
               </div>
 
-              {/* Estado del documento */}
+              {/* Document status indicator */}
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <DocStatusIcon estado={docEstado} />
                 <span>
@@ -207,19 +207,19 @@ const MisReservas = ({ reservations, onUpload, onCancel }) => {
                 </span>
               </div>
 
-              {/* Motivo de cancelación */}
+              {/* Cancellation reason */}
               {reserva.estado_reserva === "CANCELADA" && reserva.motivo && (
                 <p className="text-xs text-gray-400 italic border-t border-gray-100 pt-2">
                   Motivo: {reserva.motivo}
                 </p>
               )}
 
-              {/* Subida de documento */}
+              {/* Document upload */}
               {reserva.estado_reserva !== "CANCELADA" && docEstado !== "VALIDADO" && (
                 <SubirDocReserva idReserva={reserva.id_reserva} onUploaded={onUpload} />
               )}
 
-              {/* Cancelar */}
+              {/* Cancel reservation button (only for pending reservations) */}
               {reserva.estado_reserva === "PENDIENTE" && (
                 <button
                   onClick={() => setCancelModal({ idReserva: reserva.id_reserva, alumno: reserva.alumno || "este alumno" })}

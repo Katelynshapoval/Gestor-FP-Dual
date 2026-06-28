@@ -1,22 +1,13 @@
 const pool = require('../db/pool');
 const { getCompanyIdFromUser, sendSqlError } = require('../helpers/dbHelpers');
 
-// Calcula plazas directamente en SQL para no depender de las funciones BD en cada petición
-const CUPOS_SUBQUERY = `
-  GREATEST(0, ee.cantidad_alumnos - COUNT(
-    CASE WHEN r2.id_estado_reserva IN (
-      SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre IN ('PENDIENTE','CONFIRMADO')
-    ) THEN 1 END
-  ))
-`;
-
-// GET /alumnos/disponibles — empresa: alumnos validados sin confirmación en la convocatoria activa
-// Filtrados por las especialidades de las ofertas aprobadas de esta empresa
+// GET /alumnos/disponibles — validated students without a confirmed placement,
+// scoped to the specialities of the empresa's approved offers in the active convocatoria
 exports.getAlumnosDisponibles = async function (req, res) {
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
   if (!idEmpresa) return res.status(404).json({ error: 'No se encontró empresa vinculada a este usuario.' });
 
-  // Especialidades de las ofertas aprobadas de esta empresa en la convocatoria activa
+  // Specialities from this empresa's validated offers in the active convocatoria
   const [especialidades] = await pool.query(
     `SELECT DISTINCT ee.id_especialidad
        FROM dual_solicitud_empresa_especialidades ee
@@ -92,7 +83,7 @@ exports.getAlumnosDisponibles = async function (req, res) {
   return res.json(rows);
 };
 
-// GET /cupos/empresa — empresa: sus propias ofertas con plazas disponibles
+// GET /cupos/empresa — empresa's own validated offers with available and occupied quotas
 exports.getCuposEmpresa = async function (req, res) {
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
   if (!idEmpresa) return res.status(404).json({ error: 'No se encontró empresa vinculada a este usuario.' });
@@ -129,7 +120,7 @@ exports.getCuposEmpresa = async function (req, res) {
   return res.json(rows);
 };
 
-// GET /reservas — admin/coordinador: todas las reservas con detalle completo
+// GET /reservas — admin/coordinador: full reservation list with student and company detail
 exports.getAll = async function (req, res) {
   const [rows] = await pool.query(
     `SELECT
@@ -171,7 +162,7 @@ exports.getAll = async function (req, res) {
   return res.json(rows);
 };
 
-// GET /reservas/empresa — empresa: sus propias reservas
+// GET /reservas/empresa — empresa's own reservations
 exports.getMisReservas = async function (req, res) {
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
   if (!idEmpresa) return res.status(404).json({ error: 'No se encontró empresa vinculada a este usuario.' });
@@ -219,7 +210,7 @@ exports.getMisReservas = async function (req, res) {
   return res.json(rows);
 };
 
-// POST /reservas — empresa: reservar un alumno en una de sus ofertas
+// POST /reservas — empresa reserves a student against one of its validated speciality offers
 exports.reservar = async function (req, res) {
   const { id_solicitud_alumno, id_solicitud_empresa_especialidad } = req.body;
 
@@ -230,7 +221,7 @@ exports.reservar = async function (req, res) {
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
   if (!idEmpresa) return res.status(404).json({ error: 'No se encontró empresa vinculada a este usuario.' });
 
-  // Verifica que la oferta pertenece a esta empresa y está aprobada
+  // Verify the offer belongs to this empresa and is approved in the active convocatoria
   const [ofertaRows] = await pool.query(
     `SELECT ee.id_solicitud_empresa_especialidad
        FROM dual_solicitud_empresa_especialidades ee
@@ -253,7 +244,7 @@ exports.reservar = async function (req, res) {
   try {
     await conn.beginTransaction();
 
-    // El SP maneja bloqueo, capacidad y unicidad de confirmación
+    // The SP handles row locking, capacity check, and uniqueness of confirmed placements
     const [results] = await conn.query(
       'CALL sp_reservar_alumno(?, ?, @p_id_reserva)',
       [id_solicitud_alumno, id_solicitud_empresa_especialidad]
@@ -271,7 +262,7 @@ exports.reservar = async function (req, res) {
   }
 };
 
-// POST /reservas/:id/cancelar — empresa: cancelar propia reserva
+// POST /reservas/:id/cancelar — empresa cancels its own reservation (motivo required)
 exports.cancelar = async function (req, res) {
   const idReserva = parseInt(req.params.id, 10);
   const { motivo } = req.body;
@@ -283,7 +274,7 @@ exports.cancelar = async function (req, res) {
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
   if (!idEmpresa) return res.status(404).json({ error: 'No se encontró empresa vinculada a este usuario.' });
 
-  // Verifica que la reserva pertenece a esta empresa
+  // Verify the reservation belongs to this empresa before allowing cancellation
   const [check] = await pool.query(
     `SELECT r.id_reserva
        FROM dual_reservas r
@@ -306,7 +297,7 @@ exports.cancelar = async function (req, res) {
   }
 };
 
-// POST /reservas/:id/confirmar — admin/coordinador: confirmar reserva
+// POST /reservas/:id/confirmar — admin/coordinador confirms a reservation
 exports.confirmar = async function (req, res) {
   const idReserva = parseInt(req.params.id, 10);
   const { id_tipo_contrato } = req.body;

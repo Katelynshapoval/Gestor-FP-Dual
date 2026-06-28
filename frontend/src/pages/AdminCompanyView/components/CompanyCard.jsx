@@ -17,7 +17,7 @@ import {
   toggleBtnClass,
 } from "../../../components/ui/cardStyles";
 
-// Colores por estado de reserva
+// Tailwind class map for reservation status badges
 const estadoCls = {
   CONFIRMADA: "bg-green-500/10 text-green-800",
   PENDIENTE:  "bg-yellow-400/15 text-yellow-800",
@@ -25,7 +25,7 @@ const estadoCls = {
   CANCELADA:  "bg-red-500/10 text-red-800",
 };
 
-// Lista de especialidades solicitadas
+// Requested specialities with student count badges
 const EspecialidadList = ({ especialidades }) => {
   if (!especialidades || especialidades.length === 0)
     return <p className="text-sm text-gray-500">Sin datos</p>;
@@ -46,7 +46,7 @@ const EspecialidadList = ({ especialidades }) => {
   );
 };
 
-// Lista de alumnos reservados para esta empresa
+// Students reserved by this empresa, shown in the Reservas inner tab
 const ReservasList = ({ reservations }) => {
   if (!reservations || reservations.length === 0)
     return <p className="text-sm text-gray-500 py-4 text-center">Sin reservas asociadas.</p>;
@@ -76,7 +76,7 @@ const ReservasList = ({ reservations }) => {
   );
 };
 
-// Tarjeta compacta de empresa para el administrador con tabs internos (Información / Reservas)
+// Admin company card with inner tabs for company info and their student reservations
 const CompanyCard = ({
   empresa,
   reservations = [],
@@ -127,7 +127,7 @@ const CompanyCard = ({
 
   return (
     <div className={cardClass}>
-      {/* Cabecera */}
+      {/* Card header */}
       <div
         className={`${cardHeaderClass} flex items-center justify-between gap-2`}
         onClick={() => onToggle(id)}
@@ -163,7 +163,7 @@ const CompanyCard = ({
         </div>
       </div>
 
-      {/* Cuerpo expandible */}
+      {/* Expandable body */}
       <div
         className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
           isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
@@ -171,7 +171,7 @@ const CompanyCard = ({
       >
         <div className="overflow-hidden">
           <div className={cardBodyClass}>
-            {/* Tabs internos */}
+            {/* Inner tabs */}
             <div className="flex gap-1 border-b border-gray-100 mb-5">
               <button
                 className={innerTabCls(innerTab === "info")}
@@ -192,10 +192,10 @@ const CompanyCard = ({
               </button>
             </div>
 
-            {/* Vista: Información */}
+            {/* Information tab */}
             {innerTab === "info" && (
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Columna izquierda */}
+                {/* Left column: company and coordinator data */}
                 <div className="space-y-5">
                   <div>
                     <p className={sectionLabelClass}>Datos de la empresa</p>
@@ -213,7 +213,7 @@ const CompanyCard = ({
                     </div>
                   </div>
 
-                  {/* Credenciales */}
+                  {/* Login credentials and password reset */}
                   <div>
                     <p className={sectionLabelClass}>Credenciales de acceso</p>
                     <div className="p-3 rounded-lg border border-surface-200 bg-white space-y-2">
@@ -240,7 +240,7 @@ const CompanyCard = ({
                   </div>
                 </div>
 
-                {/* Columna derecha */}
+                {/* Right column: specialities, job description, and convenio */}
                 <div className="space-y-5">
                   <div>
                     <p className={sectionLabelClass}>Especialidades solicitadas</p>
@@ -254,7 +254,7 @@ const CompanyCard = ({
                     </div>
                   )}
 
-                  {/* Convenio */}
+                  {/* Convenio status and viewer button */}
                   <div>
                     <p className={sectionLabelClass}>Convenio</p>
                     <div
@@ -295,7 +295,7 @@ const CompanyCard = ({
               </div>
             )}
 
-            {/* Vista: Reservas */}
+            {/* Reservations tab */}
             {innerTab === "reservas" && (
               <ReservasList reservations={reservations} />
             )}

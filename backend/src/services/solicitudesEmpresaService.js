@@ -10,7 +10,7 @@ try {
 
 async function sendCompanyConfirmationEmail(email, empresa, convocatoria, convenioUrl) {
   if (!transporter) {
-    console.warn('Mail no configurado. URL de convenio para', empresa, ':', convenioUrl);
+    console.warn('Mail not configured. Convenio URL for', empresa, ':', convenioUrl);
     return;
   }
   try {
@@ -28,36 +28,36 @@ async function sendCompanyConfirmationEmail(email, empresa, convocatoria, conven
       `,
     });
   } catch (err) {
-    console.error('Error enviando email empresa:', err.message);
+    console.error('Error sending company confirmation email:', err.message);
   }
 }
 
 // POST /solicitudes/empresa — public: create company application
 exports.create = async function (req, res) {
   const {
-    // Empresa
+    // Company
     cif, empresa: empresaNombre, web = '', observaciones = '',
     emailEmpresa = '', telefonoEmpresa = '', menosdecincotrabajadores = 0,
-    // Domicilio legal
+    // Legal address
     domicilioLegal, cpLegal, provinciaLegal, localidadLegal, municipioLegal = '',
     telefonoLegal = '', emailLegal = '',
-    // Domicilio trabajo (puede ser igual al legal)
+    // Work address (may be the same as the legal address)
     mismoLugarTrabajo,
     domicilioTrabajo, cpTrabajo, provinciaTrabajo, localidadTrabajo, municipioTrabajo = '',
     telefonoTrabajo = '', emailTrabajo = '',
-    // Representante legal
+    // Legal representative
     dniRepresentante, nombreRepresentante, emailRepresentante, telefonoRepresentante,
     cargoRepresentante = 'REPRESENTANTE LEGAL',
-    // Coordinador empresa
+    // Company coordinator (dual tutor)
     dniCoordinador, nombreCoordinador, emailCoordinador, telefonoCoordinador,
     cargoCoordinador = 'COORDINADOR DUAL',
-    // Solicitud
+    // Application details
     descripcion_puesto,
-    // Especialidades: [{ idEspecialidad, cantidadAlumnos }]
+    // Specialities: [{ idEspecialidad, cantidadAlumnos }]
     especialidades,
-    // Transportes: [id_transporte, ...]
+    // Transports: [id_transporte, ...]
     transportes = [],
-    // Contraseña para cuenta coordinador
+    // Initial password for the coordinator user account
     passwordCoordinador,
   } = req.body;
 
@@ -218,10 +218,10 @@ exports.create = async function (req, res) {
       [nombreCoordinador, emailCoordinador, hash, idRol, idCoordinador]
     );
 
-    // Genera token seguro para subida pública del convenio
+    // Generates a one-time token so the company can upload their signed convenio without logging in
     const crypto = require('crypto');
     const token = crypto.randomBytes(32).toString('hex');
-    const expiraEn = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 días
+    const expiraEn = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30-day expiry
     await conn.query(
       `INSERT INTO dual_convenio_tokens (id_solicitud_empresa, token, expira_en) VALUES (?, ?, ?)`,
       [idSolicitudEmpresa, token, expiraEn]
@@ -380,8 +380,7 @@ exports.rechazar = async function (req, res) {
   }
 };
 
-// GET /solicitudes/empresa/todas — admin: lista completa con datos normalizados
-// Compatible con el panel de administración (antes /getAllCompanies)
+// GET /solicitudes/empresa/todas — admin: normalised list used by the company admin panel
 exports.getTodas = async function (req, res) {
   const [rows] = await pool.query(
     `SELECT
@@ -422,7 +421,7 @@ exports.getTodas = async function (req, res) {
 
   if (rows.length === 0) return res.json([]);
 
-  // Para cada solicitud, carga especialidades, transportes y estado del convenio
+  // Batch-load specialities, transports, and convenio status for each solicitud
   const ids = rows.map(r => r.id_solicitud_empresa);
   const idEmpresas = rows.map(r => r.id_empresa);
 
@@ -481,7 +480,7 @@ exports.getTodas = async function (req, res) {
     const conv = convenioMap[r.id_solicitud_empresa];
     return {
       ...r,
-      // Aliased para compatibilidad con frontend existente
+      // Aliased for frontend compatibility
       idAuxEmpresa: r.id_solicitud_empresa,
       fechaPeticion: r.fecha_solicitud,
       especialidades: espMap[r.id_solicitud_empresa] || [],
@@ -495,7 +494,7 @@ exports.getTodas = async function (req, res) {
   return res.json(result);
 };
 
-// POST /solicitudes/empresa/reapply — empresa autenticada: reaplicar en la convocatoria activa
+// POST /solicitudes/empresa/reapply — authenticated empresa re-applies for the active convocatoria
 exports.reapply = async function (req, res) {
   const { getCompanyIdFromUser } = require('../helpers/dbHelpers');
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
@@ -521,7 +520,7 @@ exports.reapply = async function (req, res) {
   try {
     await conn.beginTransaction();
 
-    // Comprueba que no haya ya una solicitud para esta convocatoria
+    // Guard against duplicate applications in the same convocatoria
     const [solExist] = await conn.query(
       'SELECT id_solicitud_empresa FROM dual_solicitudes_empresa WHERE id_empresa = ? AND id_convocatoria = ?',
       [idEmpresa, convocatoria.id_convocatoria]
@@ -531,7 +530,7 @@ exports.reapply = async function (req, res) {
       return res.status(409).json({ error: 'Ya existe una solicitud para la convocatoria activa.' });
     }
 
-    // Recupera datos actuales de la empresa para reutilizar representante legal y domicilios
+    // Reuse legal representative and addresses from the most recent previous application
     const [empData] = await conn.query(
       `SELECT se.id_representante_legal, se.id_domicilio_legal, se.id_domicilio_trabajo,
               coord.idcontacto AS id_coordinador_actual, coord.iddomicilio AS id_domicilio_coord
@@ -550,7 +549,7 @@ exports.reapply = async function (req, res) {
 
     const prev = empData[0];
 
-    // Actualiza datos del coordinador si se proporcionaron
+    // Update coordinator contact fields with any new values provided
     if (nombreCoordinador || emailCoordinador || telefonoCoordinador) {
       await conn.query(
         `UPDATE ge_contactos
@@ -560,7 +559,7 @@ exports.reapply = async function (req, res) {
           WHERE idcontacto = ?`,
         [nombreCoordinador, emailCoordinador, telefonoCoordinador, prev.id_coordinador_actual]
       );
-      // Actualiza también el email del usuario si cambió
+      // Keep the dual_usuarios email in sync with the contact email
       if (emailCoordinador) {
         await conn.query(
           `UPDATE dual_usuarios SET email = ?, nombre_mostrar = COALESCE(NULLIF(?, ''), nombre_mostrar)
@@ -570,7 +569,7 @@ exports.reapply = async function (req, res) {
       }
     }
 
-    // Crea nueva solicitud
+    // Create the new solicitud, reusing addresses and legal representative from the previous one
     const [solRes] = await conn.query(
       `INSERT INTO dual_solicitudes_empresa
          (id_empresa, id_convocatoria, id_estado_validacion, id_representante_legal,
@@ -582,7 +581,7 @@ exports.reapply = async function (req, res) {
     );
     const idSolicitudEmpresa = solRes.insertId;
 
-    // Especialidades
+    // Insert speciality rows for the new solicitud
     for (const esp of especialidades) {
       const idEsp = parseInt(esp.idEspecialidad, 10);
       const cant = parseInt(esp.cantidadAlumnos, 10);
@@ -597,7 +596,7 @@ exports.reapply = async function (req, res) {
       );
     }
 
-    // Transportes (reemplaza los actuales de la empresa)
+    // Replace all existing transport assignments for this empresa
     await conn.query('DELETE FROM dual_empresa_transportes WHERE id_empresa = ?', [idEmpresa]);
     for (const idT of transportes) {
       await conn.query('CALL sp_asignar_transporte_empresa(?, ?)', [idEmpresa, parseInt(idT, 10)]);

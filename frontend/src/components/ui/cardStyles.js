@@ -1,4 +1,4 @@
-// Clases reutilizables para tarjetas expandibles en distintas vistas
+// Shared Tailwind class strings for expandable cards used across multiple views
 
 export const cardClass =
   "mb-2 rounded-lg overflow-hidden transition bg-white border border-surface-200 shadow-[0_1px_3px_rgb(0_0_0/0.05)] hover:shadow-[0_3px_10px_rgb(0_0_0/0.08)]";
