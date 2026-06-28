@@ -24,7 +24,7 @@ const SpecialitySelector = ({
         return (
           <div
             key={id}
-            className={`checkbox-item ${isSelected ? "checked" : ""}`}
+            className={`checkbox-item ${isSelected ? "checked !items-start flex-col gap-2" : ""}`}
             onClick={() => onToggle(id)}
           >
             <div className="checkbox-left">
@@ -46,7 +46,7 @@ const SpecialitySelector = ({
 
             {isSelected && (
               <div
-                className="flex items-center gap-2 rounded-md px-2 py-1"
+                className="flex items-center gap-2 pl-5"
                 onClick={(e) => e.stopPropagation()}
               >
                 <span className="text-sm text-gray-500">Alumnos</span>
