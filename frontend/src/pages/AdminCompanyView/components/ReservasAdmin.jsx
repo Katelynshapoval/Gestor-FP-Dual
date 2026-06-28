@@ -4,18 +4,37 @@ import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdPendingActions, MdOutlineCancel } from "react-icons/md";
 import ReservaDocViewer from "./ReservaDocViewer";
 
-// Devuelve la etiqueta de estado del alumno en la reserva
+// Estado visual de la reserva según los campos del nuevo modelo
 function estadoLabel(r) {
-  if (r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido) {
-    return { text: "Asignado definitivamente", cls: "bg-green-50 text-green-700 border-green-200", Icono: IoIosCheckmarkCircleOutline };
+  if (r.estado_reserva === "CONFIRMADA") {
+    return {
+      text: "Asignado definitivamente",
+      cls: "bg-green-50 text-green-700 border-green-200",
+      Icono: IoIosCheckmarkCircleOutline,
+    };
   }
-  if (r.documentoSubido) {
-    return { text: "Documento entregado", cls: "bg-amber-50 text-amber-700 border-amber-200", Icono: MdPendingActions };
+  if (r.id_documento_reserva && r.estado_documento === "PENDIENTE") {
+    return {
+      text: "Documento entregado",
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+      Icono: MdPendingActions,
+    };
   }
-  return { text: "Solo reservado", cls: "bg-gray-50 text-gray-500 border-gray-200", Icono: MdOutlineCancel };
+  if (r.id_documento_reserva && r.estado_documento === "VALIDADO") {
+    return {
+      text: "Documento validado",
+      cls: "bg-green-50 text-green-700 border-green-200",
+      Icono: IoIosCheckmarkCircleOutline,
+    };
+  }
+  return {
+    text: "Solo reservado",
+    cls: "bg-gray-50 text-gray-500 border-gray-200",
+    Icono: MdOutlineCancel,
+  };
 }
 
-// Fila de reserva individual en el panel de admin
+// Fila individual de reserva en el panel de admin
 const FilaReserva = ({ r, onVerDoc }) => {
   const { text, cls, Icono } = estadoLabel(r);
 
@@ -24,14 +43,14 @@ const FilaReserva = ({ r, onVerDoc }) => {
       {/* Empresa */}
       <div>
         <p className="font-medium text-gray-900">{r.empresa}</p>
-        <p className="text-xs text-gray-400">{r.emailCoordinador}</p>
+        <p className="text-xs text-gray-400">{r.email_coordinador}</p>
       </div>
 
       {/* Alumno */}
       <div>
         <p className="font-medium text-gray-900">{r.alumno}</p>
         <p className="text-xs text-gray-400">
-          {r.dni} · {r.nombreEsp}
+          {r.dni_alumno} · {r.especialidad}
         </p>
       </div>
 
@@ -43,7 +62,7 @@ const FilaReserva = ({ r, onVerDoc }) => {
 
       {/* Acciones */}
       <div className="flex items-center gap-2">
-        {r.documentoSubido === 1 && (
+        {r.id_documento_reserva && (
           <button
             type="button"
             onClick={() => onVerDoc(r)}
@@ -71,10 +90,19 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
     );
   }
 
-  // Reservas con documento pendiente de revisión primero
-  const conDoc = reservations.filter((r) => r.documentoSubido && !r.anexo2FirmadoRecibido && !r.anexo3FirmadoRecibido);
-  const sinDoc = reservations.filter((r) => !r.documentoSubido && !r.anexo2FirmadoRecibido && !r.anexo3FirmadoRecibido);
-  const definitivas = reservations.filter((r) => r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido);
+  // Agrupa por estado para mostrar primero los que necesitan acción
+  const conDocPendiente = reservations.filter(
+    (r) => r.id_documento_reserva && r.estado_documento === "PENDIENTE"
+  );
+  const sinDoc = reservations.filter(
+    (r) => !r.id_documento_reserva && r.estado_reserva !== "CANCELADA" && r.estado_reserva !== "CONFIRMADA"
+  );
+  const definitivas = reservations.filter(
+    (r) => r.estado_reserva === "CONFIRMADA"
+  );
+  const canceladas = reservations.filter(
+    (r) => r.estado_reserva === "CANCELADA"
+  );
 
   const Grupo = ({ titulo, items }) =>
     items.length === 0 ? null : (
@@ -84,7 +112,7 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
         </p>
         {items.map((r) => (
           <FilaReserva
-            key={`${r.idGestion}-${r.idAuxEmpresa}`}
+            key={r.id_reserva}
             r={r}
             onVerDoc={setViewingDoc}
           />
@@ -95,15 +123,17 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
   return (
     <>
       <div className="space-y-6">
-        <Grupo titulo="Documentos pendientes de validación" items={conDoc} />
+        <Grupo titulo="Documentos pendientes de validación" items={conDocPendiente} />
         <Grupo titulo="Pendientes de documento" items={sinDoc} />
         <Grupo titulo="Asignaciones definitivas" items={definitivas} />
+        <Grupo titulo="Canceladas" items={canceladas} />
       </div>
 
       {/* Modal de visualización de documento */}
       <ReservaDocViewer
         reserva={viewingDoc}
         onClose={() => setViewingDoc(null)}
+        onReservationUpdate={onReservationUpdate}
       />
     </>
   );

@@ -44,15 +44,19 @@ function Header() {
             )}
 
             <NavLink to="/" label="Inicio" />
-            {user?.user_type == "admin" || !user ? (
+            {(!user || user.rol === "ADMINISTRADOR" || user.rol === "COORDINADOR") && (
               <>
                 <NavLink to="/addDualStudent" label="Alumnos" />
                 <NavLink to="/addCompanyRequest" label="Empresas" />
               </>
-            ) : null}
+            )}
 
-            {user?.user_type === "empresa" && (
+            {user?.rol === "EMPRESA" && (
               <NavLink to="/companyMain" label="Mi empresa" />
+            )}
+
+            {(user?.rol === "ADMINISTRADOR" || user?.rol === "COORDINADOR") && (
+              <NavLink to="/convocatorias" label="Convocatorias" />
             )}
 
             {user && <NavLink to="/linkStudents" label="Enlazar" />}
@@ -99,8 +103,13 @@ function Header() {
           )}
 
           <NavLink to="/" label="Inicio" />
-          <NavLink to="/addDualStudent" label="Alumnos" />
-          <NavLink to="/addCompanyRequest" label="Empresas" />
+          {(!user || user.rol === "ADMINISTRADOR" || user.rol === "COORDINADOR") && (
+            <>
+              <NavLink to="/addDualStudent" label="Alumnos" />
+              <NavLink to="/addCompanyRequest" label="Empresas" />
+            </>
+          )}
+          {user?.rol === "EMPRESA" && <NavLink to="/companyMain" label="Mi empresa" />}
           {user && <NavLink to="/linkStudents" label="Enlazar" />}
 
           {location !== "/login" && (

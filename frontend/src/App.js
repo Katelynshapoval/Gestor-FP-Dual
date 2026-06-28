@@ -11,6 +11,7 @@ import Evaluation from "./components/Evaluation";
 import LinkStudents from "./pages/LinkStudents";
 import CompanyView from "./pages/CompanyView/";
 import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
+import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
 
 import "./styles/main.css";
 
@@ -93,6 +94,14 @@ function App() {
               element={
                 <Page>
                   <AdminCompanyView />
+                </Page>
+              }
+            />
+            <Route
+              path="/convocatorias"
+              element={
+                <Page>
+                  <Convocatorias />
                 </Page>
               }
             />

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { getBlob } from "../../../utils/api.js";
 
-// Modal visor de convenio PDF
+// Modal visor del convenio PDF de una empresa.
+// Descarga el documento autenticado y lo muestra en un iframe.
 const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -10,15 +12,12 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
 
     let objectUrl = null;
 
-    // Obtiene el PDF desde el backend y crea una URL local
     const fetchPdf = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/getConvenioFile/${empresa.idAuxEmpresa}`);
-
-        if (!res.ok) throw new Error("Error al cargar el PDF");
-
-        const blob = await res.blob();
+        const idDoc = empresa.id_documento_convenio;
+        if (!idDoc) throw new Error("Sin documento");
+        const blob = await getBlob(`/documentos/${idDoc}/descargar`);
         objectUrl = URL.createObjectURL(blob);
         setPdfUrl(objectUrl);
       } catch (err) {
@@ -39,16 +38,18 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
 
   if (!empresa) return null;
 
+  const razonSocial = empresa.empresa || empresa.razonSocial;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Convenio — {empresa.razonSocial}</h2>
+          <h2 className="modal-title">Convenio — {razonSocial}</h2>
 
           <div className="modal-actions">
-            {!empresa.convenio_validado && (
+            {!empresa.convenio_validado && empresa.id_documento_convenio && (
               <button
-                onClick={() => onValidate(empresa.idAuxEmpresa)}
+                onClick={() => onValidate(empresa.id_documento_convenio)}
                 className="btn btn-primary btn-sm"
               >
                 ✓ Validar convenio
@@ -75,18 +76,14 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
           {!loading && pdfUrl && (
             <iframe
               src={pdfUrl}
-              title={`Convenio de ${empresa.razonSocial}`}
+              title={`Convenio de ${razonSocial}`}
               className="w-full h-full block border-none"
             />
           )}
 
           {!loading && !pdfUrl && (
-            <p>
-              No se pudo cargar el PDF.{" "}
-              <a href={`/getConvenioFile/${empresa.idAuxEmpresa}`} download>
-                Descarga el convenio
-              </a>
-              .
+            <p className="text-sm text-gray-500 py-8 text-center">
+              No se pudo cargar el PDF del convenio.
             </p>
           )}
         </div>

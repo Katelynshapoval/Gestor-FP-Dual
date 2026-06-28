@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
-// Creamos un contexto (es como un componente padre, que puede guardar valores que usen 
-// todos los componentes que se encuentren envueltos en el mismo)
 const UserContext = createContext();
 
 export const User = ({ children }) => {
@@ -17,12 +15,8 @@ export const User = ({ children }) => {
         return null;
     });
 
-    // Actualizar localStorage cuando user cambie
     useEffect(() => {
         if (user) {
-            // Se guarda tambien una fecha (ocho horas en el futuro)
-            // en la cual el usuario se eliminará automaticamente para
-            // ahorrar almacenamiento.
             const userData = {
                 data: user,
                 expires: Date.now() + 8 * 60 * 60 * 1000
@@ -61,7 +55,7 @@ export const User = ({ children }) => {
 
     return (
         <UserContext.Provider value={{ user, setUser, logout }}>
-            {children} 
+            {children}
         </UserContext.Provider>
     );
 };

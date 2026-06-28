@@ -1,56 +1,29 @@
 import InfoField from "./InfoField.jsx";
 
-// Parsear las especialidades seleccionadas desde el JSON almacenado.
-const getSelectedSpecialities = (companyData, specialities) => {
-  if (!companyData?.especialidadYCantAlumnos) return [];
-  try {
-    const parsed = JSON.parse(companyData.especialidadYCantAlumnos);
-    const ids = parsed[0] || [];
-    const amounts = parsed[1] || [];
-    return ids.map((id, i) => {
-      const spec = specialities.find((s) => s.idEspecialidad === id);
-      return {
-        nombre: spec?.nombreEsp || `Especialidad ${id}`,
-        cantidad: amounts[i] || 0,
-      };
-    });
-  } catch {
-    return [];
+// Extrae especialidades del nuevo formato normalizado de la API.
+const getSelectedSpecialities = (companyData) => {
+  if (!companyData) return [];
+  // Formato nuevo: array de objetos con {id_especialidad, nombre, cantidad_alumnos}
+  if (Array.isArray(companyData.especialidades)) {
+    return companyData.especialidades.map((e) => ({
+      nombre: e.nombre || e.especialidad || `ID ${e.id_especialidad}`,
+      cantidad: e.cantidad_alumnos ?? e.cantidadAlumnos ?? 0,
+    }));
   }
+  return [];
 };
 
-// Parsear los IDs de transporte y resolverlos a nombres.
-const getSelectedTransports = (companyData, transports) => {
-  if (!companyData?.metodosTransporte) return [];
-  try {
-    let ids;
-    const raw = companyData.metodosTransporte;
-    if (typeof raw === "string") {
-      try {
-        ids = JSON.parse(raw);
-      } catch {
-        ids = raw.split(",").map((s) => Number(s.trim()));
-      }
-    } else if (Array.isArray(raw)) {
-      ids = raw;
-    } else {
-      ids = [Number(raw)];
-    }
-    if (!Array.isArray(ids)) ids = [ids];
-
-    return ids
-      .map((id) => {
-        const t = transports.find((t) => t.idTransporte === Number(id));
-        return t?.transporte || null;
-      })
-      .filter(Boolean);
-  } catch {
-    return [];
+// Extrae métodos de transporte del nuevo formato normalizado de la API.
+const getSelectedTransports = (companyData) => {
+  if (!companyData) return [];
+  if (Array.isArray(companyData.transportes)) {
+    return companyData.transportes.map((t) => t.nombre || t.transporte || "—");
   }
+  return [];
 };
 
 // Todas las secciones de datos de la empresa.
-const CompanyInfo = ({ companyData, specialities, transports }) => {
+const CompanyInfo = ({ companyData }) => {
   if (!companyData) {
     return (
       <p className="text-center text-gray-500 py-8">
@@ -59,11 +32,8 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
     );
   }
 
-  const selectedSpecialities = getSelectedSpecialities(
-    companyData,
-    specialities,
-  );
-  const selectedTransports = getSelectedTransports(companyData, transports);
+  const selectedSpecialities = getSelectedSpecialities(companyData);
+  const selectedTransports = getSelectedTransports(companyData);
 
   return (
     <div className="space-y-6">
@@ -77,15 +47,15 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
         <div className="grid gap-4 md:grid-cols-3">
           <InfoField
             label="Email coordinador"
-            value={companyData.emailCoordinador}
+            value={companyData.emailCoordinador || companyData.coordinador_email}
           />
           <InfoField
             label="Nombre coordinador"
-            value={companyData.nombreCoordinador}
+            value={companyData.nombreCoordinador || companyData.coordinador_nombre}
           />
           <InfoField
             label="Teléfono coordinador"
-            value={companyData.telefonoCoordinador}
+            value={companyData.telefonoCoordinador || companyData.coordinador_telefono}
           />
         </div>
       </div>
@@ -94,16 +64,16 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
       <div>
         <p className="section-label">Datos de la empresa</p>
         <div className="grid gap-4 md:grid-cols-2">
-          <InfoField label="Razón Social" value={companyData.razonSocial} />
+          <InfoField label="Razón Social" value={companyData.razonSocial || companyData.empresa} />
           <InfoField label="CIF" value={companyData.cif} />
-          <InfoField label="Teléfono empresa" value={companyData.telEmpresa} />
+          <InfoField label="Teléfono empresa" value={companyData.telEmpresa || companyData.telefono} />
           <InfoField
             label="Dirección Razón Social"
-            value={companyData.dirRazSocial}
+            value={companyData.dirRazSocial || companyData.domicilio_legal}
           />
-          <InfoField label="Municipio" value={companyData.municipio} />
-          <InfoField label="Provincia" value={companyData.provincia} />
-          <InfoField label="Código Postal" value={companyData.cpRazSoc} />
+          <InfoField label="Municipio" value={companyData.municipio || companyData.localidad_legal} />
+          <InfoField label="Provincia" value={companyData.provincia || companyData.provincia_legal} />
+          <InfoField label="Código Postal" value={companyData.cpRazSoc || companyData.cp_legal} />
         </div>
       </div>
 
@@ -113,10 +83,16 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
         <div className="grid gap-4 md:grid-cols-3">
           <InfoField
             label="Nombre responsable legal"
-            value={companyData.responsableLegal}
+            value={companyData.responsableLegal || companyData.representante_nombre}
           />
-          <InfoField label="DNI responsable" value={companyData.dniRl} />
-          <InfoField label="Cargo" value={companyData.cargo} />
+          <InfoField
+            label="DNI responsable"
+            value={companyData.dniRl || companyData.representante_dni}
+          />
+          <InfoField
+            label="Cargo"
+            value={companyData.cargo || companyData.representante_cargo}
+          />
         </div>
       </div>
 
@@ -127,12 +103,12 @@ const CompanyInfo = ({ companyData, specialities, transports }) => {
           <div className="field">
             <label>Descripción del puesto</label>
             <p className="input bg-gray-50 cursor-default min-h-[60px] whitespace-pre-wrap">
-              {companyData.descripcionPuesto || "—"}
+              {companyData.descripcionPuesto || companyData.descripcion_puesto || "—"}
             </p>
           </div>
           <InfoField
             label="Dirección del lugar de trabajo"
-            value={companyData.direccionLugarTrabajo}
+            value={companyData.direccionLugarTrabajo || companyData.domicilio_trabajo}
           />
         </div>
       </div>

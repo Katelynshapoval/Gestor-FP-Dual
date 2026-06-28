@@ -1,56 +1,99 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import * as FormatValidation from "../utils/formatValidation.js";
 import { useFormMessage } from '../hooks/useFormMessage.js';
-import { postJSON } from '../utils/api.js';
+import { getJSON, postJSON } from '../utils/api.js';
 import { verificarId } from '../utils/idObfuscation.js';
 import FormMessage from '../components/ui/FormMessage.jsx';
 
-// PÁGINA de evaluación de un alumno vinculado a una empresa.
+// Decodifica el ID ofuscado para obtener el id_solicitud_alumno real.
+// La función ofuscarId multiplica el ID por 23 y añade una letra de control.
+function decodificarId(idOfuscado) {
+  const numPart = idOfuscado.slice(0, -1);
+  return parseInt(numPart, 10) / 23;
+}
+
+// Página de evaluación de un alumno: crear o actualizar su nota.
 const Evaluation = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { message, showMessage } = useFormMessage();
-  const [idEvaluation, setIdEvaluation] = useState('');
+
+  const [idEvaluation, setIdEvaluation] = useState(null);
   const [notaMedia, setNotaMedia] = useState('');
   const [idiomas, setIdiomas] = useState('');
   const [madurez, setMadurez] = useState('');
   const [competencia, setCompetencia] = useState('');
   const [faltas, setFaltas] = useState('');
   const [notaTotal, setNotaTotal] = useState('');
-  const [fecha, setFecha] = useState('');
+  const [fechaActualizacion, setFechaActualizacion] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [idSolicitudAlumno, setIdSolicitudAlumno] = useState(null);
 
-  const getEvaluation = useCallback(() => {
-    postJSON('/getEvaluationByManagementId', { idManagement: id })
-      .then(ev => {
-        const e = ev[0];
-        setIdEvaluation(e.idEvaluacion); setNotaMedia(e.notaMedia); setIdiomas(e.idiomas);
-        setMadurez(e.madurez); setCompetencia(e.competencia); setFaltas(e.faltas);
-        setFecha(e.fecha); setIsEditing(true);
-      }).catch(() => setIsEditing(false));
-  }, [id]);
+  const getEvaluation = useCallback(async (idSol) => {
+    try {
+      const ev = await getJSON(`/evaluaciones/${idSol}`);
+      setIdEvaluation(ev.id_evaluacion);
+      setNotaMedia(ev.nota_media ?? '');
+      setIdiomas(ev.idiomas ?? '');
+      setMadurez(ev.madurez ?? '');
+      setCompetencia(ev.competencia ?? '');
+      setFaltas(ev.faltas ?? '');
+      setFechaActualizacion(ev.updated_at ?? '');
+      setIsEditing(true);
+    } catch {
+      setIsEditing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!verificarId(id)) { navigate('/'); return; }
-    getEvaluation();
+    if (!verificarId(id)) {
+      navigate('/');
+      return;
+    }
+    const idSol = decodificarId(id);
+    setIdSolicitudAlumno(idSol);
+    getEvaluation(idSol);
   }, [id, navigate, getEvaluation]);
 
   // Recalcula la nota total cuando cambia cualquier campo numérico
   useEffect(() => {
-    const pf = (faltas / 1050) * 100;
+    const nm = parseFloat(notaMedia) || 0;
+    const id2 = parseFloat(idiomas) || 0;
+    const ma = parseFloat(madurez) || 0;
+    const co = parseFloat(competencia) || 0;
+    const fa = parseInt(faltas, 10) || 0;
+    const pf = (fa / 1050) * 100;
     const vf = -0.1 * pf + 1.5;
-    const total = 0.6 * notaMedia + 0.05 * idiomas + 0.1 * madurez + 0.1 * competencia + (vf >= 0 ? vf : 0);
+    const total = 0.6 * nm + 0.05 * id2 + 0.1 * ma + 0.1 * co + (vf >= 0 ? vf : 0);
     setNotaTotal(total.toFixed(2));
   }, [notaMedia, idiomas, madurez, competencia, faltas]);
 
+  const formatFecha = (fechaStr) => {
+    if (!fechaStr) return null;
+    try {
+      return new Date(fechaStr).toLocaleDateString('es-ES', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+      });
+    } catch {
+      return fechaStr;
+    }
+  };
+
   const save = async () => {
     try {
-      const body = { id: isEditing ? idEvaluation : id, notaMedia, idiomas, madurez, competencia, faltas, notaTotal, fecha: FormatValidation.validDate(new Date()) };
-      await postJSON(isEditing ? '/updateEvaluation' : '/createEvaluation', body);
+      await postJSON('/evaluaciones', {
+        id_solicitud_alumno: idSolicitudAlumno,
+        nota_media: notaMedia,
+        idiomas,
+        madurez,
+        competencia,
+        faltas,
+      });
       await showMessage('Evaluación guardada correctamente.');
-      getEvaluation();
-    } catch { await showMessage('Error al guardar. Inténtalo de nuevo.'); }
+      getEvaluation(idSolicitudAlumno);
+    } catch {
+      await showMessage('Error al guardar. Inténtalo de nuevo.');
+    }
   };
 
   const campos = [
@@ -59,6 +102,8 @@ const Evaluation = () => {
     { label: 'Madurez', val: madurez, set: setMadurez, step: '0.01', hint: 'Valoración de madurez (0–10)' },
     { label: 'Competencia', val: competencia, set: setCompetencia, step: '0.01', hint: 'Competencia profesional (0–10)' },
   ];
+
+  const fechaMostrada = formatFecha(fechaActualizacion);
 
   return (
     <div className="page-container">
@@ -70,7 +115,7 @@ const Evaluation = () => {
         {isEditing && idEvaluation && (
           <div className="eval-meta">
             <span className="eval-badge">ID {idEvaluation}</span>
-            <span className="eval-badge">Actualizado: {fecha}</span>
+            {fechaMostrada && <span className="eval-badge">Actualizado: {fechaMostrada}</span>}
           </div>
         )}
       </div>
@@ -104,8 +149,8 @@ const Evaluation = () => {
         <button type="button" onClick={save} className="btn btn-primary">
           {isEditing ? 'Actualizar' : 'Guardar'}
         </button>
-        {isEditing && idEvaluation && (
-          <button type="button" onClick={getEvaluation} className="btn btn-secondary">
+        {isEditing && (
+          <button type="button" onClick={() => getEvaluation(idSolicitudAlumno)} className="btn btn-secondary">
             Restablecer
           </button>
         )}

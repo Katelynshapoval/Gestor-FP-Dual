@@ -10,29 +10,26 @@ const LinkStudents = () => {
   const {
     user,
     navigate,
-    companyRequests,
+    companyOffers,
     showDoc,
     expandedCards,
     sendingInfo,
     selectedSpeciality,
     setSelectedSpeciality,
-    selectedYear,
-    setSelectedYear,
+    selectedConvocatoria,
+    setSelectedConvocatoria,
     filtered,
     specialities,
+    convocatorias,
     canSendInfo,
     isEmpresa,
-    yearOptionCount,
     toggleCard,
-    assign,
     sendInfo,
-    handleCompanyChange,
     getDoc,
-    getAnexo,
     closeDocViewer,
     validateDoc,
     reserveStudent,
-    unreserveStudent,
+    cancelReservation,
   } = useLinkStudents();
 
   return (
@@ -48,12 +45,13 @@ const LinkStudents = () => {
         </div>
 
         <RequestFilters
-          selectedYear={selectedYear}
-          onYearChange={setSelectedYear}
           selectedSpeciality={selectedSpeciality}
           onSpecialityChange={setSelectedSpeciality}
+          selectedConvocatoria={selectedConvocatoria}
+          onConvocatoriaChange={setSelectedConvocatoria}
           specialities={specialities}
-          yearOptionCount={yearOptionCount}
+          convocatorias={convocatorias}
+          isEmpresa={isEmpresa}
         />
       </div>
 
@@ -74,21 +72,18 @@ const LinkStudents = () => {
 
         {filtered.map((r) => (
           <StudentCard
-            key={`${r.idGestion}-${r.dni}`}
+            key={r.id_solicitud_alumno}
             r={r}
-            isExpanded={expandedCards.has(r.idGestion)}
+            isExpanded={expandedCards.has(r.id_solicitud_alumno)}
             onToggle={toggleCard}
-            companyRequests={companyRequests}
+            companyOffers={companyOffers}
             sendingInfo={sendingInfo}
             canSendInfo={canSendInfo}
-            onAssign={assign}
             onSendInfo={sendInfo}
-            onCompanyChange={handleCompanyChange}
             onGetDoc={getDoc}
-            onGetAnexo={getAnexo}
             onGetEvaluation={(id) => navigate(`/evaluate/${ofuscarId(id)}`)}
             onReserve={reserveStudent}
-            onUnreserve={unreserveStudent}
+            onCancel={cancelReservation}
             user={user}
           />
         ))}

@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { IoMdArrowDropdown } from "react-icons/io";
 import { FaRegCalendarCheck } from "react-icons/fa6";
 import { MdOutlineCancel } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-import { RxLockClosed } from "react-icons/rx";
+import { RxLockClosed, RxClock } from "react-icons/rx";
 
 import {
   cardBodyClass,
@@ -12,37 +13,100 @@ import {
   cardHeaderClass,
   cardNameClass,
   empresaChipClass,
-  sectionLabelClass,
   signedBadgeClass,
   toggleBtnClass,
 } from "../../../components/ui/cardStyles";
-import { getEmpresaIcon, getEmpresaTooltip } from "../utils/empresaEstado";
 
 import DatosRapidos from "./student-card/DatosRapidos";
 import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import Evaluacion from "./student-card/Evaluacion";
 
-// Badge para el estado A2/A3 y calendario (vista admin/tutor)
-const StatusBadge = ({ ok, icon: Icon, label }) => (
-  <span
-    className={`${signedBadgeClass} ${
-      ok ? "bg-green-500/20 text-green-900" : "bg-red-500/10 text-red-900"
-    }`}
-  >
-    <Icon className="-mt-[1px] text-[13px]" />
-    {label}
-  </span>
-);
+// Badge de A2/A3: muestra si el alumno tiene reserva confirmada (equivalente al antiguo "A2/A3 firmado")
+const AnexoBadge = ({ reservas }) => {
+  const confirmed = reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
+  return (
+    <span className={`${signedBadgeClass} ${confirmed ? "bg-green-500/20 text-green-900" : "bg-red-500/10 text-red-900"}`}>
+      <IoIosCheckmarkCircleOutline className="-mt-[1px] text-[13px]" />
+      A2/A3
+    </span>
+  );
+};
 
-// Botón de reserva con los tres estados posibles para empresa:
-//  1. alumno asignado definitivamente (bloqueado)
-//  2. reservado por esta empresa (cancelar)
-//  3. disponible (reservar)
-const ReservaButton = ({ r, onReserve, onUnreserve }) => {
-  const asignadoDefinitivo = r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido;
+// Chips de empresa con estado (clock para PENDIENTE, ✓ para CONFIRMADA, ✗ para CANCELADA)
+const ReservasChips = ({ reservas }) => {
+  if (!reservas || reservas.length === 0) return null;
+  return (
+    <>
+      {reservas.slice(0, 3).map((rv) => (
+        <span
+          key={rv.id_reserva}
+          className={empresaChipClass}
+          title={rv.estado_reserva}
+        >
+          {rv.estado_reserva === "CONFIRMADA" && <IoIosCheckmarkCircleOutline className="text-green-600 text-[11px]" />}
+          {(rv.estado_reserva === "PENDIENTE" || rv.estado_reserva === "RESERVADA") && <RxClock className="text-yellow-600 text-[11px]" />}
+          {rv.estado_reserva === "CANCELADA" && <MdOutlineCancel className="text-red-500 text-[11px]" />}
+          {rv.empresa?.substring(0, 14)}
+        </span>
+      ))}
+    </>
+  );
+};
 
-  if (asignadoDefinitivo) {
+// Modal de cancelación para la vista empresa
+const CancelModal = ({ alumno, onConfirm, onClose }) => {
+  const [motivo, setMotivo] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    if (!motivo.trim()) return;
+    setSubmitting(true);
+    await onConfirm(motivo.trim());
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-semibold text-gray-900">Cancelar reserva</h3>
+        <p className="text-sm text-gray-500">
+          Indica el motivo de cancelación para <strong>{alumno}</strong>.
+        </p>
+        <textarea
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20"
+          rows={3}
+          placeholder="Motivo de cancelación…"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          maxLength={255}
+          autoFocus
+        />
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+            Cancelar
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!motivo.trim() || submitting}
+            className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${
+              !motivo.trim() || submitting ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-500 text-white hover:bg-red-600"
+            }`}
+          >
+            {submitting ? "Cancelando…" : "Confirmar cancelación"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Botón de reserva/cancelar para la empresa
+const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const reservaConfirmada = r.reservas?.some(rv => rv.estado_reserva === "CONFIRMADA");
+
+  if (reservaConfirmada || r.asignado_definitivo) {
     return (
       <span className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-400">
         <RxLockClosed className="shrink-0" />
@@ -51,35 +115,35 @@ const ReservaButton = ({ r, onReserve, onUnreserve }) => {
     );
   }
 
-  if (r.miReserva) {
+  const miReservaId = r.mi_reserva_id;
+  if (miReservaId) {
     return (
-      <div className="flex items-center gap-2">
-        {r.totalReservas > 1 && (
-          <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
-            {r.totalReservas} interesadas
-          </span>
+      <>
+        {showCancelModal && (
+          <CancelModal
+            alumno={r.nombre || "este alumno"}
+            onConfirm={async (motivo) => { await onCancel(miReservaId, motivo); setShowCancelModal(false); }}
+            onClose={() => setShowCancelModal(false)}
+          />
         )}
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onUnreserve(r.idGestion);
-          }}
+          onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
           className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
         >
           Cancelar reserva
         </button>
-      </div>
+      </>
     );
   }
+
+  const ofertaMatch = companyOffers.find(o => o.id_especialidad === r.id_especialidad && o.plazas_disponibles > 0);
+  if (!ofertaMatch) return <span className="text-xs text-gray-400">Sin plazas disponibles</span>;
 
   return (
     <button
       type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onReserve(r.idGestion);
-      }}
+      onClick={(e) => { e.stopPropagation(); onReserve(r.id_solicitud_alumno, ofertaMatch.id_solicitud_empresa_especialidad); }}
       className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition-all duration-200 ease-out hover:border-red-300 hover:bg-red-50 hover:text-red-700"
     >
       Reservar alumno
@@ -92,34 +156,24 @@ const StudentCard = ({
   r,
   isExpanded,
   onToggle,
-  companyRequests,
+  companyOffers,
   sendingInfo,
   canSendInfo,
-  onAssign,
   onSendInfo,
-  onCompanyChange,
   onGetDoc,
-  onGetAnexo,
   onGetEvaluation,
   onReserve,
-  onUnreserve,
+  onCancel,
   user,
 }) => {
-  const isEmpresa = user?.user_type === "empresa";
-  const empresaProps = {
-    r,
-    companyRequests,
-    onAssign,
-    onSendInfo,
-    onCompanyChange,
-    sendingInfo,
-    canSendInfo,
-  };
-
-  const handleToggle = () => onToggle(r.idGestion);
+  const isEmpresa = user?.rol === "EMPRESA";
+  // "info" o "reservas" — solo relevante para staff
+  const [innerTab, setInnerTab] = useState("info");
+  const handleToggle = () => onToggle(r.id_solicitud_alumno);
 
   return (
     <div className={cardClass}>
+      {/* Cabecera */}
       <div
         className={`${cardHeaderClass} flex flex-col gap-2 sm:flex-row sm:items-center`}
         onClick={handleToggle}
@@ -127,14 +181,12 @@ const StudentCard = ({
         <div className="min-w-0 flex-1">
           <p className={cardNameClass}>
             {r.nombre}{" "}
-            <span className="text-[.8rem] font-normal text-muted">
-              ({r.dni})
-            </span>
+            <span className="text-[.8rem] font-normal text-muted">({r.dni})</span>
           </p>
-
-          {r.nombreEsp && (
+          {r.especialidad && (
             <p className={`${cardEspClass} text-sm text-muted`}>
-              {r.nombreEsp}
+              {r.especialidad}
+              {r.turno && r.turno !== "DIURNO" && ` · ${r.turno}`}
             </p>
           )}
         </div>
@@ -142,101 +194,101 @@ const StudentCard = ({
         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
           {!isEmpresa ? (
             <div className={cardChipsClass}>
-              <StatusBadge
-                ok={r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido}
-                icon={
-                  r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido
-                    ? IoIosCheckmarkCircleOutline
-                    : MdOutlineCancel
-                }
-                label="A2/A3"
-              />
+              {/* A2/A3 badge */}
+              <AnexoBadge reservas={r.reservas} />
 
-              <StatusBadge
-                ok={r.calendarioComprobado}
-                icon={FaRegCalendarCheck}
-                label="Cal"
-              />
+              {/* Calendar badge */}
+              {r.calendarioComprobado != null && (
+                <span className={`${signedBadgeClass} ${r.calendarioComprobado ? "bg-green-500/20 text-green-900" : "bg-red-500/10 text-red-900"}`}>
+                  <FaRegCalendarCheck className="-mt-[1px] text-[13px]" />
+                  Cal
+                </span>
+              )}
 
-              {[1, 2, 3].map((slot) => {
-                const em = r[`em${slot}`];
-                const estid = r[`estid${slot}`];
-                if (!em) return null;
-
-                return (
-                  <span
-                    key={slot}
-                    className={empresaChipClass}
-                    title={getEmpresaTooltip(estid)}
-                  >
-                    E{slot}: {em} {getEmpresaIcon(estid)}
-                  </span>
-                );
-              })}
+              {/* Chips de empresa con icono de estado */}
+              <ReservasChips reservas={r.reservas} />
             </div>
           ) : (
             <ReservaButton
               r={r}
+              companyOffers={companyOffers}
               onReserve={onReserve}
-              onUnreserve={onUnreserve}
+              onCancel={onCancel}
             />
           )}
 
           <button
             type="button"
             className={`${toggleBtnClass} ${isExpanded ? "rotate-180" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleToggle();
-            }}
+            onClick={(e) => { e.stopPropagation(); handleToggle(); }}
           >
             <IoMdArrowDropdown className="text-[1.5rem]" />
           </button>
         </div>
       </div>
 
-      <div
-        className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
-          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-        }`}
-      >
+      {/* Panel expandible */}
+      <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+        isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+      }`}>
         <div className="overflow-hidden">
-          <div
-            className={`${cardBodyClass} grid grid-cols-1 gap-6 ${
-              isEmpresa ? "md:grid-cols-2" : "md:grid-cols-[1.2fr_1fr]"
-            }`}
-          >
-            <div className="space-y-5">
-              {isEmpresa ? (
-                <DatosRapidos r={r} />
-              ) : (
-                <div>
-                  <p className={sectionLabelClass}>Empresas</p>
-                  <div className="flex flex-col gap-3">
-                    {[1, 2, 3].map((slot) => (
-                      <EmpresaControl key={slot} slot={slot} {...empresaProps} />
-                    ))}
-                  </div>
+          <div className={cardBodyClass}>
+
+            {/* Pestañas internas solo para staff */}
+            {!isEmpresa && (
+              <div className="flex gap-1 mb-5 border-b border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setInnerTab("info")}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                    innerTab === "info"
+                      ? "border-brand-500 text-brand-500"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Información
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInnerTab("reservas")}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                    innerTab === "reservas"
+                      ? "border-brand-500 text-brand-500"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Reservas
+                  {r.reservas?.length > 0 && (
+                    <span className="ml-1.5 text-[0.65rem] bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5 leading-none">
+                      {r.reservas.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Vista Información */}
+            {(isEmpresa || innerTab === "info") && (
+              <div className={`grid grid-cols-1 gap-6 ${isEmpresa ? "md:grid-cols-2" : "md:grid-cols-[1.2fr_1fr]"}`}>
+                <div className="space-y-5">
+                  <DatosRapidos r={r} />
                 </div>
-              )}
-            </div>
+                <div className="space-y-5">
+                  <Documentos r={r} user={user} onGetDoc={onGetDoc} />
+                  <Evaluacion r={r} user={user} onGetEvaluation={onGetEvaluation} />
+                </div>
+              </div>
+            )}
 
-            <div className="space-y-5">
-              {!isEmpresa && <DatosRapidos r={r} />}
-
-              <Documentos
+            {/* Vista Reservas (solo staff) */}
+            {!isEmpresa && innerTab === "reservas" && (
+              <EmpresaControl
                 r={r}
-                user={user}
-                onGetDoc={onGetDoc}
-                onGetAnexo={onGetAnexo}
+                sendingInfo={sendingInfo}
+                canSendInfo={canSendInfo}
+                onSendInfo={onSendInfo}
               />
-
-              <Evaluacion
-                r={r}
-                user={user}
-                onGetEvaluation={onGetEvaluation}
-              />
-            </div>
+            )}
           </div>
         </div>
       </div>

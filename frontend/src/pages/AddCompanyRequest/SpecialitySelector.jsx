@@ -1,4 +1,5 @@
 // Selector de ciclos de grado con control de cantidad de alumnos por especialidad.
+// Acepta tanto el formato legacy (idEspecialidad/nombreEsp) como el nuevo (id_especialidad/nombre).
 const SpecialitySelector = ({
   dataSpecialities,
   specialities,
@@ -10,13 +11,17 @@ const SpecialitySelector = ({
 
     <div className="checkbox-grid">
       {dataSpecialities.map((esp) => {
-        const isSelected = specialities[0]?.includes(esp.idEspecialidad);
+        // Compatibilidad con ambos formatos de datos
+        const id = esp.id_especialidad ?? esp.idEspecialidad;
+        const label = esp.nombre ?? esp.nombreEsp ?? `ID ${id}`;
+        const turno = esp.turno;
+        const isSelected = specialities[0]?.includes(id);
 
         return (
           <div
-            key={esp.idEspecialidad}
+            key={id}
             className={`checkbox-item ${isSelected ? "checked" : ""}`}
-            onClick={() => onToggle(esp.idEspecialidad)}
+            onClick={() => onToggle(id)}
           >
             <div className="checkbox-left">
               <input
@@ -25,7 +30,10 @@ const SpecialitySelector = ({
                 onChange={(e) => e.stopPropagation()}
               />
               <span className="item-label capitalize">
-                {esp.nombreEsp.toLowerCase()}
+                {label.toLowerCase()}
+                {turno && turno !== "DIURNO" && (
+                  <span className="ml-1 text-xs text-gray-400">({turno})</span>
+                )}
               </span>
             </div>
 
@@ -41,13 +49,10 @@ const SpecialitySelector = ({
                   min="1"
                   className="w-14 text-center text-sm border border-surface-200 rounded px-1 py-[2px]"
                   value={
-                    specialities[1][specialities[0].indexOf(esp.idEspecialidad)]
+                    specialities[1][specialities[0].indexOf(id)] || ""
                   }
                   onChange={(e) =>
-                    onAmountChange(
-                      esp.idEspecialidad,
-                      parseInt(e.target.value) || 1,
-                    )
+                    onAmountChange(id, parseInt(e.target.value) || 1)
                   }
                 />
               </div>

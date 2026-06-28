@@ -1,3 +1,5 @@
+// Selector de medios de transporte disponibles para el puesto de trabajo.
+// Acepta tanto el formato legacy (idTransporte/transporte) como el nuevo (id_transporte/nombre).
 const TransportSelector = ({ dataTransports, metodosTransporte, onToggle }) => (
   <div className="field">
     <label>Métodos de Transporte posibles</label>
@@ -9,13 +11,15 @@ const TransportSelector = ({ dataTransports, metodosTransporte, onToggle }) => (
 
     <div className="checkbox-grid">
       {dataTransports.map((t) => {
-        const checked = metodosTransporte?.includes(t.idTransporte);
+        const id = t.id_transporte ?? t.idTransporte;
+        const nombre = t.nombre ?? t.transporte ?? `Transporte ${id}`;
+        const checked = metodosTransporte?.includes(id);
 
         return (
           <div
-            key={t.idTransporte}
+            key={id}
             className={`checkbox-item ${checked ? "checked" : ""}`}
-            onClick={() => onToggle(t.idTransporte)}
+            onClick={() => onToggle(id)}
           >
             <div className="flex items-center gap-2">
               <input
@@ -25,7 +29,7 @@ const TransportSelector = ({ dataTransports, metodosTransporte, onToggle }) => (
                 className="accent-brand-500"
               />
 
-              <span className="item-label">{t.transporte}</span>
+              <span className="item-label">{nombre}</span>
             </div>
           </div>
         );

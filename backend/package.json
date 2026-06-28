@@ -16,6 +16,8 @@
     "crypto-browserify": "^3.12.0",
     "docx-templates": "^4.14.1",
     "express": "^4.18.3",
+    "google-auth-library": "^10.9.0",
+    "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.11.0",
     "morgan": "^1.10.0",
     "multer": "^2.0.0",

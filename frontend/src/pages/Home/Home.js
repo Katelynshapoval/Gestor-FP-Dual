@@ -6,8 +6,11 @@ import { FaArrowRightLong } from "react-icons/fa6";
 function Home() {
   const { user } = useUser();
 
+  const isAdmin = user?.rol === "ADMINISTRADOR" || user?.rol === "COORDINADOR";
+  const isEmpresa = user?.rol === "EMPRESA";
+
   const cards = [
-    ...(user?.user_type == "admin" || !user
+    ...(!user || isAdmin
       ? [
           {
             to: "/addDualStudent",
@@ -23,7 +26,7 @@ function Home() {
           },
         ]
       : []),
-    ...(user?.user_type == "empresa"
+    ...(isEmpresa
       ? [
           {
             to: "/companyMain",
@@ -33,7 +36,7 @@ function Home() {
           },
         ]
       : []),
-    ...(user?.user_type == "admin"
+    ...(isAdmin
       ? [
           {
             to: "/companiesView",
@@ -43,7 +46,6 @@ function Home() {
           },
         ]
       : []),
-
     ...(user
       ? [
           {

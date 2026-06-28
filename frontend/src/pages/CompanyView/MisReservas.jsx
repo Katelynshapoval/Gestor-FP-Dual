@@ -1,201 +1,91 @@
-import { useRef, useState, useEffect } from "react";
-import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-import { MdOutlineCancel, MdPendingActions, MdOutlineFileUpload } from "react-icons/md";
+import { useState, useRef } from "react";
+import { postForm } from "../../utils/api.js";
 import { FaFilePdf } from "react-icons/fa6";
-import { RxLockClosed } from "react-icons/rx";
+import { IoIosCheckmarkCircleOutline } from "react-icons/io";
+import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
+import { RxClock } from "react-icons/rx";
 
-// Calcula el estado de la reserva para una fila concreta
-function calcularEstado(r) {
-  const asignadoDefinitivo = r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido;
-
-  if (asignadoDefinitivo && r.miSlot > 0) return "asignado_a_mi";
-  if (asignadoDefinitivo && r.miSlot === 0) return "asignado_otra";
-  if (r.miSlot > 0) return "slot_confirmado";
-  if (r.documentoSubido) return "doc_subido";
-  return "solo_reservado";
-}
-
-// Etiqueta e icono por estado
-const ESTADO_CONFIG = {
-  asignado_a_mi: {
-    label: "Asignado a tu empresa",
-    icon: IoIosCheckmarkCircleOutline,
-    cls: "bg-green-50 text-green-700 border-green-200",
-  },
-  asignado_otra: {
-    label: "Asignado a otra empresa",
-    icon: RxLockClosed,
-    cls: "bg-gray-50 text-gray-500 border-gray-200",
-  },
-  slot_confirmado: {
-    label: "Confirmado — pendiente de firma",
-    icon: MdPendingActions,
-    cls: "bg-blue-50 text-blue-700 border-blue-200",
-  },
-  doc_subido: {
-    label: "Documento entregado — pendiente de validación",
-    icon: MdPendingActions,
-    cls: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  solo_reservado: {
-    label: "Reservado — sin documento",
-    icon: MdOutlineCancel,
-    cls: "bg-red-50 text-red-600 border-red-200",
-  },
+const ESTADO_COLOR = {
+  PENDIENTE:  "bg-yellow-50 text-yellow-800 border-yellow-200",
+  CONFIRMADA: "bg-green-50 text-green-800 border-green-200",
+  CANCELADA:  "bg-red-50 text-red-700 border-red-200",
 };
 
-// Tarjeta individual de alumno reservado
-const TarjetaReserva = ({ r, user, onUpload, onCancel, onVerDoc }) => {
+// Icono según estado del documento firmado
+const DocStatusIcon = ({ estado }) => {
+  if (estado === "VALIDADO")  return <IoIosCheckmarkCircleOutline className="text-green-600 shrink-0" />;
+  if (estado === "RECHAZADO") return <MdOutlineCancel className="text-red-500 shrink-0" />;
+  return <MdPendingActions className="text-yellow-500 shrink-0" />;
+};
+
+// Subida del documento firmado de una reserva
+const SubirDocReserva = ({ idReserva, onUploaded }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState(null);
   const inputRef = useRef(null);
 
-  const estado = calcularEstado(r);
-  const { label, icon: Icono, cls } = ESTADO_CONFIG[estado];
-  const asignadoDefinitivo = r.anexo2FirmadoRecibido || r.anexo3FirmadoRecibido;
-
-  // Maneja la selección del documento
-  const handleFile = (e) => {
-    const f = e.target.files[0];
-    if (f && f.type !== "application/pdf") {
-      setMsg({ ok: false, text: "Solo se admiten archivos PDF." });
-      setFile(null);
-      return;
-    }
-    setFile(f);
-    setMsg(null);
-  };
-
-  // Sube el documento firmado al servidor
   const handleUpload = async () => {
-    if (!file) {
-      setMsg({ ok: false, text: "Selecciona un PDF primero." });
-      return;
-    }
+    if (!file) { setMsg({ ok: false, text: "Selecciona un PDF." }); return; }
     setUploading(true);
     setMsg(null);
     try {
-      const formData = new FormData();
-      formData.append("documento", file);
-      formData.append("idUser", user.idUser ?? "");
-      formData.append("email", user.email ?? "");
-      const res = await fetch(`/reservationDoc/${r.idGestion}`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Error al subir el documento");
-      setMsg({ ok: true, text: "Documento enviado correctamente." });
+      const fd = new FormData();
+      fd.append("archivo", file);
+      await postForm(`/documentos/reserva/${idReserva}/anexoh`, fd);
+      setMsg({ ok: true, text: "Documento subido. Pendiente de revisión por el centro." });
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
-      onUpload();
+      if (onUploaded) onUploaded();
     } catch (err) {
-      console.error(err);
-      setMsg({ ok: false, text: "No se pudo subir el documento." });
+      setMsg({ ok: false, text: err.message });
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-      {/* Encabezado: nombre + especialidad */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="font-semibold text-gray-900">
-            {r.nombre}{" "}
-            <span className="font-normal text-sm text-gray-400">({r.dni})</span>
-          </p>
-          {r.nombreEsp && (
-            <p className="mt-0.5 text-xs text-gray-500">{r.nombreEsp}</p>
-          )}
-        </div>
-
-        {/* Badge de estado */}
-        <span
-          className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium ${cls}`}
-        >
-          <Icono className="shrink-0 text-base" />
-          {label}
-        </span>
-      </div>
-
-      {/* Datos adicionales del alumno */}
-      {(r.emailAlumno || r.telalumno) && (
-        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-t pt-3 text-xs text-gray-500">
-          {r.emailAlumno && <span>✉ {r.emailAlumno}</span>}
-          {r.telalumno && <span>📞 {r.telalumno}</span>}
-          {r.carnetDeConducir === "S" && <span>🚗 Carnet de conducir</span>}
-          {r.tieneCoche === "S" && <span>🚘 Coche propio</span>}
-        </div>
-      )}
-
-      {/* Zona de acciones */}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        {/* Ver documento ya subido */}
-        {r.documentoSubido === 1 && (
-          <button
-            type="button"
-            onClick={() => onVerDoc(r.idGestion, r.idAuxEmpresa ?? "")}
-            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 transition hover:bg-gray-100"
-          >
-            <FaFilePdf className="text-red-500" />
-            Ver documento firmado
-          </button>
-        )}
-
-        {/* Subir documento (solo si no hay definitivo ni doc previo) */}
-        {!asignadoDefinitivo && !r.documentoSubido && (
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={inputRef}
-              id={`doc-${r.idGestion}`}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={handleFile}
-            />
-            <label
-              htmlFor={`doc-${r.idGestion}`}
-              className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-brand-200 bg-white px-3 py-2 text-xs text-brand-600 transition hover:bg-brand-50"
-            >
-              <MdOutlineFileUpload className="text-base" />
-              {file ? file.name : "Subir acuerdo firmado"}
-            </label>
-            {file && (
-              <button
-                type="button"
-                onClick={handleUpload}
-                disabled={uploading}
-                className="rounded-xl border border-brand-300 bg-brand px-4 py-2 text-xs font-medium text-white transition hover:bg-brand-dark disabled:opacity-50"
-              >
-                {uploading ? "Enviando…" : "Confirmar"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Cancelar reserva (solo si no está definitivamente asignado a nadie) */}
-        {!asignadoDefinitivo && r.miSlot === 0 && (
-          <button
-            type="button"
-            onClick={() => onCancel(r.idGestion)}
-            className="ml-auto rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-          >
-            Cancelar reserva
-          </button>
-        )}
-      </div>
-
-      {/* Mensaje de resultado de subida */}
-      {msg && (
-        <p
-          className={`mt-2 rounded-lg px-3 py-2 text-xs ${
-            msg.ok
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+    <div className="space-y-2 pt-3 border-t border-gray-100">
+      <p className="text-xs font-medium text-gray-500">Subir Anexo H firmado (PDF)</p>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300
+          cursor-pointer hover:border-red-400 transition-all text-sm text-gray-500">
+          <FaFilePdf className="text-red-400 shrink-0" />
+          <span className="truncate">{file ? file.name : "Haz clic para seleccionar…"}</span>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files[0];
+              if (f && f.type !== "application/pdf") {
+                setMsg({ ok: false, text: "Solo se admiten PDFs." });
+                return;
+              }
+              setFile(f);
+              setMsg(null);
+            }}
+          />
+        </label>
+        <button
+          onClick={handleUpload}
+          disabled={!file || uploading}
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            !file || uploading
+              ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+              : "bg-brand-500 text-white hover:bg-brand-700"
           }`}
         >
+          {uploading ? "Subiendo…" : "Subir"}
+        </button>
+      </div>
+      {msg && (
+        <p className={`text-xs px-3 py-1.5 rounded-lg ${
+          msg.ok
+            ? "bg-green-50 text-green-800 border border-green-200"
+            : "bg-red-50 text-red-700 border border-red-200"
+        }`}>
           {msg.text}
         </p>
       )}
@@ -203,113 +93,145 @@ const TarjetaReserva = ({ r, user, onUpload, onCancel, onVerDoc }) => {
   );
 };
 
-// Modal inline para visualizar el documento firmado de la reserva
-const DocModal = ({ idGestion, idAuxEmpresa, onClose }) => {
-  const [pdfUrl, setPdfUrl] = useState(null);
-  const [loading, setLoading] = useState(true);
+// Modal de cancelación con campo de motivo
+const CancelModal = ({ alumno, onConfirm, onClose }) => {
+  const [motivo, setMotivo] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    let objectUrl = null;
-
-    const fetchPdf = async () => {
-      try {
-        const res = await fetch(`/reservationDoc/${idGestion}/${idAuxEmpresa}`);
-        if (!res.ok) throw new Error("Error al cargar el PDF");
-        const blob = await res.blob();
-        objectUrl = URL.createObjectURL(blob);
-        setPdfUrl(objectUrl);
-      } catch (err) {
-        console.error("Error al obtener el documento:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPdf();
-
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [idGestion, idAuxEmpresa]);
+  const handleConfirm = async () => {
+    if (!motivo.trim()) return;
+    setSubmitting(true);
+    await onConfirm(motivo.trim());
+    setSubmitting(false);
+  };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 className="modal-title">Documento firmado</h2>
-          <div className="modal-actions">
-            {pdfUrl && (
-              <button
-                onClick={() => window.open(pdfUrl, "_blank")}
-                className="btn btn-secondary btn-sm"
-              >
-                Nueva pestaña
-              </button>
-            )}
-            <button className="modal-close" onClick={onClose}>✕</button>
-          </div>
-        </div>
-        <div className="modal-body">
-          {loading && (
-            <p className="py-8 text-center text-sm text-gray-500">
-              Cargando documento…
-            </p>
-          )}
-          {!loading && pdfUrl && (
-            <iframe
-              src={pdfUrl}
-              title="Documento de reserva"
-              className="block h-full w-full border-none"
-            />
-          )}
-          {!loading && !pdfUrl && (
-            <p className="py-8 text-center text-sm text-gray-500">
-              No se pudo cargar el documento.
-            </p>
-          )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-semibold text-gray-900">Cancelar reserva</h3>
+        <p className="text-sm text-gray-500">
+          Indica el motivo de cancelación para <strong>{alumno}</strong>.
+        </p>
+        <textarea
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20"
+          rows={3}
+          placeholder="Motivo de cancelación…"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          maxLength={255}
+          autoFocus
+        />
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+            Volver
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!motivo.trim() || submitting}
+            className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${
+              !motivo.trim() || submitting
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-red-500 text-white hover:bg-red-600"
+            }`}
+          >
+            {submitting ? "Cancelando…" : "Confirmar cancelación"}
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Panel completo de reservas de la empresa logueada
-const MisReservas = ({ reservations, user, onUpload, onCancel }) => {
-  const [viewingDoc, setViewingDoc] = useState(null);
+// Lista de reservas de la empresa
+const MisReservas = ({ reservations, onUpload, onCancel }) => {
+  const [cancelModal, setCancelModal] = useState(null);
 
-  if (reservations.length === 0) {
+  if (!reservations || reservations.length === 0) {
     return (
-      <p className="text-sm text-gray-500">
-        Aún no has reservado ningún alumno. Puedes hacerlo desde el listado
-        general de alumnos.
-      </p>
+      <div className="rounded-xl border border-surface-200 bg-gray-50 px-6 py-10 text-center">
+        <RxClock className="mx-auto mb-2 text-2xl text-gray-300" />
+        <p className="text-sm text-gray-400">No tienes alumnos reservados todavía.</p>
+      </div>
     );
   }
 
   return (
     <>
-      <div className="space-y-3">
-        {reservations.map((r) => (
-          <TarjetaReserva
-            key={`${r.idGestion}-${r.idAuxEmpresa}`}
-            r={r}
-            user={user}
-            onUpload={onUpload}
-            onCancel={onCancel}
-            onVerDoc={(idGestion, idAuxEmpresa) =>
-              setViewingDoc({ idGestion, idAuxEmpresa })
-            }
-          />
-        ))}
-      </div>
-
-      {viewingDoc && (
-        <DocModal
-          idGestion={viewingDoc.idGestion}
-          idAuxEmpresa={viewingDoc.idAuxEmpresa}
-          onClose={() => setViewingDoc(null)}
+      {cancelModal && (
+        <CancelModal
+          alumno={cancelModal.alumno}
+          onConfirm={async (motivo) => {
+            await onCancel(cancelModal.idReserva, motivo);
+            setCancelModal(null);
+          }}
+          onClose={() => setCancelModal(null)}
         />
       )}
+
+      <div className="space-y-3">
+        {reservations.map((reserva) => {
+          const estadoClass = ESTADO_COLOR[reserva.estado_reserva] || "bg-gray-100 text-gray-600 border-gray-200";
+          const docEstado = reserva.estado_documento || null;
+
+          return (
+            <div
+              key={reserva.id_reserva}
+              className="rounded-xl border border-surface-200 bg-white px-5 py-4 shadow-sm space-y-3"
+            >
+              {/* Cabecera */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-gray-900 truncate">
+                    {reserva.alumno || "Alumno"}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {reserva.especialidad}{reserva.tipo_contrato ? ` · ${reserva.tipo_contrato}` : ""}
+                  </p>
+                </div>
+                <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border ${estadoClass}`}>
+                  {reserva.estado_reserva}
+                </span>
+              </div>
+
+              {/* Estado del documento */}
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <DocStatusIcon estado={docEstado} />
+                <span>
+                  {docEstado === "VALIDADO"
+                    ? "Documento firmado validado por el centro"
+                    : docEstado === "RECHAZADO"
+                      ? "Documento rechazado — vuelve a subirlo"
+                      : docEstado
+                        ? "Documento entregado — pendiente de revisión"
+                        : "Sin documento firmado"}
+                </span>
+              </div>
+
+              {/* Motivo de cancelación */}
+              {reserva.estado_reserva === "CANCELADA" && reserva.motivo && (
+                <p className="text-xs text-gray-400 italic border-t border-gray-100 pt-2">
+                  Motivo: {reserva.motivo}
+                </p>
+              )}
+
+              {/* Subida de documento */}
+              {reserva.estado_reserva !== "CANCELADA" && docEstado !== "VALIDADO" && (
+                <SubirDocReserva idReserva={reserva.id_reserva} onUploaded={onUpload} />
+              )}
+
+              {/* Cancelar */}
+              {reserva.estado_reserva === "PENDIENTE" && (
+                <button
+                  onClick={() => setCancelModal({ idReserva: reserva.id_reserva, alumno: reserva.alumno || "este alumno" })}
+                  className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors"
+                >
+                  Cancelar reserva
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 };

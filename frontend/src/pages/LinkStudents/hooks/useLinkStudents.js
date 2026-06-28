@@ -1,127 +1,73 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import { useUser } from "../../../globales/User";
-import { buildPostOptions, postJSON } from "../../../utils/api.js";
+import { getBlob, getJSON, postJSON } from "../../../utils/api.js";
 
-const mapEmpresaSlot = (data, slot) =>
-  data.map((row) => ({
-    idGestion: row.idGestion,
-    [`idEmpresa${slot}`]: row[`idEmpresa${slot}`],
-    [`em${slot}`]: row[`em${slot}`],
-  }));
-
-const ASSIGN_ENDPOINTS = {
-  1: "/updateCompany1",
-  2: "/updateCompany2",
-  3: "/updateCompany3",
-};
-
-const EMPRESA_ID_KEYS = {
-  1: "idEmpresa1",
-  2: "idEmpresa2",
-  3: "idEmpresa3",
-};
-
-const EMPRESA_NAME_KEYS = { 1: "em1", 2: "em2", 3: "em3" };
-
-// Gestión de datos, filtros y acciones de la página de vinculación
+// Gestión de datos, filtros y acciones del módulo de vinculación.
+// Sustituye el modelo de 3 slots fijos por el modelo dinámico de reservas.
 export const useLinkStudents = () => {
   const { user } = useUser();
   const navigate = useNavigate();
 
+  // Lista principal de solicitudes de alumno (para staff) o alumnos disponibles (para empresa)
   const [linkRequests, setLinkRequests] = useState([]);
-  const [companyRequests, setCompanyRequests] = useState([]);
+  // Ofertas de la empresa autenticada (solo para rol EMPRESA)
+  const [companyOffers, setCompanyOffers] = useState([]);
+
   const [showDoc, setShowDoc] = useState(null);
   const [currentDocUrl, setCurrentDocUrl] = useState(null);
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [sendingInfo, setSendingInfo] = useState(new Set());
   const [selectedSpeciality, setSelectedSpeciality] = useState("");
-  const [selectedYear, setSelectedYear] = useState(
-    String(new Date().getFullYear()),
-  );
-  const [empresa1, setEmpresa1] = useState([]);
-  const [empresa2, setEmpresa2] = useState([]);
-  const [empresa3, setEmpresa3] = useState([]);
+  const [selectedConvocatoria, setSelectedConvocatoria] = useState("");
 
-  const specialitiesRef = useRef(user?.specialities);
+  const isEmpresa = user?.rol === "EMPRESA";
   const userRef = useRef(user);
-  const yearRef = useRef(String(new Date().getFullYear()));
-  const skipYearRefetch = useRef(true);
 
   useEffect(() => {
-    specialitiesRef.current = user?.specialities;
     userRef.current = user;
   }, [user]);
 
   useEffect(() => {
     setExpandedCards(new Set());
-  }, [selectedSpeciality, selectedYear]);
+  }, [selectedSpeciality, selectedConvocatoria]);
 
-  const fetchCompanyRequests = () => {
-    fetch(
-      "/getCompanyRequests",
-      buildPostOptions({ specialities: specialitiesRef.current }),
-    )
-      .then((r) => r.json())
-      .then(setCompanyRequests)
-      .catch(console.error);
-  };
-
-  const fetchLinkRequests = (overrideYear) => {
-    const currentUser = userRef.current;
-    const body = {
-      specialities: specialitiesRef.current,
-      user_type: currentUser?.user_type,
-      idUser: currentUser?.idUser,
-      email: currentUser?.email,
-      year: overrideYear ?? yearRef.current,
-    };
-
-    fetch("/linkStudents", buildPostOptions(body))
-      .then((r) => r.json())
-      .then((data) => {
-        setLinkRequests(data);
-        setEmpresa1(mapEmpresaSlot(data, 1));
-        setEmpresa2(mapEmpresaSlot(data, 2));
-        setEmpresa3(mapEmpresaSlot(data, 3));
-      })
-      .catch(console.error);
-  };
+  const fetchLinkRequests = useCallback(async () => {
+    try {
+      if (isEmpresa) {
+        // La empresa ve los alumnos disponibles para sus especialidades
+        const [alumnos, cupos] = await Promise.all([
+          getJSON("/alumnos/disponibles"),
+          getJSON("/cupos/empresa"),
+        ]);
+        setLinkRequests(Array.isArray(alumnos) ? alumnos : []);
+        setCompanyOffers(Array.isArray(cupos) ? cupos : []);
+      } else {
+        // Staff ve todas las solicitudes con reservas y evaluaciones incluidas
+        const data = await getJSON("/solicitudes/alumno?include=full");
+        setLinkRequests(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Error al cargar solicitudes:", err);
+    }
+  }, [isEmpresa]);
 
   useEffect(() => {
     if (!user) {
       navigate("/login");
       return;
     }
-    fetchCompanyRequests();
     fetchLinkRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user, navigate, fetchLinkRequests]);
 
-  useEffect(() => {
-    yearRef.current = selectedYear;
-    if (skipYearRefetch.current) {
-      skipYearRefetch.current = false;
+  // Descarga un documento por su ID y lo muestra en el visor
+  const getDoc = useCallback((idDocumento, tipo, nombreAlumno) => {
+    if (!idDocumento) {
+      alert("No hay documento disponible.");
       return;
     }
-    fetchLinkRequests(selectedYear);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear]);
 
-  const getDoc = (idGestion, tipo) => {
-    const rutas = {
-      cv: `/linkStudents/${idGestion}/cv`,
-      anexo2: `/linkStudents/${idGestion}/anexo2`,
-      anexo3: `/linkStudents/${idGestion}/anexo3`,
-    };
-    if (!rutas[tipo]) return;
-
-    fetch(rutas[tipo])
-      .then((res) => {
-        if (!res.ok) throw new Error("Error al obtener el documento");
-        return res.blob();
-      })
+    getBlob(`/documentos/${idDocumento}/descargar`)
       .then((blob) => {
         if (currentDocUrl) URL.revokeObjectURL(currentDocUrl);
         const url = URL.createObjectURL(blob);
@@ -129,34 +75,34 @@ export const useLinkStudents = () => {
         setShowDoc({
           tipo,
           url,
-          nombre: `${tipo.toUpperCase()} - ${idGestion}`,
-          nombreAlumno:
-            linkRequests.find((r) => r.idGestion === idGestion)?.nombre ?? "",
+          idDocumento,
+          nombre: tipo.toUpperCase(),
+          nombreAlumno: nombreAlumno || "",
         });
       })
       .catch((err) => alert(err.message));
-  };
+  }, [currentDocUrl]);
 
-  const getAnexo = (row) => {
-    if (row.anexo2FirmadoRecibido) getDoc(row.idGestion, "anexo2");
-    else if (row.anexo3FirmadoRecibido) getDoc(row.idGestion, "anexo3");
-    else alert("No hay Anexo 2 o 3 disponible.");
-  };
-
-  const closeDocViewer = () => {
+  // Cierra el visor de documentos y libera la URL
+  const closeDocViewer = useCallback(() => {
     if (currentDocUrl) {
       URL.revokeObjectURL(currentDocUrl);
       setCurrentDocUrl(null);
     }
     setShowDoc(null);
-  };
+  }, [currentDocUrl]);
 
-  const validateDoc = async () => {
-    const idGestion = showDoc.nombre.split(" - ")[1];
-    await fetch(`/linkStudents/${idGestion}/${showDoc.tipo}/validate`);
-    closeDocViewer();
-    fetchLinkRequests();
-  };
+  // Valida el documento que se está viendo
+  const validateDoc = useCallback(async () => {
+    if (!showDoc?.idDocumento) return;
+    try {
+      await postJSON(`/documentos/${showDoc.idDocumento}/validar`, {});
+      closeDocViewer();
+      fetchLinkRequests();
+    } catch (err) {
+      alert(err.message);
+    }
+  }, [showDoc, closeDocViewer, fetchLinkRequests]);
 
   const toggleCard = (id) =>
     setExpandedCards((prev) => {
@@ -166,15 +112,15 @@ export const useLinkStudents = () => {
       return next;
     });
 
-  const sendInfo = async (idGestion, idAlumno, idEmpresa) => {
-    const buttonId = `${idGestion}-${idEmpresa}`;
+  // Envía información del alumno a la empresa (staff)
+  const sendInfo = async (idSolicitudAlumno, idEmpresa) => {
+    const buttonId = `${idSolicitudAlumno}-${idEmpresa}`;
     if (sendingInfo.has(buttonId)) return;
 
     setSendingInfo((prev) => new Set([...prev, buttonId]));
     try {
       await postJSON("/sendMail", {
-        idGestion,
-        idAlumno,
+        idSolicitudAlumno,
         idEmpresa,
         url: window.location.origin,
       });
@@ -190,109 +136,76 @@ export const useLinkStudents = () => {
     }
   };
 
-  const handleCompanyChange = (idGestion, slot) => (event) => {
-    const idEmpresa = parseInt(event.target.value, 10);
-    const nombre =
-      companyRequests.find((cr) => cr.idEmpresa === idEmpresa)?.empresa ?? "";
-    const setters = { 1: setEmpresa1, 2: setEmpresa2, 3: setEmpresa3 };
-    const idKey = EMPRESA_ID_KEYS[slot];
-    const nameKey = EMPRESA_NAME_KEYS[slot];
-
-    setters[slot]?.((prev) =>
-      prev.map((item) =>
-        item.idGestion === idGestion
-          ? { ...item, [idKey]: idEmpresa, [nameKey]: nombre }
-          : item,
-      ),
-    );
+  // Reserva un alumno (rol empresa)
+  const reserveStudent = async (idSolicitudAlumno, idSolicitudEmpresaEspecialidad) => {
+    try {
+      await postJSON("/reservas", {
+        id_solicitud_alumno: idSolicitudAlumno,
+        id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
+      });
+      fetchLinkRequests();
+    } catch (err) {
+      alert(err.message || "Error al reservar el alumno.");
+    }
   };
 
-  const assign = async (idGestion, slot) => {
-    const data = { 1: empresa1, 2: empresa2, 3: empresa3 };
-    const row = data[slot]?.find((item) => item.idGestion === idGestion);
-    if (!row) return;
-
-    const res = await fetch(
-      ASSIGN_ENDPOINTS[slot],
-      buildPostOptions({
-        idGestion,
-        idEmpresa: row[EMPRESA_ID_KEYS[slot]],
-      }),
-    );
-    if (!res.ok) return;
-
-    fetchCompanyRequests();
-    fetchLinkRequests();
+  // Cancela la reserva de un alumno (rol empresa)
+  const cancelReservation = async (idReserva, motivo) => {
+    try {
+      await postJSON(`/reservas/${idReserva}/cancelar`, { motivo });
+      fetchLinkRequests();
+    } catch (err) {
+      alert(err.message || "Error al cancelar la reserva.");
+    }
   };
 
+  // Lista de especialidades únicas para el filtro
   const specialities = [
     ...new Set(
-      linkRequests.filter((r) => r.nombreEsp).map((r) => r.nombreEsp),
+      linkRequests.filter((r) => r.especialidad).map((r) => r.especialidad),
     ),
   ];
 
-  const filtered = linkRequests.filter(
-    (r) => !selectedSpeciality || r.nombreEsp === selectedSpeciality,
-  );
+  // Lista de convocatorias únicas para el filtro (solo staff)
+  const convocatorias = [
+    ...new Set(
+      linkRequests.filter((r) => r.convocatoria).map((r) => r.convocatoria),
+    ),
+  ];
 
-  // Reserva un alumno en nombre de la empresa autenticada
-  const reserveStudent = async (idGestion) => {
-    try {
-      await postJSON("/reserveStudent", {
-        idGestion,
-        idUser: user?.idUser,
-        email: user?.email,
-      });
-      fetchLinkRequests();
-    } catch (err) {
-      console.error("Error al reservar alumno:", err);
-    }
-  };
+  // Aplica filtros de especialidad y convocatoria
+  const filtered = linkRequests.filter((r) => {
+    if (selectedSpeciality && r.especialidad !== selectedSpeciality) return false;
+    if (!isEmpresa && selectedConvocatoria && r.convocatoria !== selectedConvocatoria) return false;
+    return true;
+  });
 
-  // Cancela la reserva de un alumno en nombre de la empresa autenticada
-  const unreserveStudent = async (idGestion) => {
-    try {
-      await postJSON("/unreserveStudent", {
-        idGestion,
-        idUser: user?.idUser,
-        email: user?.email,
-      });
-      fetchLinkRequests();
-    } catch (err) {
-      console.error("Error al cancelar la reserva:", err);
-    }
-  };
-
-  const canSendInfo = user?.specialities?.[0] == null;
-  const isEmpresa = user?.user_type === "empresa";
-  const yearOptionCount = isEmpresa ? 3 : 5;
+  // El staff puede enviar info si no tiene especialidades restringidas (campo legado)
+  const canSendInfo = !isEmpresa;
 
   return {
     user,
     navigate,
     linkRequests,
-    companyRequests,
+    companyOffers,
     showDoc,
     expandedCards,
     sendingInfo,
     selectedSpeciality,
     setSelectedSpeciality,
-    selectedYear,
-    setSelectedYear,
+    selectedConvocatoria,
+    setSelectedConvocatoria,
     filtered,
     specialities,
+    convocatorias,
     canSendInfo,
     isEmpresa,
-    yearOptionCount,
     toggleCard,
-    assign,
     sendInfo,
-    handleCompanyChange,
     getDoc,
-    getAnexo,
     closeDocViewer,
     validateDoc,
     reserveStudent,
-    unreserveStudent,
+    cancelReservation,
   };
 };

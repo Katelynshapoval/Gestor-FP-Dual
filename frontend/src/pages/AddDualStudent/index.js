@@ -25,12 +25,11 @@ function PreferenciaSelect({ label, value, onChange, dataPreferences }) {
         className="select-input"
         value={value}
         onChange={onChange}
-        required
       >
         <option value="">Seleccione una preferencia</option>
         {dataPreferences.map((p) => (
-          <option key={p.idPreferencia} value={p.idPreferencia}>
-            {p.preferencia}
+          <option key={p.id_preferencia} value={p.id_preferencia}>
+            {p.descripcion}
           </option>
         ))}
       </select>
@@ -70,7 +69,7 @@ function AddDualStudent() {
   const [cv, setCv] = useState(null);
 
   useEffect(() => {
-    fetch("/getAllSpecialities")
+    fetch("/especialidades")
       .then((r) => r.json())
       .then(setDataSpecialities)
       .catch((err) => console.error("Error al cargar especialidades:", err));
@@ -79,14 +78,16 @@ function AddDualStudent() {
   const handleSpecialityChange = (e) => {
     const id = e.target.value;
     setSpeciality(id);
-    fetch("/getPreferencesBySpeciality", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idSpeciality: id }),
-    })
-      .then((r) => r.json())
-      .then(setDataPreferences)
-      .catch((err) => console.error("Error al cargar preferencias:", err));
+    setDataPreferences([]);
+    setPreference1("");
+    setPreference2("");
+    setPreference3("");
+    if (id) {
+      fetch(`/preferencias?id_especialidad=${id}`)
+        .then((r) => r.json())
+        .then(setDataPreferences)
+        .catch((err) => console.error("Error al cargar preferencias:", err));
+    }
   };
 
   const handleBirthdateChange = (e) => {
@@ -107,43 +108,45 @@ function AddDualStudent() {
       await showMessage("Formato de DNI/NIE del alumno no válido.");
       return;
     }
-    if (!FormatValidation.nSSValido(SSnumber)) {
+    if (SSnumber && !FormatValidation.nSSValido(SSnumber)) {
       await showMessage("Formato del número de Seguridad Social no válido.");
       return;
     }
-    if (esMenor && !FormatValidation.dniNieValido(legalGuardianDni)) {
+    if (esMenor && legalGuardianDni && !FormatValidation.dniNieValido(legalGuardianDni)) {
       await showMessage("Formato de DNI/NIE del tutor legal no válido.");
       return;
     }
     try {
       const data = new FormData();
-      data.append("emailinstituto", studiesEmail);
-      data.append("dniNie", dniNie);
+      data.append("emailColegio", studiesEmail);
+      data.append("dni", dniNie);
       data.append("nombre", name);
       data.append("sexo", gender);
-      data.append("fechanacimiento", birthdate);
+      data.append("fechaNacimiento", birthdate);
       data.append("nacionalidad", nationality);
       data.append("email", email);
       data.append("telalumno", studentTelephone);
-      data.append("carnetconducir", drivingLicense);
-      data.append("disponibilidad", availability);
-      data.append("idiomas", idioms);
+      data.append("carnetDeConducir", drivingLicense === "true" ? 1 : 0);
+      data.append("tieneCoche", availability === "true" ? 1 : 0);
+      data.append("idiomasConocidos", idioms);
       data.append("numeroSS", SSnumber);
       data.append("domicilio", adress);
       data.append("cp", cp);
       data.append("localidad", location);
-      data.append("especialidad", speciality);
-      data.append("idpreferencia1", preference1);
-      data.append("idpreferencia2", preference2);
-      data.append("idpreferencia3", preference3);
-      data.append("nombretutorlegal", legalGuardianName);
-      data.append("dnitutorlegal", legalGuardianDni);
-      data.append("doc", file);
-      data.append("cv", cv);
-      await postForm("/addStudent", data);
+      data.append("id_especialidad_dual", speciality);
+      if (preference1) data.append("idPreferencia1", preference1);
+      if (preference2) data.append("idPreferencia2", preference2);
+      if (preference3) data.append("idPreferencia3", preference3);
+      data.append("tutorLegal", legalGuardianName);
+      data.append("dniTutorLegal", legalGuardianDni);
+      // El archivo de Anexo 2 va en el campo 'anexo2'
+      if (file) data.append("anexo2", file);
+      if (cv) data.append("cv", cv);
+      await postForm("/solicitudes/alumno", data);
       await showMessage("La candidatura se ha enviado correctamente.");
-    } catch {
-      await showMessage("Ha ocurrido un error. Inténtalo de nuevo.");
+      formRef.current.reset();
+    } catch (err) {
+      await showMessage(err.message || "Ha ocurrido un error. Inténtalo de nuevo.");
     }
   };
 
@@ -178,32 +181,34 @@ function AddDualStudent() {
             >
               <option value="">Seleccione una especialidad</option>
               {dataSpecialities.map((esp) => (
-                <option key={esp.idEspecialidad} value={esp.idEspecialidad}>
-                  {esp.nombreEsp}
+                <option key={esp.id_especialidad} value={esp.id_especialidad}>
+                  {esp.nombre} {esp.turno ? `(${esp.turno})` : ""}
                 </option>
               ))}
             </select>
           </Field>
-          <div className="grid gap-4 md:grid-cols-3">
-            <PreferenciaSelect
-              label="Preferencia 1"
-              value={preference1}
-              onChange={(e) => setPreference1(e.target.value)}
-              dataPreferences={dataPreferences}
-            />
-            <PreferenciaSelect
-              label="Preferencia 2"
-              value={preference2}
-              onChange={(e) => setPreference2(e.target.value)}
-              dataPreferences={dataPreferences}
-            />
-            <PreferenciaSelect
-              label="Preferencia 3"
-              value={preference3}
-              onChange={(e) => setPreference3(e.target.value)}
-              dataPreferences={dataPreferences}
-            />
-          </div>
+          {dataPreferences.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-3">
+              <PreferenciaSelect
+                label="Preferencia 1"
+                value={preference1}
+                onChange={(e) => setPreference1(e.target.value)}
+                dataPreferences={dataPreferences}
+              />
+              <PreferenciaSelect
+                label="Preferencia 2"
+                value={preference2}
+                onChange={(e) => setPreference2(e.target.value)}
+                dataPreferences={dataPreferences}
+              />
+              <PreferenciaSelect
+                label="Preferencia 3"
+                value={preference3}
+                onChange={(e) => setPreference3(e.target.value)}
+                dataPreferences={dataPreferences}
+              />
+            </div>
+          )}
         </div>
 
         <div className="form-card">
@@ -227,7 +232,7 @@ function AddDualStudent() {
                 className="input"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                maxLength={45}
+                maxLength={100}
                 placeholder="Introduce tu nombre y apellidos"
                 required
               />
@@ -250,7 +255,7 @@ function AddDualStudent() {
                 className="input"
                 value={nationality}
                 onChange={(e) => setNationality(e.target.value)}
-                maxLength={20}
+                maxLength={50}
                 placeholder="Tu nacionalidad"
                 required
               />
@@ -286,7 +291,7 @@ function AddDualStudent() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="ejemplo@gmail.com"
-                maxLength={60}
+                maxLength={100}
                 required
               />
             </Field>
@@ -309,7 +314,7 @@ function AddDualStudent() {
               value={adress}
               onChange={(e) => setAdress(e.target.value)}
               placeholder="Calle, número, piso..."
-              maxLength={50}
+              maxLength={255}
               required
             />
           </Field>
@@ -320,7 +325,7 @@ function AddDualStudent() {
                 className="input"
                 value={cp}
                 onChange={(e) => setCP(e.target.value)}
-                maxLength={5}
+                maxLength={10}
                 placeholder="50001"
                 required
               />
@@ -332,7 +337,7 @@ function AddDualStudent() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Zaragoza"
-                maxLength={40}
+                maxLength={100}
                 required
               />
             </Field>
@@ -354,7 +359,7 @@ function AddDualStudent() {
                     value={v}
                     checked={drivingLicense === v}
                     onChange={(e) => setDrivingLicense(e.target.value)}
-                    required={v === "true"}
+                    required={!drivingLicense}
                   />
                   <span>{l}</span>
                 </label>
@@ -370,7 +375,7 @@ function AddDualStudent() {
                   value="true"
                   checked={availability === "true"}
                   onChange={(e) => setAvailability(e.target.value)}
-                  required
+                  required={!availability}
                 />
                 <span>Tengo vehículo disponible para ir a trabajar</span>
               </label>
@@ -395,7 +400,7 @@ function AddDualStudent() {
                 onChange={(e) => setIdioms(e.target.value)}
                 placeholder="Inglés B2, Francés A2"
                 required
-                maxLength={15}
+                maxLength={255}
               />
             </Field>
             <Field id="ss" label="Nº Seguridad Social (si lo tienes)">
@@ -417,9 +422,9 @@ function AddDualStudent() {
           <Field label="Curriculum Vitae (PDF)">
             <label className="file-upload">
               <MdOutlineFileUpload className="file-upload-icon" />
-
-              <span className="file-upload-text">Seleccionar archivo…</span>
-
+              <span className="file-upload-text">
+                {cv ? cv.name : "Seleccionar archivo…"}
+              </span>
               <input
                 type="file"
                 accept=".pdf"
@@ -446,9 +451,9 @@ function AddDualStudent() {
           >
             <label className="file-upload">
               <MdOutlineFileUpload className="file-upload-icon" />
-
-              <span className="file-upload-text">Seleccionar archivo...</span>
-
+              <span className="file-upload-text">
+                {file ? file.name : "Seleccionar archivo..."}
+              </span>
               <input
                 type="file"
                 accept=".pdf"

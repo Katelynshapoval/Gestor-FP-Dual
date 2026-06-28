@@ -1,33 +1,37 @@
 import {
-  buildYearOptions,
   FILTER_LABEL_CLASS,
   FILTER_SELECT_CLASS,
   SPECIALITY_SELECT_CLASS,
 } from "../utils/filters";
 
+// Filtros de la vista de vinculación: especialidad y convocatoria (solo staff)
 const RequestFilters = ({
-  selectedYear,
-  onYearChange,
   selectedSpeciality,
   onSpecialityChange,
+  selectedConvocatoria,
+  onConvocatoriaChange,
   specialities,
-  yearOptionCount,
+  convocatorias,
+  isEmpresa,
 }) => (
   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full sm:w-auto flex-wrap">
-    <div className="flex items-center gap-2">
-      <label className={FILTER_LABEL_CLASS}>Curso:</label>
-      <select
-        className={FILTER_SELECT_CLASS}
-        value={selectedYear}
-        onChange={(e) => onYearChange(e.target.value)}
-      >
-        {buildYearOptions(yearOptionCount).map(({ value, label }) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </select>
-    </div>
+    {!isEmpresa && convocatorias.length > 0 && (
+      <div className="flex items-center gap-2">
+        <label className={FILTER_LABEL_CLASS}>Convocatoria:</label>
+        <select
+          className={FILTER_SELECT_CLASS}
+          value={selectedConvocatoria}
+          onChange={(e) => onConvocatoriaChange(e.target.value)}
+        >
+          <option value="">Todas</option>
+          {convocatorias.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+    )}
 
     <div className="flex items-center gap-2">
       <label className={FILTER_LABEL_CLASS}>Especialidad:</label>
