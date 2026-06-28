@@ -24,7 +24,7 @@ const SpecialitySelector = ({
         return (
           <div
             key={id}
-            className={`checkbox-item ${isSelected ? "checked !items-start flex-col gap-2" : ""}`}
+            className={`checkbox-item ${isSelected ? "checked items-start flex-col gap-2" : ""}`}
             onClick={() => onToggle(id)}
           >
             <div className="checkbox-left">

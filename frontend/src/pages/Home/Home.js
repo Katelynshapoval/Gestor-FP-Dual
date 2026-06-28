@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useUser } from '../../context/UserContext';
 import "./Home.css";
-import { FaArrowRightLong } from "react-icons/fa6";
+import { FaArrowRightLong, FaBuilding, FaFileSignature, FaLink, FaUserGraduate } from "react-icons/fa6";
 
 function Home() {
   const { user } = useUser();
@@ -14,13 +14,13 @@ function Home() {
       ? [
           {
             to: "/addDualStudent",
-            icon: "🎓",
+            Icon: FaUserGraduate,
             title: "Presentar candidatura",
             desc: "Rellena el formulario de inscripción para el programa FP Dual.",
           },
           {
             to: "/addCompanyRequest",
-            icon: "🏢",
+            Icon: FaBuilding,
             title: "Solicitud de empresa",
             desc: "Registra tu empresa y solicita plazas para estudiantes en prácticas.",
           },
@@ -30,7 +30,7 @@ function Home() {
       ? [
           {
             to: "/companyMain",
-            icon: "🏢",
+            Icon: FaBuilding,
             title: "Panel de empresa",
             desc: "Consulta la información de tu empresa y gestiona los alumnos que has reservado.",
           },
@@ -40,7 +40,7 @@ function Home() {
       ? [
           {
             to: "/companiesView",
-            icon: "🗂️",
+            Icon: FaFileSignature,
             title: "Empresas colaboradoras",
             desc: "Administra las empresas registradas en Dual: consulta datos, gestiona anexos.",
           },
@@ -50,7 +50,7 @@ function Home() {
       ? [
           {
             to: "/linkStudents",
-            icon: "🔗",
+            Icon: FaLink,
             title: "Vincular alumnos",
             desc: "Gestiona las asignaciones de alumnos a empresas colaboradoras.",
           },
@@ -59,51 +59,55 @@ function Home() {
   ];
 
   return (
-    <div className="flex flex-col flex-1  ">
-      {/* Hero banner */}
-      <div className="home-hero relative overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 text-white px-8 py-20">
-        <div className="max-w-6xl mx-auto relative z-10">
-          <h1 className="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-bold mb-4 max-w-[640px]">
+    <div className="flex flex-1 flex-col">
+      <div className="border-b border-surface-200 bg-white">
+        <div className="home-content mx-auto grid gap-6 px-4 py-10 sm:px-6 md:px-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-end">
+          <div className="min-w-0">
+            <div className="page-kicker">Plataforma del centro</div>
+            <h1 className="home-title max-w-full break-words font-display text-3xl font-semibold leading-tight text-charcoal-950 md:text-4xl">
             Gestor de FP Dual del Centro Salesiano Ntra. Sra. del Pilar
-          </h1>
+            </h1>
 
-          <p className="text-lg font-light opacity-90">
+            <p className="home-copy mt-4 max-w-full break-words text-base leading-7 text-muted">
             Gestión integral del programa de Formación Profesional Dual
-          </p>
+            </p>
+          </div>
+          <div className="rounded-xl2 border border-brand-200 bg-brand-50 px-4 py-4 text-sm text-brand-900">
+            <p className="font-semibold">Acceso operativo</p>
+            <p className="mt-1 text-brand-800/80">
+              Selecciona el módulo correspondiente según tu perfil.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Module cards */}
-      <div className="max-w-7xl mx-auto px-9 md:px-8 py-12 w-full">
-        {/* Section heading */}
+      <div className="home-content mx-auto px-4 py-8 sm:px-6 md:px-8">
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-1">Módulos principales</h2>
-          <p className="text-sm text-gray-500 text-base">
+          <h2 className="mb-1 text-lg font-semibold text-charcoal-950">Módulos principales</h2>
+          <p className="text-sm text-muted">
             Accede a las funcionalidades principales del sistema
           </p>
         </div>
-        {/* Navigation cards */}
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {cards.map((c) => (
             <Link
               key={c.to}
               to={c.to}
-              className="group bg-white border border-surface-200 border-t-4 border-t-brand-500 rounded-xl2 p-7 shadow-card hover:shadow-card-hover transition flex flex-col"
+              className="group flex min-h-[14rem] min-w-0 flex-col rounded-xl2 border border-surface-200 bg-white p-5 shadow-card outline-none transition-[border-color,box-shadow] duration-150 ease-out hover:border-brand-200 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/25"
             >
-              <div className="w-10 h-10 bg-brand-100 rounded-lg flex items-center justify-center text-lg mb-4">
-                {c.icon}
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-700">
+                <c.Icon className="h-4 w-4" />
               </div>
 
-              <h3 className="font-display text-lg font-semibold mb-2">
+              <h3 className="mb-2 font-display text-lg font-semibold text-charcoal-950">
                 {c.title}
               </h3>
 
-              <p className="text-base text-gray-500 mb-4">{c.desc}</p>
+              <p className="home-copy mb-4 max-w-full break-words text-sm leading-6 text-muted">{c.desc}</p>
 
-              {/* Card call-to-action link */}
-              <span className="mt-auto text-sm font-semibold text-brand-500 flex items-center gap-1 text-base">
+              <span className="mt-auto flex items-center gap-1 text-sm font-semibold text-brand-700">
                 Acceder al módulo
-                <FaArrowRightLong className="transition-transform group-hover:translate-x-1  ml-2" />
+                <FaArrowRightLong className="ml-2 transition-transform duration-150 group-hover:translate-x-1" />
               </span>
             </Link>
           ))}

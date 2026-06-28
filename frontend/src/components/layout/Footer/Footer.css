@@ -1,15 +1,19 @@
+.app-footer {
+  @apply border-t border-surface-200 bg-white/70 px-4 py-4 text-xs text-muted sm:px-6 md:px-8;
+}
+
+.app-footer-inner {
+  @apply mx-auto flex w-full max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between;
+}
+
 .footer-title {
-  @apply text-base font-semibold uppercase tracking-wide mb-3;
+  @apply font-semibold text-charcoal-800;
 }
 
 .footer-text {
-  @apply text-base opacity-90;
+  @apply text-muted;
 }
 
-.footer-link:hover {
-  @apply opacity-100 text-black;
-}
-
-.footer-social-pill {
-  @apply px-3 py-1 rounded-full border border-white/40 hover:bg-white hover:text-brand-500 transition cursor-pointer text-xs font-semibold;
+.footer-link {
+  @apply text-muted transition-colors duration-150 hover:text-brand-700;
 }

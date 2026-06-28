@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getBlob, postJSON } from "../../../utils/api.js";
 
-// Modal for viewing a reservation's signed document; allows validation or rejection.
 const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +31,6 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
 
     fetchPdf();
 
-    // Release the object URL when the component unmounts or the reservation changes
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
@@ -49,7 +47,6 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
     setSubmitting(true);
     setActionMsg(null);
     try {
-      // Validating the document also confirms the reservation in the same flow
       await postJSON(`/documentos/${reserva.id_documento_reserva}/validar`, {});
       await postJSON(`/reservas/${reserva.id_reserva}/confirmar`, {});
       setActionMsg({ ok: true, text: "Reserva confirmada correctamente." });
@@ -85,7 +82,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">
-            Acuerdo firmado — {empresaNombre}
+            Acuerdo firmado - {empresaNombre}
           </h2>
 
           <div className="modal-actions">
@@ -94,15 +91,15 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
                 <button
                   onClick={handleValidar}
                   disabled={submitting}
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary btn-sm shadow-none"
                 >
-                  ✓ Confirmar reserva
+                  Confirmar reserva
                 </button>
                 <button
                   onClick={() => setShowReject(true)}
                   className="btn btn-secondary btn-sm"
                 >
-                  ✗ Rechazar
+                  Rechazar
                 </button>
               </>
             )}
@@ -116,23 +113,22 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
               </button>
             )}
 
-            <button className="modal-close" onClick={onClose}>
-              ✕
+            <button className="modal-close" onClick={onClose} aria-label="Cerrar visor">
+              ×
             </button>
           </div>
         </div>
 
-        {/* Rejection form with motivo field */}
         {showReject && (
-          <div className="px-4 py-3 border-b border-gray-200 bg-red-50">
-            <p className="text-sm font-medium text-red-700 mb-2">
+          <div className="border-b border-gray-200 bg-red-50 px-4 py-3">
+            <p className="mb-2 text-sm font-medium text-red-700">
               Motivo del rechazo
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 type="text"
                 className="input flex-1 text-sm"
-                placeholder="Indica el motivo…"
+                placeholder="Indica el motivo..."
                 value={motivoRechazo}
                 onChange={(e) => setMotivoRechazo(e.target.value)}
                 maxLength={255}
@@ -140,13 +136,13 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
               <button
                 onClick={handleRechazar}
                 disabled={!motivoRechazo.trim() || submitting}
-                className="px-3 py-1.5 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                className={`btn btn-primary btn-sm shadow-none ${!motivoRechazo.trim() || submitting ? "btn-disabled" : ""}`}
               >
                 Confirmar
               </button>
               <button
                 onClick={() => setShowReject(false)}
-                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                className="btn btn-secondary btn-sm"
               >
                 Cancelar
               </button>
@@ -154,7 +150,6 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
           </div>
         )}
 
-        {/* Action result message */}
         {actionMsg && (
           <p
             className={`px-4 py-2 text-sm ${
@@ -167,8 +162,8 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
 
         <div className="modal-body">
           {loading && (
-            <p className="text-sm text-gray-500 py-8 text-center">
-              Cargando documento…
+            <p className="py-8 text-center text-sm text-gray-500">
+              Cargando documento...
             </p>
           )}
 
@@ -176,12 +171,12 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
             <iframe
               src={pdfUrl}
               title="Documento de reserva"
-              className="w-full h-full block border-none"
+              className="block h-full w-full border-none"
             />
           )}
 
           {!loading && !pdfUrl && (
-            <p className="text-sm text-gray-500 py-8 text-center">
+            <p className="py-8 text-center text-sm text-gray-500">
               No se pudo cargar el documento.
             </p>
           )}

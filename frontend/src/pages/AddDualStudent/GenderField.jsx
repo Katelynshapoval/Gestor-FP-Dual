@@ -18,7 +18,7 @@ const GenderField = ({ gender, onChange }) => {
           <span>Otro</span>
         </label>
         {isOther && (
-          <input className="input" style={{ marginTop: '.35rem' }} maxLength={15}
+          <input className="input mt-1" maxLength={15}
             value={gender === 'Otro' ? '' : gender}
             onChange={(e) => onChange({ target: { value: e.target.value } })}
             placeholder="Especifica..." required />

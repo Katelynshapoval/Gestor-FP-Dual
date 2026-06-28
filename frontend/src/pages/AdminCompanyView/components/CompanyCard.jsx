@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { FaKey, FaBuilding } from "react-icons/fa6";
-import { FaRegFileAlt } from "react-icons/fa";
 import { formatDate, InfoRow } from "../helpers";
 import { IoMdArrowDropdown } from "react-icons/io";
-import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
+import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 
 import {
@@ -225,7 +224,7 @@ const CompanyCard = ({
                       <div className="flex items-center gap-2 flex-wrap mt-2">
                         <button
                           onClick={() => onResetPassword(id)}
-                          className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-150"
+                          className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50"
                         >
                           <FaKey className="text-xs" />
                           Resetear contraseña
@@ -275,15 +274,15 @@ const CompanyCard = ({
                       <div className="flex gap-2 flex-wrap mt-2">
                         <button
                           onClick={() => onViewConvenio(empresa)}
-                          className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-all"
+                          className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
                         >
-                          <FaRegFileAlt className="text-red-500" />
+                          <MdOutlineFileUpload className="text-brand-600" />
                           Ver convenio
                         </button>
                         {!empresa.convenio_validado && (
                           <button
                             onClick={() => onViewConvenio(empresa)}
-                            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 transition-all"
+                            className="flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-700 transition-colors duration-150 hover:bg-green-100"
                           >
                             ✓ Validar
                           </button>

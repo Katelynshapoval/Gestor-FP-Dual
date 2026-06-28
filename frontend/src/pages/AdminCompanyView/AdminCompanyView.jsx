@@ -11,6 +11,7 @@ import { getJSON, postJSON } from "../../utils/api.js";
 import ConvenioViewer from "./components/ConvenioViewer";
 import CompanyCard from "./components/CompanyCard";
 import ReservasAdmin from "./components/ReservasAdmin";
+import PageHeader from "../../components/ui/PageHeader";
 
 function getCourseLabel(dateStr) {
   if (!dateStr) return null;
@@ -103,29 +104,26 @@ const AdminCompanyView = () => {
   const totalSin       = companies.filter(c => !c.tieneConvenio).length;
   const pendingDocs    = allReservations.filter(r => r.id_documento_reserva && r.estado_documento === "PENDIENTE").length;
 
-  const selectCls = "bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all duration-200";
+  const selectCls = "rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20";
 
-  if (loading) return <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1"><p className="text-center text-gray-500 py-12">Cargando…</p></div>;
-  if (error)   return <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1"><p className="text-center text-red-500 py-12">Error: {error}</p></div>;
+  if (loading) return <div className="page-container"><p className="rounded-xl2 border border-surface-200 bg-white py-12 text-center text-sm text-muted shadow-card">Cargando…</p></div>;
+  if (error)   return <div className="page-container"><p className="rounded-xl2 border border-red-200 bg-red-50 py-12 text-center text-sm text-red-700">Error: {error}</p></div>;
 
   return (
-    <div className="space-y-6 px-10 py-8 max-w-[1100px] mx-auto w-full flex-1">
-      {/* Page header with summary badges */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="border-l-4 border-red-600 pl-4 sm:pl-5">
-          <h1 className="text-xl sm:text-2xl font-semibold">Gestión de empresas</h1>
-          <p className="text-sm text-gray-500">
-            {companies.length} empresa{companies.length !== 1 ? "s" : ""} · {allReservations.length} reserva{allReservations.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs">
+    <div className="page-container space-y-6">
+      <PageHeader
+        kicker="Administración"
+        title="Gestión de empresas"
+        subtitle={`${companies.length} empresa${companies.length !== 1 ? "s" : ""} · ${allReservations.length} reserva${allReservations.length !== 1 ? "s" : ""}`}
+        actions={
+          <div className="flex flex-wrap gap-2 text-xs">
           <span className={`${signedBadgeClass} bg-green-500/10 text-green-800`}><IoIosCheckmarkCircleOutline /> {totalValidado} validado{totalValidado !== 1 ? "s" : ""}</span>
           <span className={`${signedBadgeClass} bg-yellow-400/15 text-yellow-800`}><MdPendingActions /> {totalPendiente} pendiente{totalPendiente !== 1 ? "s" : ""}</span>
           <span className={`${signedBadgeClass} bg-red-500/10 text-red-800`}><MdOutlineCancel /> {totalSin} sin convenio</span>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
-      {/* Primary tab toggle */}
       <div className="flex gap-1 border-b border-gray-200">
         <button
           onClick={() => setMainView("empresas")}
@@ -150,7 +148,6 @@ const AdminCompanyView = () => {
         </button>
       </div>
 
-      {/* Reservations panel */}
       {mainView === "reservas" && (
         <ReservasAdmin
           reservations={allReservations}
@@ -158,19 +155,17 @@ const AdminCompanyView = () => {
         />
       )}
 
-      {/* Companies panel */}
       {mainView === "empresas" && (
         <>
-          {/* Filter controls */}
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-center">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+          <div className="flex flex-col flex-wrap gap-3 rounded-xl2 border border-surface-200 bg-white p-3 shadow-card sm:flex-row sm:items-center">
+            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
               <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">Especialidad:</label>
               <select className={`${selectCls} w-full sm:w-auto`} value={filterEsp} onChange={(e) => setFilterEsp(e.target.value)}>
                 <option value="">Todas</option>
                 {allEspecialidades.map(e => <option key={e.id_especialidad} value={e.id_especialidad}>{e.nombre || e.especialidad}</option>)}
               </select>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
               <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">Convenio:</label>
               <select className={`${selectCls} w-full sm:w-auto`} value={filterConvenio} onChange={(e) => setFilterConvenio(e.target.value)}>
                 <option value="">Todos</option>
@@ -179,14 +174,14 @@ const AdminCompanyView = () => {
                 <option value="sin_convenio">Sin convenio</option>
               </select>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
               <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">Curso:</label>
               <select className={`${selectCls} w-full sm:w-auto`} value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)}>
                 <option value="">Todos los cursos</option>
                 {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
               <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">Ordenar:</label>
               <select className={`${selectCls} w-full sm:w-auto`} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                 <option value="fecha_desc">Fecha (más reciente)</option>
@@ -204,7 +199,7 @@ const AdminCompanyView = () => {
           {/* Company card list */}
           <div className="space-y-4">
             {filtered.length === 0 && (
-              <div className="text-center p-12 text-gray-500 bg-gray-50 border border-gray-200 rounded-xl">
+              <div className="rounded-xl2 border border-surface-200 bg-white p-12 text-center text-muted shadow-card">
                 No hay empresas que coincidan con los filtros.
               </div>
             )}

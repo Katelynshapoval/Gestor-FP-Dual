@@ -31,46 +31,47 @@ body {
   flex-direction: column;
 }
 
+a {
+  @apply text-inherit;
+}
+
+::selection {
+  @apply bg-brand-100 text-brand-900;
+}
+
 /* Login */
 .login-page {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(
-      ellipse at 70% 20%,
-      rgb(248 29 29/0.12) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse at 20% 80%,
-      rgb(248 29 29/0.07) 0%,
-      transparent 50%
-    ),
-    #fafafa;
-  min-height: calc(100vh - 64px - 200px);
-  padding: 2rem;
+  @apply bg-surface-50;
+  min-height: 100%;
+  padding: 2rem 1rem;
 }
 .login-card {
-  @apply rounded-xl border border-surface-200 bg-white;
-  padding: 2.75rem 2.5rem;
+  @apply rounded-xl2 border border-surface-200 bg-white;
+  padding: 2.5rem 2rem;
   width: 100%;
   max-width: 380px;
-  box-shadow: 0 8px 40px rgb(0 0 0/0.08);
+  box-shadow: 0 18px 55px -42px rgb(17 17 16 / 0.85);
   animation: fadeIn 0.35s ease-out;
   text-align: center;
 }
 .login-card .logo-mark {
   width: 56px;
   height: 56px;
-  @apply bg-brand-500;
-  border-radius: 14px;
+  @apply border border-brand-200 bg-brand-50;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 1.25rem;
-  box-shadow: 0 4px 14px 0 rgb(248 29 29 / 0.28);
+  box-shadow: 0 12px 26px -20px rgb(224 31 22 / 0.75);
+}
+.login-card .logo-mark img {
+  width: 38px;
+  height: 38px;
 }
 .login-card h2 {
   font-family: "Roboto", sans-serif;
@@ -89,7 +90,7 @@ body {
   margin: 1.5rem 0;
 }
 .login-error {
-  @apply rounded-lg border border-brand-500/25 bg-brand-50 text-brand-700;
+  @apply rounded-lg border border-red-200 bg-red-50 text-red-700;
   padding: 0.65rem 1rem;
   font-size: 0.82rem;
   margin-top: 1rem;
@@ -99,7 +100,7 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0/0.55);
+  background: rgb(17 17 16 / 0.58);
   z-index: 200;
   display: flex;
   align-items: center;
@@ -108,14 +109,14 @@ body {
   animation: fadeIn 0.15s ease-out;
 }
 .modal-box {
-  @apply rounded-xl bg-white;
+  @apply rounded-xl2 bg-white;
   width: 100%;
   max-width: 92%;
   height: 88vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgb(0 0 0/0.25);
+  box-shadow: 0 24px 80px rgb(17 17 16/0.32);
   animation: slideIn 0.2s ease-out;
 }
 .modal-header {
@@ -123,7 +124,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
-  @apply border-b border-surface-200;
+  @apply border-b border-surface-200 bg-surface-50;
   gap: 1rem;
 }
 .modal-title {
@@ -141,14 +142,14 @@ body {
 .modal-close {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: 8px;
   @apply border border-surface-200 bg-white text-gray-500;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   font-size: 0.85rem;
-  transition: all 0.18s ease;
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
 }
 .modal-close:hover {
   @apply border-brand-500 text-brand-500;
@@ -171,7 +172,7 @@ body {
   justify-content: space-between;
   margin-bottom: 1.75rem;
   padding-bottom: 1rem;
-  @apply border-b-2 border-brand-50;
+  @apply border-b border-surface-200;
 }
 .eval-meta {
   display: flex;
@@ -179,14 +180,14 @@ body {
 }
 .eval-badge {
   font-size: 0.75rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.28rem 0.65rem;
   border-radius: 6px;
-  @apply border border-surface-200 bg-surface-50 text-muted;
+  @apply border border-surface-200 bg-white text-muted;
 }
 .eval-score-box {
-  @apply rounded-xl bg-gradient-to-br from-brand-500 to-brand-700;
+  @apply rounded-xl2 border border-brand-200 bg-brand-50;
   padding: 1.25rem 1.5rem;
-  color: #fff;
+  color: var(--color-brand-dark);
   margin-bottom: 1.25rem;
 }
 .eval-score-box .score-label {
@@ -242,5 +243,16 @@ body {
   }
   to {
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
   }
 }

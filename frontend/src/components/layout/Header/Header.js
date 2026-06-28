@@ -1,121 +1,173 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useUser } from '../../../context/UserContext';
+import { useUser } from "../../../context/UserContext";
 import { useState } from "react";
-import { IoMdMenu } from "react-icons/io";
-import { IoMdClose } from "react-icons/io";
+import { IoMdClose, IoMdMenu } from "react-icons/io";
+import {
+  FaAnglesLeft,
+  FaAnglesRight,
+  FaBuilding,
+  FaFileSignature,
+  FaHouse,
+  FaLink,
+  FaRightFromBracket,
+  FaRightToBracket,
+  FaUserGraduate,
+} from "react-icons/fa6";
+import { MdEventNote } from "react-icons/md";
 import "./Header.css";
 
-function Header() {
+function Header({ sidebarCollapsed = false, onSidebarToggle }) {
   const { user, logout } = useUser();
   const location = useLocation().pathname;
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  // Suppresses the link if already on that route to avoid no-op navigation
-  const NavLink = ({ to, label }) =>
-    location !== to ? (
-      <Link to={to} onClick={() => setOpen(false)} className="nav-link">
-        {label}
-      </Link>
-    ) : null;
+  const isAdmin = user?.rol === "ADMINISTRADOR" || user?.rol === "COORDINADOR";
+
+  const items = [
+    { to: "/", label: "Inicio", Icon: FaHouse, show: true },
+    { to: "/addDualStudent", label: "Alumnos", Icon: FaUserGraduate, show: !user || isAdmin },
+    { to: "/addCompanyRequest", label: "Empresas", Icon: FaBuilding, show: !user || isAdmin },
+    { to: "/companyMain", label: "Mi empresa", Icon: FaBuilding, show: user?.rol === "EMPRESA" },
+    { to: "/companiesView", label: "Empresas colaboradoras", Icon: FaFileSignature, show: isAdmin },
+    { to: "/convocatorias", label: "Convocatorias", Icon: MdEventNote, show: isAdmin },
+    { to: "/linkStudents", label: "Enlazar", Icon: FaLink, show: !!user },
+  ].filter((item) => item.show);
+
+  const Brand = ({ compact = false, collapsed = false }) => (
+    <Link
+      to="/"
+      onClick={() => setOpen(false)}
+      className={`brand-lockup ${collapsed ? "brand-lockup-collapsed" : ""}`}
+      aria-label="Gestor FP Dual - Inicio"
+      title={collapsed ? "Gestor FP Dual" : undefined}
+    >
+      <img src="logo.png" alt="Salesianos" className={compact || collapsed ? "h-8 w-8" : "h-9 w-9"} />
+      <div className="brand-text">
+        <div className="brand-title">Gestor FP Dual</div>
+        <div className="brand-subtitle">Salesianos Zaragoza</div>
+      </div>
+    </Link>
+  );
+
+  const NavItems = ({ mobile = false }) => (
+    <nav className={mobile ? "mobile-nav-list" : "nav-list"} aria-label="Navegación principal">
+      {items.map(({ to, label, Icon }) => {
+        const active = location === to;
+        const collapsedTooltip = sidebarCollapsed && !mobile;
+        return (
+          <Link
+            key={to}
+            to={to}
+            onClick={() => setOpen(false)}
+            className={`nav-link ${active ? "nav-link-active" : ""}`}
+            aria-current={active ? "page" : undefined}
+            aria-label={collapsedTooltip ? label : undefined}
+            title={collapsedTooltip ? label : undefined}
+          >
+            <Icon className="nav-icon" />
+            <span className="nav-label">{label}</span>
+            {collapsedTooltip && <span className="nav-tooltip">{label}</span>}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
+  const handleSessionAction = () => {
+    logout(navigate);
+    setOpen(false);
+  };
+
+  const sessionLabel = user ? "Salir" : "Login";
+  const SessionIcon = user ? FaRightFromBracket : FaRightToBracket;
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-surface-50 shadow-md">
-        <div className="flex items-center justify-between px-6 py-5">
-          {/* Brand logo and name */}
-          <Link to="/" className="flex items-center gap-3">
-            <img src="logo.png" alt="Salesianos" className="w-7 h-7" />
-            <div>
-              <div className="font-display text-lg font-bold">Gestor FP Dual</div>
-              <div className="text-[0.65rem] uppercase tracking-widest opacity-70">Salesianos Zaragoza</div>
-            </div>
-          </Link>
-
-          {/* Desktop navigation */}
-          <nav className="hidden md:flex items-center gap-3">
-            {user && (
-              <span className="nav-welcome">
-                Hola, <span>{user.nombre}</span>
-              </span>
-            )}
-
-            <NavLink to="/" label="Inicio" />
-            {(!user || user.rol === "ADMINISTRADOR" || user.rol === "COORDINADOR") && (
-              <>
-                <NavLink to="/addDualStudent" label="Alumnos" />
-                <NavLink to="/addCompanyRequest" label="Empresas" />
-              </>
-            )}
-
-            {user?.rol === "EMPRESA" && (
-              <NavLink to="/companyMain" label="Mi empresa" />
-            )}
-
-            {(user?.rol === "ADMINISTRADOR" || user?.rol === "COORDINADOR") && (
-              <NavLink to="/convocatorias" label="Convocatorias" />
-            )}
-
-            {user && <NavLink to="/linkStudents" label="Enlazar" />}
-
-            {location !== "/login" && (
-              <button
-                onClick={() => logout(navigate)}
-                className="nav-link nav-link-logout"
-              >
-                {user ? "Salir" : "Login"}
-              </button>
-            )}
-          </nav>
-
-          {/* Mobile menu toggle */}
-          <button onClick={() => setOpen(true)} className="md:hidden text-2xl">
-            <IoMdMenu />
+      <aside className={`app-sidebar ${sidebarCollapsed ? "app-sidebar-collapsed" : ""}`}>
+        <div className="sidebar-top">
+          <Brand collapsed={sidebarCollapsed} />
+          <button
+            type="button"
+            className="sidebar-collapse-button"
+            onClick={onSidebarToggle}
+            aria-label={sidebarCollapsed ? "Expandir navegación" : "Contraer navegación"}
+            aria-expanded={!sidebarCollapsed}
+            title={sidebarCollapsed ? "Expandir navegación" : "Contraer navegación"}
+          >
+            {sidebarCollapsed ? <FaAnglesRight /> : <FaAnglesLeft />}
+            {sidebarCollapsed && <span className="nav-tooltip">Expandir</span>}
           </button>
+          <div className="sidebar-marker" />
+          {user && (
+            <div className="nav-welcome">
+              <span className="nav-welcome-label">Sesión</span>
+              <span className="nav-welcome-name">{user.nombre}</span>
+              {user.rol && <span className="nav-welcome-role">{user.rol}</span>}
+            </div>
+          )}
+          <NavItems />
         </div>
+
+        {location !== "/login" && (
+          <button
+            onClick={handleSessionAction}
+            className="nav-session-button"
+            aria-label={sessionLabel}
+            title={sidebarCollapsed ? sessionLabel : undefined}
+          >
+            <SessionIcon className="nav-icon" />
+            <span className="nav-label">{sessionLabel}</span>
+            {sidebarCollapsed && <span className="nav-tooltip">{sessionLabel}</span>}
+          </button>
+        )}
+      </aside>
+
+      <header className="mobile-header">
+        <Brand compact />
+        <button
+          onClick={() => setOpen(true)}
+          className="mobile-menu-button"
+          aria-label="Abrir navegación"
+          type="button"
+        >
+          <IoMdMenu />
+        </button>
       </header>
 
-      {/* Backdrop overlay for the mobile drawer */}
       <div
-        className={`fixed inset-0 bg-black/40 z-40 transition ${
+        className={`fixed inset-0 z-40 bg-black/45 transition-opacity duration-200 md:hidden ${
           open ? "opacity-100 visible" : "opacity-0 invisible"
         }`}
         onClick={() => setOpen(false)}
       />
 
-      {/* Mobile slide-in drawer */}
-      <div
-        className={`fixed top-0 right-0 h-full w-[200px] bg-white shadow-xl z-50 transform transition-transform duration-300 ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="p-6 flex flex-col gap-4">
-          <button onClick={() => setOpen(false)} className="self-end text-xl">
+      <div className={`mobile-drawer ${open ? "translate-x-0" : "translate-x-full"}`}>
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-5">
+          <Brand compact />
+          <button
+            onClick={() => setOpen(false)}
+            className="mobile-close-button"
+            aria-label="Cerrar navegación"
+            type="button"
+          >
             <IoMdClose />
           </button>
+        </div>
 
+        <div className="flex flex-1 flex-col gap-5 px-5 py-5">
           {user && (
-            <span className="nav-welcome w-fit">
-              Hola, <span>{user.nombre}</span>
-            </span>
+            <div className="nav-welcome">
+              <span className="nav-welcome-label">Sesión</span>
+              <span className="nav-welcome-name">{user.nombre}</span>
+            </div>
           )}
-
-          <NavLink to="/" label="Inicio" />
-          {(!user || user.rol === "ADMINISTRADOR" || user.rol === "COORDINADOR") && (
-            <>
-              <NavLink to="/addDualStudent" label="Alumnos" />
-              <NavLink to="/addCompanyRequest" label="Empresas" />
-            </>
-          )}
-          {user?.rol === "EMPRESA" && <NavLink to="/companyMain" label="Mi empresa" />}
-          {user && <NavLink to="/linkStudents" label="Enlazar" />}
+          <NavItems mobile />
 
           {location !== "/login" && (
-            <button
-              onClick={() => { logout(navigate); setOpen(false); }}
-              className="nav-link nav-link-logout w-fit"
-            >
-              {user ? "Salir" : "Acceder"}
+            <button onClick={handleSessionAction} className="nav-session-button mt-auto">
+              <SessionIcon className="nav-icon" />
+              <span className="nav-label">{sessionLabel}</span>
             </button>
           )}
         </div>

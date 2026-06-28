@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { MdOutlineFileUpload } from "react-icons/md";
+import { FaFileCircleCheck } from "react-icons/fa6";
 
-// Public convenio upload page — accessed via the tokenised link sent to the company by email
 function AddConvenio() {
   const { id } = useParams();
   const [file, setFile] = useState(null);
@@ -48,10 +48,10 @@ function AddConvenio() {
 
   if (done) {
     return (
-      <div className="flex items-center justify-center px-4 bg-gray-50 p-10">
-        <div className="w-full max-w-md rounded-xl border border-green-200 bg-green-50 p-8 shadow-sm text-center">
-          <div className="text-4xl mb-3">✅</div>
-          <h2 className="text-xl font-semibold text-green-800 mb-2">
+      <div className="flex flex-1 items-center justify-center bg-surface-50 px-4 py-10">
+        <div className="w-full max-w-md rounded-xl2 border border-green-200 bg-green-50 p-8 text-center shadow-card">
+          <FaFileCircleCheck className="mx-auto mb-4 h-9 w-9 text-green-700" />
+          <h2 className="mb-2 text-xl font-semibold text-green-800">
             Convenio subido correctamente
           </h2>
           <p className="text-sm text-green-700">
@@ -64,21 +64,21 @@ function AddConvenio() {
   }
 
   return (
-    <div className="flex items-center justify-center px-4 bg-gray-50 p-10">
-      <div className="w-full max-w-md rounded-xl border border-border bg-white p-6 shadow-sm">
-        {/* Page header */}
-        <div className="text-center mb-6">
-          <div className="text-3xl mb-2">📄</div>
-          <h2 className="text-xl font-semibold">Subir convenio</h2>
-          <p className="mt-1 text-sm text-muted">
+    <div className="flex flex-1 items-center justify-center bg-surface-50 px-4 py-10">
+      <div className="w-full max-w-md rounded-xl2 border border-border bg-white p-6 shadow-card">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-700">
+            <MdOutlineFileUpload className="h-5 w-5" />
+          </div>
+          <h2 className="text-xl font-semibold text-charcoal-950">Subir convenio</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
             Por favor, adjunta el convenio que recibiste por correo debidamente
             firmado.
           </p>
         </div>
 
-        {/* File selector */}
         <div className="space-y-3">
-          <label className="text-xs font-semibold text-muted">
+          <label className="text-xs font-semibold uppercase tracking-widest text-muted">
             Convenio firmado (PDF)
           </label>
 
@@ -107,12 +107,11 @@ function AddConvenio() {
         </div>
 
         {error && (
-          <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
 
-        {/* Submit button */}
         <button
           onClick={handleUpload}
           disabled={!file || uploading}

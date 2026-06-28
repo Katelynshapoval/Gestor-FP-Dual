@@ -6,6 +6,7 @@ import { postJSON } from "../../utils/api.js";
 import SpecialitySelector from "./SpecialitySelector.jsx";
 import TransportSelector from "./TransportSelector.jsx";
 import FormMessage from "../../components/ui/FormMessage.jsx";
+import PageHeader from "../../components/ui/PageHeader.jsx";
 import "../../styles/forms.css";
 
 const Field = ({ id, label, hint, children }) => (
@@ -174,12 +175,12 @@ const AddCompanyRequest = () => {
   };
 
   return (
-    <div className="page-container px-8">
-      <h1 className="page-title">Solicitud de empresa colaboradora</h1>
-      <p className="page-subtitle">
-        Esta petición no tiene vinculación legal. Es el primer paso para
-        formalizar la documentación del programa dual.
-      </p>
+    <div className="page-container">
+      <PageHeader
+        kicker="Empresas"
+        title="Solicitud de empresa colaboradora"
+        subtitle="Esta petición no tiene vinculación legal. Es el primer paso para formalizar la documentación del programa dual."
+      />
 
       <form ref={formRef} className="space-y-6">
         {/* Coordinator section */}

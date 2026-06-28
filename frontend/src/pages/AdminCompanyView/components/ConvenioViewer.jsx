@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getBlob } from "../../../utils/api.js";
 
-// PDF viewer modal for a company's convenio; downloads the authenticated document into an iframe.
 const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -29,7 +28,6 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
 
     fetchPdf();
 
-    // Release the object URL when the component unmounts to avoid memory leaks
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
@@ -43,15 +41,15 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Convenio — {razonSocial}</h2>
+          <h2 className="modal-title">Convenio - {razonSocial}</h2>
 
           <div className="modal-actions">
             {!empresa.convenio_validado && empresa.id_documento_convenio && (
               <button
                 onClick={() => onValidate(empresa.id_documento_convenio)}
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm shadow-none"
               >
-                ✓ Validar convenio
+                Validar convenio
               </button>
             )}
 
@@ -63,8 +61,8 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
               Nueva pestaña
             </button>
 
-            <button className="modal-close" onClick={onClose}>
-              ✕
+            <button className="modal-close" onClick={onClose} aria-label="Cerrar visor">
+              ×
             </button>
           </div>
         </div>
@@ -76,12 +74,12 @@ const ConvenioViewer = ({ empresa, onClose, onValidate }) => {
             <iframe
               src={pdfUrl}
               title={`Convenio de ${razonSocial}`}
-              className="w-full h-full block border-none"
+              className="block h-full w-full border-none"
             />
           )}
 
           {!loading && !pdfUrl && (
-            <p className="text-sm text-gray-500 py-8 text-center">
+            <p className="py-8 text-center text-sm text-gray-500">
               No se pudo cargar el PDF del convenio.
             </p>
           )}

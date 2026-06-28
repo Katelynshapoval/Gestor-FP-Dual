@@ -1,8 +1,8 @@
 /* Design tokens — single source of truth for both Tailwind (tailwind.config.js) and raw CSS */
 :root {
-  --color-brand: #f81d1d;
-  --color-brand-dark: #bc0808;
-  --color-muted: #6b7280;
-  --color-foreground: #111827;
-  --color-border: #e8e8e8;
+  --color-brand: #e01f16;
+  --color-brand-dark: #981711;
+  --color-muted: #686b73;
+  --color-foreground: #171716;
+  --color-border: #e8e6df;
 }

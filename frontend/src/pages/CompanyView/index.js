@@ -5,6 +5,7 @@ import { getJSON, postJSON } from "../../utils/api.js";
 import MisReservas from "./MisReservas.jsx";
 import SpecialitySelector from "../AddCompanyRequest/SpecialitySelector.jsx";
 import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
+import PageHeader from "../../components/ui/PageHeader.jsx";
 import "../../styles/forms.css";
 
 // Read-only field styled to match the rest of the form layout
@@ -129,7 +130,7 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
           className="flex items-center justify-between cursor-pointer"
           onClick={() => setShowReapply(v => !v)}
         >
-          <p className="form-section-title !mb-0">Participar en la nueva convocatoria</p>
+          <p className="form-section-title mb-0">Participar en la nueva convocatoria</p>
           <span className={`text-gray-400 text-lg transition-transform ${showReapply ? "rotate-180" : ""}`}>▾</span>
         </div>
 
@@ -315,13 +316,13 @@ const CompanyView = () => {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">Portal Empresa — Dual</h1>
-      <p className="page-subtitle">
-        {user.nombre} · {user.email}
-      </p>
+      <PageHeader
+        kicker="Empresa"
+        title="Portal Empresa — Dual"
+        subtitle={`${user.nombre} · ${user.email}`}
+      />
 
-      {/* Tab navigation */}
-      <div className="flex border-b border-surface-200 mb-6">
+      <div className="mb-6 flex border-b border-surface-200">
         <button className={tabCls(view === "datos")} onClick={() => setView("datos")}>Mis datos</button>
         <button className={tabCls(view === "reservas")} onClick={() => setView("reservas")}>
           Mis reservas

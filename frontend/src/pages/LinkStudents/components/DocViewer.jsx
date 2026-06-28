@@ -10,7 +10,7 @@ const DocViewer = ({ showDoc, onClose, onValidate }) => {
       onClick={onClose}
     >
       <div
-        className="flex h-[88vh] w-full max-w-[92%] flex-col overflow-hidden rounded-xl bg-white shadow-[0_24px_80px_rgb(0_0_0/0.25)] animate-slide-in"
+        className="flex h-[88vh] w-full max-w-[92%] flex-col overflow-hidden rounded-xl2 bg-white shadow-[0_24px_80px_rgb(0_0_0/0.25)] animate-slide-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 border-b border-surface-200 px-5 py-3.5">
@@ -31,7 +31,7 @@ const DocViewer = ({ showDoc, onClose, onValidate }) => {
               Nueva pestaña
             </button>
             <button
-              className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-full border border-surface-200 bg-white text-[0.85rem] text-gray-500 transition-all duration-200 hover:border-brand-500 hover:text-brand-500"
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-surface-200 bg-white text-[0.85rem] text-gray-500 transition-colors duration-150 hover:border-brand-500 hover:text-brand-500"
               onClick={onClose}
             >
               ✕

@@ -69,7 +69,7 @@ const CancelModal = ({ alumno, onConfirm, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="mx-4 w-full max-w-md space-y-4 rounded-xl2 bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-semibold text-gray-900">Cancelar reserva</h3>
         <p className="text-sm text-gray-500">
           Indica el motivo de cancelación para <strong>{alumno}</strong>.
@@ -84,13 +84,13 @@ const CancelModal = ({ alumno, onConfirm, onClose }) => {
           autoFocus
         />
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+          <button onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors duration-150 hover:bg-gray-50">
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
             disabled={!motivo.trim() || submitting}
-            className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150 ${
               !motivo.trim() || submitting ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-red-500 text-white hover:bg-red-600"
             }`}
           >
@@ -109,7 +109,7 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
 
   if (reservaConfirmada || r.asignado_definitivo) {
     return (
-      <span className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-400">
+      <span className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-400">
         <RxLockClosed className="shrink-0" />
         Ya asignado
       </span>
@@ -130,7 +130,7 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
-          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 transition-colors duration-150 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
         >
           Cancelar reserva
         </button>
@@ -145,7 +145,7 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onReserve(r.id_solicitud_alumno, ofertaMatch.id_solicitud_empresa_especialidad); }}
-      className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition-all duration-200 ease-out hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+      className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition-colors duration-150 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
     >
       Reservar alumno
     </button>

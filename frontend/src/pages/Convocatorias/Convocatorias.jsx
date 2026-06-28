@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '../../context/UserContext';
 import { getJSON, postJSON, putJSON } from '../../utils/api';
+import PageHeader from '../../components/ui/PageHeader';
+import StatusBadge from '../../components/ui/StatusBadge';
 import '../../styles/forms.css';
 
 // Anchors to noon to avoid timezone-related day shifts when displaying MySQL date strings
@@ -85,9 +87,12 @@ export default function Convocatorias() {
   };
 
   return (
-    <div className="page-container px-8">
-      <h1 className="page-title">Gestión de convocatorias</h1>
-      <p className="page-subtitle">Crea nuevas convocatorias y define el periodo en que están abiertas. La activa se determina automáticamente por fechas.</p>
+    <div className="page-container">
+      <PageHeader
+        kicker="Administración"
+        title="Gestión de convocatorias"
+        subtitle="Crea nuevas convocatorias y define el periodo en que están abiertas. La activa se determina automáticamente por fechas."
+      />
 
       {error && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -137,7 +142,7 @@ export default function Convocatorias() {
             <button
               type="submit"
               disabled={saving}
-              className="btn btn-primary !shadow-none"
+              className="btn btn-primary shadow-none"
             >
               {saving ? 'Creando…' : 'Crear convocatoria'}
             </button>
@@ -145,9 +150,9 @@ export default function Convocatorias() {
         </div>
       )}
 
-      <div className="form-card !p-0 overflow-hidden">
+      <div className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card">
         <div className="px-6 py-5 border-b border-surface-200">
-          <div className="form-section-title !mb-0">Convocatorias registradas</div>
+          <div className="form-section-title mb-0">Convocatorias registradas</div>
         </div>
         {loading ? (
           <p className="px-6 py-8 text-sm text-gray-500">Cargando…</p>
@@ -160,28 +165,28 @@ export default function Convocatorias() {
                 {editingId === c.id_convocatoria ? (
                   <div className="space-y-3">
                     <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="field !mb-0">
-                        <label className="!text-xs">Nombre</label>
+                      <div className="field mb-0">
+                        <label className="text-xs">Nombre</label>
                         <input
-                          className="input !py-1.5 !text-sm"
+                          className="input py-1.5 text-sm"
                           value={editForm.nombre}
                           onChange={(e) => setEditForm(f => ({ ...f, nombre: e.target.value }))}
                         />
                       </div>
-                      <div className="field !mb-0">
-                        <label className="!text-xs">Fecha inicio</label>
+                      <div className="field mb-0">
+                        <label className="text-xs">Fecha inicio</label>
                         <input
                           type="date"
-                          className="input !py-1.5 !text-sm"
+                          className="input py-1.5 text-sm"
                           value={editForm.fecha_inicio}
                           onChange={(e) => setEditForm(f => ({ ...f, fecha_inicio: e.target.value }))}
                         />
                       </div>
-                      <div className="field !mb-0">
-                        <label className="!text-xs">Fecha fin</label>
+                      <div className="field mb-0">
+                        <label className="text-xs">Fecha fin</label>
                         <input
                           type="date"
-                          className="input !py-1.5 !text-sm"
+                          className="input py-1.5 text-sm"
                           value={editForm.fecha_fin}
                           onChange={(e) => setEditForm(f => ({ ...f, fecha_fin: e.target.value }))}
                         />
@@ -189,7 +194,7 @@ export default function Convocatorias() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        className="btn btn-primary btn-sm !shadow-none"
+                        className="btn btn-primary btn-sm shadow-none"
                         disabled={editSaving}
                         onClick={() => guardarEdicion(c.id_convocatoria)}
                       >
@@ -213,17 +218,11 @@ export default function Convocatorias() {
                     </div>
                     <div className="flex items-center gap-2">
                       {c.activa ? (
-                        <span className="inline-flex items-center justify-center rounded-full w-20 py-1 text-xs font-semibold border border-green-200 bg-green-50 text-green-700">
-                          Activa
-                        </span>
+                        <StatusBadge variant="success" className="w-20 justify-center">Activa</StatusBadge>
                       ) : esFutura(c.fecha_inicio) ? (
-                        <span className="inline-flex items-center justify-center rounded-full w-20 py-1 text-xs font-semibold border border-gray-200 bg-gray-50 text-gray-500">
-                          Próxima
-                        </span>
+                        <StatusBadge variant="brand" className="w-20 justify-center">Próxima</StatusBadge>
                       ) : (
-                        <span className="inline-flex items-center justify-center rounded-full w-20 py-1 text-xs font-semibold border border-gray-200 bg-gray-50 text-gray-400">
-                          Cerrada
-                        </span>
+                        <StatusBadge variant="neutral" className="w-20 justify-center">Cerrada</StatusBadge>
                       )}
                       {isAdmin && esFutura(c.fecha_inicio) && !c.activa && (
                         <button

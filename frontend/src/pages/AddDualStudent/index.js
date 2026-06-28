@@ -5,6 +5,7 @@ import { postForm } from "../../utils/api.js";
 import GenderField from "./GenderField.jsx";
 import LegalGuardianFields from "./LegalGuardianFields.jsx";
 import FormMessage from "../../components/ui/FormMessage.jsx";
+import PageHeader from "../../components/ui/PageHeader.jsx";
 import { MdOutlineFileUpload } from "react-icons/md";
 
 import "../../styles/forms.css";
@@ -150,11 +151,12 @@ function AddDualStudent() {
   };
 
   return (
-    <div className="page-container px-8">
-      <h1 className="page-title">Presentar candidatura</h1>
-      <p className="page-subtitle">
-        Rellena todos los campos para inscribirte en el programa de FP Dual.
-      </p>
+    <div className="page-container">
+      <PageHeader
+        kicker="Alumnado"
+        title="Presentar candidatura"
+        subtitle="Rellena todos los campos para inscribirte en el programa de FP Dual."
+      />
       <form ref={formRef} className="space-y-6">
         <div className="form-card">
           <div className="form-section-title">Datos del centro</div>

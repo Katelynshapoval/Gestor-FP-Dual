@@ -1,24 +1,21 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { postForm } from "../../utils/api.js";
-import { FaFilePdf } from "react-icons/fa6";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
+import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
 import { RxClock } from "react-icons/rx";
 
 const ESTADO_COLOR = {
-  PENDIENTE:  "bg-yellow-50 text-yellow-800 border-yellow-200",
+  PENDIENTE: "bg-amber-50 text-amber-800 border-amber-200",
   CONFIRMADA: "bg-green-50 text-green-800 border-green-200",
-  CANCELADA:  "bg-red-50 text-red-700 border-red-200",
+  CANCELADA: "bg-red-50 text-red-700 border-red-200",
 };
 
-// Status icon for the signed document attached to a reservation
 const DocStatusIcon = ({ estado }) => {
-  if (estado === "VALIDADO")  return <IoIosCheckmarkCircleOutline className="text-green-600 shrink-0" />;
-  if (estado === "RECHAZADO") return <MdOutlineCancel className="text-red-500 shrink-0" />;
-  return <MdPendingActions className="text-yellow-500 shrink-0" />;
+  if (estado === "VALIDADO") return <IoIosCheckmarkCircleOutline className="shrink-0 text-green-600" />;
+  if (estado === "RECHAZADO") return <MdOutlineCancel className="shrink-0 text-red-500" />;
+  return <MdPendingActions className="shrink-0 text-amber-500" />;
 };
 
-// PDF upload widget for the Anexo H document required to confirm a reservation
 const SubirDocReserva = ({ idReserva, onUploaded }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -26,7 +23,10 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
   const inputRef = useRef(null);
 
   const handleUpload = async () => {
-    if (!file) { setMsg({ ok: false, text: "Selecciona un PDF." }); return; }
+    if (!file) {
+      setMsg({ ok: false, text: "Selecciona un PDF." });
+      return;
+    }
     setUploading(true);
     setMsg(null);
     try {
@@ -45,18 +45,20 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
   };
 
   return (
-    <div className="space-y-2 pt-3 border-t border-gray-100">
-      <p className="text-xs font-medium text-gray-500">Subir Anexo H firmado (PDF)</p>
-      <div className="flex flex-col sm:flex-row gap-2">
-        <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300
-          cursor-pointer hover:border-red-400 transition-all text-sm text-gray-500">
-          <FaFilePdf className="text-red-400 shrink-0" />
-          <span className="truncate">{file ? file.name : "Haz clic para seleccionar…"}</span>
+    <div className="border-t border-surface-200 pt-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">
+        Anexo H firmado (PDF)
+      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <label className="file-upload min-h-10 flex-1 px-3 py-2">
+          <MdOutlineFileUpload className="file-upload-icon" />
+          <span className="file-upload-text text-sm">
+            {file ? file.name : "Seleccionar archivo"}
+          </span>
           <input
             ref={inputRef}
             type="file"
             accept="application/pdf"
-            className="hidden"
             onChange={(e) => {
               const f = e.target.files[0];
               if (f && f.type !== "application/pdf") {
@@ -71,21 +73,19 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
         <button
           onClick={handleUpload}
           disabled={!file || uploading}
-          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            !file || uploading
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-              : "bg-brand-500 text-white hover:bg-brand-700"
-          }`}
+          className={`btn btn-primary btn-sm shrink-0 shadow-none ${!file || uploading ? "btn-disabled" : ""}`}
         >
-          {uploading ? "Subiendo…" : "Subir"}
+          {uploading ? "Subiendo..." : "Subir"}
         </button>
       </div>
       {msg && (
-        <p className={`text-xs px-3 py-1.5 rounded-lg ${
-          msg.ok
-            ? "bg-green-50 text-green-800 border border-green-200"
-            : "bg-red-50 text-red-700 border border-red-200"
-        }`}>
+        <p
+          className={`mt-2 rounded-md border px-3 py-2 text-xs ${
+            msg.ok
+              ? "border-green-200 bg-green-50 text-green-800"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
           {msg.text}
         </p>
       )}
@@ -93,7 +93,6 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
   );
 };
 
-// Cancellation modal with a required motivo field
 const CancelModal = ({ alumno, onConfirm, onClose }) => {
   const [motivo, setMotivo] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -106,35 +105,31 @@ const CancelModal = ({ alumno, onConfirm, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md space-y-4 rounded-xl2 bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-semibold text-gray-900">Cancelar reserva</h3>
         <p className="text-sm text-gray-500">
           Indica el motivo de cancelación para <strong>{alumno}</strong>.
         </p>
         <textarea
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20"
+          className="textarea min-h-24 text-sm"
           rows={3}
-          placeholder="Motivo de cancelación…"
+          placeholder="Motivo de cancelación..."
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
           maxLength={255}
           autoFocus
         />
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+          <button onClick={onClose} className="btn btn-secondary btn-sm">
             Volver
           </button>
           <button
             onClick={handleConfirm}
             disabled={!motivo.trim() || submitting}
-            className={`px-4 py-2 text-sm rounded-lg font-medium transition-all ${
-              !motivo.trim() || submitting
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-red-500 text-white hover:bg-red-600"
-            }`}
+            className={`btn btn-primary btn-sm shadow-none ${!motivo.trim() || submitting ? "btn-disabled" : ""}`}
           >
-            {submitting ? "Cancelando…" : "Confirmar cancelación"}
+            {submitting ? "Cancelando..." : "Confirmar cancelación"}
           </button>
         </div>
       </div>
@@ -142,13 +137,19 @@ const CancelModal = ({ alumno, onConfirm, onClose }) => {
   );
 };
 
-// Empresa's reservation list with document upload and cancellation actions
+const documentText = (docEstado) => {
+  if (docEstado === "VALIDADO") return "Documento firmado validado por el centro";
+  if (docEstado === "RECHAZADO") return "Documento rechazado, vuelve a subirlo";
+  if (docEstado) return "Documento entregado, pendiente de revisión";
+  return "Sin documento firmado";
+};
+
 const MisReservas = ({ reservations, onUpload, onCancel }) => {
   const [cancelModal, setCancelModal] = useState(null);
 
   if (!reservations || reservations.length === 0) {
     return (
-      <div className="rounded-xl border border-surface-200 bg-gray-50 px-6 py-10 text-center">
+      <div className="rounded-xl2 border border-surface-200 bg-surface-50 px-6 py-10 text-center">
         <RxClock className="mx-auto mb-2 text-2xl text-gray-300" />
         <p className="text-sm text-gray-400">No tienes alumnos reservados todavía.</p>
       </div>
@@ -168,67 +169,58 @@ const MisReservas = ({ reservations, onUpload, onCancel }) => {
         />
       )}
 
-      <div className="space-y-3">
+      <div className="divide-y divide-surface-200 overflow-hidden rounded-xl2 border border-surface-200 bg-white">
         {reservations.map((reserva) => {
           const estadoClass = ESTADO_COLOR[reserva.estado_reserva] || "bg-gray-100 text-gray-600 border-gray-200";
           const docEstado = reserva.estado_documento || null;
+          const isCancelled = reserva.estado_reserva === "CANCELADA";
+          const needsUpload = !isCancelled && docEstado !== "VALIDADO";
 
           return (
-            <div
+            <article
               key={reserva.id_reserva}
-              className="rounded-xl border border-surface-200 bg-white px-5 py-4 shadow-sm space-y-3"
+              className={`px-4 py-4 transition-[background-color] duration-150 ease-out ${
+                isCancelled ? "bg-surface-50/70" : "bg-white hover:bg-surface-50/60"
+              }`}
             >
-              {/* Reservation header */}
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <p className="font-semibold text-sm text-gray-900 truncate">
+                  <p className="truncate text-sm font-semibold text-charcoal-950">
                     {reserva.alumno || "Alumno"}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="mt-1 text-xs leading-5 text-muted">
                     {reserva.especialidad}{reserva.tipo_contrato ? ` · ${reserva.tipo_contrato}` : ""}
                   </p>
                 </div>
-                <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border ${estadoClass}`}>
+                <span className={`w-fit shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${estadoClass}`}>
                   {reserva.estado_reserva}
                 </span>
               </div>
 
-              {/* Document status indicator */}
-              <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="mt-3 flex items-center gap-2 text-xs leading-5 text-muted">
                 <DocStatusIcon estado={docEstado} />
-                <span>
-                  {docEstado === "VALIDADO"
-                    ? "Documento firmado validado por el centro"
-                    : docEstado === "RECHAZADO"
-                      ? "Documento rechazado — vuelve a subirlo"
-                      : docEstado
-                        ? "Documento entregado — pendiente de revisión"
-                        : "Sin documento firmado"}
-                </span>
+                <span>{documentText(docEstado)}</span>
               </div>
 
-              {/* Cancellation reason */}
-              {reserva.estado_reserva === "CANCELADA" && reserva.motivo && (
-                <p className="text-xs text-gray-400 italic border-t border-gray-100 pt-2">
-                  Motivo: {reserva.motivo}
+              {isCancelled && reserva.motivo && (
+                <p className="mt-3 border-t border-surface-200 pt-3 text-xs leading-5 text-muted">
+                  <span className="font-semibold text-charcoal-700">Motivo:</span> {reserva.motivo}
                 </p>
               )}
 
-              {/* Document upload */}
-              {reserva.estado_reserva !== "CANCELADA" && docEstado !== "VALIDADO" && (
+              {needsUpload && (
                 <SubirDocReserva idReserva={reserva.id_reserva} onUploaded={onUpload} />
               )}
 
-              {/* Cancel reservation button (only for pending reservations) */}
               {reserva.estado_reserva === "PENDIENTE" && (
                 <button
                   onClick={() => setCancelModal({ idReserva: reserva.id_reserva, alumno: reserva.alumno || "este alumno" })}
-                  className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors"
+                  className="mt-3 text-xs font-semibold text-red-600 transition-colors duration-150 hover:text-red-800 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
                 >
                   Cancelar reserva
                 </button>
               )}
-            </div>
+            </article>
           );
         })}
       </div>

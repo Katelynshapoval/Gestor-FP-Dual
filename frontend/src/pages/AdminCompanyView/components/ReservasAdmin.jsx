@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { FaFilePdf } from "react-icons/fa6";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-import { MdPendingActions, MdOutlineCancel } from "react-icons/md";
+import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
 import ReservaDocViewer from "./ReservaDocViewer";
 
 // Derives a display label and style from the reservation's document and confirmation state
@@ -55,7 +54,7 @@ const FilaReserva = ({ r, onVerDoc }) => {
       </div>
 
       {/* Status badge */}
-      <span className={`flex w-fit items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-medium ${cls}`}>
+      <span className={`flex w-fit items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium ${cls}`}>
         <Icono className="shrink-0 text-sm" />
         {text}
       </span>
@@ -67,9 +66,9 @@ const FilaReserva = ({ r, onVerDoc }) => {
             type="button"
             onClick={() => onVerDoc(r)}
             title="Ver documento firmado"
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 transition hover:bg-gray-100"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
           >
-            <FaFilePdf className="text-red-500" />
+            <MdOutlineFileUpload className="text-brand-600" />
             Ver doc
           </button>
         )}

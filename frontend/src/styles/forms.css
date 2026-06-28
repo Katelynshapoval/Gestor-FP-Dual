@@ -1,88 +1,84 @@
-/* PAGE LAYOUT */
-
 .page-container {
-  @apply px-4 md:px-8 py-8 max-w-5xl mx-auto w-full flex-1 text-base;
+  @apply mx-auto w-full max-w-6xl flex-1 px-4 py-6 text-base sm:px-6 md:px-8 md:py-8;
 }
 
 .page-title {
-  @apply text-2xl font-bold text-gray-900 mb-1;
+  @apply m-0 text-2xl font-semibold tracking-normal text-charcoal-950 md:text-[1.75rem];
 }
 
 .page-subtitle {
-  @apply text-base text-gray-500 mb-8 leading-relaxed;
+  @apply mb-8 mt-2 max-w-3xl text-sm leading-6 text-muted md:text-base;
 }
 
-/* FORM CARD */
+.page-kicker {
+  @apply mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-brand-700;
+}
+
+.page-kicker::before {
+  @apply h-4 w-1 rounded bg-brand-600 content-[''];
+}
 
 .form-card {
-  @apply bg-white border border-surface-200 rounded-xl2 p-6 md:p-7 shadow-card mb-6;
+  @apply mb-6 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card md:p-6;
 }
-
-/* SECTION TITLE */
 
 .form-section-title {
-  @apply text-lg font-semibold tracking-widest text-brand-500 mb-6 border-l-4 border-l-brand-500 pl-3 py-1;
+  @apply mb-5 flex items-center gap-3 text-sm font-semibold uppercase tracking-widest text-charcoal-900;
 }
 
-/* FIELD */
+.form-section-title::before {
+  @apply h-4 w-1 rounded bg-brand-600 content-[''];
+}
 
 .field {
   @apply mb-4;
 }
 
 .field label {
-  @apply block text-sm font-semibold text-gray-700 mb-3;
+  @apply mb-2 block text-sm font-semibold text-charcoal-800;
 }
 
 .field-hint {
-  @apply text-sm text-gray-500 mb-4 leading-relaxed;
+  @apply mb-4 text-sm leading-relaxed text-muted;
 }
 
 .field-hint strong {
-  @apply text-brand-500;
+  @apply font-semibold text-brand-700;
 }
-
-/* INPUTS */
 
 .input,
 .textarea,
 .select-input {
-  @apply w-full focus:outline-none px-3 py-2 border border-surface-200 rounded-lg text-base bg-white outline-none transition;
+  @apply w-full rounded-lg border border-surface-200 bg-white px-3 py-2.5 text-base text-charcoal-950 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out placeholder:text-gray-400 hover:border-surface-300 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20 disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-gray-400;
 }
 
-.input:focus,
-.textarea:focus,
-.select-input:focus {
-  @apply border-brand-500 ring-2 ring-brand-500/20;
+.select-input {
+  @apply cursor-pointer;
 }
 
 .textarea {
-  @apply resize-y min-h-[90px];
+  @apply min-h-[104px] resize-y;
 }
 
-/* RADIO */
-
 .radio-group {
-  @apply flex flex-col gap-0;
+  @apply flex flex-col gap-1.5;
 }
 
 .radio-option {
-  @apply flex items-center gap-2 cursor-pointer mb-0;
+  @apply flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-100 hover:bg-brand-50 focus-within:border-brand-200 focus-within:bg-brand-50;
 }
 
 .radio-option input[type="radio"] {
-  @apply align-middle;
-  accent-color: #f81d1d;
+  @apply align-middle outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25;
+  accent-color: var(--color-brand);
 }
 
 .radio-option span {
-  @apply text-sm text-gray-800 font-normal ml-2;
+  @apply text-sm font-normal text-charcoal-800;
 }
 
-/* CHECKBOX GRID */
-
 .checkbox-grid {
-  @apply grid gap-5;
+  @apply grid gap-3;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 
@@ -91,91 +87,76 @@
 }
 
 .checkbox-item {
-  @apply flex items-center font-normal justify-between px-3 py-2 border border-surface-200 rounded-lg cursor-pointer transition bg-white;
-}
-
-.checkbox-item:hover {
-  @apply border-brand-500 bg-brand-50;
+  @apply flex cursor-pointer items-center justify-between rounded-lg border border-surface-200 bg-white px-3 py-2.5 font-normal transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-300 hover:bg-brand-50 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/15;
 }
 
 .checkbox-item.checked {
-  @apply border-brand-500 bg-brand-50;
+  @apply items-start border-brand-300 bg-brand-50 ring-1 ring-brand-500/10;
 }
 
 .checkbox-item input[type="checkbox"] {
-  accent-color: #f81d1d;
+  accent-color: var(--color-brand);
 }
 
 .checkbox-item .item-label {
-  @apply text-sm font-normal;
+  @apply text-sm font-medium text-charcoal-800;
 }
-
-/* COUNT INPUT */
 
 .count-input {
   @apply flex items-center gap-1;
 }
 
 .count-input label {
-  @apply text-sm text-gray-500 whitespace-nowrap;
+  @apply whitespace-nowrap text-sm text-gray-500;
 }
 
 .count-input input {
-  @apply w-[60px] px-1 py-[2px] text-sm border border-surface-200 rounded;
+  @apply w-[60px] rounded border border-surface-200 px-1 py-0.5 text-sm;
 }
 
-/* BUTTONS */
-
 .btn {
-  @apply inline-flex items-center gap-1 px-5 py-2 rounded-full text-base font-semibold cursor-pointer transition border border-transparent;
+  @apply inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-semibold outline-none transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out active:translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30;
 }
 
 .btn-primary {
-  @apply bg-brand-500 text-white border-brand-500 shadow-brand hover:bg-brand-700;
+  @apply border-brand-600 bg-brand-600 text-white shadow-none hover:border-brand-700 hover:bg-brand-700;
 }
 
 .btn-secondary {
-  @apply bg-white text-gray-800 border border-surface-200 hover:border-gray-400;
+  @apply border-surface-200 bg-white text-charcoal-800 hover:border-charcoal-300 hover:bg-surface-50;
 }
 
 .btn-ghost {
-  @apply bg-transparent text-gray-500 border-transparent hover:bg-gray-100 hover:text-gray-800;
+  @apply border-transparent bg-transparent text-muted hover:bg-surface-100 hover:text-charcoal-900;
 }
 
 .btn-outline-brand {
-  @apply border border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white;
+  @apply border-brand-300 bg-white text-brand-700 hover:border-brand-600 hover:bg-brand-50 hover:text-brand-800;
 }
 
 .btn-sm {
-  @apply px-3 py-1 text-xs;
+  @apply min-h-8 px-3 py-1.5 text-xs;
 }
 
 .btn:disabled,
 .btn-disabled {
-  @apply opacity-50 cursor-not-allowed pointer-events-none shadow-none;
+  @apply pointer-events-none cursor-not-allowed opacity-50 shadow-none;
 }
-
-/* FORM MESSAGE */
 
 .form-message {
-  @apply flex items-center gap-2 px-4 py-3 rounded-lg text-base mt-4 border bg-green-50 border-green-200 text-green-800 animate-slide-in;
+  @apply mt-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-base text-green-800 animate-slide-in;
 }
-/* FILE INPUT */
 
 .file-upload {
-  @apply w-full flex flex-row items-center gap-3 px-4 py-4 border-2 border-dashed border-red-200 rounded-xl cursor-pointer text-gray-700 bg-white transition;
-}
-
-.file-upload:hover {
-  @apply border-red-400 bg-red-50;
+  @apply flex w-full cursor-pointer flex-row items-center gap-3 rounded-lg border border-dashed border-brand-200 bg-white px-4 py-4 text-gray-700 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-400 hover:bg-brand-50 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-500/20;
 }
 
 .file-upload-icon {
-  @apply w-5 h-5 mr-3 text-red-500 inline-block align-middle;
+  @apply mr-1 inline-block h-5 w-5 align-middle text-brand-600;
 }
 
 .file-upload-text {
-  @apply text-base font-medium align-middle;
+  @apply min-w-0 truncate align-middle text-base font-medium;
 }
 
 .file-upload input {

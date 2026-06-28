@@ -4,6 +4,7 @@ import { useFormMessage } from '../hooks/useFormMessage.js';
 import { getJSON, postJSON } from '../utils/api.js';
 import { verificarId } from '../utils/idObfuscation.js';
 import FormMessage from '../components/ui/FormMessage.jsx';
+import PageHeader from '../components/ui/PageHeader.jsx';
 
 // Reverses the ofuscarId encoding (multiply by 23 + control letter) to get the real id_solicitud_alumno
 function decodificarId(idOfuscado) {
@@ -106,18 +107,17 @@ const Evaluation = () => {
 
   return (
     <div className="page-container">
-      <div className="eval-header">
-        <div>
-          <h1 className="page-title">{isEditing ? 'Editar evaluación' : 'Nueva evaluación'}</h1>
-          <p className="page-subtitle" style={{ margin: 0 }}>Introduce los valores para calcular la nota final del alumno.</p>
-        </div>
-        {isEditing && idEvaluation && (
+      <PageHeader
+        kicker="Evaluación"
+        title={isEditing ? 'Editar evaluación' : 'Nueva evaluación'}
+        subtitle="Introduce los valores para calcular la nota final del alumno."
+        meta={isEditing && idEvaluation && (
           <div className="eval-meta">
             <span className="eval-badge">ID {idEvaluation}</span>
             {fechaMostrada && <span className="eval-badge">Actualizado: {fechaMostrada}</span>}
           </div>
         )}
-      </div>
+      />
 
       <div className="eval-score-box">
         <div className="score-label">Nota total calculada</div>
@@ -140,11 +140,11 @@ const Evaluation = () => {
         <div className="field">
           <label>Faltas de asistencia (horas)</label>
           <p className="field-hint">Total de horas de ausencia del alumno</p>
-          <input className="input" type="number" value={faltas} onChange={e => setFaltas(e.target.value)} min="0" placeholder="0" style={{ maxWidth: 180 }} />
+          <input className="input max-w-44" type="number" value={faltas} onChange={e => setFaltas(e.target.value)} min="0" placeholder="0" />
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
+      <div className="flex flex-wrap gap-3">
         <button type="button" onClick={save} className="btn btn-primary">
           {isEditing ? 'Actualizar' : 'Guardar'}
         </button>
