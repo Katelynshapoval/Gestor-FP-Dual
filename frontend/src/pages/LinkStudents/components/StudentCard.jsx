@@ -222,7 +222,7 @@ const StudentCard = ({
       >
         <div className="min-w-0 flex-1">
           <p className={cardNameClass}>
-            {r.nombre}
+            {r.nombre}{" "}
             <span className="text-[.8rem] font-normal text-muted">
               ({r.dni})
             </span>
