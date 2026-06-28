@@ -2,10 +2,10 @@ export const cardClass =
   "mb-2 overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card transition-shadow duration-150 hover:shadow-card-hover";
 
 export const cardHeaderClass =
-  "flex cursor-pointer select-none items-center justify-between gap-4 px-4 py-3 transition-colors duration-150 hover:bg-surface-50";
+  "flex cursor-pointer select-none items-center justify-between gap-4 px-4 py-3 transition-colors duration-150";
 
 export const cardBodyClass =
-  "border-t border-surface-200 bg-surface-50 px-4 py-5 animate-fade-in";
+  "border-t border-surface-200 px-4 py-5 animate-fade-in";
 
 export const cardNameClass = "m-0 text-base font-semibold text-charcoal-950";
 
