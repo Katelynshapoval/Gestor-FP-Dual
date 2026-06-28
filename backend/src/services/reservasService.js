@@ -51,7 +51,13 @@ exports.getAlumnosDisponibles = async function (req, res) {
         esp.nombre AS especialidad,
         CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
         c.nombre AS convocatoria,
-        ev.nota_total,
+        CASE WHEN ev.id_evaluacion IS NOT NULL THEN
+          ROUND(LEAST(10, GREATEST(0,
+            0.6 * ev.nota_media + 0.05 * ev.idiomas +
+            0.1 * ev.madurez + 0.1 * ev.competencia +
+            GREATEST(0, -0.1 * ((ev.faltas / 1050.0) * 100) + 1.5)
+          )), 2)
+        ELSE NULL END AS nota_total,
         (SELECT id_reserva FROM dual_reservas r_propia
           JOIN dual_solicitud_empresa_especialidades ee_propia
             ON ee_propia.id_solicitud_empresa_especialidad = r_propia.id_solicitud_empresa_especialidad
@@ -130,7 +136,7 @@ exports.getAll = async function (req, res) {
         r.id_reserva,
         er.nombre AS estado_reserva,
         r.motivo,
-        tc.nombre AS tipo_contrato,
+        tc.nombre_mostrar AS tipo_contrato,
         sa.id_solicitud_alumno,
         a.idalumno,
         a.nombre AS alumno,
@@ -175,7 +181,7 @@ exports.getMisReservas = async function (req, res) {
         r.id_reserva,
         er.nombre AS estado_reserva,
         r.motivo,
-        tc.nombre AS tipo_contrato,
+        tc.nombre_mostrar AS tipo_contrato,
         sa.id_solicitud_alumno,
         a.idalumno,
         a.nombre AS alumno,

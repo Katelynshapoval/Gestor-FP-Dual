@@ -1,7 +1,8 @@
 const pool = require('../db/pool');
 const { sendSqlError } = require('../helpers/dbHelpers');
 
-// Calcula nota_total usando la misma fórmula que el frontend (Evaluation.js)
+// Calcula nota_total a partir de los cinco valores almacenados.
+// Esta es la única implementación de la fórmula en el servidor.
 function computeNotaTotal(nota_media, idiomas, madurez, competencia, faltas) {
   const nm = parseFloat(nota_media) || 0;
   const id = parseFloat(idiomas) || 0;
@@ -15,11 +16,15 @@ function computeNotaTotal(nota_media, idiomas, madurez, competencia, faltas) {
   return parseFloat(Math.min(10, Math.max(0, total)).toFixed(2));
 }
 
+exports.computeNotaTotal = computeNotaTotal;
+
 // GET /evaluaciones/:idSolicitudAlumno
 exports.getByIdSolicitudAlumno = async function (req, res) {
   const idSolicitudAlumno = parseInt(req.params.idSolicitudAlumno, 10);
   const [rows] = await pool.query(
-    `SELECT e.*, a.nombre AS alumno, sa.id_convocatoria
+    `SELECT e.id_evaluacion, e.id_solicitud_alumno,
+            e.nota_media, e.idiomas, e.madurez, e.competencia, e.faltas,
+            a.nombre AS alumno, sa.id_convocatoria
        FROM dual_evaluaciones e
        JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = e.id_solicitud_alumno
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
@@ -27,10 +32,15 @@ exports.getByIdSolicitudAlumno = async function (req, res) {
     [idSolicitudAlumno]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Evaluación no encontrada.' });
-  return res.json(rows[0]);
+
+  const ev = rows[0];
+  return res.json({
+    ...ev,
+    nota_total: computeNotaTotal(ev.nota_media, ev.idiomas, ev.madurez, ev.competencia, ev.faltas),
+  });
 };
 
-// POST /evaluaciones — create or update evaluation
+// POST /evaluaciones — crear o actualizar evaluación (sin persistir nota_total)
 exports.guardar = async function (req, res) {
   const { id_solicitud_alumno, nota_media, idiomas, madurez, competencia, faltas } = req.body;
 
@@ -51,18 +61,24 @@ exports.guardar = async function (req, res) {
     return res.status(400).json({ error: 'Las faltas deben ser un número no negativo.' });
   }
 
-  const nota_total = computeNotaTotal(nm, id, ma, co, fa);
-
   try {
-    await pool.query('CALL sp_guardar_evaluacion(?, ?, ?, ?, ?, ?, ?)', [
-      id_solicitud_alumno, nm, id, ma, co, fa, nota_total,
+    // Seis parámetros: sin nota_total (se eliminó el campo)
+    await pool.query('CALL sp_guardar_evaluacion(?, ?, ?, ?, ?, ?)', [
+      id_solicitud_alumno, nm, id, ma, co, fa,
     ]);
 
     const [rows] = await pool.query(
-      'SELECT * FROM dual_evaluaciones WHERE id_solicitud_alumno = ?',
+      `SELECT id_evaluacion, id_solicitud_alumno,
+              nota_media, idiomas, madurez, competencia, faltas
+         FROM dual_evaluaciones
+        WHERE id_solicitud_alumno = ?`,
       [id_solicitud_alumno]
     );
-    return res.status(200).json(rows[0]);
+    const saved = rows[0];
+    return res.status(200).json({
+      ...saved,
+      nota_total: computeNotaTotal(saved.nota_media, saved.idiomas, saved.madurez, saved.competencia, saved.faltas),
+    });
   } catch (err) {
     return sendSqlError(res, err);
   }
