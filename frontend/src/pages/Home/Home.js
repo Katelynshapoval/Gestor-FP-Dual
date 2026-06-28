@@ -1,7 +1,13 @@
 import { Link } from "react-router-dom";
-import { useUser } from '../../context/UserContext';
+import { useUser } from "../../context/UserContext";
 import "./Home.css";
-import { FaArrowRightLong, FaBuilding, FaFileSignature, FaLink, FaUserGraduate } from "react-icons/fa6";
+import {
+  FaArrowRightLong,
+  FaBuilding,
+  FaFileSignature,
+  FaLink,
+  FaUserGraduate,
+} from "react-icons/fa6";
 
 function Home() {
   const { user } = useUser();
@@ -65,17 +71,11 @@ function Home() {
           <div className="min-w-0">
             <div className="page-kicker">Plataforma del centro</div>
             <h1 className="home-title max-w-full break-words font-display text-3xl font-semibold leading-tight text-charcoal-950 md:text-4xl">
-            Gestor de FP Dual del Centro Salesiano Ntra. Sra. del Pilar
+              Gestor de FP Dual del Centro Salesiano Ntra. Sra. del Pilar
             </h1>
 
             <p className="home-copy mt-4 max-w-full break-words text-base leading-7 text-muted">
-            Gestión integral del programa de Formación Profesional Dual
-            </p>
-          </div>
-          <div className="rounded-xl2 border border-brand-200 bg-brand-50 px-4 py-4 text-sm text-brand-900">
-            <p className="font-semibold">Acceso operativo</p>
-            <p className="mt-1 text-brand-800/80">
-              Selecciona el módulo correspondiente según tu perfil.
+              Gestión integral del programa de Formación Profesional Dual
             </p>
           </div>
         </div>
@@ -83,7 +83,9 @@ function Home() {
 
       <div className="home-content mx-auto px-4 py-8 sm:px-6 md:px-8">
         <div className="mb-8">
-          <h2 className="mb-1 text-lg font-semibold text-charcoal-950">Módulos principales</h2>
+          <h2 className="mb-1 text-lg font-semibold text-charcoal-950">
+            Módulos principales
+          </h2>
           <p className="text-sm text-muted">
             Accede a las funcionalidades principales del sistema
           </p>
@@ -103,7 +105,9 @@ function Home() {
                 {c.title}
               </h3>
 
-              <p className="home-copy mb-4 max-w-full break-words text-sm leading-6 text-muted">{c.desc}</p>
+              <p className="home-copy mb-4 max-w-full break-words text-sm leading-6 text-muted">
+                {c.desc}
+              </p>
 
               <span className="mt-auto flex items-center gap-1 text-sm font-semibold text-brand-700">
                 Acceder al módulo
@@ -118,5 +122,3 @@ function Home() {
 }
 
 export default Home;
-
-

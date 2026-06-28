@@ -9,7 +9,7 @@ const ROLE_LABELS = {
   EMPRESA: "Empresa",
 };
 
-// Cabecera horizontal con identidad de cuenta y menú de sesión
+// Horizontal header with account identity and session menu
 const AppHeader = () => {
   const { user, logout } = useUser();
   const location = useLocation().pathname;
@@ -78,7 +78,9 @@ const AppHeader = () => {
               className="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-[10rem] overflow-hidden rounded-lg border border-surface-200 bg-white py-1 shadow-sm"
             >
               <div className="border-b border-surface-200 px-3 py-2 sm:hidden">
-                <p className="truncate text-sm font-medium text-charcoal-950">{user.nombre}</p>
+                <p className="truncate text-sm font-medium text-charcoal-950">
+                  {user.nombre}
+                </p>
                 <p className="truncate text-xs text-muted">{roleLabel}</p>
               </div>
               <button
@@ -87,7 +89,10 @@ const AppHeader = () => {
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-charcoal-800 transition-colors duration-150 hover:bg-surface-50 focus-visible:bg-surface-50 focus-visible:outline-none"
                 onClick={handleLogout}
               >
-                <FaRightFromBracket className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
+                <FaRightFromBracket
+                  className="h-3.5 w-3.5 shrink-0 text-muted"
+                  aria-hidden="true"
+                />
                 Salir
               </button>
             </div>

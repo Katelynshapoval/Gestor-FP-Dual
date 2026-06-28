@@ -16,14 +16,12 @@ const PageLayout = ({ children }) => {
   useEffect(() => {
     try {
       localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
-    } catch {
-      return;
-    }
+    } catch {}
   }, [sidebarCollapsed]);
 
   return (
     <div
-      className={`min-h-screen bg-surface-50 text-foreground md:grid md:transition-[grid-template-columns] md:duration-200 md:ease-out ${
+      className={`min-h-screen bg-surface-50 text-foreground md:grid md:grid-rows-[4rem_minmax(0,1fr)] md:transition-[grid-template-columns] md:duration-200 md:ease-out ${
         sidebarCollapsed
           ? "md:grid-cols-[4.5rem_minmax(0,1fr)]"
           : "md:grid-cols-[17rem_minmax(0,1fr)]"
@@ -33,8 +31,9 @@ const PageLayout = ({ children }) => {
         sidebarCollapsed={sidebarCollapsed}
         onSidebarToggle={() => setSidebarCollapsed((value) => !value)}
       />
-      <div className="flex min-h-screen min-w-0 flex-col">
-        <main className="flex flex-1 flex-col">{children}</main>
+
+      <div className="flex min-h-0 min-w-0 flex-col md:col-start-2 md:row-start-2">
+        <main className="flex min-h-0 flex-1 flex-col">{children}</main>
         <Footer />
       </div>
     </div>
