@@ -1,15 +1,32 @@
 const pool = require('../db/pool');
 const { sendSqlError } = require('../helpers/dbHelpers');
 
-// GET /convocatorias — list all
+// Activa automáticamente la convocatoria cuyas fechas comprenden el día actual.
+// Desactiva cualquier convocatoria que ya haya expirado.
+async function autoActivar() {
+  await pool.query(`
+    UPDATE dual_convocatorias
+       SET activa = CASE
+         WHEN fecha_inicio <= CURDATE() AND fecha_fin >= CURDATE() THEN 1
+         ELSE 0
+       END
+  `);
+}
+
+// GET /convocatorias — lista con activación automática previa
 exports.getAll = async function (req, res) {
+  try {
+    await autoActivar();
+  } catch {
+    // si falla la activación automática se devuelven los datos igual
+  }
   const [rows] = await pool.query(
     'SELECT * FROM dual_convocatorias ORDER BY id_convocatoria DESC'
   );
   return res.json(rows);
 };
 
-// GET /convocatorias/activa — public endpoint to get active convocatoria
+// GET /convocatorias/activa
 exports.getActiva = async function (req, res) {
   const [rows] = await pool.query(
     'SELECT id_convocatoria, nombre, fecha_inicio, fecha_fin FROM dual_convocatorias WHERE activa = 1 LIMIT 1'
@@ -18,7 +35,7 @@ exports.getActiva = async function (req, res) {
   return res.json(rows[0]);
 };
 
-// POST /convocatorias — create
+// POST /convocatorias — crear nueva (inactiva por defecto)
 exports.create = async function (req, res) {
   const { nombre, fecha_inicio, fecha_fin } = req.body;
   if (!nombre || !fecha_inicio || !fecha_fin) {
@@ -39,16 +56,31 @@ exports.create = async function (req, res) {
   }
 };
 
-// POST /convocatorias/:id/activar — activate using stored procedure
-exports.activar = async function (req, res) {
+// PUT /convocatorias/:id — editar fechas de una convocatoria futura
+exports.update = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+  const { nombre, fecha_inicio, fecha_fin } = req.body;
+  if (!nombre || !fecha_inicio || !fecha_fin) {
+    return res.status(400).json({ error: 'nombre, fecha_inicio y fecha_fin son obligatorios.' });
+  }
   try {
-    await pool.query('CALL sp_activar_convocatoria(?)', [id]);
+    const [check] = await pool.query(
+      'SELECT fecha_inicio, activa FROM dual_convocatorias WHERE id_convocatoria = ?',
+      [id]
+    );
+    if (!check[0]) return res.status(404).json({ error: 'Convocatoria no encontrada.' });
+    if (check[0].activa) {
+      return res.status(400).json({ error: 'No se puede editar una convocatoria activa.' });
+    }
+
+    await pool.query(
+      'UPDATE dual_convocatorias SET nombre = ?, fecha_inicio = ?, fecha_fin = ? WHERE id_convocatoria = ?',
+      [nombre, fecha_inicio, fecha_fin, id]
+    );
     const [rows] = await pool.query(
       'SELECT * FROM dual_convocatorias WHERE id_convocatoria = ?',
       [id]
     );
-    if (!rows[0]) return res.status(404).json({ error: 'Convocatoria no encontrada.' });
     return res.json(rows[0]);
   } catch (err) {
     return sendSqlError(res, err);

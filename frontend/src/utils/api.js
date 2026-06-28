@@ -36,10 +36,10 @@ export const getBlob = async (url) => {
   return response.blob();
 };
 
-// POST autenticado con JSON
-export const postJSON = async (url, body) => {
+// POST o PUT autenticado con JSON
+export const postJSON = async (url, body, method = 'POST') => {
   const response = await fetch(url, {
-    method: 'POST',
+    method,
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(body),
   });
@@ -49,6 +49,8 @@ export const postJSON = async (url, body) => {
   }
   return response.json();
 };
+
+export const putJSON = (url, body) => postJSON(url, body, 'PUT');
 
 // POST autenticado con FormData (multipart)
 export const postForm = async (url, formData) => {
