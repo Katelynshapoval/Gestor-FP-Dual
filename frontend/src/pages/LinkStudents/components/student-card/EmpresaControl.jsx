@@ -2,8 +2,11 @@ import { empresaSlotClass } from "../../../../components/ui/cardStyles";
 
 const ESTADO_CLS = {
   PENDIENTE:  "bg-yellow-50 text-yellow-800 border-yellow-200",
+  RESERVADA:  "bg-yellow-50 text-yellow-800 border-yellow-200",
   CONFIRMADA: "bg-green-50 text-green-800 border-green-200",
+  CONFIRMADO: "bg-green-50 text-green-800 border-green-200",
   CANCELADA:  "bg-red-50 text-red-700 border-red-200",
+  CANCELADO:  "bg-red-50 text-red-700 border-red-200",
 };
 
 // Displays the dynamic list of reservations for a student (staff view).
@@ -31,7 +34,7 @@ const EmpresaControl = ({ r }) => {
                 {rv.tipo_contrato && (
                   <span className="text-xs text-muted">Contrato: {rv.tipo_contrato}</span>
                 )}
-                {rv.motivo && rv.estado_reserva === "CANCELADA" && (
+                {rv.motivo && (rv.estado_reserva === "CANCELADA" || rv.estado_reserva === "CANCELADO") && (
                   <span className="text-xs italic text-muted">Motivo: {rv.motivo}</span>
                 )}
               </div>

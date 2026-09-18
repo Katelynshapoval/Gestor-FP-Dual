@@ -1,5 +1,7 @@
+const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
-const { getActiveConvocatoria, sendSqlError } = require('../helpers/dbHelpers');
+const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni } = require('../helpers/dbHelpers');
+const MIN_PASSWORD_LENGTH = 8;
 
 let transporter = null;
 try {
@@ -18,6 +20,7 @@ async function sendConfirmationEmail(email, nombre, convocatoria) {
         <p>Hola <strong>${nombre}</strong>,</p>
         <p>Hemos recibido tu solicitud para la convocatoria <strong>${convocatoria}</strong>.</p>
         <p>En los próximos días revisaremos tu documentación y te informaremos del resultado.</p>
+        <p>Puedes consultar el estado de tu solicitud iniciando sesión con tu DNI/NIE.</p>
         <p>Salesianos Zaragoza — Departamento Dual</p>
       `,
     });
@@ -35,6 +38,7 @@ exports.create = async function (req, res) {
     situacionLaboral, idiomasConocidos, tutorLegal, dniTutorLegal,
     // Preferencias (IDs de dual_preferencias) — opcionales
     idPreferencia1, idPreferencia2, idPreferencia3,
+    password,
   } = req.body;
 
   const cvFile = req.files?.cv?.[0];
@@ -44,6 +48,14 @@ exports.create = async function (req, res) {
     return res.status(400).json({ error: 'Se requiere el CV y el ANEXO_2 en formato PDF.' });
   }
   if (!nombre || !dni || !domicilio || !cp || !localidad || !telalumno || !email || !id_especialidad_dual) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios del formulario.' });
+  }
+  if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
+  }
+
+  const dniNorm = normalizeDni(dni);
+  if (!dniNorm) {
     return res.status(400).json({ error: 'Faltan campos obligatorios del formulario.' });
   }
 
@@ -66,11 +78,11 @@ exports.create = async function (req, res) {
   try {
     await conn.beginTransaction();
 
-    // Upsert student by DNI
+    // Upsert student by DNI (canonicalized)
     let idAlumno;
     const [existing] = await conn.query(
-      'SELECT idalumno FROM gf_alumnosfct WHERE dni = ? FOR UPDATE',
-      [dni]
+      'SELECT idalumno FROM gf_alumnosfct WHERE UPPER(TRIM(dni)) = ? FOR UPDATE',
+      [dniNorm]
     );
 
     if (existing[0]) {
@@ -98,7 +110,7 @@ exports.create = async function (req, res) {
             emailColegio, sexo, carnetDeConducir, tieneCoche, numeroSS,
             situacionLaboral, idiomasConocidos, tutorLegal, dniTutorLegal)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [nombre, dni, domicilio, cp, localidad, telalumno, telfamilia, email,
+        [nombre, dniNorm, domicilio, cp, localidad, telalumno, telfamilia, email,
           codigoEsp, id_especialidad_dual, observaciones, nacionalidad, fechaNacimiento,
           emailColegio, sexo, carnetDeConducir ? 1 : 0, tieneCoche ? 1 : 0,
           numeroSS, situacionLaboral, idiomasConocidos, tutorLegal, dniTutorLegal]
@@ -142,6 +154,28 @@ exports.create = async function (req, res) {
           [idSolicitudAlumno, i + 1, idPref]
         );
       }
+    }
+
+    // ALUMNO account: create only when this student has none. Never reset an existing password.
+    const [rolRow] = await conn.query(
+      'SELECT id_rol FROM dual_roles WHERE nombre = ?',
+      ['ALUMNO']
+    );
+    const idRolAlumno = rolRow[0]?.id_rol;
+    if (!idRolAlumno) throw new Error('Rol ALUMNO no encontrado en la base de datos.');
+
+    const [existingUser] = await conn.query(
+      'SELECT id_usuario FROM dual_usuarios WHERE id_alumno = ? FOR UPDATE',
+      [idAlumno]
+    );
+    if (!existingUser[0]) {
+      const hash = await bcrypt.hash(String(password), 10);
+      await conn.query(
+        `INSERT INTO dual_usuarios
+           (nombre_mostrar, email, password_hash, id_rol, id_contacto, id_alumno, activo, must_change_password)
+         VALUES (?, NULL, ?, ?, NULL, ?, 1, 0)`,
+        [nombre, hash, idRolAlumno, idAlumno]
+      );
     }
 
     await conn.commit();
@@ -191,9 +225,11 @@ exports.getAll = async function (req, res) {
            (SELECT id_documento FROM dual_documentos d
              JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
             WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'ANEXO_2'
-            LIMIT 1) AS anexo2_id
+            LIMIT 1) AS anexo2_id,
+           CASE WHEN u.id_usuario IS NOT NULL THEN 1 ELSE 0 END AS tiene_cuenta
       FROM dual_solicitudes_alumno sa
       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+      LEFT JOIN dual_usuarios u ON u.id_alumno = a.idalumno
       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = sa.id_estado_validacion
       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
       JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
@@ -253,6 +289,33 @@ exports.getAll = async function (req, res) {
   }));
 
   return res.json(result);
+};
+
+// GET /solicitudes/alumno/mia — ALUMNO: own current application
+exports.getMia = async function (req, res) {
+  const idAlumno = await getStudentIdFromUser(req.user.id);
+  if (!idAlumno) return res.status(404).json({ error: 'No se encontró alumno vinculado a este usuario.' });
+
+  const [rows] = await pool.query(
+    `SELECT sa.id_solicitud_alumno, sa.id_alumno, sa.id_convocatoria, sa.fecha_solicitud,
+            sa.motivo,
+            ev.nombre AS estado_validacion,
+            a.nombre, a.dni, a.email, a.telalumno, a.domicilio, a.cp, a.localidad,
+            esp.id_especialidad, esp.codigo AS codigo_especialidad, esp.nombre AS especialidad,
+            CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
+            c.nombre AS convocatoria, c.activa
+       FROM dual_solicitudes_alumno sa
+       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = sa.id_estado_validacion
+       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+       JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
+      WHERE sa.id_alumno = ?
+      ORDER BY c.activa DESC, sa.fecha_solicitud DESC
+      LIMIT 1`,
+    [idAlumno]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'No hay solicitud registrada para este alumno.' });
+  return res.json(rows[0]);
 };
 
 // GET /solicitudes/alumno/:id — detail

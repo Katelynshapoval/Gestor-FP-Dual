@@ -16,6 +16,19 @@ async function getActiveConvocatoria() {
   return rows[0] || null;
 }
 
+// Resolves student id from the authenticated ALUMNO user id
+async function getStudentIdFromUser(idUsuario) {
+  const [rows] = await pool.query(
+    `SELECT u.id_alumno
+       FROM dual_usuarios u
+       JOIN dual_roles r ON r.id_rol = u.id_rol
+      WHERE u.id_usuario = ?
+        AND r.nombre = 'ALUMNO'`,
+    [idUsuario]
+  );
+  return rows[0]?.id_alumno ?? null;
+}
+
 // Resolves company id from the authenticated EMPRESA user id
 async function getCompanyIdFromUser(idUsuario) {
   const [rows] = await pool.query(
@@ -75,6 +88,7 @@ module.exports = {
   normalizeCif,
   normalizeDni,
   getActiveConvocatoria,
+  getStudentIdFromUser,
   getCompanyIdFromUser,
   getTipoDocumentoId,
   callProcedure,

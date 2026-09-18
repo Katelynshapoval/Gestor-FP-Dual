@@ -24,10 +24,24 @@ import DatosRapidos from "./student-card/DatosRapidos";
 import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import Evaluacion from "./student-card/Evaluacion";
+import StatusBadge from "../../../components/ui/StatusBadge";
+
+const isConfirmedReserva = (estado) =>
+  estado === "CONFIRMADA" || estado === "CONFIRMADO";
+const isPendingReserva = (estado) =>
+  estado === "PENDIENTE" || estado === "RESERVADA";
+const isCancelledReserva = (estado) =>
+  estado === "CANCELADA" || estado === "CANCELADO";
+
+const ESTADO_SOLICITUD = {
+  PENDIENTE: { label: "En revisión", variant: "warning" },
+  VALIDADO: { label: "Aprobada", variant: "success" },
+  RECHAZADO: { label: "No aprobada", variant: "danger" },
+};
 
 // A2/A3 badge: green when the student has at least one confirmed reservation
 const AnexoBadge = ({ reservas }) => {
-  const confirmed = reservas?.some((rv) => rv.estado_reserva === "CONFIRMADA");
+  const confirmed = reservas?.some((rv) => isConfirmedReserva(rv.estado_reserva));
   const Icon = confirmed
     ? IoIosCheckmarkCircleOutline
     : IoIosCloseCircleOutline;
@@ -52,14 +66,13 @@ const ReservasChips = ({ reservas }) => {
           className={empresaChipClass}
           title={rv.estado_reserva}
         >
-          {rv.estado_reserva === "CONFIRMADA" && (
+          {isConfirmedReserva(rv.estado_reserva) && (
             <IoIosCheckmarkCircleOutline className="text-green-600 text-[11px]" />
           )}
-          {(rv.estado_reserva === "PENDIENTE" ||
-            rv.estado_reserva === "RESERVADA") && (
+          {isPendingReserva(rv.estado_reserva) && (
             <RxClock className="text-yellow-600 text-[11px]" />
           )}
-          {rv.estado_reserva === "CANCELADA" && (
+          {isCancelledReserva(rv.estado_reserva) && (
             <MdOutlineCancel className="text-red-500 text-[11px]" />
           )}
           {rv.empresa?.substring(0, 14)}
@@ -130,8 +143,8 @@ const CancelModal = ({ alumno, onConfirm, onClose }) => {
 // Reserve / cancel button for empresa users
 const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const reservaConfirmada = r.reservas?.some(
-    (rv) => rv.estado_reserva === "CONFIRMADA",
+  const reservaConfirmada = r.reservas?.some((rv) =>
+    isConfirmedReserva(rv.estado_reserva),
   );
 
   if (reservaConfirmada || r.asignado_definitivo) {
@@ -209,6 +222,9 @@ const StudentCard = ({
   user,
 }) => {
   const isEmpresa = user?.rol === "EMPRESA";
+  const confirmedReserva = r.reservas?.find((rv) =>
+    isConfirmedReserva(rv.estado_reserva),
+  );
   // "info" or "reservas" — inner tab state, staff only
   const [innerTab, setInnerTab] = useState("info");
   const handleToggle = () => onToggle(r.id_solicitud_alumno);
@@ -238,12 +254,25 @@ const StudentCard = ({
         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
           {!isEmpresa ? (
             <div className={cardChipsClass}>
+              {ESTADO_SOLICITUD[r.estado_validacion] && (
+                <StatusBadge variant={ESTADO_SOLICITUD[r.estado_validacion].variant}>
+                  {ESTADO_SOLICITUD[r.estado_validacion].label}
+                </StatusBadge>
+              )}
+              {Number(r.tiene_cuenta) === 1 && (
+                <StatusBadge variant="info">Cuenta</StatusBadge>
+              )}
+              {confirmedReserva && (
+                <StatusBadge variant="success">
+                  Confirmado: {confirmedReserva.empresa}
+                </StatusBadge>
+              )}
               <AnexoBadge reservas={r.reservas} />
 
               {/* Calendar badge: green when the student has a confirmed reservation */}
               {(() => {
-                const calOk = r.reservas?.some(
-                  (rv) => rv.estado_reserva === "CONFIRMADA",
+                const calOk = r.reservas?.some((rv) =>
+                  isConfirmedReserva(rv.estado_reserva),
                 );
                 const CalIcon = calOk
                   ? FaRegCalendarCheck

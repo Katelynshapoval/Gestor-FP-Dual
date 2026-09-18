@@ -12,6 +12,8 @@ import LinkStudents from "./pages/LinkStudents";
 import CompanyView from "./pages/CompanyView/";
 import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
 import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
+import StudentMain from "./pages/StudentMain";
+import RequireRole from "./components/auth/RequireRole.jsx";
 
 import "./styles/main.css";
 
@@ -29,11 +31,12 @@ function App() {
             <Route path="/addDualStudent" element={<Page><AddDualStudent /></Page>} />
             <Route path="/addCompanyRequest" element={<Page><AddCompanyRequest /></Page>} />
             <Route path="/addConvenio/:id" element={<Page><AddConvenio /></Page>} />
-            <Route path="/evaluate/:id"  element={<Page><Evaluation /></Page>} />
-            <Route path="/linkStudents"  element={<Page><LinkStudents /></Page>} />
-            <Route path="/companyMain"   element={<Page><CompanyView /></Page>} />
-            <Route path="/companiesView" element={<Page><AdminCompanyView /></Page>} />
-            <Route path="/convocatorias" element={<Page><Convocatorias /></Page>} />
+            <Route path="/evaluate/:id"  element={<Page><RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}><Evaluation /></RequireRole></Page>} />
+            <Route path="/linkStudents"  element={<Page><RequireRole roles={["ADMINISTRADOR", "COORDINADOR", "EMPRESA"]}><LinkStudents /></RequireRole></Page>} />
+            <Route path="/companyMain"   element={<Page><RequireRole roles={["EMPRESA"]}><CompanyView /></RequireRole></Page>} />
+            <Route path="/companiesView" element={<Page><RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}><AdminCompanyView /></RequireRole></Page>} />
+            <Route path="/convocatorias" element={<Page><RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}><Convocatorias /></RequireRole></Page>} />
+            <Route path="/studentMain"   element={<Page><RequireRole roles={["ALUMNO"]}><StudentMain /></RequireRole></Page>} />
           </Routes>
         </BrowserRouter>
       </div>

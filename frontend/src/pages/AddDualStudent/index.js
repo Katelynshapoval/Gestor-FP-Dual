@@ -63,6 +63,8 @@ function AddDualStudent() {
   const [idioms, setIdioms] = useState("");
   const [file, setFile] = useState(null);
   const [cv, setCv] = useState(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
     fetch("/especialidades")
@@ -116,10 +118,18 @@ function AddDualStudent() {
       await showMessage("Formato de DNI/NIE del tutor legal no válido.");
       return;
     }
+    if (!password || password.length < 8) {
+      await showMessage("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      await showMessage("Las contraseñas no coinciden.");
+      return;
+    }
     try {
       const data = new FormData();
       data.append("emailColegio", studiesEmail);
-      data.append("dni", dniNie);
+      data.append("dni", dniNie.trim().toUpperCase());
       data.append("nombre", name);
       data.append("sexo", gender);
       data.append("fechaNacimiento", birthdate);
@@ -141,8 +151,11 @@ function AddDualStudent() {
       data.append("dniTutorLegal", legalGuardianDni);
       if (file) data.append("anexo2", file);
       if (cv) data.append("cv", cv);
+      data.append("password", password);
       await postForm("/solicitudes/alumno", data);
-      await showMessage("La candidatura se ha enviado correctamente.");
+      await showMessage("La candidatura se ha enviado correctamente. Ya puedes iniciar sesión con tu DNI/NIE.");
+      setPassword("");
+      setConfirmPassword("");
       formRef.current.reset();
     } catch (err) {
       await showMessage(
@@ -479,6 +492,41 @@ function AddDualStudent() {
               />
             </label>
           </Field>
+        </div>
+
+        <div className="form-card">
+          <div className="form-section-title">Acceso al portal</div>
+          <p className="field-hint">
+            El acceso se realiza con tu DNI/NIE, no con el correo electrónico.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field id="pwdAlumno" label="Contraseña">
+              <input
+                id="pwdAlumno"
+                className="input"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+                minLength={8}
+                maxLength={100}
+                required
+              />
+            </Field>
+            <Field id="pwdAlumno2" label="Confirmar contraseña">
+              <input
+                id="pwdAlumno2"
+                className="input"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repite la contraseña"
+                minLength={8}
+                maxLength={100}
+                required
+              />
+            </Field>
+          </div>
         </div>
 
         <button

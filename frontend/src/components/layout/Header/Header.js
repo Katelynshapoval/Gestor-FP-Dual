@@ -72,6 +72,12 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
       show: user?.rol === "EMPRESA",
     },
     {
+      to: "/studentMain",
+      label: "Mi proceso",
+      Icon: FaUserGraduate,
+      show: user?.rol === "ALUMNO",
+    },
+    {
       to: "/companiesView",
       label: "Empresas colaboradoras",
       Icon: FaFileSignature,
@@ -87,7 +93,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
       to: "/linkStudents",
       label: "Enlazar",
       Icon: FaLink,
-      show: !!user,
+      show: isAdmin || user?.rol === "EMPRESA",
     },
   ].filter((item) => item.show);
 

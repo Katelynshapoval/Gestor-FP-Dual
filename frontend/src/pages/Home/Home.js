@@ -14,6 +14,7 @@ function Home() {
 
   const isAdmin = user?.rol === "ADMINISTRADOR" || user?.rol === "COORDINADOR";
   const isEmpresa = user?.rol === "EMPRESA";
+  const isAlumno = user?.rol === "ALUMNO";
 
   const cards = [
     ...(!user || isAdmin
@@ -42,6 +43,16 @@ function Home() {
           },
         ]
       : []),
+    ...(isAlumno
+      ? [
+          {
+            to: "/studentMain",
+            Icon: FaUserGraduate,
+            title: "Mi proceso Dual",
+            desc: "Consulta el estado de tu solicitud y las reservas de empresas.",
+          },
+        ]
+      : []),
     ...(isAdmin
       ? [
           {
@@ -52,7 +63,7 @@ function Home() {
           },
         ]
       : []),
-    ...(user
+    ...(isAdmin || isEmpresa
       ? [
           {
             to: "/linkStudents",

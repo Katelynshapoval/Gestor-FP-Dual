@@ -22,6 +22,9 @@ router.post(
   asyncHandler(svc.create)
 );
 
+// Alumno: own current application (must be registered before /:id)
+router.get('/solicitudes/alumno/mia', requireAuth, requireRole('ALUMNO'), asyncHandler(svc.getMia));
+
 // Admin / Coordinador
 router.get('/solicitudes/alumno', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getAll));
 router.get('/solicitudes/alumno/:id', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getById));

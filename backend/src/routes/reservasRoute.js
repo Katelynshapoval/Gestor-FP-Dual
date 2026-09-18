@@ -17,6 +17,9 @@ router.get('/reservas', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR')
 // Empresa: own reservations
 router.get('/reservas/empresa', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.getMisReservas));
 
+// Alumno: own reservations
+router.get('/reservas/alumno', requireAuth, requireRole('ALUMNO'), asyncHandler(svc.getReservasAlumno));
+
 // Empresa: reserve a student
 router.post('/reservas', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.reservar));
 

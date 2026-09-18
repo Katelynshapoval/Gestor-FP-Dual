@@ -1,5 +1,5 @@
 const pool = require('../db/pool');
-const { sendSqlError, getCompanyIdFromUser } = require('../helpers/dbHelpers');
+const { sendSqlError, getCompanyIdFromUser, getStudentIdFromUser } = require('../helpers/dbHelpers');
 
 // Upload a document for a student application
 // POST /documentos/alumno/:idSolicitud/:tipo   (tipo = cv | anexo2)
@@ -123,6 +123,26 @@ exports.descargar = async function (req, res) {
          )
     `;
     params.push(idEmpresa, idEmpresa);
+  } else if (req.user.rol === 'ALUMNO') {
+    const idAlumno = await getStudentIdFromUser(req.user.id);
+    query = `
+      SELECT d.archivo, td.nombre AS tipo
+        FROM dual_documentos d
+        JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+       WHERE d.id_documento = ?
+         AND (
+           (d.id_solicitud_alumno IS NOT NULL AND EXISTS (
+             SELECT 1 FROM dual_solicitudes_alumno sa
+              WHERE sa.id_solicitud_alumno = d.id_solicitud_alumno AND sa.id_alumno = ?
+           ))
+           OR (d.id_reserva IS NOT NULL AND EXISTS (
+             SELECT 1 FROM dual_reservas r
+             JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+             WHERE r.id_reserva = d.id_reserva AND sa.id_alumno = ?
+           ))
+         )
+    `;
+    params.push(idAlumno, idAlumno);
   }
 
   const [rows] = await pool.query(query, params);

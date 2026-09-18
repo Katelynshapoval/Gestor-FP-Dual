@@ -1,5 +1,5 @@
 const pool = require('../db/pool');
-const { getCompanyIdFromUser, sendSqlError } = require('../helpers/dbHelpers');
+const { getCompanyIdFromUser, getStudentIdFromUser, sendSqlError } = require('../helpers/dbHelpers');
 
 // GET /alumnos/disponibles — validated students without a confirmed placement,
 // scoped to the specialities of the empresa's approved offers in the active convocatoria
@@ -205,6 +205,40 @@ exports.getMisReservas = async function (req, res) {
     WHERE se.id_empresa = ?
     ORDER BY r.id_reserva DESC`,
     [idEmpresa]
+  );
+
+  return res.json(rows);
+};
+
+// GET /reservas/alumno — ALUMNO: reservations for own applications only
+exports.getReservasAlumno = async function (req, res) {
+  const idAlumno = await getStudentIdFromUser(req.user.id);
+  if (!idAlumno) return res.status(404).json({ error: 'No se encontró alumno vinculado a este usuario.' });
+
+  const [rows] = await pool.query(
+    `SELECT
+        r.id_reserva,
+        er.nombre AS estado_reserva,
+        r.motivo,
+        tc.nombre_mostrar AS tipo_contrato,
+        emp.empresa,
+        esp.nombre AS especialidad,
+        esp.codigo AS codigo_especialidad,
+        sa.id_solicitud_alumno,
+        c.nombre AS convocatoria
+     FROM dual_reservas r
+     JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+     LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+     JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+     JOIN dual_solicitud_empresa_especialidades ee
+       ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+     JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
+     JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+     JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+     JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
+    WHERE sa.id_alumno = ?
+    ORDER BY r.id_reserva DESC`,
+    [idAlumno]
   );
 
   return res.json(rows);
