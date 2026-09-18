@@ -25,6 +25,9 @@ const LinkStudents = () => {
     getDoc,
     closeDocViewer,
     validateDoc,
+    rejectDoc,
+    validateAlumno,
+    rejectSolicitud,
     reserveStudent,
     cancelReservation,
     adminReserve,
@@ -80,6 +83,8 @@ const LinkStudents = () => {
               onAdminReserve={adminReserve}
               onAdminCancel={adminCancel}
               onAdminReassign={adminReassign}
+              onValidarAlumno={validateAlumno}
+              onRechazarSolicitud={rejectSolicitud}
               user={user}
             />
           ))}
@@ -89,6 +94,7 @@ const LinkStudents = () => {
           showDoc={showDoc}
           onClose={closeDocViewer}
           onValidate={validateDoc}
+          onReject={(motivo) => rejectDoc(motivo)}
         />
       </div>
     </div>

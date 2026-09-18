@@ -53,24 +53,29 @@ export const useLinkStudents = () => {
   }, [user, navigate, fetchLinkRequests]);
 
   // Downloads a document blob and opens it in the inline viewer
-  const getDoc = useCallback((idDocumento, tipo, nombreAlumno, idSolicitudAlumno) => {
+  const getDoc = useCallback((idDocumento, tipo, nombreAlumno, meta = {}) => {
     if (!idDocumento) { alert("No hay documento disponible."); return; }
+    const extra = meta && typeof meta === "object" ? meta : { idSolicitudAlumno: meta };
     getBlob(`/documentos/${idDocumento}/descargar`)
       .then((blob) => {
         if (currentDocUrl) URL.revokeObjectURL(currentDocUrl);
         const url = URL.createObjectURL(blob);
         setCurrentDocUrl(url);
+        const label = tipo === "cv" ? "CV" : tipo === "anexo2" ? "Anexo 2" : String(tipo || "").toUpperCase();
         setShowDoc({
           tipo,
           url,
           idDocumento,
-          nombre: tipo.toUpperCase(),
+          nombre: label,
           nombreAlumno: nombreAlumno || "",
-          idSolicitudAlumno: idSolicitudAlumno || null,
+          idSolicitudAlumno: extra.idSolicitudAlumno || null,
+          estado: extra.estado || null,
+          motivo: extra.motivo || null,
+          canReview: !isEmpresa,
         });
       })
       .catch((err) => alert(err.message));
-  }, [currentDocUrl]);
+  }, [currentDocUrl, isEmpresa]);
 
   // Closes the document viewer and releases the object URL
   const closeDocViewer = useCallback(() => {
@@ -80,17 +85,27 @@ export const useLinkStudents = () => {
 
   const validateDoc = useCallback(async () => {
     if (!showDoc?.idDocumento) return;
-    try {
-      await postJSON(`/documentos/${showDoc.idDocumento}/validar`, {});
-      if ((showDoc.tipo === "anexo2" || showDoc.tipo === "anexo3") && showDoc.idSolicitudAlumno) {
-        await postJSON(`/solicitudes/alumno/${showDoc.idSolicitudAlumno}/validar`, {});
-      }
-      closeDocViewer();
-      fetchLinkRequests();
-    } catch (err) {
-      alert(err.message);
-    }
+    await postJSON(`/documentos/${showDoc.idDocumento}/validar`, {});
+    closeDocViewer();
+    await fetchLinkRequests();
   }, [showDoc, closeDocViewer, fetchLinkRequests]);
+
+  const rejectDoc = useCallback(async (motivo) => {
+    if (!showDoc?.idDocumento) return;
+    await postJSON(`/documentos/${showDoc.idDocumento}/rechazar`, { motivo });
+    closeDocViewer();
+    await fetchLinkRequests();
+  }, [showDoc, closeDocViewer, fetchLinkRequests]);
+
+  const validateAlumno = useCallback(async (idSolicitudAlumno) => {
+    await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/validar`, {});
+    await fetchLinkRequests();
+  }, [fetchLinkRequests]);
+
+  const rejectSolicitud = useCallback(async (idSolicitudAlumno, motivo) => {
+    await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/rechazar`, { motivo });
+    await fetchLinkRequests();
+  }, [fetchLinkRequests]);
 
   const toggleCard = (id) =>
     setExpandedCards((prev) => {
@@ -186,6 +201,9 @@ export const useLinkStudents = () => {
     getDoc,
     closeDocViewer,
     validateDoc,
+    rejectDoc,
+    validateAlumno,
+    rejectSolicitud,
     reserveStudent,
     cancelReservation,
     adminReserve,

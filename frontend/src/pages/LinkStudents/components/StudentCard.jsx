@@ -24,6 +24,7 @@ import DatosRapidos from "./student-card/DatosRapidos";
 import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import Evaluacion from "./student-card/Evaluacion";
+import EstadoSolicitud from "./student-card/EstadoSolicitud";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import {
   isCancelledReserva,
@@ -220,6 +221,8 @@ const StudentCard = ({
   onAdminReserve,
   onAdminCancel,
   onAdminReassign,
+  onValidarAlumno,
+  onRechazarSolicitud,
   user,
 }) => {
   const isEmpresa = user?.rol === "EMPRESA";
@@ -363,6 +366,13 @@ const StudentCard = ({
                 </div>
                 <div className="space-y-5">
                   <Documentos r={r} user={user} onGetDoc={onGetDoc} />
+                  {!isEmpresa && (
+                    <EstadoSolicitud
+                      r={r}
+                      onValidar={onValidarAlumno}
+                      onRechazar={onRechazarSolicitud}
+                    />
+                  )}
                   <Evaluacion
                     r={r}
                     user={user}

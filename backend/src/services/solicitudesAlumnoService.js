@@ -221,11 +221,29 @@ exports.getAll = async function (req, res) {
            (SELECT id_documento FROM dual_documentos d
              JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
             WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'CV'
-            LIMIT 1) AS cv_id,
+            ORDER BY d.id_documento DESC LIMIT 1) AS cv_id,
+           (SELECT ev.nombre FROM dual_documentos d
+             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+             JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'CV'
+            ORDER BY d.id_documento DESC LIMIT 1) AS cv_estado,
+           (SELECT d.motivo FROM dual_documentos d
+             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'CV'
+            ORDER BY d.id_documento DESC LIMIT 1) AS cv_motivo,
            (SELECT id_documento FROM dual_documentos d
              JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
             WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'ANEXO_2'
-            LIMIT 1) AS anexo2_id,
+            ORDER BY d.id_documento DESC LIMIT 1) AS anexo2_id,
+           (SELECT ev.nombre FROM dual_documentos d
+             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+             JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'ANEXO_2'
+            ORDER BY d.id_documento DESC LIMIT 1) AS anexo2_estado,
+           (SELECT d.motivo FROM dual_documentos d
+             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'ANEXO_2'
+            ORDER BY d.id_documento DESC LIMIT 1) AS anexo2_motivo,
            CASE WHEN u.id_usuario IS NOT NULL THEN 1 ELSE 0 END AS tiene_cuenta
       FROM dual_solicitudes_alumno sa
       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
