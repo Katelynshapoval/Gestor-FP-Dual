@@ -53,14 +53,21 @@ export const useLinkStudents = () => {
   }, [user, navigate, fetchLinkRequests]);
 
   // Downloads a document blob and opens it in the inline viewer
-  const getDoc = useCallback((idDocumento, tipo, nombreAlumno) => {
+  const getDoc = useCallback((idDocumento, tipo, nombreAlumno, idSolicitudAlumno) => {
     if (!idDocumento) { alert("No hay documento disponible."); return; }
     getBlob(`/documentos/${idDocumento}/descargar`)
       .then((blob) => {
         if (currentDocUrl) URL.revokeObjectURL(currentDocUrl);
         const url = URL.createObjectURL(blob);
         setCurrentDocUrl(url);
-        setShowDoc({ tipo, url, idDocumento, nombre: tipo.toUpperCase(), nombreAlumno: nombreAlumno || "" });
+        setShowDoc({
+          tipo,
+          url,
+          idDocumento,
+          nombre: tipo.toUpperCase(),
+          nombreAlumno: nombreAlumno || "",
+          idSolicitudAlumno: idSolicitudAlumno || null,
+        });
       })
       .catch((err) => alert(err.message));
   }, [currentDocUrl]);
@@ -75,6 +82,9 @@ export const useLinkStudents = () => {
     if (!showDoc?.idDocumento) return;
     try {
       await postJSON(`/documentos/${showDoc.idDocumento}/validar`, {});
+      if ((showDoc.tipo === "anexo2" || showDoc.tipo === "anexo3") && showDoc.idSolicitudAlumno) {
+        await postJSON(`/solicitudes/alumno/${showDoc.idSolicitudAlumno}/validar`, {});
+      }
       closeDocViewer();
       fetchLinkRequests();
     } catch (err) {

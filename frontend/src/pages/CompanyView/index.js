@@ -3,6 +3,7 @@ import { useUser } from '../../context/UserContext';
 import { useNavigate } from "react-router-dom";
 import { getJSON, postJSON } from "../../utils/api.js";
 import MisReservas from "./MisReservas.jsx";
+import MisDocumentos from "./MisDocumentos.jsx";
 import SpecialitySelector from "../AddCompanyRequest/SpecialitySelector.jsx";
 import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
 import PageHeader from "../../components/ui/PageHeader.jsx";
@@ -331,7 +332,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
   );
 };
 
-// Main empresa portal with two tabs: Mis datos / Mis reservas
+// Main empresa portal: Mis datos / Mis reservas / Mis documentos
 const CompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -340,6 +341,7 @@ const CompanyView = () => {
   const [solicitud, setSolicitud]     = useState(null);
   const [cambio, setCambio]           = useState({ pending: null, ultimo: null });
   const [reservations, setReservations] = useState([]);
+  const [documentos, setDocumentos]   = useState({ solicitudes: [], reservas: [] });
   const [specialities, setSpecialities] = useState([]);
   const [transports, setTransports]   = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -366,6 +368,18 @@ const CompanyView = () => {
     } catch { setReservations([]); }
   }, []);
 
+  const fetchDocumentos = useCallback(async () => {
+    try {
+      const data = await getJSON("/documentos/empresa");
+      setDocumentos({
+        solicitudes: Array.isArray(data?.solicitudes) ? data.solicitudes : [],
+        reservas: Array.isArray(data?.reservas) ? data.reservas : [],
+      });
+    } catch {
+      setDocumentos({ solicitudes: [], reservas: [] });
+    }
+  }, []);
+
   const handleCancelReservation = async (idReserva, motivo) => {
     try {
       await postJSON(`/reservas/${idReserva}/cancelar`, { motivo });
@@ -379,8 +393,8 @@ const CompanyView = () => {
       getJSON("/especialidades"),
       getJSON("/transportes"),
     ]).then(([s, t]) => { setSpecialities(s); setTransports(t); }).catch(console.error);
-    Promise.all([fetchSolicitud(), fetchReservations()]).finally(() => setLoading(false));
-  }, [user, navigate, fetchSolicitud, fetchReservations]);
+    Promise.all([fetchSolicitud(), fetchReservations(), fetchDocumentos()]).finally(() => setLoading(false));
+  }, [user, navigate, fetchSolicitud, fetchReservations, fetchDocumentos]);
 
   if (!user || user.rol !== "EMPRESA") return null;
 
@@ -407,6 +421,14 @@ const CompanyView = () => {
             </span>
           )}
         </button>
+        <button className={tabCls(view === "documentos")} onClick={() => setView("documentos")}>
+          Mis documentos
+          {(documentos.solicitudes.filter((d) => d.id_documento).length + documentos.reservas.length) > 0 && (
+            <span className="ml-1.5 inline-block text-[0.7rem] bg-brand-500 text-white rounded-full px-1.5 py-0.5 leading-none">
+              {documentos.solicitudes.filter((d) => d.id_documento).length + documentos.reservas.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {loading ? (
@@ -424,15 +446,26 @@ const CompanyView = () => {
             await fetchReservations();
           }}
         />
-      ) : (
+      ) : view === "reservas" ? (
         <div className="form-card">
           <p className="form-section-title">Mis reservas</p>
           <MisReservas
             reservations={reservations}
-            onUpload={fetchReservations}
+            onUpload={async () => {
+              await fetchReservations();
+              await fetchDocumentos();
+            }}
             onCancel={handleCancelReservation}
           />
         </div>
+      ) : (
+        <MisDocumentos
+          documentos={documentos}
+          onRefresh={async () => {
+            await fetchDocumentos();
+            await fetchReservations();
+          }}
+        />
       )}
     </div>
   );

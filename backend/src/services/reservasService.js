@@ -229,11 +229,15 @@ exports.getAll = async function (req, res) {
         emp.empresa,
         ee.cantidad_alumnos AS plazas_ofertadas,
         coord.email AS email_coordinador,
-        (SELECT id_documento FROM dual_documentos d
-          WHERE d.id_reserva = r.id_reserva LIMIT 1) AS id_documento_reserva,
+        (SELECT d.id_documento FROM dual_documentos d
+           JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+          WHERE d.id_reserva = r.id_reserva AND td.nombre = 'ANEXO_H'
+          ORDER BY d.id_documento DESC LIMIT 1) AS id_documento_reserva,
         (SELECT ev.nombre FROM dual_documentos d
-          JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-          WHERE d.id_reserva = r.id_reserva LIMIT 1) AS estado_documento
+           JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+           JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+          WHERE d.id_reserva = r.id_reserva AND td.nombre = 'ANEXO_H'
+          ORDER BY d.id_documento DESC LIMIT 1) AS estado_documento
      FROM dual_reservas r
      JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
      LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
@@ -272,16 +276,15 @@ exports.getMisReservas = async function (req, res) {
         a.tieneCoche,
         esp.codigo AS codigo_especialidad,
         esp.nombre AS especialidad,
-        (SELECT id_documento FROM dual_documentos d
-          WHERE d.id_reserva = r.id_reserva
-            AND d.id_tipo_documento = (
-              SELECT id_tipo_documento FROM dual_tipos_documento WHERE nombre = 'ANEXO_H' LIMIT 1
-            )
-          LIMIT 1) AS id_documento_reserva,
+        (SELECT d.id_documento FROM dual_documentos d
+           JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+          WHERE d.id_reserva = r.id_reserva AND td.nombre = 'ANEXO_H'
+          ORDER BY d.id_documento DESC LIMIT 1) AS id_documento_reserva,
         (SELECT ev.nombre FROM dual_documentos d
-          JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-          WHERE d.id_reserva = r.id_reserva
-          LIMIT 1) AS estado_documento
+           JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+           JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+          WHERE d.id_reserva = r.id_reserva AND td.nombre = 'ANEXO_H'
+          ORDER BY d.id_documento DESC LIMIT 1) AS estado_documento
      FROM dual_reservas r
      JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
      LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato

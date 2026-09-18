@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
 import ReservaDocViewer from "./ReservaDocViewer";
@@ -138,6 +138,18 @@ const FilaReserva = ({ r, onVerDoc, onCancel }) => {
 const ReservasAdmin = ({ reservations, onReservationUpdate, onAdminCancel }) => {
   const [viewingDoc, setViewingDoc] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
+
+  useEffect(() => {
+    if (!viewingDoc) return;
+    const updated = (reservations || []).find((r) => r.id_reserva === viewingDoc.id_reserva);
+    if (!updated) return;
+    if (
+      updated.estado_documento !== viewingDoc.estado_documento ||
+      updated.estado_reserva !== viewingDoc.estado_reserva
+    ) {
+      setViewingDoc(updated);
+    }
+  }, [reservations, viewingDoc]);
 
   if (!reservations || reservations.length === 0) {
     return (

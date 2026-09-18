@@ -39,7 +39,8 @@ router.post(
   asyncHandler(svc.uploadReserva)
 );
 
-// Download document blob (authenticated)
+// Download document blob (authenticated, role-scoped)
+router.get('/documentos/empresa', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.getEmpresaDocumentos));
 router.get('/documentos/:id/descargar', requireAuth, asyncHandler(svc.descargar));
 
 // Validate / reject (admin / coordinador only)

@@ -14,7 +14,7 @@ const Documentos = ({ r, user, onGetDoc }) => {
   const DocBtn = ({ label, id, tipo }) =>
     id ? (
       <button
-        onClick={() => onGetDoc(id, tipo, r.nombre)}
+        onClick={() => onGetDoc(id, tipo, r.nombre, r.id_solicitud_alumno)}
         className="btn btn-secondary btn-sm flex w-full items-center justify-center gap-1 sm:w-auto"
       >
         {label}
