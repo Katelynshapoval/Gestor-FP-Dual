@@ -4,6 +4,7 @@ import { useUser } from "../../context/UserContext";
 import { getJSON } from "../../utils/api.js";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import StatusBadge from "../../components/ui/StatusBadge.jsx";
+import { isCancelledReserva, isConfirmedReserva, isPendingReserva } from "../../utils/reservaEstados.js";
 import "../../styles/forms.css";
 
 const ReadField = ({ label, value }) => (
@@ -18,18 +19,6 @@ const ESTADO_SOLICITUD = {
   VALIDADO: { label: "Solicitud aprobada para Dual", variant: "success" },
   RECHAZADO: { label: "Solicitud no aprobada", variant: "danger" },
 };
-
-function isPending(estado) {
-  return estado === "PENDIENTE" || estado === "RESERVADA";
-}
-
-function isConfirmed(estado) {
-  return estado === "CONFIRMADO" || estado === "CONFIRMADA";
-}
-
-function isCancelled(estado) {
-  return estado === "CANCELADO" || estado === "CANCELADA";
-}
 
 function formatDate(value) {
   if (!value) return "—";
@@ -77,9 +66,9 @@ function StudentMain() {
     variant: "neutral",
   };
 
-  const confirmed = reservas.filter((r) => isConfirmed(r.estado_reserva));
-  const pending = reservas.filter((r) => isPending(r.estado_reserva));
-  const cancelled = reservas.filter((r) => isCancelled(r.estado_reserva));
+  const confirmed = reservas.filter((r) => isConfirmedReserva(r.estado_reserva));
+  const pending = reservas.filter((r) => isPendingReserva(r.estado_reserva));
+  const cancelled = reservas.filter((r) => isCancelledReserva(r.estado_reserva));
   const hasDefinitive = confirmed.length > 0;
 
   return (

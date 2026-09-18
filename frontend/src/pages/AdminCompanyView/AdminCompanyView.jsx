@@ -152,6 +152,16 @@ const AdminCompanyView = () => {
         <ReservasAdmin
           reservations={allReservations}
           onReservationUpdate={() => getJSON("/reservas").then(setAllReservations)}
+          onAdminCancel={async (idReserva, motivo) => {
+            try {
+              await postJSON(`/reservas/${idReserva}/cancelar-admin`, { motivo });
+              const data = await getJSON("/reservas");
+              setAllReservations(Array.isArray(data) ? data : []);
+            } catch (err) {
+              alert(err.message || "Error al cancelar la reserva.");
+              throw err;
+            }
+          }}
         />
       )}
 

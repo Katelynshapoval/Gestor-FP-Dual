@@ -20,11 +20,23 @@ router.get('/reservas/empresa', requireAuth, requireRole('EMPRESA'), asyncHandle
 // Alumno: own reservations
 router.get('/reservas/alumno', requireAuth, requireRole('ALUMNO'), asyncHandler(svc.getReservasAlumno));
 
+// Admin / Coordinador: eligible company offers for a student
+router.get('/reservas/ofertas-elegibles', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getOfertasElegibles));
+
 // Empresa: reserve a student
 router.post('/reservas', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.reservar));
 
-// Empresa: cancel own reservation (motivo required)
+// Admin / Coordinador: reserve a student for a company offer
+router.post('/reservas/admin', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.reservarAdmin));
+
+// Empresa: cancel own pending reservation (motivo required)
 router.post('/reservas/:id/cancelar', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.cancelar));
+
+// Admin / Coordinador: cancel pending or confirmed reservation
+router.post('/reservas/:id/cancelar-admin', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.cancelarAdmin));
+
+// Admin / Coordinador: atomic reassignment to another eligible offer
+router.post('/reservas/:id/reasignar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.reasignar));
 
 // Admin / Coordinador: confirm reservation
 router.post('/reservas/:id/confirmar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.confirmar));

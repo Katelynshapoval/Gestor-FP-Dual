@@ -4,11 +4,12 @@ import {
   IoIosCloseCircleOutline,
 } from "react-icons/io";
 import { sectionLabelClass } from "../../../../components/ui/cardStyles";
+import { isConfirmedReserva } from "../../../../utils/reservaEstados.js";
 
 // Document section shown in the student card (CV + Anexo 2 + calendar confirmation status)
 const Documentos = ({ r, user, onGetDoc }) => {
   const isEmpresa = user?.rol === "EMPRESA";
-  const calOk = r.reservas?.some((rv) => rv.estado_reserva === "CONFIRMADA");
+  const calOk = r.reservas?.some((rv) => isConfirmedReserva(rv.estado_reserva));
 
   const DocBtn = ({ label, id, tipo }) =>
     id ? (

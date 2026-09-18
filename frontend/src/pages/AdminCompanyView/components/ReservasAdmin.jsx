@@ -2,10 +2,14 @@ import { useState } from "react";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
 import ReservaDocViewer from "./ReservaDocViewer";
+import {
+  isCancelledReserva,
+  isConfirmedReserva,
+  isPendingReserva,
+} from "../../../utils/reservaEstados.js";
 
-// Derives a display label and style from the reservation's document and confirmation state
 function estadoLabel(r) {
-  if (r.estado_reserva === "CONFIRMADA") {
+  if (isConfirmedReserva(r.estado_reserva)) {
     return {
       text: "Asignado definitivamente",
       cls: "bg-green-50 text-green-700 border-green-200",
@@ -33,19 +37,66 @@ function estadoLabel(r) {
   };
 }
 
-// Single reservation row in the admin panel
-const FilaReserva = ({ r, onVerDoc }) => {
+const CancelModal = ({ reserva, onConfirm, onClose }) => {
+  const [motivo, setMotivo] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    if (!motivo.trim()) return;
+    setSubmitting(true);
+    try {
+      await onConfirm(motivo.trim());
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md space-y-4 rounded-xl2 bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-semibold text-gray-900">Cancelar reserva</h3>
+        <p className="text-sm text-gray-500">
+          Indica el motivo de cancelación para <strong>{reserva.alumno}</strong> en{" "}
+          <strong>{reserva.empresa}</strong>.
+        </p>
+        <textarea
+          className="textarea min-h-24 text-sm"
+          rows={3}
+          placeholder="Motivo de cancelación..."
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          maxLength={255}
+          autoFocus
+        />
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="btn btn-secondary btn-sm">
+            Volver
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!motivo.trim() || submitting}
+            className={`btn btn-primary btn-sm shadow-none ${!motivo.trim() || submitting ? "btn-disabled" : ""}`}
+          >
+            {submitting ? "Cancelando..." : "Confirmar cancelación"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FilaReserva = ({ r, onVerDoc, onCancel }) => {
   const { text, cls, Icono } = estadoLabel(r);
+  const canCancel = isPendingReserva(r.estado_reserva) || isConfirmedReserva(r.estado_reserva);
 
   return (
     <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-4 rounded-lg border bg-white px-4 py-3 text-sm">
-      {/* Company */}
       <div>
         <p className="font-medium text-gray-900">{r.empresa}</p>
         <p className="text-xs text-gray-400">{r.email_coordinador}</p>
       </div>
 
-      {/* Student */}
       <div>
         <p className="font-medium text-gray-900">{r.alumno}</p>
         <p className="text-xs text-gray-400">
@@ -53,13 +104,11 @@ const FilaReserva = ({ r, onVerDoc }) => {
         </p>
       </div>
 
-      {/* Status badge */}
       <span className={`flex w-fit items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium ${cls}`}>
         <Icono className="shrink-0 text-sm" />
         {text}
       </span>
 
-      {/* Actions */}
       <div className="flex items-center gap-2">
         {r.id_documento_reserva && (
           <button
@@ -72,14 +121,23 @@ const FilaReserva = ({ r, onVerDoc }) => {
             Ver doc
           </button>
         )}
+        {canCancel && (
+          <button
+            type="button"
+            onClick={() => onCancel(r)}
+            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors duration-150 hover:bg-red-50"
+          >
+            Cancelar
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-// Full admin reservations panel, grouped by action priority
-const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
+const ReservasAdmin = ({ reservations, onReservationUpdate, onAdminCancel }) => {
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   if (!reservations || reservations.length === 0) {
     return (
@@ -89,19 +147,14 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
     );
   }
 
-  // Group by status so reservations that need action appear first
   const conDocPendiente = reservations.filter(
     (r) => r.id_documento_reserva && r.estado_documento === "PENDIENTE"
   );
   const sinDoc = reservations.filter(
-    (r) => !r.id_documento_reserva && r.estado_reserva !== "CANCELADA" && r.estado_reserva !== "CONFIRMADA"
+    (r) => !r.id_documento_reserva && isPendingReserva(r.estado_reserva)
   );
-  const definitivas = reservations.filter(
-    (r) => r.estado_reserva === "CONFIRMADA"
-  );
-  const canceladas = reservations.filter(
-    (r) => r.estado_reserva === "CANCELADA"
-  );
+  const definitivas = reservations.filter((r) => isConfirmedReserva(r.estado_reserva));
+  const canceladas = reservations.filter((r) => isCancelledReserva(r.estado_reserva));
 
   const Grupo = ({ titulo, items }) =>
     items.length === 0 ? null : (
@@ -114,6 +167,7 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
             key={r.id_reserva}
             r={r}
             onVerDoc={setViewingDoc}
+            onCancel={setCancelTarget}
           />
         ))}
       </div>
@@ -121,6 +175,17 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
 
   return (
     <>
+      {cancelTarget && (
+        <CancelModal
+          reserva={cancelTarget}
+          onConfirm={async (motivo) => {
+            await onAdminCancel(cancelTarget.id_reserva, motivo);
+            setCancelTarget(null);
+          }}
+          onClose={() => setCancelTarget(null)}
+        />
+      )}
+
       <div className="space-y-6">
         <Grupo titulo="Documentos pendientes de validación" items={conDocPendiente} />
         <Grupo titulo="Pendientes de documento" items={sinDoc} />
@@ -128,7 +193,6 @@ const ReservasAdmin = ({ reservations, onReservationUpdate }) => {
         <Grupo titulo="Canceladas" items={canceladas} />
       </div>
 
-      {/* Document viewer modal */}
       <ReservaDocViewer
         reserva={viewingDoc}
         onClose={() => setViewingDoc(null)}

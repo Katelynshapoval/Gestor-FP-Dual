@@ -25,13 +25,11 @@ import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import Evaluacion from "./student-card/Evaluacion";
 import StatusBadge from "../../../components/ui/StatusBadge";
-
-const isConfirmedReserva = (estado) =>
-  estado === "CONFIRMADA" || estado === "CONFIRMADO";
-const isPendingReserva = (estado) =>
-  estado === "PENDIENTE" || estado === "RESERVADA";
-const isCancelledReserva = (estado) =>
-  estado === "CANCELADA" || estado === "CANCELADO";
+import {
+  isCancelledReserva,
+  isConfirmedReserva,
+  isPendingReserva,
+} from "../../../utils/reservaEstados.js";
 
 const ESTADO_SOLICITUD = {
   PENDIENTE: { label: "En revisión", variant: "warning" },
@@ -219,6 +217,9 @@ const StudentCard = ({
   onGetEvaluation,
   onReserve,
   onCancel,
+  onAdminReserve,
+  onAdminCancel,
+  onAdminReassign,
   user,
 }) => {
   const isEmpresa = user?.rol === "EMPRESA";
@@ -372,7 +373,14 @@ const StudentCard = ({
             )}
 
             {/* Reservations tab — staff only */}
-            {!isEmpresa && innerTab === "reservas" && <EmpresaControl r={r} />}
+            {!isEmpresa && innerTab === "reservas" && (
+              <EmpresaControl
+                r={r}
+                onAdminReserve={onAdminReserve}
+                onAdminCancel={onAdminCancel}
+                onAdminReassign={onAdminReassign}
+              />
+            )}
           </div>
         </div>
       </div>

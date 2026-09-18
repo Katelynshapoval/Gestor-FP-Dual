@@ -110,6 +110,39 @@ export const useLinkStudents = () => {
     }
   };
 
+  const adminReserve = async (idSolicitudAlumno, idSolicitudEmpresaEspecialidad) => {
+    try {
+      await postJSON("/reservas/admin", {
+        id_solicitud_alumno: idSolicitudAlumno,
+        id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
+      });
+      fetchLinkRequests();
+    } catch (err) {
+      alert(err.message || "Error al reservar el alumno.");
+    }
+  };
+
+  const adminCancel = async (idReserva, motivo) => {
+    try {
+      await postJSON(`/reservas/${idReserva}/cancelar-admin`, { motivo });
+      fetchLinkRequests();
+    } catch (err) {
+      alert(err.message || "Error al cancelar la reserva.");
+    }
+  };
+
+  const adminReassign = async (idReserva, idSolicitudEmpresaEspecialidad, motivo) => {
+    try {
+      await postJSON(`/reservas/${idReserva}/reasignar`, {
+        id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
+        motivo,
+      });
+      fetchLinkRequests();
+    } catch (err) {
+      alert(err.message || "Error al reasignar al alumno.");
+    }
+  };
+
   const specialities = [
     ...new Set(linkRequests.filter((r) => r.especialidad).map((r) => r.especialidad)),
   ];
@@ -145,5 +178,8 @@ export const useLinkStudents = () => {
     validateDoc,
     reserveStudent,
     cancelReservation,
+    adminReserve,
+    adminCancel,
+    adminReassign,
   };
 };

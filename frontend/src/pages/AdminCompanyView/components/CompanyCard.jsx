@@ -15,13 +15,13 @@ import {
   signedBadgeClass,
   toggleBtnClass,
 } from "../../../components/ui/cardStyles";
+import { ESTADOS_RESERVA } from "../../../utils/reservaEstados.js";
 
 // Tailwind class map for reservation status badges
 const estadoCls = {
-  CONFIRMADA: "bg-green-500/10 text-green-800",
-  PENDIENTE:  "bg-yellow-400/15 text-yellow-800",
-  RESERVADA:  "bg-yellow-400/15 text-yellow-800",
-  CANCELADA:  "bg-red-500/10 text-red-800",
+  [ESTADOS_RESERVA.CONFIRMADA]: "bg-green-500/10 text-green-800",
+  [ESTADOS_RESERVA.PENDIENTE]: "bg-yellow-400/15 text-yellow-800",
+  [ESTADOS_RESERVA.CANCELADA]: "bg-red-500/10 text-red-800",
 };
 
 // Requested specialities with student count badges

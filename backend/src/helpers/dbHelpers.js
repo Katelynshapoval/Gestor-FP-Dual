@@ -58,12 +58,28 @@ async function callProcedure(conn, name, params) {
   await conn.query(`CALL ${name}(${placeholders})`, params);
 }
 
+// mysql2 CALL payloads are nested result sets: [ [rows], extra, ... ]
+function extractCallRow(results) {
+  const matches = [];
+  const queue = [results];
+  while (queue.length) {
+    const current = queue.shift();
+    if (Array.isArray(current)) {
+      for (const item of current) queue.push(item);
+      continue;
+    }
+    if (current && typeof current === 'object' && current.id_reserva != null) {
+      matches.push(current);
+    }
+  }
+  return matches.length ? matches[matches.length - 1] : null;
+}
+
 // Calls a procedure that intentionally returns one result row (e.g. sp_reservar_alumno)
 async function callProcedureWithResult(conn, name, params) {
   const placeholders = params.map(() => '?').join(', ');
   const [results] = await conn.query(`CALL ${name}(${placeholders})`, params);
-  // results[0] is the first result set (array of rows)
-  return Array.isArray(results[0]) ? results[0][0] : null;
+  return extractCallRow(results);
 }
 
 // Maps MySQL errors to HTTP-friendly objects
@@ -93,6 +109,7 @@ module.exports = {
   getTipoDocumentoId,
   callProcedure,
   callProcedureWithResult,
+  extractCallRow,
   mapSqlError,
   sendSqlError,
 };

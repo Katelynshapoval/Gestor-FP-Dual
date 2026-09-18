@@ -27,6 +27,9 @@ const LinkStudents = () => {
     validateDoc,
     reserveStudent,
     cancelReservation,
+    adminReserve,
+    adminCancel,
+    adminReassign,
   } = useLinkStudents();
 
   return (
@@ -74,6 +77,9 @@ const LinkStudents = () => {
               onGetEvaluation={(id) => navigate(`/evaluate/${ofuscarId(id)}`)}
               onReserve={reserveStudent}
               onCancel={cancelReservation}
+              onAdminReserve={adminReserve}
+              onAdminCancel={adminCancel}
+              onAdminReassign={adminReassign}
               user={user}
             />
           ))}

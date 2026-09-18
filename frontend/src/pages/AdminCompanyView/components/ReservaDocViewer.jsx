@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getBlob, postJSON } from "../../../utils/api.js";
+import { isCancelledReserva } from "../../../utils/reservaEstados.js";
 
 const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -41,7 +42,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
   const puedeValidar =
     reserva.id_documento_reserva &&
     reserva.estado_documento !== "VALIDADO" &&
-    reserva.estado_reserva !== "CANCELADA";
+    !isCancelledReserva(reserva.estado_reserva);
 
   const handleValidar = async () => {
     setSubmitting(true);

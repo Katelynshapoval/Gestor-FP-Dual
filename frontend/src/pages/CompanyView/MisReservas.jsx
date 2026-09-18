@@ -3,11 +3,12 @@ import { postForm } from "../../utils/api.js";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
 import { RxClock } from "react-icons/rx";
+import { ESTADOS_RESERVA, isCancelledReserva, isPendingReserva } from "../../utils/reservaEstados.js";
 
 const ESTADO_COLOR = {
-  PENDIENTE: "bg-amber-50 text-amber-800 border-amber-200",
-  CONFIRMADA: "bg-green-50 text-green-800 border-green-200",
-  CANCELADA: "bg-red-50 text-red-700 border-red-200",
+  [ESTADOS_RESERVA.PENDIENTE]: "bg-amber-50 text-amber-800 border-amber-200",
+  [ESTADOS_RESERVA.CONFIRMADA]: "bg-green-50 text-green-800 border-green-200",
+  [ESTADOS_RESERVA.CANCELADA]: "bg-red-50 text-red-700 border-red-200",
 };
 
 const DocStatusIcon = ({ estado }) => {
@@ -173,7 +174,7 @@ const MisReservas = ({ reservations, onUpload, onCancel }) => {
         {reservations.map((reserva) => {
           const estadoClass = ESTADO_COLOR[reserva.estado_reserva] || "bg-gray-100 text-gray-600 border-gray-200";
           const docEstado = reserva.estado_documento || null;
-          const isCancelled = reserva.estado_reserva === "CANCELADA";
+          const isCancelled = isCancelledReserva(reserva.estado_reserva);
           const needsUpload = !isCancelled && docEstado !== "VALIDADO";
 
           return (
@@ -212,7 +213,7 @@ const MisReservas = ({ reservations, onUpload, onCancel }) => {
                 <SubirDocReserva idReserva={reserva.id_reserva} onUploaded={onUpload} />
               )}
 
-              {reserva.estado_reserva === "PENDIENTE" && (
+              {isPendingReserva(reserva.estado_reserva) && (
                 <button
                   onClick={() => setCancelModal({ idReserva: reserva.id_reserva, alumno: reserva.alumno || "este alumno" })}
                   className="mt-3 text-xs font-semibold text-red-600 transition-colors duration-150 hover:text-red-800 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
