@@ -23,6 +23,7 @@ router.get('/solicitudes/empresa', requireAuth, requireRole('ADMINISTRADOR', 'CO
 // Detail (admin, coordinador, and the owning empresa)
 router.get('/solicitudes/empresa/:id', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getById));
 router.get('/solicitudes/empresa/:id/especialidades', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getEspecialidades));
+router.put('/solicitudes/empresa/:id/especialidades/:idOferta/cantidad', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.updateCupoEspecialidad));
 router.get('/solicitudes/empresa/:id/documentos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getDocumentos));
 router.get('/solicitudes/empresa/:id/datos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getDatos));
 router.put('/solicitudes/empresa/:id/datos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.putDatos));

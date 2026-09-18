@@ -340,7 +340,17 @@ exports.getEspecialidades = async function (req, res) {
             esp.codigo, esp.nombre,
             CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
             fn_cupos_disponibles(see.id_solicitud_empresa_especialidad) AS plazas_disponibles,
-            fn_reservas_activas(see.id_solicitud_empresa_especialidad) AS plazas_ocupadas
+            fn_reservas_activas(see.id_solicitud_empresa_especialidad) AS plazas_ocupadas,
+            (SELECT COUNT(*)
+               FROM dual_reservas r
+               JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+              WHERE r.id_solicitud_empresa_especialidad = see.id_solicitud_empresa_especialidad
+                AND er.nombre = 'CONFIRMADA') AS plazas_confirmadas,
+            (SELECT COUNT(*)
+               FROM dual_reservas r
+               JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+              WHERE r.id_solicitud_empresa_especialidad = see.id_solicitud_empresa_especialidad
+                AND er.nombre = 'PENDIENTE') AS plazas_pendientes
        FROM dual_solicitud_empresa_especialidades see
        JOIN dual_especialidades esp ON esp.id_especialidad = see.id_especialidad
       WHERE see.id_solicitud_empresa = ?`,
@@ -422,7 +432,7 @@ exports.getTodas = async function (req, res) {
   const idEmpresas = rows.map(r => r.id_empresa);
 
   const [esps] = await pool.query(
-    `SELECT see.id_solicitud_empresa, see.cantidad_alumnos,
+    `SELECT see.id_solicitud_empresa, see.id_solicitud_empresa_especialidad, see.cantidad_alumnos,
             esp.id_especialidad, esp.codigo, esp.nombre,
             CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno
        FROM dual_solicitud_empresa_especialidades see
@@ -453,7 +463,14 @@ exports.getTodas = async function (req, res) {
   const espMap = {};
   esps.forEach(e => {
     if (!espMap[e.id_solicitud_empresa]) espMap[e.id_solicitud_empresa] = [];
-    espMap[e.id_solicitud_empresa].push({ id_especialidad: e.id_especialidad, nombre: e.nombre, codigo: e.codigo, turno: e.turno, cantidad_alumnos: e.cantidad_alumnos });
+    espMap[e.id_solicitud_empresa].push({
+      id_solicitud_empresa_especialidad: e.id_solicitud_empresa_especialidad,
+      id_especialidad: e.id_especialidad,
+      nombre: e.nombre,
+      codigo: e.codigo,
+      turno: e.turno,
+      cantidad_alumnos: e.cantidad_alumnos,
+    });
   });
 
   const transpMap = {};
@@ -921,4 +938,239 @@ exports.rechazarCambio = async function (req, res) {
     [empresaDatos.ESTADOS_CAMBIO.RECHAZADO, req.user.id, motivo, idCambio]
   );
   return res.json({ message: 'Solicitud de cambio rechazada.' });
+};
+
+const ERROR_CUPO_CONFIRMADAS =
+  'No se puede reducir el número de plazas por debajo de los alumnos ya confirmados. Cancela o reasigna primero las reservas confirmadas desde administración.';
+
+async function sendCupoReductionEmail({ email, empresa, especialidad, cantidadAnterior, cantidadNueva, canceladas }) {
+  if (!transporter || !email) {
+    console.warn('Mail not configured. Cupo reduction for', empresa, especialidad, canceladas.map((c) => c.id_reserva));
+    return;
+  }
+  const list = canceladas.map((c) =>
+    `<li>Reserva #${c.id_reserva} — ${c.alumno || 'alumno'} (${c.dni_alumno || 'sin DNI'}) · ${c.especialidad || especialidad}</li>`
+  ).join('');
+  try {
+    await transporter.sendMail({
+      from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Reservas pendientes canceladas por reducción de plazas',
+      html: `
+        <p>Estimado coordinador de <strong>${empresa}</strong>,</p>
+        <p>Se ha reducido el número de plazas de <strong>${especialidad}</strong> de ${cantidadAnterior} a ${cantidadNueva}.</p>
+        <p>Se han cancelado las siguientes reservas pendientes:</p>
+        <ul>${list}</ul>
+        <p>Las reservas confirmadas no se han modificado.</p>
+        <p>Salesianos Zaragoza — Departamento Dual</p>
+      `,
+    });
+  } catch (err) {
+    console.error('Error sending cupo reduction email:', err.message);
+  }
+}
+
+// PUT /solicitudes/empresa/:id/especialidades/:idOferta/cantidad
+exports.updateCupoEspecialidad = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const idOferta = parseInt(req.params.idOferta, 10);
+  const raw = req.body?.cantidad;
+  const cantidad = typeof raw === 'number' ? raw : Number(raw);
+  const confirmarCancelaciones = Boolean(req.body?.confirmar_cancelaciones);
+
+  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(idOferta) || idOferta <= 0) {
+    return res.status(400).json({ error: 'Identificador de oferta no válido.' });
+  }
+  if (!Number.isInteger(cantidad) || cantidad < 0) {
+    return res.status(400).json({ error: 'La cantidad debe ser un entero mayor o igual que 0.' });
+  }
+
+  const { datos, error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
+  if (!datos.convocatoria_activa) {
+    return res.status(400).json({ error: 'Solo se puede modificar el cupo de la convocatoria activa.' });
+  }
+
+  const motivo = req.user.rol === 'EMPRESA'
+    ? 'Cupo reducido por la empresa.'
+    : 'Cupo reducido por administración.';
+
+  const conn = await pool.getConnection();
+  let canceladas = [];
+  let cantidadAnterior;
+  let especialidadNombre;
+  let emailCoordinador;
+  let empresaNombre;
+  try {
+    await conn.beginTransaction();
+
+    const [offers] = await conn.query(
+      `SELECT
+          ee.id_solicitud_empresa_especialidad,
+          ee.cantidad_alumnos,
+          ee.id_especialidad,
+          se.id_solicitud_empresa,
+          se.id_empresa,
+          se.id_coordinador_empresa,
+          c.activa AS convocatoria_activa,
+          emp.empresa,
+          coord.email AS email_coordinador,
+          coord.nombre AS nombre_coordinador,
+          esp.nombre AS especialidad
+         FROM dual_solicitud_empresa_especialidades ee
+         JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+         JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
+         JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+         JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
+         JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
+        WHERE ee.id_solicitud_empresa_especialidad = ?
+          AND ee.id_solicitud_empresa = ?
+        FOR UPDATE`,
+      [idOferta, id]
+    );
+    const offer = offers[0];
+    if (!offer) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'La especialidad no pertenece a esta solicitud.' });
+    }
+
+    const [reservas] = await conn.query(
+      `SELECT r.id_reserva, er.nombre AS estado_reserva, a.nombre AS alumno, a.dni AS dni_alumno
+         FROM dual_reservas r
+         JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+         JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+         JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+        WHERE r.id_solicitud_empresa_especialidad = ?
+          AND er.nombre IN ('PENDIENTE', 'CONFIRMADA')
+        ORDER BY r.id_reserva DESC
+        FOR UPDATE`,
+      [idOferta]
+    );
+
+    const confirmadas = reservas.filter((r) => r.estado_reserva === 'CONFIRMADA');
+    const pendientes = reservas.filter((r) => r.estado_reserva === 'PENDIENTE');
+    const activas = confirmadas.length + pendientes.length;
+    cantidadAnterior = Number(offer.cantidad_alumnos);
+    especialidadNombre = offer.especialidad;
+    emailCoordinador = offer.email_coordinador;
+    empresaNombre = offer.empresa;
+
+    if (cantidad === cantidadAnterior) {
+      await conn.rollback();
+      return res.json({
+        message: 'La cantidad no ha cambiado.',
+        cantidad,
+        plazas_ocupadas: activas,
+        plazas_confirmadas: confirmadas.length,
+        plazas_pendientes: pendientes.length,
+        plazas_disponibles: Math.max(0, cantidad - activas),
+        canceladas: [],
+      });
+    }
+
+    if (cantidad < confirmadas.length) {
+      await conn.rollback();
+      return res.status(400).json({
+        error: ERROR_CUPO_CONFIRMADAS,
+        plazas_confirmadas: confirmadas.length,
+        plazas_pendientes: pendientes.length,
+        plazas_ocupadas: activas,
+      });
+    }
+
+    if (cantidad < activas) {
+      const nCancelar = activas - cantidad;
+      const aviso = `Al reducir de ${cantidadAnterior} a ${cantidad} plazas se cancelarán ${nCancelar} reserva${nCancelar !== 1 ? 's' : ''} pendiente${nCancelar !== 1 ? 's' : ''}. Las reservas confirmadas no se modificarán.`;
+      if (!confirmarCancelaciones) {
+        await conn.rollback();
+        return res.status(409).json({
+          error: aviso,
+          requires_confirm: true,
+          cancelar_pendientes: nCancelar,
+          cantidad_actual: cantidadAnterior,
+          cantidad_nueva: cantidad,
+          plazas_confirmadas: confirmadas.length,
+          plazas_pendientes: pendientes.length,
+        });
+      }
+
+      const toCancel = pendientes.slice(0, nCancelar);
+      for (const row of toCancel) {
+        const [upd] = await conn.query(
+          `UPDATE dual_reservas
+              SET id_estado_reserva = (SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre = 'CANCELADA' LIMIT 1),
+                  id_tipo_contrato = NULL,
+                  motivo = ?
+            WHERE id_reserva = ?
+              AND id_estado_reserva = (SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre = 'PENDIENTE' LIMIT 1)`,
+          [motivo, row.id_reserva]
+        );
+        if (!upd.affectedRows) {
+          await conn.rollback();
+          return res.status(409).json({
+            error: 'El estado de las reservas ha cambiado. Vuelve a intentar la reducción de plazas.',
+          });
+        }
+        canceladas.push({
+          id_reserva: row.id_reserva,
+          alumno: row.alumno,
+          dni_alumno: row.dni_alumno,
+          especialidad: offer.especialidad,
+          motivo,
+        });
+      }
+    }
+
+    await conn.query(
+      `UPDATE dual_solicitud_empresa_especialidades
+          SET cantidad_alumnos = ?
+        WHERE id_solicitud_empresa_especialidad = ?`,
+      [cantidad, idOferta]
+    );
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+
+  if (canceladas.length) {
+    await sendCupoReductionEmail({
+      email: emailCoordinador,
+      empresa: empresaNombre,
+      especialidad: especialidadNombre,
+      cantidadAnterior,
+      cantidadNueva: cantidad,
+      canceladas,
+    });
+  }
+
+  const [ocup] = await pool.query(
+    `SELECT
+        fn_reservas_activas(?) AS plazas_ocupadas,
+        fn_cupos_disponibles(?) AS plazas_disponibles,
+        (SELECT COUNT(*) FROM dual_reservas r
+           JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+          WHERE r.id_solicitud_empresa_especialidad = ? AND er.nombre = 'CONFIRMADA') AS plazas_confirmadas,
+        (SELECT COUNT(*) FROM dual_reservas r
+           JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+          WHERE r.id_solicitud_empresa_especialidad = ? AND er.nombre = 'PENDIENTE') AS plazas_pendientes`,
+    [idOferta, idOferta, idOferta, idOferta]
+  );
+
+  const stats = ocup[0] || {};
+  return res.json({
+    message: canceladas.length
+      ? `Plazas actualizadas. Se han cancelado ${canceladas.length} reserva${canceladas.length !== 1 ? 's' : ''} pendiente${canceladas.length !== 1 ? 's' : ''}.`
+      : 'Número de plazas actualizado.',
+    cantidad,
+    cantidad_anterior: cantidadAnterior,
+    plazas_ocupadas: Number(stats.plazas_ocupadas) || 0,
+    plazas_disponibles: Number(stats.plazas_disponibles) || 0,
+    plazas_confirmadas: Number(stats.plazas_confirmadas) || 0,
+    plazas_pendientes: Number(stats.plazas_pendientes) || 0,
+    canceladas,
+  });
 };

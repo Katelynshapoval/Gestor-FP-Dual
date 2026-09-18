@@ -8,6 +8,7 @@ import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import CompanyEditForm, { applyProposed, datosToForm } from "./CompanyEditForm.jsx";
 import CambioDiff from "./CambioDiff.jsx";
+import EspecialidadCuposEditor from "./EspecialidadCuposEditor.jsx";
 import "../../styles/forms.css";
 
 // Read-only field styled to match the rest of the form layout
@@ -19,7 +20,7 @@ const ReadField = ({ label, value }) => (
 );
 
 // Company data panel with optional re-apply form
-const MisDatos = ({ solicitud, specialities, transports, cambio, onReapplySuccess, onCambioChange }) => {
+const MisDatos = ({ solicitud, specialities, transports, cambio, onReapplySuccess, onCambioChange, onCupoChange }) => {
   const [showReapply, setShowReapply] = useState(false);
   const [reapplyDone, setReapplyDone] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -168,18 +169,11 @@ const MisDatos = ({ solicitud, specialities, transports, cambio, onReapplySucces
       {/* Requested specialities and student counts */}
       <div className="form-card">
         <p className="form-section-title">Ciclo(s) de Grado solicitados</p>
-        {esps.length > 0 ? (
-          <div className="space-y-2">
-            {esps.map((e, i) => (
-              <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2 border">
-                <span className="text-sm font-medium">{e.nombre || `ID ${e.id_especialidad}`}</span>
-                <span className="text-sm text-gray-500">{e.cantidad_alumnos} alumno{e.cantidad_alumnos !== 1 ? "s" : ""}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500 text-sm">Sin datos</p>
-        )}
+        <EspecialidadCuposEditor
+          solicitudId={solicitud.id_solicitud_empresa}
+          especialidades={esps}
+          onUpdated={onCupoChange}
+        />
       </div>
 
       {/* Transport options */}
@@ -425,6 +419,10 @@ const CompanyView = () => {
           cambio={cambio}
           onReapplySuccess={fetchSolicitud}
           onCambioChange={fetchSolicitud}
+          onCupoChange={async () => {
+            await fetchSolicitud();
+            await fetchReservations();
+          }}
         />
       ) : (
         <div className="form-card">

@@ -17,6 +17,8 @@ import {
 } from "../../../components/ui/cardStyles";
 import { ESTADOS_RESERVA } from "../../../utils/reservaEstados.js";
 import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
+import { putJSON } from "../../../utils/api.js";
+import { warnReducePending } from "../../CompanyView/EspecialidadCuposEditor.jsx";
 
 // Tailwind class map for reservation status badges
 const estadoCls = {
@@ -26,22 +28,90 @@ const estadoCls = {
 };
 
 // Requested specialities with student count badges
-const EspecialidadList = ({ especialidades }) => {
+const EspecialidadList = ({ especialidades, solicitudId, canEdit, onUpdated }) => {
+  const [drafts, setDrafts] = useState({});
+  const [savingId, setSavingId] = useState(null);
+
   if (!especialidades || especialidades.length === 0)
     return <p className="text-sm text-gray-500">Sin datos</p>;
+
+  const save = async (e) => {
+    const idOferta = e.id_solicitud_empresa_especialidad;
+    const cantidad = Number(drafts[idOferta] ?? e.cantidad_alumnos);
+    if (!Number.isInteger(cantidad) || cantidad < 0) {
+      alert("La cantidad debe ser un entero mayor o igual que 0.");
+      return;
+    }
+    const send = async (confirmar) => {
+      setSavingId(idOferta);
+      try {
+        const data = await putJSON(
+          `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
+          { cantidad, confirmar_cancelaciones: confirmar }
+        );
+        if (data.canceladas?.length) {
+          alert(data.message);
+        }
+        setDrafts((prev) => {
+          const next = { ...prev };
+          delete next[idOferta];
+          return next;
+        });
+        if (onUpdated) onUpdated();
+      } catch (err) {
+        if (err.status === 409 && err.body?.requires_confirm) {
+          if (window.confirm(err.body.error || warnReducePending(e.cantidad_alumnos, cantidad, err.body.cancelar_pendientes))) {
+            await send(true);
+          }
+        } else {
+          alert(err.message || "Error al actualizar las plazas.");
+        }
+      } finally {
+        setSavingId(null);
+      }
+    };
+    await send(false);
+  };
+
   return (
     <div className="space-y-1.5">
-      {especialidades.map((e) => (
-        <div
-          key={e.id_especialidad}
-          className="flex items-center justify-between gap-2 rounded-md bg-surface-50/60 px-3 py-1.5"
-        >
-          <span className="text-sm">{e.nombre || `ID ${e.id_especialidad}`}</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-black/5 shrink-0">
-            {e.cantidad_alumnos}
-          </span>
-        </div>
-      ))}
+      {especialidades.map((e) => {
+        const idOferta = e.id_solicitud_empresa_especialidad;
+        const current = drafts[idOferta] ?? String(e.cantidad_alumnos);
+        return (
+          <div
+            key={idOferta || e.id_especialidad}
+            className="flex items-center justify-between gap-2 rounded-md bg-surface-50/60 px-3 py-1.5"
+          >
+            <span className="text-sm">{e.nombre || `ID ${e.id_especialidad}`}</span>
+            {canEdit && idOferta ? (
+              <span className="flex items-center gap-1 shrink-0">
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="input w-16 py-0.5 text-xs"
+                  value={current}
+                  disabled={savingId === idOferta}
+                  onChange={(ev) => setDrafts((prev) => ({ ...prev, [idOferta]: ev.target.value }))}
+                />
+                <button
+                  type="button"
+                  className="text-xs px-2 py-0.5 rounded border border-gray-300 bg-white"
+                  disabled={savingId === idOferta || Number(current) === Number(e.cantidad_alumnos)}
+                  onClick={() => save(e)}
+                >
+                  {savingId === idOferta ? "…" : "OK"}
+                </button>
+              </span>
+            ) : (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-black/5 shrink-0">
+                {e.cantidad_alumnos}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -260,7 +330,12 @@ const CompanyCard = ({
                 <div className="space-y-5">
                   <div>
                     <p className={sectionLabelClass}>Especialidades solicitadas</p>
-                    <EspecialidadList especialidades={empresa.especialidades} />
+                    <EspecialidadList
+                      especialidades={empresa.especialidades}
+                      solicitudId={id}
+                      canEdit={!!empresa.convocatoria_activa}
+                      onUpdated={onUpdated}
+                    />
                   </div>
 
                   {descripcion && (

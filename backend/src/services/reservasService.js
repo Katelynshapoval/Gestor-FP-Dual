@@ -183,6 +183,12 @@ exports.getCuposEmpresa = async function (req, res) {
         COUNT(CASE WHEN r.id_estado_reserva IN (
           SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre IN (?, ?)
         ) THEN 1 END) AS plazas_ocupadas,
+        COUNT(CASE WHEN r.id_estado_reserva IN (
+          SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre = ?
+        ) THEN 1 END) AS plazas_confirmadas,
+        COUNT(CASE WHEN r.id_estado_reserva IN (
+          SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre = ?
+        ) THEN 1 END) AS plazas_pendientes,
         GREATEST(0, ee.cantidad_alumnos - COUNT(CASE WHEN r.id_estado_reserva IN (
           SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre IN (?, ?)
         ) THEN 1 END)) AS plazas_disponibles
@@ -197,7 +203,7 @@ exports.getCuposEmpresa = async function (req, res) {
             SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'VALIDADO' LIMIT 1
           )
     GROUP BY ee.id_solicitud_empresa_especialidad`,
-    [ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, idEmpresa]
+    [ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, ESTADOS_RESERVA.CONFIRMADA, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, idEmpresa]
   );
 
   return res.json(rows);

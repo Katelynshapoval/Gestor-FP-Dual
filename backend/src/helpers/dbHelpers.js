@@ -119,6 +119,9 @@ function mapSqlError(err) {
   if (err.code === 'ER_DUP_ENTRY') {
     return { status: 409, message: 'Ya existe un registro con esos datos.' };
   }
+  if (err.code === 'ER_CHECK_CONSTRAINT_VIOLATED') {
+    return { status: 400, message: err.message };
+  }
   console.error('DB error:', err);
   return { status: 500, message: 'Error interno del servidor.' };
 }
