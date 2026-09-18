@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
-const { getActiveConvocatoria, sendSqlError, normalizeCif } = require('../helpers/dbHelpers');
+const { getActiveConvocatoria, sendSqlError, normalizeCif, getCompanyIdFromUser } = require('../helpers/dbHelpers');
+const empresaDatos = require('./empresaDatos');
 
 const EMPRESA_YA_REGISTRADA =
   'Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.';
@@ -306,28 +307,16 @@ exports.getMia = async function (req, res) {
 // GET /solicitudes/empresa/:id — detail
 exports.getById = async function (req, res) {
   const id = parseInt(req.params.id, 10);
-  const [rows] = await pool.query(
-    `SELECT se.*, ev.nombre AS estado_validacion, emp.empresa, emp.cif, c.nombre AS convocatoria,
-            rep.nombre AS representante_nombre, rep.email AS representante_email, rep.telefono AS representante_telefono,
-            coord.nombre AS coordinador_nombre, coord.email AS coordinador_email, coord.telefono AS coordinador_telefono,
-            dl.domicilio AS domicilio_legal, dl.cp AS cp_legal, dl.provincia AS provincia_legal,
-            dl.localidad AS localidad_legal,
-            dt.domicilio AS domicilio_trabajo, dt.cp AS cp_trabajo, dt.provincia AS provincia_trabajo,
-            dt.localidad AS localidad_trabajo
-       FROM dual_solicitudes_empresa se
-       JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
-       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = se.id_estado_validacion
-       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
-       JOIN ge_contactos rep ON rep.idcontacto = se.id_representante_legal
-       JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
-       JOIN ge_domicilios dl ON dl.iddomicilio = se.id_domicilio_legal
-       JOIN ge_domicilios dt ON dt.iddomicilio = se.id_domicilio_trabajo
-      WHERE se.id_solicitud_empresa = ?`,
-    [id]
-  );
-  if (!rows[0]) return res.status(404).json({ error: 'Solicitud no encontrada.' });
+  const datos = await empresaDatos.loadEmpresaDatosRead(pool, id);
+  if (!datos) return res.status(404).json({ error: 'Solicitud no encontrada.' });
 
-  // Especialidades
+  if (req.user.rol === 'EMPRESA') {
+    const idEmpresa = await getCompanyIdFromUser(req.user.id);
+    if (!idEmpresa || idEmpresa !== datos.id_empresa) {
+      return res.status(403).json({ error: 'No tiene permiso para acceder a esta solicitud.' });
+    }
+  }
+
   const [esps] = await pool.query(
     `SELECT see.id_solicitud_empresa_especialidad, see.id_especialidad, see.cantidad_alumnos,
             esp.codigo, esp.nombre,
@@ -337,14 +326,15 @@ exports.getById = async function (req, res) {
       WHERE see.id_solicitud_empresa = ?`,
     [id]
   );
-  rows[0].especialidades = esps;
-
-  return res.json(rows[0]);
+  datos.especialidades = esps;
+  return res.json(datos);
 };
 
 // GET /solicitudes/empresa/:id/especialidades — speciality list + quotas
 exports.getEspecialidades = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+  const { error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
   const [rows] = await pool.query(
     `SELECT see.id_solicitud_empresa_especialidad, see.id_especialidad, see.cantidad_alumnos,
             esp.codigo, esp.nombre,
@@ -399,6 +389,7 @@ exports.getTodas = async function (req, res) {
         emp.cif,
         emp.telefonoEmpresa AS telEmpresa,
         c.nombre AS convocatoria,
+        c.activa AS convocatoria_activa,
         coord.nombre AS nombreCoordinador,
         coord.email AS emailCoordinador,
         coord.telefono AS telefonoCoordinador,
@@ -471,6 +462,26 @@ exports.getTodas = async function (req, res) {
     transpMap[t.id_empresa].push({ id_transporte: t.id_transporte, nombre: t.nombre });
   });
 
+  let cambiosPend = [];
+  try {
+    const [rowsC] = await pool.query(
+      `SELECT id_solicitud_empresa, id_cambio, fecha_solicitud
+         FROM dual_empresa_cambios
+        WHERE estado = 'PENDIENTE'
+          AND id_solicitud_empresa IN (?)`,
+      [ids]
+    );
+    cambiosPend = rowsC;
+  } catch (err) {
+    if (err.code !== 'ER_NO_SUCH_TABLE') throw err;
+  }
+  const cambioMap = {};
+  cambiosPend.forEach((c) => {
+    cambioMap[c.id_solicitud_empresa] = {
+      id_cambio: c.id_cambio,
+      fecha_solicitud: c.fecha_solicitud,
+    };
+  });
   const convenioMap = {};
   convenios.forEach(d => {
     if (!convenioMap[d.id_solicitud_empresa]) {
@@ -486,6 +497,8 @@ exports.getTodas = async function (req, res) {
     return {
       ...r,
       // Aliased for frontend compatibility
+      empresa: r.razonSocial,
+      convocatoria_activa: Number(r.convocatoria_activa) === 1,
       idAuxEmpresa: r.id_solicitud_empresa,
       fechaPeticion: r.fecha_solicitud,
       especialidades: espMap[r.id_solicitud_empresa] || [],
@@ -493,6 +506,9 @@ exports.getTodas = async function (req, res) {
       tieneConvenio: conv ? 1 : 0,
       convenio_validado: conv?.validado ? 1 : 0,
       id_documento_convenio: conv?.id_documento ?? null,
+      cambio_pendiente: cambioMap[r.id_solicitud_empresa] ? 1 : 0,
+      id_cambio_pendiente: cambioMap[r.id_solicitud_empresa]?.id_cambio ?? null,
+      fecha_cambio_pendiente: cambioMap[r.id_solicitud_empresa]?.fecha_solicitud ?? null,
     };
   });
 
@@ -624,6 +640,8 @@ exports.reapply = async function (req, res) {
 // GET /solicitudes/empresa/:id/documentos
 exports.getDocumentos = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+  const { error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
   const [rows] = await pool.query(
     `SELECT d.id_documento, td.nombre AS tipo_documento, ev.nombre AS estado_validacion, d.motivo
        FROM dual_documentos d
@@ -634,4 +652,273 @@ exports.getDocumentos = async function (req, res) {
     [id]
   );
   return res.json(rows);
+};
+
+async function resolveSolicitudForUser(req, idSolicitud) {
+  const datos = await empresaDatos.loadEmpresaDatosRead(pool, idSolicitud);
+  if (!datos) return { error: { status: 404, message: 'Solicitud no encontrada.' } };
+  if (req.user.rol === 'EMPRESA') {
+    const idEmpresa = await getCompanyIdFromUser(req.user.id);
+    if (!idEmpresa || idEmpresa !== datos.id_empresa) {
+      return { error: { status: 403, message: 'No tiene permiso para acceder a esta solicitud.' } };
+    }
+  }
+  return { datos };
+}
+
+async function transportLabelMap(conn) {
+  const [rows] = await conn.query(
+    'SELECT id_transporte, nombre, nombre_mostrar FROM dual_transportes'
+  );
+  const map = {};
+  rows.forEach((r) => {
+    map[r.id_transporte] = r.nombre_mostrar || r.nombre;
+  });
+  return map;
+}
+
+function presentCambio(row, actualSnap, labels) {
+  const payload = empresaDatos.parsePayload(row.payload) || {};
+  const proposed = payload.proposed || {};
+  return {
+    id_cambio: row.id_cambio,
+    id_solicitud_empresa: row.id_solicitud_empresa,
+    estado: row.estado,
+    fecha_solicitud: row.fecha_solicitud,
+    fecha_resolucion: row.fecha_resolucion,
+    motivo: row.motivo,
+    proposed,
+    snapshot: payload.snapshot || {},
+    diff: empresaDatos.buildDiff(actualSnap, proposed, labels),
+  };
+}
+
+exports.getDatos = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const { datos, error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
+  return res.json(datos);
+};
+
+exports.putDatos = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const { datos, error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
+  if (!datos.convocatoria_activa) {
+    return res.status(400).json({ error: 'Solo se pueden editar los datos de la convocatoria activa.' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const snapshot = empresaDatos.pickSnapshot(datos);
+    const proposedAll = empresaDatos.sanitizeProposed(req.body, { allowCif: true });
+    const proposed = empresaDatos.diffProposed(snapshot, proposedAll);
+    if (!Object.keys(proposed).length) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'No hay cambios respecto a los datos actuales.' });
+    }
+    await empresaDatos.applyEmpresaDatos(conn, datos, proposed, { allowCif: true });
+    await conn.commit();
+    const updated = await empresaDatos.loadEmpresaDatosRead(pool, id);
+    return res.json({ message: 'Datos de la empresa actualizados.', datos: updated });
+  } catch (err) {
+    await conn.rollback();
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+};
+
+exports.getCambio = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const { datos, error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
+
+  const [pend] = await pool.query(
+    `SELECT * FROM dual_empresa_cambios
+      WHERE id_solicitud_empresa = ? AND estado = ?
+      ORDER BY id_cambio DESC LIMIT 1`,
+    [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE]
+  );
+  const [ultimo] = await pool.query(
+    `SELECT * FROM dual_empresa_cambios
+      WHERE id_solicitud_empresa = ? AND estado <> ?
+      ORDER BY COALESCE(fecha_resolucion, fecha_solicitud) DESC, id_cambio DESC
+      LIMIT 1`,
+    [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE]
+  );
+
+  const labels = await transportLabelMap(pool);
+  const actualSnap = empresaDatos.pickSnapshot(datos);
+  return res.json({
+    pending: pend[0] ? presentCambio(pend[0], actualSnap, labels) : null,
+    ultimo: ultimo[0] ? presentCambio(ultimo[0], actualSnap, labels) : null,
+  });
+};
+
+exports.upsertCambio = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const { datos, error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
+  if (!datos.convocatoria_activa) {
+    return res.status(400).json({ error: 'Solo se pueden solicitar cambios sobre la convocatoria activa.' });
+  }
+  if ('cif' in (req.body || {})) {
+    return res.status(403).json({ error: 'El CIF no se puede modificar desde la empresa.' });
+  }
+
+  const proposedAll = empresaDatos.sanitizeProposed(req.body, { allowCif: false });
+  const snapshot = empresaDatos.pickSnapshot(datos);
+  const proposed = empresaDatos.diffProposed(snapshot, proposedAll);
+  if (!Object.keys(proposed).length) {
+    return res.status(400).json({ error: 'No hay cambios respecto a los datos actuales.' });
+  }
+  const invalid = empresaDatos.validateMerged({ ...snapshot, ...proposed }, { allowCif: false });
+  if (invalid) {
+    return res.status(400).json({ error: invalid });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [pend] = await conn.query(
+      `SELECT id_cambio FROM dual_empresa_cambios
+        WHERE id_solicitud_empresa = ? AND estado = ?
+        FOR UPDATE`,
+      [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE]
+    );
+
+    const payload = JSON.stringify({ proposed, snapshot });
+    let idCambio;
+    if (pend[0]) {
+      await conn.query(
+        `UPDATE dual_empresa_cambios
+            SET payload = ?, fecha_solicitud = NOW(), motivo = NULL
+          WHERE id_cambio = ?`,
+        [payload, pend[0].id_cambio]
+      );
+      idCambio = pend[0].id_cambio;
+    } else {
+      const [ins] = await conn.query(
+        `INSERT INTO dual_empresa_cambios
+           (id_solicitud_empresa, id_empresa, id_usuario_solicitante, payload, estado)
+         VALUES (?, ?, ?, ?, ?)`,
+        [id, datos.id_empresa, req.user.id, payload, empresaDatos.ESTADOS_CAMBIO.PENDIENTE]
+      );
+      idCambio = ins.insertId;
+    }
+    await conn.commit();
+
+    const labels = await transportLabelMap(pool);
+    const [row] = await pool.query('SELECT * FROM dual_empresa_cambios WHERE id_cambio = ?', [idCambio]);
+    return res.status(pend[0] ? 200 : 201).json({
+      message: 'Cambios enviados para revisión',
+      cambio: presentCambio(row[0], snapshot, labels),
+    });
+  } catch (err) {
+    await conn.rollback();
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+};
+
+exports.aprobarCambio = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const idCambio = parseInt(req.params.idCambio, 10);
+  const confirmarConflicto = Boolean(req.body?.confirmar_conflicto);
+
+  const { error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.query(
+      `SELECT * FROM dual_empresa_cambios
+        WHERE id_cambio = ? AND id_solicitud_empresa = ?
+        FOR UPDATE`,
+      [idCambio, id]
+    );
+    const cambio = rows[0];
+    if (!cambio) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Solicitud de cambio no encontrada.' });
+    }
+    if (cambio.estado !== empresaDatos.ESTADOS_CAMBIO.PENDIENTE) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'Esta solicitud de cambio ya está resuelta.' });
+    }
+
+    const payload = empresaDatos.parsePayload(cambio.payload) || {};
+    const proposed = payload.proposed || {};
+    const snapshot = payload.snapshot || {};
+    const live = await empresaDatos.loadEmpresaDatos(conn, id);
+    const liveSnap = empresaDatos.pickSnapshot(live);
+    const conflictos = empresaDatos.detectConflicts(snapshot, liveSnap, proposed);
+
+    if (conflictos.length && !confirmarConflicto) {
+      await conn.rollback();
+      const labels = await transportLabelMap(pool);
+      return res.status(409).json({
+        error: 'Los datos actuales han cambiado desde que se envió la solicitud.',
+        conflictos: conflictos.map((c) => ({
+          ...c,
+          label: empresaDatos.FIELD_DEFS[c.field]?.label || c.field,
+        })),
+        diff: empresaDatos.buildDiff(liveSnap, proposed, labels),
+        requires_confirm: true,
+      });
+    }
+
+    await empresaDatos.applyEmpresaDatos(conn, live, proposed, { allowCif: false });
+    await conn.query(
+      `UPDATE dual_empresa_cambios
+          SET estado = ?, fecha_resolucion = NOW(), id_usuario_resolutor = ?, motivo = NULL
+        WHERE id_cambio = ?`,
+      [empresaDatos.ESTADOS_CAMBIO.APROBADO, req.user.id, idCambio]
+    );
+    await conn.commit();
+
+    const updated = await empresaDatos.loadEmpresaDatosRead(pool, id);
+    return res.json({ message: 'Cambios aprobados y aplicados.', datos: updated });
+  } catch (err) {
+    await conn.rollback();
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+};
+
+exports.rechazarCambio = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const idCambio = parseInt(req.params.idCambio, 10);
+  const motivo = String(req.body?.motivo || '').trim();
+  if (!motivo) {
+    return res.status(400).json({ error: 'Debe indicar el motivo del rechazo.' });
+  }
+
+  const { error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
+
+  const [rows] = await pool.query(
+    `SELECT id_cambio, estado FROM dual_empresa_cambios
+      WHERE id_cambio = ? AND id_solicitud_empresa = ?`,
+    [idCambio, id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'Solicitud de cambio no encontrada.' });
+  if (rows[0].estado !== empresaDatos.ESTADOS_CAMBIO.PENDIENTE) {
+    return res.status(400).json({ error: 'Esta solicitud de cambio ya está resuelta.' });
+  }
+
+  await pool.query(
+    `UPDATE dual_empresa_cambios
+        SET estado = ?, fecha_resolucion = NOW(), id_usuario_resolutor = ?, motivo = ?
+      WHERE id_cambio = ?`,
+    [empresaDatos.ESTADOS_CAMBIO.RECHAZADO, req.user.id, motivo, idCambio]
+  );
+  return res.json({ message: 'Solicitud de cambio rechazada.' });
 };

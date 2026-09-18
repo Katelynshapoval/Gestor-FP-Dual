@@ -18,14 +18,19 @@ function authHeaders(extra = {}) {
   return headers;
 }
 
+function throwApiError(url, status, body) {
+  const err = new Error(body.error || `Error en ${url}: ${status}`);
+  err.status = status;
+  err.body = body;
+  throw err;
+}
+
 // Authenticated GET that returns parsed JSON
 export const getJSON = async (url) => {
   const response = await fetch(url, { headers: authHeaders() });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error || `Error en ${url}: ${response.status}`);
-  }
-  return response.json();
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throwApiError(url, response.status, body);
+  return body;
 };
 
 // Authenticated GET that returns a Blob (used for PDF downloads)
@@ -42,11 +47,9 @@ export const postJSON = async (url, body, method = 'POST') => {
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(body),
   });
-  if (!response.ok) {
-    const b = await response.json().catch(() => ({}));
-    throw new Error(b.error || `Error en ${url}: ${response.status}`);
-  }
-  return response.json();
+  const b = await response.json().catch(() => ({}));
+  if (!response.ok) throwApiError(url, response.status, b);
+  return b;
 };
 
 export const putJSON = (url, body) => postJSON(url, body, 'PUT');

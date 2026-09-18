@@ -24,6 +24,12 @@ router.get('/solicitudes/empresa', requireAuth, requireRole('ADMINISTRADOR', 'CO
 router.get('/solicitudes/empresa/:id', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getById));
 router.get('/solicitudes/empresa/:id/especialidades', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getEspecialidades));
 router.get('/solicitudes/empresa/:id/documentos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getDocumentos));
+router.get('/solicitudes/empresa/:id/datos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getDatos));
+router.put('/solicitudes/empresa/:id/datos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.putDatos));
+router.get('/solicitudes/empresa/:id/cambios', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getCambio));
+router.post('/solicitudes/empresa/:id/cambios', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.upsertCambio));
+router.post('/solicitudes/empresa/:id/cambios/:idCambio/aprobar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.aprobarCambio));
+router.post('/solicitudes/empresa/:id/cambios/:idCambio/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.rechazarCambio));
 
 // Validate / reject application
 router.post('/solicitudes/empresa/:id/validar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.validar));

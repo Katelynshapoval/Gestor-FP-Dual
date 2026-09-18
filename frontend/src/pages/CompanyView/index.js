@@ -6,6 +6,8 @@ import MisReservas from "./MisReservas.jsx";
 import SpecialitySelector from "../AddCompanyRequest/SpecialitySelector.jsx";
 import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
 import PageHeader from "../../components/ui/PageHeader.jsx";
+import CompanyEditForm, { applyProposed, datosToForm } from "./CompanyEditForm.jsx";
+import CambioDiff from "./CambioDiff.jsx";
 import "../../styles/forms.css";
 
 // Read-only field styled to match the rest of the form layout
@@ -17,9 +19,13 @@ const ReadField = ({ label, value }) => (
 );
 
 // Company data panel with optional re-apply form
-const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => {
+const MisDatos = ({ solicitud, specialities, transports, cambio, onReapplySuccess, onCambioChange }) => {
   const [showReapply, setShowReapply] = useState(false);
   const [reapplyDone, setReapplyDone] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(() => datosToForm(solicitud));
+  const [submitting, setSubmitting] = useState(false);
+  const [msg, setMsg] = useState(null);
 
   if (!solicitud) {
     return (
@@ -33,9 +39,81 @@ const MisDatos = ({ solicitud, specialities, transports, onReapplySuccess }) => 
 
   const esps = solicitud.especialidades || [];
   const transporteNombres = (solicitud.transportes || []).map(t => t.nombre).filter(Boolean);
+  const pending = cambio?.pending;
+  const rejected = !pending && cambio?.ultimo?.estado === "RECHAZADO" ? cambio.ultimo : null;
+
+  const startEdit = () => {
+    setForm(pending ? applyProposed(solicitud, pending.proposed) : datosToForm(solicitud));
+    setMsg(null);
+    setEditing(true);
+  };
+
+  const handleSubmitCambio = async (body) => {
+    if (submitting) return;
+    setSubmitting(true);
+    setMsg(null);
+    try {
+      const data = await postJSON(`/solicitudes/empresa/${solicitud.id_solicitud_empresa}/cambios`, body);
+      setEditing(false);
+      setMsg({ ok: true, text: data.message || "Cambios enviados para revisión" });
+      if (onCambioChange) await onCambioChange();
+    } catch (err) {
+      setMsg({ ok: false, text: err.message || "Error al enviar los cambios." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <>
+      <div className="form-card flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="form-section-title mb-1">Datos vigentes</p>
+          <p className="text-sm text-gray-500">Estos son los datos aprobados actualmente. Las modificaciones se envían al centro para revisión.</p>
+        </div>
+        {solicitud.convocatoria_activa && !editing && (
+          <button type="button" className="btn btn-primary" onClick={startEdit}>
+            {pending ? "Modificar solicitud pendiente" : "Editar datos"}
+          </button>
+        )}
+      </div>
+
+      {msg && (
+        <p className={`text-sm px-4 py-2 rounded-lg ${msg.ok ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}>
+          {msg.text}
+        </p>
+      )}
+
+      {pending && (
+        <div className="form-card border-amber-200 bg-amber-50">
+          <p className="form-section-title text-amber-900">Cambios enviados para revisión</p>
+          <p className="mb-3 text-sm text-amber-800">
+            La solicitud está pendiente de aprobación. Los datos vigentes no cambian hasta que el centro la revise.
+          </p>
+          <CambioDiff diff={pending.diff} />
+        </div>
+      )}
+
+      {rejected && (
+        <div className="form-card border-red-200 bg-red-50">
+          <p className="form-section-title text-red-900">Solicitud de cambios rechazada</p>
+          <p className="text-sm text-red-800">{rejected.motivo || "Sin motivo indicado."}</p>
+        </div>
+      )}
+
+      {editing && (
+        <CompanyEditForm
+          key={pending?.id_cambio || "new"}
+          values={form}
+          onChange={setForm}
+          transports={transports}
+          submitting={submitting}
+          submitLabel={pending ? "Actualizar solicitud de cambios" : "Enviar para revisión"}
+          onSubmit={handleSubmitCambio}
+          onCancel={() => setEditing(false)}
+        />
+      )}
+
       {/* Coordinator section */}
       <div className="form-card">
         <p className="form-section-title">Datos del coordinador</p>
@@ -266,6 +344,7 @@ const CompanyView = () => {
   const [view, setView] = useState("datos");
 
   const [solicitud, setSolicitud]     = useState(null);
+  const [cambio, setCambio]           = useState({ pending: null, ultimo: null });
   const [reservations, setReservations] = useState([]);
   const [specialities, setSpecialities] = useState([]);
   const [transports, setTransports]   = useState([]);
@@ -275,12 +354,14 @@ const CompanyView = () => {
     try {
       const basic = await getJSON("/solicitudes/empresa/mia");
       const idSol = basic.id_solicitud_empresa;
-      const [full, docs, esps] = await Promise.all([
+      const [full, docs, esps, cambios] = await Promise.all([
         getJSON(`/solicitudes/empresa/${idSol}`),
         getJSON(`/solicitudes/empresa/${idSol}/documentos`),
         getJSON(`/solicitudes/empresa/${idSol}/especialidades`),
+        getJSON(`/solicitudes/empresa/${idSol}/cambios`),
       ]);
       setSolicitud({ ...basic, ...full, documentos: docs, especialidades: esps });
+      setCambio(cambios || { pending: null, ultimo: null });
     } catch { setSolicitud(null); }
   }, []);
 
@@ -341,7 +422,9 @@ const CompanyView = () => {
           solicitud={solicitud}
           specialities={specialities}
           transports={transports}
+          cambio={cambio}
           onReapplySuccess={fetchSolicitud}
+          onCambioChange={fetchSolicitud}
         />
       ) : (
         <div className="form-card">

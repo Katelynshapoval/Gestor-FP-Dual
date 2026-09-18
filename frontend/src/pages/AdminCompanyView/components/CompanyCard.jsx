@@ -16,6 +16,7 @@ import {
   toggleBtnClass,
 } from "../../../components/ui/cardStyles";
 import { ESTADOS_RESERVA } from "../../../utils/reservaEstados.js";
+import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
 
 // Tailwind class map for reservation status badges
 const estadoCls = {
@@ -79,10 +80,12 @@ const ReservasList = ({ reservations }) => {
 const CompanyCard = ({
   empresa,
   reservations = [],
+  transports = [],
   isExpanded,
   onToggle,
   onViewConvenio,
   onResetPassword,
+  onUpdated,
   resetResult,
 }) => {
   const id = empresa.id_solicitud_empresa;
@@ -144,6 +147,12 @@ const CompanyCard = ({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {empresa.cambio_pendiente ? (
+            <span className={`${signedBadgeClass} bg-amber-100 text-amber-800 flex items-center gap-1 whitespace-nowrap`}>
+              <MdPendingActions className="text-[13px]" />
+              Cambios pendientes
+            </span>
+          ) : null}
           <span className={`${signedBadgeClass} ${cls} flex items-center gap-1 whitespace-nowrap`}>
             <Icon className="text-[13px]" />
             {label}
@@ -193,6 +202,14 @@ const CompanyCard = ({
 
             {/* Information tab */}
             {innerTab === "info" && (
+              <div className="space-y-5">
+                {isExpanded && (empresa.cambio_pendiente || empresa.convocatoria_activa) && (
+                  <EmpresaDatosActions
+                    empresa={empresa}
+                    transports={transports}
+                    onUpdated={onUpdated}
+                  />
+                )}
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {/* Left column: company and coordinator data */}
                 <div className="space-y-5">
@@ -291,6 +308,7 @@ const CompanyCard = ({
                     )}
                   </div>
                 </div>
+              </div>
               </div>
             )}
 

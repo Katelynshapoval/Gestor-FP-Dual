@@ -8,6 +8,35 @@ function normalizeDni(dni) {
   return String(dni || '').trim().toUpperCase();
 }
 
+function cifValido(cif) {
+  const value = normalizeCif(cif);
+  if (!/^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(value)) return false;
+
+  let sumaPar = 0;
+  let sumaImpar = 0;
+  const numero = value.substring(1, 8);
+
+  for (let i = 0; i < numero.length; i++) {
+    const n = parseInt(numero[i], 10);
+    if (i % 2 === 0) {
+      let doble = n * 2;
+      if (doble > 9) doble -= 9;
+      sumaImpar += doble;
+    } else {
+      sumaPar += n;
+    }
+  }
+
+  const letras = 'JABCDEFGHI';
+  const letra = value[0];
+  const valorControl = value[8];
+  const valorCalculado = (10 - ((sumaPar + sumaImpar) % 10)) % 10;
+
+  if ('PQRSNW'.includes(letra)) return valorControl === letras[valorCalculado];
+  if ('ABEH'.includes(letra)) return valorControl === String(valorCalculado);
+  return valorControl === String(valorCalculado) || valorControl === letras[valorCalculado];
+}
+
 // Returns the single active convocatoria or null
 async function getActiveConvocatoria() {
   const [rows] = await pool.query(
@@ -103,6 +132,7 @@ function sendSqlError(res, err) {
 module.exports = {
   normalizeCif,
   normalizeDni,
+  cifValido,
   getActiveConvocatoria,
   getStudentIdFromUser,
   getCompanyIdFromUser,

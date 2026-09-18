@@ -35,15 +35,18 @@ const AdminCompanyView = () => {
   const [filterEsp, setFilterEsp] = useState("");
   const [filterConvenio, setFilterConvenio] = useState("");
   const [filterCourse, setFilterCourse] = useState("");
+  const [filterCambios, setFilterCambios] = useState("");
   const [sortBy, setSortBy] = useState("fecha_desc");
+  const [transports, setTransports] = useState([]);
 
   useEffect(() => {
     if (!user) { navigate("/login"); return; }
 
-    Promise.all([getJSON("/solicitudes/empresa/todas"), getJSON("/reservas")])
-      .then(([companiesData, reservationsData]) => {
+    Promise.all([getJSON("/solicitudes/empresa/todas"), getJSON("/reservas"), getJSON("/transportes")])
+      .then(([companiesData, reservationsData, transportsData]) => {
         setCompanies(Array.isArray(companiesData) ? companiesData : []);
         setAllReservations(Array.isArray(reservationsData) ? reservationsData : []);
+        setTransports(Array.isArray(transportsData) ? transportsData : []);
         setLoading(false);
       })
       .catch((err) => { setError(err.message); setLoading(false); });
@@ -89,6 +92,7 @@ const AdminCompanyView = () => {
     if (filterConvenio === "pendiente"   && (!c.tieneConvenio || c.convenio_validado)) return false;
     if (filterConvenio === "sin_convenio" && c.tieneConvenio) return false;
     if (filterCourse && getCourseLabel(c.fechaPeticion) !== filterCourse) return false;
+    if (filterCambios === "pendiente" && !c.cambio_pendiente) return false;
     return true;
   }).sort((a, b) => {
     if (sortBy === "fecha_desc") return new Date(b.fechaPeticion) - new Date(a.fechaPeticion);
@@ -102,6 +106,7 @@ const AdminCompanyView = () => {
   const totalValidado  = companies.filter(c => c.convenio_validado).length;
   const totalPendiente = companies.filter(c => c.tieneConvenio && !c.convenio_validado).length;
   const totalSin       = companies.filter(c => !c.tieneConvenio).length;
+  const totalCambios   = companies.filter(c => c.cambio_pendiente).length;
   const pendingDocs    = allReservations.filter(r => r.id_documento_reserva && r.estado_documento === "PENDIENTE").length;
 
   const selectCls = "rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20";
@@ -120,6 +125,9 @@ const AdminCompanyView = () => {
           <span className={`${signedBadgeClass} bg-green-500/10 text-green-800`}><IoIosCheckmarkCircleOutline /> {totalValidado} validado{totalValidado !== 1 ? "s" : ""}</span>
           <span className={`${signedBadgeClass} bg-yellow-400/15 text-yellow-800`}><MdPendingActions /> {totalPendiente} pendiente{totalPendiente !== 1 ? "s" : ""}</span>
           <span className={`${signedBadgeClass} bg-red-500/10 text-red-800`}><MdOutlineCancel /> {totalSin} sin convenio</span>
+          {totalCambios ? (
+            <span className={`${signedBadgeClass} bg-amber-100 text-amber-800`}><MdPendingActions /> {totalCambios} cambio{totalCambios !== 1 ? "s" : ""} pendiente{totalCambios !== 1 ? "s" : ""}</span>
+          ) : null}
           </div>
         }
       />
@@ -192,6 +200,13 @@ const AdminCompanyView = () => {
               </select>
             </div>
             <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
+              <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">Cambios:</label>
+              <select className={`${selectCls} w-full sm:w-auto`} value={filterCambios} onChange={(e) => setFilterCambios(e.target.value)}>
+                <option value="">Todos</option>
+                <option value="pendiente">Pendientes de revisión</option>
+              </select>
+            </div>
+            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
               <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">Ordenar:</label>
               <select className={`${selectCls} w-full sm:w-auto`} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                 <option value="fecha_desc">Fecha (más reciente)</option>
@@ -220,10 +235,12 @@ const AdminCompanyView = () => {
                 reservations={allReservations.filter(
                   r => String(r.idempresa) === String(empresa.id_empresa)
                 )}
+                transports={transports}
                 isExpanded={expandedCards.has(empresa.id_solicitud_empresa)}
                 onToggle={toggleCard}
                 onViewConvenio={setViewingConvenio}
                 onResetPassword={handleResetPassword}
+                onUpdated={fetchCompanies}
                 resetResult={resetResult}
               />
             ))}
