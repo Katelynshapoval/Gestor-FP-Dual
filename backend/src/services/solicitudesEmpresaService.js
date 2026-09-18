@@ -1,6 +1,9 @@
 const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
-const { getActiveConvocatoria, sendSqlError } = require('../helpers/dbHelpers');
+const { getActiveConvocatoria, sendSqlError, normalizeCif } = require('../helpers/dbHelpers');
+
+const EMPRESA_YA_REGISTRADA =
+  'Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.';
 
 let transporter = null;
 try {
@@ -85,35 +88,33 @@ exports.create = async function (req, res) {
     return res.status(409).json({ error: 'No hay ninguna convocatoria activa. El plazo de solicitud está cerrado.' });
   }
 
+  const cifNorm = normalizeCif(cif);
+  if (!cifNorm) {
+    return res.status(400).json({ error: 'Faltan datos obligatorios de la empresa.' });
+  }
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    // 1. Upsert empresa by CIF
-    let idEmpresa;
+    // Public registration must not upsert: an existing CIF is a duplicate company.
     const [empExist] = await conn.query(
-      'SELECT idempresa FROM ge_empresas WHERE cif = ? FOR UPDATE',
-      [cif]
+      'SELECT idempresa FROM ge_empresas WHERE UPPER(TRIM(cif)) = ? FOR UPDATE',
+      [cifNorm]
     );
     if (empExist[0]) {
-      idEmpresa = empExist[0].idempresa;
-      await conn.query(
-        `UPDATE ge_empresas SET empresa = ?, web = ?, observaciones = ?,
-                emailEmpresa = ?, telefonoEmpresa = ?, menosdecincotrabajadores = ?
-          WHERE idempresa = ?`,
-        [empresaNombre, web, observaciones, emailEmpresa, telefonoEmpresa,
-          menosdecincotrabajadores ? 1 : 0, idEmpresa]
-      );
-    } else {
-      const [r] = await conn.query(
-        `INSERT INTO ge_empresas (cif, empresa, convenio, fechaconvenio, web, observaciones,
-                                   emailEmpresa, telefonoEmpresa, menosdecincotrabajadores)
-         VALUES (?, ?, '', '1000-01-01', ?, ?, ?, ?, ?)`,
-        [cif, empresaNombre, web, observaciones, emailEmpresa, telefonoEmpresa,
-          menosdecincotrabajadores ? 1 : 0]
-      );
-      idEmpresa = r.insertId;
+      await conn.rollback();
+      return res.status(409).json({ error: EMPRESA_YA_REGISTRADA });
     }
+
+    const [r] = await conn.query(
+      `INSERT INTO ge_empresas (cif, empresa, convenio, fechaconvenio, web, observaciones,
+                                 emailEmpresa, telefonoEmpresa, menosdecincotrabajadores)
+       VALUES (?, ?, '', '1000-01-01', ?, ?, ?, ?, ?)`,
+      [cifNorm, empresaNombre, web, observaciones, emailEmpresa, telefonoEmpresa,
+        menosdecincotrabajadores ? 1 : 0]
+    );
+    const idEmpresa = r.insertId;
 
     // Check for duplicate application in this convocatoria
     const [solExist] = await conn.query(
@@ -212,10 +213,11 @@ exports.create = async function (req, res) {
     if (!idRol) throw new Error('Rol EMPRESA no encontrado en la base de datos.');
 
     const hash = await bcrypt.hash(passwordCoordinador, 10);
+    // Login identifier is the company CIF. Coordinator email stays in ge_contactos.
     await conn.query(
       `INSERT INTO dual_usuarios (nombre_mostrar, email, password_hash, id_rol, id_contacto, activo, must_change_password)
-       VALUES (?, ?, ?, ?, ?, 1, 1)`,
-      [nombreCoordinador, emailCoordinador, hash, idRol, idCoordinador]
+       VALUES (?, NULL, ?, ?, ?, 1, 1)`,
+      [nombreCoordinador, hash, idRol, idCoordinador]
     );
 
     // Generates a one-time token so the company can upload their signed convenio without logging in
@@ -239,6 +241,9 @@ exports.create = async function (req, res) {
     });
   } catch (err) {
     await conn.rollback();
+    if (err.code === 'ER_DUP_ENTRY' && /uq_ge_empresas_cif|ge_empresas/i.test(err.message)) {
+      return res.status(409).json({ error: EMPRESA_YA_REGISTRADA });
+    }
     return sendSqlError(res, err);
   } finally {
     conn.release();
@@ -406,7 +411,7 @@ exports.getTodas = async function (req, res) {
         dl.cp AS cpRazSoc,
         dt.domicilio AS direccionLugarTrabajo,
         u.id_usuario,
-        u.email AS username
+        emp.cif AS username
      FROM dual_solicitudes_empresa se
      JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
      JOIN dual_estados_validacion ev ON ev.id_estado_validacion = se.id_estado_validacion
@@ -559,12 +564,12 @@ exports.reapply = async function (req, res) {
           WHERE idcontacto = ?`,
         [nombreCoordinador, emailCoordinador, telefonoCoordinador, prev.id_coordinador_actual]
       );
-      // Keep the dual_usuarios email in sync with the contact email
-      if (emailCoordinador) {
+      // Display name may change with the coordinator; login remains the company CIF.
+      if (nombreCoordinador) {
         await conn.query(
-          `UPDATE dual_usuarios SET email = ?, nombre_mostrar = COALESCE(NULLIF(?, ''), nombre_mostrar)
+          `UPDATE dual_usuarios SET nombre_mostrar = COALESCE(NULLIF(?, ''), nombre_mostrar)
             WHERE id_contacto = ?`,
-          [emailCoordinador, nombreCoordinador, prev.id_coordinador_actual]
+          [nombreCoordinador, prev.id_coordinador_actual]
         );
       }
     }

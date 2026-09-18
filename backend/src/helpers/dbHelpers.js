@@ -1,5 +1,13 @@
 const pool = require('../db/pool');
 
+function normalizeCif(cif) {
+  return String(cif || '').trim().toUpperCase();
+}
+
+function normalizeDni(dni) {
+  return String(dni || '').trim().toUpperCase();
+}
+
 // Returns the single active convocatoria or null
 async function getActiveConvocatoria() {
   const [rows] = await pool.query(
@@ -64,6 +72,8 @@ function sendSqlError(res, err) {
 }
 
 module.exports = {
+  normalizeCif,
+  normalizeDni,
   getActiveConvocatoria,
   getCompanyIdFromUser,
   getTipoDocumentoId,

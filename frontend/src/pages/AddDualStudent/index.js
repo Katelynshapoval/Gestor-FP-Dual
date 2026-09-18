@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import * as FormatValidation from "../../utils/formatValidation.js";
 import { useFormMessage } from "../../hooks/useFormMessage.js";
 import { postForm } from "../../utils/api.js";
-import GenderField from "./GenderField.jsx";
 import LegalGuardianFields from "./LegalGuardianFields.jsx";
 import FormMessage from "../../components/ui/FormMessage.jsx";
 import PageHeader from "../../components/ui/PageHeader.jsx";
@@ -22,11 +21,7 @@ function Field({ id, label, children }) {
 function PreferenciaSelect({ label, value, onChange, dataPreferences }) {
   return (
     <Field label={label}>
-      <select
-        className="select-input"
-        value={value}
-        onChange={onChange}
-      >
+      <select className="select-input" value={value} onChange={onChange}>
         <option value="">Seleccione una preferencia</option>
         {dataPreferences.map((p) => (
           <option key={p.id_preferencia} value={p.id_preferencia}>
@@ -113,7 +108,11 @@ function AddDualStudent() {
       await showMessage("Formato del número de Seguridad Social no válido.");
       return;
     }
-    if (esMenor && legalGuardianDni && !FormatValidation.dniNieValido(legalGuardianDni)) {
+    if (
+      esMenor &&
+      legalGuardianDni &&
+      !FormatValidation.dniNieValido(legalGuardianDni)
+    ) {
       await showMessage("Formato de DNI/NIE del tutor legal no válido.");
       return;
     }
@@ -146,7 +145,9 @@ function AddDualStudent() {
       await showMessage("La candidatura se ha enviado correctamente.");
       formRef.current.reset();
     } catch (err) {
-      await showMessage(err.message || "Ha ocurrido un error. Inténtalo de nuevo.");
+      await showMessage(
+        err.message || "Ha ocurrido un error. Inténtalo de nuevo.",
+      );
     }
   };
 
@@ -262,10 +263,25 @@ function AddDualStudent() {
               />
             </Field>
           </div>
-          <GenderField
-            gender={gender}
-            onChange={(e) => setGender(e.target.value)}
-          />
+
+          <div className="field">
+            <label>Sexo</label>
+            <div className="radio-group">
+              {["Hombre", "Mujer"].map((op) => (
+                <label key={op} className="radio-option">
+                  <input
+                    type="radio"
+                    name="gender"
+                    value={op}
+                    checked={gender === op}
+                    onChange={(e) => setGender(e.target.value)}
+                    required={op === "Hombre"}
+                  />
+                  <span>{op}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           {esMenor && (
             <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mb-4">
               <p className="mb-3 text-[0.8rem] font-semibold text-brand">

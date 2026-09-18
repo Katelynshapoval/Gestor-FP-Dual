@@ -1,6 +1,11 @@
 const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
 const { signToken } = require('../middleware/auth');
+const { normalizeCif, normalizeDni } = require('../helpers/dbHelpers');
+
+const USER_COLUMNS = `u.id_usuario, u.nombre_mostrar, u.email, u.password_hash,
+            u.activo, u.must_change_password,
+            r.nombre AS rol, u.id_contacto, u.id_alumno`;
 
 // Builds the JWT payload and the public user object from a database row
 function buildResponse(user) {
@@ -10,6 +15,7 @@ function buildResponse(user) {
     nombre: user.nombre_mostrar,
     rol: user.rol,
     id_contacto: user.id_contacto,
+    id_alumno: user.id_alumno ?? null,
   };
   const token = signToken(payload);
   return {
@@ -20,39 +26,56 @@ function buildResponse(user) {
       email: user.email,
       rol: user.rol,
       must_change_password: !!user.must_change_password,
+      cif: user.cif || null,
+      dni: user.dni || null,
     },
   };
 }
 
-// Looks up a user by email first, then falls back to company CIF lookup
+// Role-aware lookup. Identifiers are never interchangeable across roles:
+// staff → email, EMPRESA → CIF, ALUMNO → DNI/NIE.
 async function findUserByIdentifier(identifier) {
-  const [byEmail] = await pool.query(
-    `SELECT u.id_usuario, u.nombre_mostrar, u.email, u.password_hash,
-            u.activo, u.must_change_password,
-            r.nombre AS rol, u.id_contacto
+  const trimmed = String(identifier || '').trim();
+  if (!trimmed) return null;
+
+  const [byStaffEmail] = await pool.query(
+    `SELECT ${USER_COLUMNS}
        FROM dual_usuarios u
        JOIN dual_roles r ON r.id_rol = u.id_rol
-      WHERE u.email = ?`,
-    [identifier]
+      WHERE u.email IS NOT NULL
+        AND u.email = ?
+        AND r.nombre IN ('ADMINISTRADOR', 'COORDINADOR')`,
+    [trimmed]
   );
-  if (byEmail[0]) return byEmail[0];
+  if (byStaffEmail[0]) return byStaffEmail[0];
 
-  // Companies log in using their CIF (case-insensitive) instead of an email
-  const cifNorm = identifier.toUpperCase();
+  const cifNorm = normalizeCif(trimmed);
   const [byCIF] = await pool.query(
-    `SELECT u.id_usuario, u.nombre_mostrar, u.email, u.password_hash,
-            u.activo, u.must_change_password,
-            r.nombre AS rol, u.id_contacto
+    `SELECT ${USER_COLUMNS}, emp.cif
        FROM dual_usuarios u
        JOIN dual_roles r ON r.id_rol = u.id_rol
        JOIN ge_contactos c ON c.idcontacto = u.id_contacto
        JOIN ge_domicilios d ON d.iddomicilio = c.iddomicilio
        JOIN ge_empresas emp ON emp.idempresa = d.idempresa
-      WHERE UPPER(emp.cif) = ?
+      WHERE r.nombre = 'EMPRESA'
+        AND UPPER(TRIM(emp.cif)) = ?
       LIMIT 1`,
     [cifNorm]
   );
-  return byCIF[0] ?? null;
+  if (byCIF[0]) return byCIF[0];
+
+  const dniNorm = normalizeDni(trimmed);
+  const [byDni] = await pool.query(
+    `SELECT ${USER_COLUMNS}, a.dni
+       FROM dual_usuarios u
+       JOIN dual_roles r ON r.id_rol = u.id_rol
+       JOIN gf_alumnosfct a ON a.idalumno = u.id_alumno
+      WHERE r.nombre = 'ALUMNO'
+        AND UPPER(TRIM(a.dni)) = ?
+      LIMIT 1`,
+    [dniNorm]
+  );
+  return byDni[0] ?? null;
 }
 
 // POST /auth/login — accepts both 'email' and 'username' fields for compatibility
@@ -116,9 +139,13 @@ exports.changePassword = async function (req, res) {
 exports.getMe = async function (req, res) {
   const [rows] = await pool.query(
     `SELECT u.id_usuario, u.nombre_mostrar, u.email, u.must_change_password,
-            r.nombre AS rol, u.id_contacto
+            r.nombre AS rol, u.id_contacto, u.id_alumno, emp.cif, a.dni
        FROM dual_usuarios u
        JOIN dual_roles r ON r.id_rol = u.id_rol
+       LEFT JOIN ge_contactos c ON c.idcontacto = u.id_contacto
+       LEFT JOIN ge_domicilios d ON d.iddomicilio = c.iddomicilio
+       LEFT JOIN ge_empresas emp ON emp.idempresa = d.idempresa
+       LEFT JOIN gf_alumnosfct a ON a.idalumno = u.id_alumno
       WHERE u.id_usuario = ?`,
     [req.user.id]
   );
@@ -131,6 +158,9 @@ exports.getMe = async function (req, res) {
     rol: u.rol,
     must_change_password: !!u.must_change_password,
     id_contacto: u.id_contacto,
+    id_alumno: u.id_alumno,
+    cif: u.cif || null,
+    dni: u.dni || null,
   });
 };
 
@@ -138,7 +168,7 @@ exports.getMe = async function (req, res) {
 exports.getAll = async function (req, res) {
   const [rows] = await pool.query(
     `SELECT u.id_usuario, u.nombre_mostrar, u.email, u.activo, u.must_change_password,
-            r.nombre AS rol, u.id_contacto
+            r.nombre AS rol, u.id_contacto, u.id_alumno
        FROM dual_usuarios u
        JOIN dual_roles r ON r.id_rol = u.id_rol
       ORDER BY u.id_usuario`

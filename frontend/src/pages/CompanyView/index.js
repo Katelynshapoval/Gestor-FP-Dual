@@ -319,7 +319,7 @@ const CompanyView = () => {
       <PageHeader
         kicker="Empresa"
         title="Portal Empresa — Dual"
-        subtitle={`${user.nombre} · ${user.email}`}
+        subtitle={`${user.nombre}${user.email ? ` · ${user.email}` : user.cif ? ` · ${user.cif}` : ""}`}
       />
 
       <div className="mb-6 flex border-b border-surface-200">

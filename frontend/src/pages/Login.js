@@ -5,6 +5,7 @@ import { useUser } from '../context/UserContext';
 // Redirects the user to their role's home page after a successful login
 function redirectByRole(rol, navigate) {
   if (rol === "EMPRESA") navigate("/companyMain");
+  else if (rol === "ALUMNO") navigate("/studentMain");
   else navigate("/");
 }
 
@@ -167,7 +168,7 @@ const Login = () => {
             <input
               type="text"
               autoComplete="username"
-              placeholder="Email o CIF de empresa"
+              placeholder="Correo, CIF o DNI/NIE"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -203,7 +204,7 @@ const Login = () => {
           {error && <div className="login-error">{error}</div>}
 
           <p className="text-xs text-gray-400 text-center mt-2">
-            Las empresas usan el CIF en minúsculas como usuario.
+            Administración: correo electrónico · Empresas: CIF · Alumnos: DNI/NIE
             <br />
             Si olvidaste tu contraseña, contacta con el administrador.
           </p>

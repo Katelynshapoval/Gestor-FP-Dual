@@ -135,7 +135,7 @@ const AddCompanyRequest = () => {
       }));
 
       await postJSON("/solicitudes/empresa", {
-        cif: cif.toUpperCase(),
+        cif: cif.trim().toUpperCase(),
         empresa: razonSocial,
         telefonoEmpresa: telEmpresa,
         domicilioLegal: dirRazSocial,
@@ -226,7 +226,10 @@ const AddCompanyRequest = () => {
               />
             </Field>
           </div>
-          <Field id="pwdCoord" label="Contraseña inicial (acceso al panel)">
+          <Field id="pwdCoord" label="Contraseña inicial (acceso con el CIF de la empresa)">
+            <p className="field-hint">
+              El coordinador accede al panel con el CIF de la empresa, no con su correo electrónico.
+            </p>
             <input
               id="pwdCoord"
               className="input"

@@ -34,7 +34,7 @@
   @apply mb-4;
 }
 
-.field label {
+.field > label {
   @apply mb-2 block text-sm font-semibold text-charcoal-800;
 }
 
