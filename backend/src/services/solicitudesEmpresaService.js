@@ -970,6 +970,87 @@ async function sendCupoReductionEmail({ email, empresa, especialidad, cantidadAn
   }
 }
 
+// POST /solicitudes/empresa/:id/especialidades — add a cycle that was not on the request
+exports.addEspecialidad = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const idEspecialidad = parseInt(req.body?.id_especialidad, 10);
+  const raw = req.body?.cantidad;
+  const cantidad = typeof raw === 'number' ? raw : Number(raw);
+
+  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(idEspecialidad) || idEspecialidad <= 0) {
+    return res.status(400).json({ error: 'Identificador no válido.' });
+  }
+  if (!Number.isInteger(cantidad) || cantidad < 1) {
+    return res.status(400).json({ error: 'Indica al menos un alumno para añadir el ciclo.' });
+  }
+
+  const { datos, error } = await resolveSolicitudForUser(req, id);
+  if (error) return res.status(error.status).json({ error: error.message });
+  if (!datos.convocatoria_activa) {
+    return res.status(400).json({ error: 'Solo se puede añadir un ciclo en la convocatoria activa.' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [locked] = await conn.query(
+      `SELECT id_solicitud_empresa
+         FROM dual_solicitudes_empresa
+        WHERE id_solicitud_empresa = ?
+        FOR UPDATE`,
+      [id]
+    );
+    if (!locked[0]) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Solicitud no encontrada.' });
+    }
+
+    const [espRows] = await conn.query(
+      `SELECT id_especialidad, nombre
+         FROM dual_especialidades
+        WHERE id_especialidad = ? AND activa = 1`,
+      [idEspecialidad]
+    );
+    if (!espRows[0]) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'El ciclo seleccionado no está disponible.' });
+    }
+
+    const [existing] = await conn.query(
+      `SELECT id_solicitud_empresa_especialidad
+         FROM dual_solicitud_empresa_especialidades
+        WHERE id_solicitud_empresa = ? AND id_especialidad = ?`,
+      [id, idEspecialidad]
+    );
+    if (existing[0]) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'Este ciclo ya está en la solicitud.' });
+    }
+
+    const [ins] = await conn.query(
+      `INSERT INTO dual_solicitud_empresa_especialidades
+         (id_solicitud_empresa, id_especialidad, cantidad_alumnos)
+       VALUES (?, ?, ?)`,
+      [id, idEspecialidad, cantidad]
+    );
+
+    await conn.commit();
+    return res.status(201).json({
+      message: 'Ciclo añadido.',
+      id_solicitud_empresa_especialidad: ins.insertId,
+      id_especialidad: idEspecialidad,
+      nombre: espRows[0].nombre,
+      cantidad,
+    });
+  } catch (err) {
+    await conn.rollback();
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+};
+
 // PUT /solicitudes/empresa/:id/especialidades/:idOferta/cantidad
 exports.updateCupoEspecialidad = async function (req, res) {
   const id = parseInt(req.params.id, 10);

@@ -173,6 +173,7 @@ const MisDatos = ({ solicitud, specialities, transports, cambio, onReapplySucces
         <EspecialidadCuposEditor
           solicitudId={solicitud.id_solicitud_empresa}
           especialidades={esps}
+          catalogo={specialities}
           onUpdated={onCupoChange}
         />
       </div>
