@@ -216,7 +216,7 @@ exports.create = async function (req, res) {
          telefonoEmpresa,
          menosdecincotrabajadores
        )
-       VALUES (?, ?, '', '1000-01-01', ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, '', NULL, ?, ?, ?, ?, ?)`,
       [
         cifNorm,
         empresaNombre,
