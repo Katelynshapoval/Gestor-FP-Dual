@@ -13,6 +13,8 @@ export const useLinkStudents = () => {
   const [linkRequests, setLinkRequests] = useState([]);
   // Quota offers for the authenticated empresa (empresa role only)
   const [companyOffers, setCompanyOffers] = useState([]);
+  // To see if the company has been validated
+  const [companyStatus, setCompanyStatus] = useState(null);
 
   const [showDoc, setShowDoc] = useState(null);
   const [currentDocUrl, setCurrentDocUrl] = useState(null);
@@ -23,7 +25,9 @@ export const useLinkStudents = () => {
   const isEmpresa = user?.rol === "EMPRESA";
   const userRef = useRef(user);
 
-  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     setExpandedCards(new Set());
@@ -32,12 +36,15 @@ export const useLinkStudents = () => {
   const fetchLinkRequests = useCallback(async () => {
     try {
       if (isEmpresa) {
-        const [alumnos, cupos] = await Promise.all([
+        const [alumnos, cupos, solicitudEmpresa] = await Promise.all([
           getJSON("/alumnos/disponibles"),
           getJSON("/cupos/empresa"),
+          getJSON("/solicitudes/empresa/mia"),
         ]);
+
         setLinkRequests(Array.isArray(alumnos) ? alumnos : []);
         setCompanyOffers(Array.isArray(cupos) ? cupos : []);
+        setCompanyStatus(solicitudEmpresa?.estado_validacion || null);
       } else {
         const data = await getJSON("/solicitudes/alumno?include=full");
         setLinkRequests(Array.isArray(data) ? data : []);
@@ -48,38 +55,56 @@ export const useLinkStudents = () => {
   }, [isEmpresa]);
 
   useEffect(() => {
-    if (!user) { navigate("/login"); return; }
+    if (!user) {
+      navigate("/login");
+      return;
+    }
     fetchLinkRequests();
   }, [user, navigate, fetchLinkRequests]);
 
   // Downloads a document blob and opens it in the inline viewer
-  const getDoc = useCallback((idDocumento, tipo, nombreAlumno, meta = {}) => {
-    if (!idDocumento) { alert("No hay documento disponible."); return; }
-    const extra = meta && typeof meta === "object" ? meta : { idSolicitudAlumno: meta };
-    getBlob(`/documentos/${idDocumento}/descargar`)
-      .then((blob) => {
-        if (currentDocUrl) URL.revokeObjectURL(currentDocUrl);
-        const url = URL.createObjectURL(blob);
-        setCurrentDocUrl(url);
-        const label = tipo === "cv" ? "CV" : tipo === "anexo2" ? "Anexo 2" : String(tipo || "").toUpperCase();
-        setShowDoc({
-          tipo,
-          url,
-          idDocumento,
-          nombre: label,
-          nombreAlumno: nombreAlumno || "",
-          idSolicitudAlumno: extra.idSolicitudAlumno || null,
-          estado: extra.estado || null,
-          motivo: extra.motivo || null,
-          canReview: !isEmpresa,
-        });
-      })
-      .catch((err) => alert(err.message));
-  }, [currentDocUrl, isEmpresa]);
+  const getDoc = useCallback(
+    (idDocumento, tipo, nombreAlumno, meta = {}) => {
+      if (!idDocumento) {
+        alert("No hay documento disponible.");
+        return;
+      }
+      const extra =
+        meta && typeof meta === "object" ? meta : { idSolicitudAlumno: meta };
+      getBlob(`/documentos/${idDocumento}/descargar`)
+        .then((blob) => {
+          if (currentDocUrl) URL.revokeObjectURL(currentDocUrl);
+          const url = URL.createObjectURL(blob);
+          setCurrentDocUrl(url);
+          const label =
+            tipo === "cv"
+              ? "CV"
+              : tipo === "anexo2"
+                ? "Anexo 2"
+                : String(tipo || "").toUpperCase();
+          setShowDoc({
+            tipo,
+            url,
+            idDocumento,
+            nombre: label,
+            nombreAlumno: nombreAlumno || "",
+            idSolicitudAlumno: extra.idSolicitudAlumno || null,
+            estado: extra.estado || null,
+            motivo: extra.motivo || null,
+            canReview: !isEmpresa,
+          });
+        })
+        .catch((err) => alert(err.message));
+    },
+    [currentDocUrl, isEmpresa],
+  );
 
   // Closes the document viewer and releases the object URL
   const closeDocViewer = useCallback(() => {
-    if (currentDocUrl) { URL.revokeObjectURL(currentDocUrl); setCurrentDocUrl(null); }
+    if (currentDocUrl) {
+      URL.revokeObjectURL(currentDocUrl);
+      setCurrentDocUrl(null);
+    }
     setShowDoc(null);
   }, [currentDocUrl]);
 
@@ -90,31 +115,46 @@ export const useLinkStudents = () => {
     await fetchLinkRequests();
   }, [showDoc, closeDocViewer, fetchLinkRequests]);
 
-  const rejectDoc = useCallback(async (motivo) => {
-    if (!showDoc?.idDocumento) return;
-    await postJSON(`/documentos/${showDoc.idDocumento}/rechazar`, { motivo });
-    closeDocViewer();
-    await fetchLinkRequests();
-  }, [showDoc, closeDocViewer, fetchLinkRequests]);
+  const rejectDoc = useCallback(
+    async (motivo) => {
+      if (!showDoc?.idDocumento) return;
+      await postJSON(`/documentos/${showDoc.idDocumento}/rechazar`, { motivo });
+      closeDocViewer();
+      await fetchLinkRequests();
+    },
+    [showDoc, closeDocViewer, fetchLinkRequests],
+  );
 
-  const validateAlumno = useCallback(async (idSolicitudAlumno) => {
-    await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/validar`, {});
-    await fetchLinkRequests();
-  }, [fetchLinkRequests]);
+  const validateAlumno = useCallback(
+    async (idSolicitudAlumno) => {
+      await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/validar`, {});
+      await fetchLinkRequests();
+    },
+    [fetchLinkRequests],
+  );
 
-  const rejectSolicitud = useCallback(async (idSolicitudAlumno, motivo) => {
-    await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/rechazar`, { motivo });
-    await fetchLinkRequests();
-  }, [fetchLinkRequests]);
+  const rejectSolicitud = useCallback(
+    async (idSolicitudAlumno, motivo) => {
+      await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/rechazar`, {
+        motivo,
+      });
+      await fetchLinkRequests();
+    },
+    [fetchLinkRequests],
+  );
 
   const toggleCard = (id) =>
     setExpandedCards((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
 
-  const reserveStudent = async (idSolicitudAlumno, idSolicitudEmpresaEspecialidad) => {
+  const reserveStudent = async (
+    idSolicitudAlumno,
+    idSolicitudEmpresaEspecialidad,
+  ) => {
     try {
       await postJSON("/reservas", {
         id_solicitud_alumno: idSolicitudAlumno,
@@ -135,7 +175,10 @@ export const useLinkStudents = () => {
     }
   };
 
-  const adminReserve = async (idSolicitudAlumno, idSolicitudEmpresaEspecialidad) => {
+  const adminReserve = async (
+    idSolicitudAlumno,
+    idSolicitudEmpresaEspecialidad,
+  ) => {
     try {
       await postJSON("/reservas/admin", {
         id_solicitud_alumno: idSolicitudAlumno,
@@ -156,7 +199,11 @@ export const useLinkStudents = () => {
     }
   };
 
-  const adminReassign = async (idReserva, idSolicitudEmpresaEspecialidad, motivo) => {
+  const adminReassign = async (
+    idReserva,
+    idSolicitudEmpresaEspecialidad,
+    motivo,
+  ) => {
     try {
       await postJSON(`/reservas/${idReserva}/reasignar`, {
         id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
@@ -169,16 +216,26 @@ export const useLinkStudents = () => {
   };
 
   const specialities = [
-    ...new Set(linkRequests.filter((r) => r.especialidad).map((r) => r.especialidad)),
+    ...new Set(
+      linkRequests.filter((r) => r.especialidad).map((r) => r.especialidad),
+    ),
   ];
 
   const convocatorias = [
-    ...new Set(linkRequests.filter((r) => r.convocatoria).map((r) => r.convocatoria)),
+    ...new Set(
+      linkRequests.filter((r) => r.convocatoria).map((r) => r.convocatoria),
+    ),
   ];
 
   const filtered = linkRequests.filter((r) => {
-    if (selectedSpeciality && r.especialidad !== selectedSpeciality) return false;
-    if (!isEmpresa && selectedConvocatoria && r.convocatoria !== selectedConvocatoria) return false;
+    if (selectedSpeciality && r.especialidad !== selectedSpeciality)
+      return false;
+    if (
+      !isEmpresa &&
+      selectedConvocatoria &&
+      r.convocatoria !== selectedConvocatoria
+    )
+      return false;
     return true;
   });
 
@@ -187,6 +244,7 @@ export const useLinkStudents = () => {
     navigate,
     linkRequests,
     companyOffers,
+    companyStatus,
     showDoc,
     expandedCards,
     selectedSpeciality,
