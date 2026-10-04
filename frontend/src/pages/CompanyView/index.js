@@ -52,7 +52,18 @@ const MisDatos = ({
 
   const esps = solicitud.especialidades || [];
   const transporteNombres = (solicitud.transportes || [])
-    .map((t) => t.nombre)
+    .map((t) => {
+      const catalogo = transports.find(
+        (tr) => Number(tr.id_transporte) === Number(t.id_transporte),
+      );
+
+      return (
+        catalogo?.nombre_mostrar ||
+        t.nombre_mostrar ||
+        catalogo?.nombre ||
+        t.nombre
+      );
+    })
     .filter(Boolean);
   const pending = cambio?.pending;
   const rejected =

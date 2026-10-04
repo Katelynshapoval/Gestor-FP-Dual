@@ -798,13 +798,14 @@ exports.getTodas = async function (req, res) {
 
   const [transp] = await pool.query(
     `SELECT
-       det.id_empresa,
-       dt.id_transporte,
-       dt.nombre
-     FROM dual_empresa_transportes det
-     JOIN dual_transportes dt
-       ON dt.id_transporte = det.id_transporte
-     WHERE det.id_empresa IN (?)`,
+     det.id_empresa,
+     dt.id_transporte,
+     dt.nombre,
+     dt.nombre_mostrar
+   FROM dual_empresa_transportes det
+   JOIN dual_transportes dt
+     ON dt.id_transporte = det.id_transporte
+   WHERE det.id_empresa IN (?)`,
     [idEmpresas],
   );
 
@@ -849,7 +850,7 @@ exports.getTodas = async function (req, res) {
 
     transpMap[t.id_empresa].push({
       id_transporte: t.id_transporte,
-      nombre: t.nombre,
+      nombre: t.nombre_mostrar || t.nombre,
     });
   });
 
