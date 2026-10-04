@@ -1,38 +1,47 @@
-const bcrypt = require('bcrypt');
-const pool = require('../db/pool');
-const { getActiveConvocatoria, sendSqlError, normalizeCif, getCompanyIdFromUser } = require('../helpers/dbHelpers');
-const empresaDatos = require('./empresaDatos');
+const bcrypt = require("bcrypt");
+const pool = require("../db/pool");
+const {
+  getActiveConvocatoria,
+  sendSqlError,
+  normalizeCif,
+  getCompanyIdFromUser,
+} = require("../helpers/dbHelpers");
+const empresaDatos = require("./empresaDatos");
 
 const EMPRESA_YA_REGISTRADA =
-  'Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.';
+  "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
 
 let transporter = null;
 try {
-  const mc = require('../mail/config');
+  const mc = require("../mail/config");
   transporter = mc.transporter;
-} catch { /* mail not configured */ }
+} catch {
+  /* mail not configured */
+}
 
-async function sendCompanyConfirmationEmail(email, empresa, convocatoria, convenioUrl) {
+async function sendCompanyConfirmationEmail(email, empresa, convocatoria) {
   if (!transporter) {
-    console.warn('Mail not configured. Convenio URL for', empresa, ':', convenioUrl);
+    console.warn(
+      "Mail not configured. Confirmation email not sent for",
+      empresa,
+    );
     return;
   }
   try {
     await transporter.sendMail({
       from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Solicitud Dual Empresa recibida',
+      subject: "Solicitud Dual Empresa recibida",
       html: `
         <p>Estimado coordinador de <strong>${empresa}</strong>,</p>
         <p>Hemos recibido vuestra solicitud de participación en la convocatoria <strong>${convocatoria}</strong>.</p>
         <p>Revisaremos la documentación y os informaremos del resultado.</p>
-        ${convenioUrl ? `<p>Para subir el convenio firmado, accede al siguiente enlace (válido 30 días):<br>
-        <a href="${convenioUrl}">${convenioUrl}</a></p>` : ''}
+        <p>Podéis gestionar la documentación desde vuestro panel de empresa.</p>
         <p>Salesianos Zaragoza — Departamento Dual</p>
       `,
     });
   } catch (err) {
-    console.error('Error sending company confirmation email:', err.message);
+    console.error("Error sending company confirmation email:", err.message);
   }
 }
 
@@ -40,21 +49,42 @@ async function sendCompanyConfirmationEmail(email, empresa, convocatoria, conven
 exports.create = async function (req, res) {
   const {
     // Company
-    cif, empresa: empresaNombre, web = '', observaciones = '',
-    emailEmpresa = '', telefonoEmpresa = '', menosdecincotrabajadores = 0,
+    cif,
+    empresa: empresaNombre,
+    web = "",
+    observaciones = "",
+    emailEmpresa = "",
+    telefonoEmpresa = "",
+    menosdecincotrabajadores = 0,
     // Legal address
-    domicilioLegal, cpLegal, provinciaLegal, localidadLegal, municipioLegal = '',
-    telefonoLegal = '', emailLegal = '',
+    domicilioLegal,
+    cpLegal,
+    provinciaLegal,
+    localidadLegal,
+    municipioLegal = "",
+    telefonoLegal = "",
+    emailLegal = "",
     // Work address (may be the same as the legal address)
     mismoLugarTrabajo,
-    domicilioTrabajo, cpTrabajo, provinciaTrabajo, localidadTrabajo, municipioTrabajo = '',
-    telefonoTrabajo = '', emailTrabajo = '',
+    domicilioTrabajo,
+    cpTrabajo,
+    provinciaTrabajo,
+    localidadTrabajo,
+    municipioTrabajo = "",
+    telefonoTrabajo = "",
+    emailTrabajo = "",
     // Legal representative
-    dniRepresentante, nombreRepresentante, emailRepresentante, telefonoRepresentante,
-    cargoRepresentante = 'REPRESENTANTE LEGAL',
+    dniRepresentante,
+    nombreRepresentante,
+    emailRepresentante,
+    telefonoRepresentante,
+    cargoRepresentante = "REPRESENTANTE LEGAL",
     // Company coordinator (dual tutor)
-    dniCoordinador, nombreCoordinador, emailCoordinador, telefonoCoordinador,
-    cargoCoordinador = 'COORDINADOR DUAL',
+    dniCoordinador,
+    nombreCoordinador,
+    emailCoordinador,
+    telefonoCoordinador,
+    cargoCoordinador = "COORDINADOR DUAL",
     // Application details
     descripcion_puesto,
     // Specialities: [{ idEspecialidad, cantidadAlumnos }]
@@ -65,33 +95,72 @@ exports.create = async function (req, res) {
     passwordCoordinador,
   } = req.body;
 
-  if (!cif || !empresaNombre || !domicilioLegal || !cpLegal || !provinciaLegal || !localidadLegal) {
-    return res.status(400).json({ error: 'Faltan datos obligatorios de la empresa.' });
+  if (
+    !cif ||
+    !empresaNombre ||
+    !domicilioLegal ||
+    !cpLegal ||
+    !provinciaLegal ||
+    !localidadLegal
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Faltan datos obligatorios de la empresa." });
   }
-  if (!dniRepresentante || !nombreRepresentante || !emailRepresentante || !telefonoRepresentante) {
-    return res.status(400).json({ error: 'Faltan datos del representante legal.' });
+  if (
+    !dniRepresentante ||
+    !nombreRepresentante ||
+    !emailRepresentante ||
+    !telefonoRepresentante
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Faltan datos del representante legal." });
   }
-  if (!dniCoordinador || !nombreCoordinador || !emailCoordinador || !telefonoCoordinador) {
-    return res.status(400).json({ error: 'Faltan datos del coordinador de empresa.' });
+  if (
+    !dniCoordinador ||
+    !nombreCoordinador ||
+    !emailCoordinador ||
+    !telefonoCoordinador
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Faltan datos del coordinador de empresa." });
   }
   if (!descripcion_puesto) {
-    return res.status(400).json({ error: 'La descripción del puesto es obligatoria.' });
+    return res
+      .status(400)
+      .json({ error: "La descripción del puesto es obligatoria." });
   }
-  if (!especialidades || !Array.isArray(especialidades) || especialidades.length === 0) {
-    return res.status(400).json({ error: 'Debe seleccionar al menos una especialidad y cantidad de alumnos.' });
+  if (
+    !especialidades ||
+    !Array.isArray(especialidades) ||
+    especialidades.length === 0
+  ) {
+    return res.status(400).json({
+      error:
+        "Debe seleccionar al menos una especialidad y cantidad de alumnos.",
+    });
   }
   if (!passwordCoordinador) {
-    return res.status(400).json({ error: 'Se requiere contraseña para la cuenta del coordinador.' });
+    return res.status(400).json({
+      error: "Se requiere contraseña para la cuenta del coordinador.",
+    });
   }
 
   const convocatoria = await getActiveConvocatoria();
   if (!convocatoria) {
-    return res.status(409).json({ error: 'No hay ninguna convocatoria activa. El plazo de solicitud está cerrado.' });
+    return res.status(409).json({
+      error:
+        "No hay ninguna convocatoria activa. El plazo de solicitud está cerrado.",
+    });
   }
 
   const cifNorm = normalizeCif(cif);
   if (!cifNorm) {
-    return res.status(400).json({ error: 'Faltan datos obligatorios de la empresa.' });
+    return res
+      .status(400)
+      .json({ error: "Faltan datos obligatorios de la empresa." });
   }
 
   const conn = await pool.getConnection();
@@ -100,8 +169,8 @@ exports.create = async function (req, res) {
 
     // Public registration must not upsert: an existing CIF is a duplicate company.
     const [empExist] = await conn.query(
-      'SELECT idempresa FROM ge_empresas WHERE UPPER(TRIM(cif)) = ? FOR UPDATE',
-      [cifNorm]
+      "SELECT idempresa FROM ge_empresas WHERE UPPER(TRIM(cif)) = ? FOR UPDATE",
+      [cifNorm],
     );
     if (empExist[0]) {
       await conn.rollback();
@@ -112,20 +181,28 @@ exports.create = async function (req, res) {
       `INSERT INTO ge_empresas (cif, empresa, convenio, fechaconvenio, web, observaciones,
                                  emailEmpresa, telefonoEmpresa, menosdecincotrabajadores)
        VALUES (?, ?, '', '1000-01-01', ?, ?, ?, ?, ?)`,
-      [cifNorm, empresaNombre, web, observaciones, emailEmpresa, telefonoEmpresa,
-        menosdecincotrabajadores ? 1 : 0]
+      [
+        cifNorm,
+        empresaNombre,
+        web,
+        observaciones,
+        emailEmpresa,
+        telefonoEmpresa,
+        menosdecincotrabajadores ? 1 : 0,
+      ],
     );
     const idEmpresa = r.insertId;
 
     // Check for duplicate application in this convocatoria
     const [solExist] = await conn.query(
-      'SELECT id_solicitud_empresa FROM dual_solicitudes_empresa WHERE id_empresa = ? AND id_convocatoria = ?',
-      [idEmpresa, convocatoria.id_convocatoria]
+      "SELECT id_solicitud_empresa FROM dual_solicitudes_empresa WHERE id_empresa = ? AND id_convocatoria = ?",
+      [idEmpresa, convocatoria.id_convocatoria],
     );
     if (solExist[0]) {
       await conn.rollback();
       return res.status(409).json({
-        error: 'Esta empresa ya tiene una solicitud registrada para la convocatoria activa.',
+        error:
+          "Esta empresa ya tiene una solicitud registrada para la convocatoria activa.",
       });
     }
 
@@ -133,8 +210,16 @@ exports.create = async function (req, res) {
     const [domLegalRes] = await conn.query(
       `INSERT INTO ge_domicilios (idempresa, domicilio, cp, provincia, localidad, telefono, email, especialidad, municipio)
        VALUES (?, ?, ?, ?, ?, ?, ?, '', ?)`,
-      [idEmpresa, domicilioLegal, cpLegal, provinciaLegal, localidadLegal,
-        telefonoLegal, emailLegal, municipioLegal]
+      [
+        idEmpresa,
+        domicilioLegal,
+        cpLegal,
+        provinciaLegal,
+        localidadLegal,
+        telefonoLegal,
+        emailLegal,
+        municipioLegal,
+      ],
     );
     const idDomicilioLegal = domLegalRes.insertId;
 
@@ -143,15 +228,30 @@ exports.create = async function (req, res) {
     if (mismoLugarTrabajo) {
       idDomicilioTrabajo = idDomicilioLegal;
     } else {
-      if (!domicilioTrabajo || !cpTrabajo || !provinciaTrabajo || !localidadTrabajo) {
+      if (
+        !domicilioTrabajo ||
+        !cpTrabajo ||
+        !provinciaTrabajo ||
+        !localidadTrabajo
+      ) {
         await conn.rollback();
-        return res.status(400).json({ error: 'Faltan datos del domicilio de trabajo.' });
+        return res
+          .status(400)
+          .json({ error: "Faltan datos del domicilio de trabajo." });
       }
       const [domTrabRes] = await conn.query(
         `INSERT INTO ge_domicilios (idempresa, domicilio, cp, provincia, localidad, telefono, email, especialidad, municipio)
          VALUES (?, ?, ?, ?, ?, ?, ?, '', ?)`,
-        [idEmpresa, domicilioTrabajo, cpTrabajo, provinciaTrabajo, localidadTrabajo,
-          telefonoTrabajo, emailTrabajo, municipioTrabajo]
+        [
+          idEmpresa,
+          domicilioTrabajo,
+          cpTrabajo,
+          provinciaTrabajo,
+          localidadTrabajo,
+          telefonoTrabajo,
+          emailTrabajo,
+          municipioTrabajo,
+        ],
       );
       idDomicilioTrabajo = domTrabRes.insertId;
     }
@@ -160,8 +260,14 @@ exports.create = async function (req, res) {
     const [repRes] = await conn.query(
       `INSERT INTO ge_contactos (iddomicilio, dni, nombre, email, telefono, cargo, observaciones, especialidad)
        VALUES (?, ?, ?, ?, ?, ?, '', '')`,
-      [idDomicilioLegal, dniRepresentante, nombreRepresentante, emailRepresentante,
-        telefonoRepresentante, cargoRepresentante]
+      [
+        idDomicilioLegal,
+        dniRepresentante,
+        nombreRepresentante,
+        emailRepresentante,
+        telefonoRepresentante,
+        cargoRepresentante,
+      ],
     );
     const idRepresentante = repRes.insertId;
 
@@ -169,8 +275,14 @@ exports.create = async function (req, res) {
     const [coordRes] = await conn.query(
       `INSERT INTO ge_contactos (iddomicilio, dni, nombre, email, telefono, cargo, observaciones, especialidad)
        VALUES (?, ?, ?, ?, ?, ?, '', '')`,
-      [idDomicilioTrabajo, dniCoordinador, nombreCoordinador, emailCoordinador,
-        telefonoCoordinador, cargoCoordinador]
+      [
+        idDomicilioTrabajo,
+        dniCoordinador,
+        nombreCoordinador,
+        emailCoordinador,
+        telefonoCoordinador,
+        cargoCoordinador,
+      ],
     );
     const idCoordinador = coordRes.insertId;
 
@@ -180,8 +292,15 @@ exports.create = async function (req, res) {
          (id_empresa, id_convocatoria, id_estado_validacion, id_representante_legal,
           id_coordinador_empresa, id_domicilio_legal, id_domicilio_trabajo, descripcion_puesto)
        VALUES (?, ?, 1, ?, ?, ?, ?, ?)`,
-      [idEmpresa, convocatoria.id_convocatoria, idRepresentante, idCoordinador,
-        idDomicilioLegal, idDomicilioTrabajo, descripcion_puesto]
+      [
+        idEmpresa,
+        convocatoria.id_convocatoria,
+        idRepresentante,
+        idCoordinador,
+        idDomicilioLegal,
+        idDomicilioTrabajo,
+        descripcion_puesto,
+      ],
     );
     const idSolicitudEmpresa = solRes.insertId;
 
@@ -191,58 +310,60 @@ exports.create = async function (req, res) {
       const cant = parseInt(esp.cantidadAlumnos, 10);
       if (!idEsp || !cant || cant < 1) {
         await conn.rollback();
-        return res.status(400).json({ error: 'Cada especialidad debe tener un id válido y cantidad > 0.' });
+        return res.status(400).json({
+          error: "Cada especialidad debe tener un id válido y cantidad > 0.",
+        });
       }
       await conn.query(
         `INSERT INTO dual_solicitud_empresa_especialidades (id_solicitud_empresa, id_especialidad, cantidad_alumnos)
          VALUES (?, ?, ?)`,
-        [idSolicitudEmpresa, idEsp, cant]
+        [idSolicitudEmpresa, idEsp, cant],
       );
     }
 
     // 8. Transports
     for (const idT of transportes) {
-      await conn.query('CALL sp_asignar_transporte_empresa(?, ?)', [idEmpresa, idT]);
+      await conn.query("CALL sp_asignar_transporte_empresa(?, ?)", [
+        idEmpresa,
+        idT,
+      ]);
     }
 
     // 9. Coordinator user account
     const [rolRow] = await conn.query(
-      'SELECT id_rol FROM dual_roles WHERE nombre = ?',
-      ['EMPRESA']
+      "SELECT id_rol FROM dual_roles WHERE nombre = ?",
+      ["EMPRESA"],
     );
     const idRol = rolRow[0]?.id_rol;
-    if (!idRol) throw new Error('Rol EMPRESA no encontrado en la base de datos.');
+    if (!idRol)
+      throw new Error("Rol EMPRESA no encontrado en la base de datos.");
 
     const hash = await bcrypt.hash(passwordCoordinador, 10);
     // Login identifier is the company CIF. Coordinator email stays in ge_contactos.
     await conn.query(
       `INSERT INTO dual_usuarios (nombre_mostrar, email, password_hash, id_rol, id_contacto, activo, must_change_password)
        VALUES (?, NULL, ?, ?, ?, 1, 1)`,
-      [nombreCoordinador, hash, idRol, idCoordinador]
-    );
-
-    // Generates a one-time token so the company can upload their signed convenio without logging in
-    const crypto = require('crypto');
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiraEn = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30-day expiry
-    await conn.query(
-      `INSERT INTO dual_convenio_tokens (id_solicitud_empresa, token, expira_en) VALUES (?, ?, ?)`,
-      [idSolicitudEmpresa, token, expiraEn]
+      [nombreCoordinador, hash, idRol, idCoordinador],
     );
 
     await conn.commit();
 
-    const urlBase = process.env.APP_URL || 'http://localhost:3000';
-    const convenioUrl = `${urlBase}/addConvenio/${token}`;
-    sendCompanyConfirmationEmail(emailCoordinador, empresaNombre, convocatoria.nombre, convenioUrl);
+    sendCompanyConfirmationEmail(
+      emailCoordinador,
+      empresaNombre,
+      convocatoria.nombre,
+    );
 
     return res.status(201).json({
-      message: 'Solicitud de empresa enviada correctamente.',
+      message: "Solicitud de empresa enviada correctamente.",
       id_solicitud_empresa: idSolicitudEmpresa,
     });
   } catch (err) {
     await conn.rollback();
-    if (err.code === 'ER_DUP_ENTRY' && /uq_ge_empresas_cif|ge_empresas/i.test(err.message)) {
+    if (
+      err.code === "ER_DUP_ENTRY" &&
+      /uq_ge_empresas_cif|ge_empresas/i.test(err.message)
+    ) {
       return res.status(409).json({ error: EMPRESA_YA_REGISTRADA });
     }
     return sendSqlError(res, err);
@@ -271,9 +392,15 @@ exports.getAll = async function (req, res) {
      WHERE 1=1
   `;
   const params = [];
-  if (estado) { query += ' AND ev.nombre = ?'; params.push(estado.toUpperCase()); }
-  if (convocatoria) { query += ' AND se.id_convocatoria = ?'; params.push(convocatoria); }
-  query += ' ORDER BY se.fecha_solicitud DESC';
+  if (estado) {
+    query += " AND ev.nombre = ?";
+    params.push(estado.toUpperCase());
+  }
+  if (convocatoria) {
+    query += " AND se.id_convocatoria = ?";
+    params.push(convocatoria);
+  }
+  query += " ORDER BY se.fecha_solicitud DESC";
 
   const [rows] = await pool.query(query, params);
   return res.json(rows);
@@ -281,9 +408,12 @@ exports.getAll = async function (req, res) {
 
 // GET /solicitudes/empresa/mia — EMPRESA user's own application
 exports.getMia = async function (req, res) {
-  const { getCompanyIdFromUser } = require('../helpers/dbHelpers');
+  const { getCompanyIdFromUser } = require("../helpers/dbHelpers");
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
-  if (!idEmpresa) return res.status(404).json({ error: 'No se encontró empresa vinculada a este usuario.' });
+  if (!idEmpresa)
+    return res
+      .status(404)
+      .json({ error: "No se encontró empresa vinculada a este usuario." });
 
   const [rows] = await pool.query(
     `SELECT se.id_solicitud_empresa, se.id_empresa, se.id_convocatoria, se.fecha_solicitud,
@@ -298,9 +428,12 @@ exports.getMia = async function (req, res) {
       WHERE se.id_empresa = ?
         AND c.activa = 1
       LIMIT 1`,
-    [idEmpresa]
+    [idEmpresa],
   );
-  if (!rows[0]) return res.status(404).json({ error: 'No hay solicitud para la convocatoria activa.' });
+  if (!rows[0])
+    return res
+      .status(404)
+      .json({ error: "No hay solicitud para la convocatoria activa." });
   return res.json(rows[0]);
 };
 
@@ -308,12 +441,15 @@ exports.getMia = async function (req, res) {
 exports.getById = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const datos = await empresaDatos.loadEmpresaDatosRead(pool, id);
-  if (!datos) return res.status(404).json({ error: 'Solicitud no encontrada.' });
+  if (!datos)
+    return res.status(404).json({ error: "Solicitud no encontrada." });
 
-  if (req.user.rol === 'EMPRESA') {
+  if (req.user.rol === "EMPRESA") {
     const idEmpresa = await getCompanyIdFromUser(req.user.id);
     if (!idEmpresa || idEmpresa !== datos.id_empresa) {
-      return res.status(403).json({ error: 'No tiene permiso para acceder a esta solicitud.' });
+      return res
+        .status(403)
+        .json({ error: "No tiene permiso para acceder a esta solicitud." });
     }
   }
 
@@ -324,7 +460,7 @@ exports.getById = async function (req, res) {
        FROM dual_solicitud_empresa_especialidades see
        JOIN dual_especialidades esp ON esp.id_especialidad = see.id_especialidad
       WHERE see.id_solicitud_empresa = ?`,
-    [id]
+    [id],
   );
   datos.especialidades = esps;
   return res.json(datos);
@@ -354,7 +490,7 @@ exports.getEspecialidades = async function (req, res) {
        FROM dual_solicitud_empresa_especialidades see
        JOIN dual_especialidades esp ON esp.id_especialidad = see.id_especialidad
       WHERE see.id_solicitud_empresa = ?`,
-    [id]
+    [id],
   );
   return res.json(rows);
 };
@@ -363,8 +499,10 @@ exports.getEspecialidades = async function (req, res) {
 exports.validar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   try {
-    await pool.query('CALL sp_validar_solicitud_empresa(?)', [id]);
-    return res.json({ message: 'Solicitud de empresa validada correctamente.' });
+    await pool.query("CALL sp_validar_solicitud_empresa(?)", [id]);
+    return res.json({
+      message: "Solicitud de empresa validada correctamente.",
+    });
   } catch (err) {
     return sendSqlError(res, err);
   }
@@ -375,11 +513,16 @@ exports.rechazar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const { motivo } = req.body;
   if (!motivo || !motivo.trim()) {
-    return res.status(400).json({ error: 'Debe indicar el motivo del rechazo.' });
+    return res
+      .status(400)
+      .json({ error: "Debe indicar el motivo del rechazo." });
   }
   try {
-    await pool.query('CALL sp_rechazar_solicitud_empresa(?, ?)', [id, motivo.trim()]);
-    return res.json({ message: 'Solicitud de empresa rechazada.' });
+    await pool.query("CALL sp_rechazar_solicitud_empresa(?, ?)", [
+      id,
+      motivo.trim(),
+    ]);
+    return res.json({ message: "Solicitud de empresa rechazada." });
   } catch (err) {
     return sendSqlError(res, err);
   }
@@ -422,14 +565,14 @@ exports.getTodas = async function (req, res) {
      JOIN ge_domicilios dl ON dl.iddomicilio = se.id_domicilio_legal
      JOIN ge_domicilios dt ON dt.iddomicilio = se.id_domicilio_trabajo
      LEFT JOIN dual_usuarios u ON u.id_contacto = coord.idcontacto
-    ORDER BY se.fecha_solicitud DESC`
+    ORDER BY se.fecha_solicitud DESC`,
   );
 
   if (rows.length === 0) return res.json([]);
 
   // Batch-load specialities, transports, and convenio status for each solicitud
-  const ids = rows.map(r => r.id_solicitud_empresa);
-  const idEmpresas = rows.map(r => r.id_empresa);
+  const ids = rows.map((r) => r.id_solicitud_empresa);
+  const idEmpresas = rows.map((r) => r.id_empresa);
 
   const [esps] = await pool.query(
     `SELECT see.id_solicitud_empresa, see.id_solicitud_empresa_especialidad, see.cantidad_alumnos,
@@ -438,7 +581,7 @@ exports.getTodas = async function (req, res) {
        FROM dual_solicitud_empresa_especialidades see
        JOIN dual_especialidades esp ON esp.id_especialidad = see.id_especialidad
       WHERE see.id_solicitud_empresa IN (?)`,
-    [ids]
+    [ids],
   );
 
   const [transp] = await pool.query(
@@ -446,7 +589,7 @@ exports.getTodas = async function (req, res) {
        FROM dual_empresa_transportes det
        JOIN dual_transportes dt ON dt.id_transporte = det.id_transporte
       WHERE det.id_empresa IN (?)`,
-    [idEmpresas]
+    [idEmpresas],
   );
 
   const [convenios] = await pool.query(
@@ -457,11 +600,11 @@ exports.getTodas = async function (req, res) {
        JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
       WHERE d.id_solicitud_empresa IN (?)
         AND td.nombre = 'CONVENIO'`,
-    [ids]
+    [ids],
   );
 
   const espMap = {};
-  esps.forEach(e => {
+  esps.forEach((e) => {
     if (!espMap[e.id_solicitud_empresa]) espMap[e.id_solicitud_empresa] = [];
     espMap[e.id_solicitud_empresa].push({
       id_solicitud_empresa_especialidad: e.id_solicitud_empresa_especialidad,
@@ -474,9 +617,12 @@ exports.getTodas = async function (req, res) {
   });
 
   const transpMap = {};
-  transp.forEach(t => {
+  transp.forEach((t) => {
     if (!transpMap[t.id_empresa]) transpMap[t.id_empresa] = [];
-    transpMap[t.id_empresa].push({ id_transporte: t.id_transporte, nombre: t.nombre });
+    transpMap[t.id_empresa].push({
+      id_transporte: t.id_transporte,
+      nombre: t.nombre,
+    });
   });
 
   let cambiosPend = [];
@@ -486,11 +632,11 @@ exports.getTodas = async function (req, res) {
          FROM dual_empresa_cambios
         WHERE estado = 'PENDIENTE'
           AND id_solicitud_empresa IN (?)`,
-      [ids]
+      [ids],
     );
     cambiosPend = rowsC;
   } catch (err) {
-    if (err.code !== 'ER_NO_SUCH_TABLE') throw err;
+    if (err.code !== "ER_NO_SUCH_TABLE") throw err;
   }
   const cambioMap = {};
   cambiosPend.forEach((c) => {
@@ -500,16 +646,16 @@ exports.getTodas = async function (req, res) {
     };
   });
   const convenioMap = {};
-  convenios.forEach(d => {
+  convenios.forEach((d) => {
     if (!convenioMap[d.id_solicitud_empresa]) {
       convenioMap[d.id_solicitud_empresa] = {
         id_documento: d.id_documento,
-        validado: d.estado_validacion === 'VALIDADO',
+        validado: d.estado_validacion === "VALIDADO",
       };
     }
   });
 
-  const result = rows.map(r => {
+  const result = rows.map((r) => {
     const conv = convenioMap[r.id_solicitud_empresa];
     return {
       ...r,
@@ -525,7 +671,8 @@ exports.getTodas = async function (req, res) {
       id_documento_convenio: conv?.id_documento ?? null,
       cambio_pendiente: cambioMap[r.id_solicitud_empresa] ? 1 : 0,
       id_cambio_pendiente: cambioMap[r.id_solicitud_empresa]?.id_cambio ?? null,
-      fecha_cambio_pendiente: cambioMap[r.id_solicitud_empresa]?.fecha_solicitud ?? null,
+      fecha_cambio_pendiente:
+        cambioMap[r.id_solicitud_empresa]?.fecha_solicitud ?? null,
     };
   });
 
@@ -534,24 +681,37 @@ exports.getTodas = async function (req, res) {
 
 // POST /solicitudes/empresa/reapply — authenticated empresa re-applies for the active convocatoria
 exports.reapply = async function (req, res) {
-  const { getCompanyIdFromUser } = require('../helpers/dbHelpers');
+  const { getCompanyIdFromUser } = require("../helpers/dbHelpers");
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
-  if (!idEmpresa) return res.status(404).json({ error: 'No se encontró empresa vinculada a este usuario.' });
+  if (!idEmpresa)
+    return res
+      .status(404)
+      .json({ error: "No se encontró empresa vinculada a este usuario." });
 
   const convocatoria = await getActiveConvocatoria();
   if (!convocatoria) {
-    return res.status(409).json({ error: 'No hay ninguna convocatoria activa.' });
+    return res
+      .status(409)
+      .json({ error: "No hay ninguna convocatoria activa." });
   }
 
   const {
-    nombreCoordinador, emailCoordinador, telefonoCoordinador,
+    nombreCoordinador,
+    emailCoordinador,
+    telefonoCoordinador,
     descripcion_puesto,
     especialidades,
     transportes = [],
   } = req.body;
 
-  if (!especialidades || !Array.isArray(especialidades) || especialidades.length === 0) {
-    return res.status(400).json({ error: 'Debe seleccionar al menos una especialidad.' });
+  if (
+    !especialidades ||
+    !Array.isArray(especialidades) ||
+    especialidades.length === 0
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Debe seleccionar al menos una especialidad." });
   }
 
   const conn = await pool.getConnection();
@@ -560,12 +720,14 @@ exports.reapply = async function (req, res) {
 
     // Guard against duplicate applications in the same convocatoria
     const [solExist] = await conn.query(
-      'SELECT id_solicitud_empresa FROM dual_solicitudes_empresa WHERE id_empresa = ? AND id_convocatoria = ?',
-      [idEmpresa, convocatoria.id_convocatoria]
+      "SELECT id_solicitud_empresa FROM dual_solicitudes_empresa WHERE id_empresa = ? AND id_convocatoria = ?",
+      [idEmpresa, convocatoria.id_convocatoria],
     );
     if (solExist[0]) {
       await conn.rollback();
-      return res.status(409).json({ error: 'Ya existe una solicitud para la convocatoria activa.' });
+      return res.status(409).json({
+        error: "Ya existe una solicitud para la convocatoria activa.",
+      });
     }
 
     // Reuse legal representative and addresses from the most recent previous application
@@ -577,12 +739,15 @@ exports.reapply = async function (req, res) {
         WHERE se.id_empresa = ?
         ORDER BY se.fecha_solicitud DESC
         LIMIT 1`,
-      [idEmpresa]
+      [idEmpresa],
     );
 
     if (!empData[0]) {
       await conn.rollback();
-      return res.status(404).json({ error: 'No se encontró una solicitud previa de esta empresa para copiar los datos base.' });
+      return res.status(404).json({
+        error:
+          "No se encontró una solicitud previa de esta empresa para copiar los datos base.",
+      });
     }
 
     const prev = empData[0];
@@ -595,14 +760,19 @@ exports.reapply = async function (req, res) {
                 email = COALESCE(NULLIF(?, ''), email),
                 telefono = COALESCE(NULLIF(?, ''), telefono)
           WHERE idcontacto = ?`,
-        [nombreCoordinador, emailCoordinador, telefonoCoordinador, prev.id_coordinador_actual]
+        [
+          nombreCoordinador,
+          emailCoordinador,
+          telefonoCoordinador,
+          prev.id_coordinador_actual,
+        ],
       );
       // Display name may change with the coordinator; login remains the company CIF.
       if (nombreCoordinador) {
         await conn.query(
           `UPDATE dual_usuarios SET nombre_mostrar = COALESCE(NULLIF(?, ''), nombre_mostrar)
             WHERE id_contacto = ?`,
-          [nombreCoordinador, prev.id_coordinador_actual]
+          [nombreCoordinador, prev.id_coordinador_actual],
         );
       }
     }
@@ -613,9 +783,15 @@ exports.reapply = async function (req, res) {
          (id_empresa, id_convocatoria, id_estado_validacion, id_representante_legal,
           id_coordinador_empresa, id_domicilio_legal, id_domicilio_trabajo, descripcion_puesto)
        VALUES (?, ?, 1, ?, ?, ?, ?, ?)`,
-      [idEmpresa, convocatoria.id_convocatoria, prev.id_representante_legal,
-        prev.id_coordinador_actual, prev.id_domicilio_legal, prev.id_domicilio_trabajo,
-        descripcion_puesto || '']
+      [
+        idEmpresa,
+        convocatoria.id_convocatoria,
+        prev.id_representante_legal,
+        prev.id_coordinador_actual,
+        prev.id_domicilio_legal,
+        prev.id_domicilio_trabajo,
+        descripcion_puesto || "",
+      ],
     );
     const idSolicitudEmpresa = solRes.insertId;
 
@@ -625,25 +801,31 @@ exports.reapply = async function (req, res) {
       const cant = parseInt(esp.cantidadAlumnos, 10);
       if (!idEsp || !cant || cant < 1) {
         await conn.rollback();
-        return res.status(400).json({ error: 'Especialidad inválida.' });
+        return res.status(400).json({ error: "Especialidad inválida." });
       }
       await conn.query(
         `INSERT INTO dual_solicitud_empresa_especialidades (id_solicitud_empresa, id_especialidad, cantidad_alumnos)
          VALUES (?, ?, ?)`,
-        [idSolicitudEmpresa, idEsp, cant]
+        [idSolicitudEmpresa, idEsp, cant],
       );
     }
 
     // Replace all existing transport assignments for this empresa
-    await conn.query('DELETE FROM dual_empresa_transportes WHERE id_empresa = ?', [idEmpresa]);
+    await conn.query(
+      "DELETE FROM dual_empresa_transportes WHERE id_empresa = ?",
+      [idEmpresa],
+    );
     for (const idT of transportes) {
-      await conn.query('CALL sp_asignar_transporte_empresa(?, ?)', [idEmpresa, parseInt(idT, 10)]);
+      await conn.query("CALL sp_asignar_transporte_empresa(?, ?)", [
+        idEmpresa,
+        parseInt(idT, 10),
+      ]);
     }
 
     await conn.commit();
 
     return res.status(201).json({
-      message: 'Reaplicación enviada correctamente.',
+      message: "Reaplicación enviada correctamente.",
       id_solicitud_empresa: idSolicitudEmpresa,
     });
   } catch (err) {
@@ -666,18 +848,24 @@ exports.getDocumentos = async function (req, res) {
        JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
       WHERE d.id_solicitud_empresa = ?
       ORDER BY d.id_tipo_documento`,
-    [id]
+    [id],
   );
   return res.json(rows);
 };
 
 async function resolveSolicitudForUser(req, idSolicitud) {
   const datos = await empresaDatos.loadEmpresaDatosRead(pool, idSolicitud);
-  if (!datos) return { error: { status: 404, message: 'Solicitud no encontrada.' } };
-  if (req.user.rol === 'EMPRESA') {
+  if (!datos)
+    return { error: { status: 404, message: "Solicitud no encontrada." } };
+  if (req.user.rol === "EMPRESA") {
     const idEmpresa = await getCompanyIdFromUser(req.user.id);
     if (!idEmpresa || idEmpresa !== datos.id_empresa) {
-      return { error: { status: 403, message: 'No tiene permiso para acceder a esta solicitud.' } };
+      return {
+        error: {
+          status: 403,
+          message: "No tiene permiso para acceder a esta solicitud.",
+        },
+      };
     }
   }
   return { datos };
@@ -685,7 +873,7 @@ async function resolveSolicitudForUser(req, idSolicitud) {
 
 async function transportLabelMap(conn) {
   const [rows] = await conn.query(
-    'SELECT id_transporte, nombre, nombre_mostrar FROM dual_transportes'
+    "SELECT id_transporte, nombre, nombre_mostrar FROM dual_transportes",
   );
   const map = {};
   rows.forEach((r) => {
@@ -722,23 +910,34 @@ exports.putDatos = async function (req, res) {
   const { datos, error } = await resolveSolicitudForUser(req, id);
   if (error) return res.status(error.status).json({ error: error.message });
   if (!datos.convocatoria_activa) {
-    return res.status(400).json({ error: 'Solo se pueden editar los datos de la convocatoria activa.' });
+    return res.status(400).json({
+      error: "Solo se pueden editar los datos de la convocatoria activa.",
+    });
   }
 
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const snapshot = empresaDatos.pickSnapshot(datos);
-    const proposedAll = empresaDatos.sanitizeProposed(req.body, { allowCif: true });
+    const proposedAll = empresaDatos.sanitizeProposed(req.body, {
+      allowCif: true,
+    });
     const proposed = empresaDatos.diffProposed(snapshot, proposedAll);
     if (!Object.keys(proposed).length) {
       await conn.rollback();
-      return res.status(400).json({ error: 'No hay cambios respecto a los datos actuales.' });
+      return res
+        .status(400)
+        .json({ error: "No hay cambios respecto a los datos actuales." });
     }
-    await empresaDatos.applyEmpresaDatos(conn, datos, proposed, { allowCif: true });
+    await empresaDatos.applyEmpresaDatos(conn, datos, proposed, {
+      allowCif: true,
+    });
     await conn.commit();
     const updated = await empresaDatos.loadEmpresaDatosRead(pool, id);
-    return res.json({ message: 'Datos de la empresa actualizados.', datos: updated });
+    return res.json({
+      message: "Datos de la empresa actualizados.",
+      datos: updated,
+    });
   } catch (err) {
     await conn.rollback();
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -757,14 +956,14 @@ exports.getCambio = async function (req, res) {
     `SELECT * FROM dual_empresa_cambios
       WHERE id_solicitud_empresa = ? AND estado = ?
       ORDER BY id_cambio DESC LIMIT 1`,
-    [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE]
+    [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE],
   );
   const [ultimo] = await pool.query(
     `SELECT * FROM dual_empresa_cambios
       WHERE id_solicitud_empresa = ? AND estado <> ?
       ORDER BY COALESCE(fecha_resolucion, fecha_solicitud) DESC, id_cambio DESC
       LIMIT 1`,
-    [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE]
+    [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE],
   );
 
   const labels = await transportLabelMap(pool);
@@ -780,19 +979,30 @@ exports.upsertCambio = async function (req, res) {
   const { datos, error } = await resolveSolicitudForUser(req, id);
   if (error) return res.status(error.status).json({ error: error.message });
   if (!datos.convocatoria_activa) {
-    return res.status(400).json({ error: 'Solo se pueden solicitar cambios sobre la convocatoria activa.' });
+    return res.status(400).json({
+      error: "Solo se pueden solicitar cambios sobre la convocatoria activa.",
+    });
   }
-  if ('cif' in (req.body || {})) {
-    return res.status(403).json({ error: 'El CIF no se puede modificar desde la empresa.' });
+  if ("cif" in (req.body || {})) {
+    return res
+      .status(403)
+      .json({ error: "El CIF no se puede modificar desde la empresa." });
   }
 
-  const proposedAll = empresaDatos.sanitizeProposed(req.body, { allowCif: false });
+  const proposedAll = empresaDatos.sanitizeProposed(req.body, {
+    allowCif: false,
+  });
   const snapshot = empresaDatos.pickSnapshot(datos);
   const proposed = empresaDatos.diffProposed(snapshot, proposedAll);
   if (!Object.keys(proposed).length) {
-    return res.status(400).json({ error: 'No hay cambios respecto a los datos actuales.' });
+    return res
+      .status(400)
+      .json({ error: "No hay cambios respecto a los datos actuales." });
   }
-  const invalid = empresaDatos.validateMerged({ ...snapshot, ...proposed }, { allowCif: false });
+  const invalid = empresaDatos.validateMerged(
+    { ...snapshot, ...proposed },
+    { allowCif: false },
+  );
   if (invalid) {
     return res.status(400).json({ error: invalid });
   }
@@ -804,7 +1014,7 @@ exports.upsertCambio = async function (req, res) {
       `SELECT id_cambio FROM dual_empresa_cambios
         WHERE id_solicitud_empresa = ? AND estado = ?
         FOR UPDATE`,
-      [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE]
+      [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE],
     );
 
     const payload = JSON.stringify({ proposed, snapshot });
@@ -814,7 +1024,7 @@ exports.upsertCambio = async function (req, res) {
         `UPDATE dual_empresa_cambios
             SET payload = ?, fecha_solicitud = NOW(), motivo = NULL
           WHERE id_cambio = ?`,
-        [payload, pend[0].id_cambio]
+        [payload, pend[0].id_cambio],
       );
       idCambio = pend[0].id_cambio;
     } else {
@@ -822,16 +1032,25 @@ exports.upsertCambio = async function (req, res) {
         `INSERT INTO dual_empresa_cambios
            (id_solicitud_empresa, id_empresa, id_usuario_solicitante, payload, estado)
          VALUES (?, ?, ?, ?, ?)`,
-        [id, datos.id_empresa, req.user.id, payload, empresaDatos.ESTADOS_CAMBIO.PENDIENTE]
+        [
+          id,
+          datos.id_empresa,
+          req.user.id,
+          payload,
+          empresaDatos.ESTADOS_CAMBIO.PENDIENTE,
+        ],
       );
       idCambio = ins.insertId;
     }
     await conn.commit();
 
     const labels = await transportLabelMap(pool);
-    const [row] = await pool.query('SELECT * FROM dual_empresa_cambios WHERE id_cambio = ?', [idCambio]);
+    const [row] = await pool.query(
+      "SELECT * FROM dual_empresa_cambios WHERE id_cambio = ?",
+      [idCambio],
+    );
     return res.status(pend[0] ? 200 : 201).json({
-      message: 'Cambios enviados para revisión',
+      message: "Cambios enviados para revisión",
       cambio: presentCambio(row[0], snapshot, labels),
     });
   } catch (err) {
@@ -857,16 +1076,20 @@ exports.aprobarCambio = async function (req, res) {
       `SELECT * FROM dual_empresa_cambios
         WHERE id_cambio = ? AND id_solicitud_empresa = ?
         FOR UPDATE`,
-      [idCambio, id]
+      [idCambio, id],
     );
     const cambio = rows[0];
     if (!cambio) {
       await conn.rollback();
-      return res.status(404).json({ error: 'Solicitud de cambio no encontrada.' });
+      return res
+        .status(404)
+        .json({ error: "Solicitud de cambio no encontrada." });
     }
     if (cambio.estado !== empresaDatos.ESTADOS_CAMBIO.PENDIENTE) {
       await conn.rollback();
-      return res.status(400).json({ error: 'Esta solicitud de cambio ya está resuelta.' });
+      return res
+        .status(400)
+        .json({ error: "Esta solicitud de cambio ya está resuelta." });
     }
 
     const payload = empresaDatos.parsePayload(cambio.payload) || {};
@@ -874,13 +1097,18 @@ exports.aprobarCambio = async function (req, res) {
     const snapshot = payload.snapshot || {};
     const live = await empresaDatos.loadEmpresaDatos(conn, id);
     const liveSnap = empresaDatos.pickSnapshot(live);
-    const conflictos = empresaDatos.detectConflicts(snapshot, liveSnap, proposed);
+    const conflictos = empresaDatos.detectConflicts(
+      snapshot,
+      liveSnap,
+      proposed,
+    );
 
     if (conflictos.length && !confirmarConflicto) {
       await conn.rollback();
       const labels = await transportLabelMap(pool);
       return res.status(409).json({
-        error: 'Los datos actuales han cambiado desde que se envió la solicitud.',
+        error:
+          "Los datos actuales han cambiado desde que se envió la solicitud.",
         conflictos: conflictos.map((c) => ({
           ...c,
           label: empresaDatos.FIELD_DEFS[c.field]?.label || c.field,
@@ -890,17 +1118,22 @@ exports.aprobarCambio = async function (req, res) {
       });
     }
 
-    await empresaDatos.applyEmpresaDatos(conn, live, proposed, { allowCif: false });
+    await empresaDatos.applyEmpresaDatos(conn, live, proposed, {
+      allowCif: false,
+    });
     await conn.query(
       `UPDATE dual_empresa_cambios
           SET estado = ?, fecha_resolucion = NOW(), id_usuario_resolutor = ?, motivo = NULL
         WHERE id_cambio = ?`,
-      [empresaDatos.ESTADOS_CAMBIO.APROBADO, req.user.id, idCambio]
+      [empresaDatos.ESTADOS_CAMBIO.APROBADO, req.user.id, idCambio],
     );
     await conn.commit();
 
     const updated = await empresaDatos.loadEmpresaDatosRead(pool, id);
-    return res.json({ message: 'Cambios aprobados y aplicados.', datos: updated });
+    return res.json({
+      message: "Cambios aprobados y aplicados.",
+      datos: updated,
+    });
   } catch (err) {
     await conn.rollback();
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -913,9 +1146,11 @@ exports.aprobarCambio = async function (req, res) {
 exports.rechazarCambio = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const idCambio = parseInt(req.params.idCambio, 10);
-  const motivo = String(req.body?.motivo || '').trim();
+  const motivo = String(req.body?.motivo || "").trim();
   if (!motivo) {
-    return res.status(400).json({ error: 'Debe indicar el motivo del rechazo.' });
+    return res
+      .status(400)
+      .json({ error: "Debe indicar el motivo del rechazo." });
   }
 
   const { error } = await resolveSolicitudForUser(req, id);
@@ -924,38 +1159,58 @@ exports.rechazarCambio = async function (req, res) {
   const [rows] = await pool.query(
     `SELECT id_cambio, estado FROM dual_empresa_cambios
       WHERE id_cambio = ? AND id_solicitud_empresa = ?`,
-    [idCambio, id]
+    [idCambio, id],
   );
-  if (!rows[0]) return res.status(404).json({ error: 'Solicitud de cambio no encontrada.' });
+  if (!rows[0])
+    return res
+      .status(404)
+      .json({ error: "Solicitud de cambio no encontrada." });
   if (rows[0].estado !== empresaDatos.ESTADOS_CAMBIO.PENDIENTE) {
-    return res.status(400).json({ error: 'Esta solicitud de cambio ya está resuelta.' });
+    return res
+      .status(400)
+      .json({ error: "Esta solicitud de cambio ya está resuelta." });
   }
 
   await pool.query(
     `UPDATE dual_empresa_cambios
         SET estado = ?, fecha_resolucion = NOW(), id_usuario_resolutor = ?, motivo = ?
       WHERE id_cambio = ?`,
-    [empresaDatos.ESTADOS_CAMBIO.RECHAZADO, req.user.id, motivo, idCambio]
+    [empresaDatos.ESTADOS_CAMBIO.RECHAZADO, req.user.id, motivo, idCambio],
   );
-  return res.json({ message: 'Solicitud de cambio rechazada.' });
+  return res.json({ message: "Solicitud de cambio rechazada." });
 };
 
 const ERROR_CUPO_CONFIRMADAS =
-  'No se puede reducir el número de plazas por debajo de los alumnos ya confirmados. Cancela o reasigna primero las reservas confirmadas desde administración.';
+  "No se puede reducir el número de plazas por debajo de los alumnos ya confirmados. Cancela o reasigna primero las reservas confirmadas desde administración.";
 
-async function sendCupoReductionEmail({ email, empresa, especialidad, cantidadAnterior, cantidadNueva, canceladas }) {
+async function sendCupoReductionEmail({
+  email,
+  empresa,
+  especialidad,
+  cantidadAnterior,
+  cantidadNueva,
+  canceladas,
+}) {
   if (!transporter || !email) {
-    console.warn('Mail not configured. Cupo reduction for', empresa, especialidad, canceladas.map((c) => c.id_reserva));
+    console.warn(
+      "Mail not configured. Cupo reduction for",
+      empresa,
+      especialidad,
+      canceladas.map((c) => c.id_reserva),
+    );
     return;
   }
-  const list = canceladas.map((c) =>
-    `<li>Reserva #${c.id_reserva} — ${c.alumno || 'alumno'} (${c.dni_alumno || 'sin DNI'}) · ${c.especialidad || especialidad}</li>`
-  ).join('');
+  const list = canceladas
+    .map(
+      (c) =>
+        `<li>Reserva #${c.id_reserva} — ${c.alumno || "alumno"} (${c.dni_alumno || "sin DNI"}) · ${c.especialidad || especialidad}</li>`,
+    )
+    .join("");
   try {
     await transporter.sendMail({
       from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Reservas pendientes canceladas por reducción de plazas',
+      subject: "Reservas pendientes canceladas por reducción de plazas",
       html: `
         <p>Estimado coordinador de <strong>${empresa}</strong>,</p>
         <p>Se ha reducido el número de plazas de <strong>${especialidad}</strong> de ${cantidadAnterior} a ${cantidadNueva}.</p>
@@ -966,7 +1221,7 @@ async function sendCupoReductionEmail({ email, empresa, especialidad, cantidadAn
       `,
     });
   } catch (err) {
-    console.error('Error sending cupo reduction email:', err.message);
+    console.error("Error sending cupo reduction email:", err.message);
   }
 }
 
@@ -975,19 +1230,28 @@ exports.addEspecialidad = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const idEspecialidad = parseInt(req.body?.id_especialidad, 10);
   const raw = req.body?.cantidad;
-  const cantidad = typeof raw === 'number' ? raw : Number(raw);
+  const cantidad = typeof raw === "number" ? raw : Number(raw);
 
-  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(idEspecialidad) || idEspecialidad <= 0) {
-    return res.status(400).json({ error: 'Identificador no válido.' });
+  if (
+    !Number.isInteger(id) ||
+    id <= 0 ||
+    !Number.isInteger(idEspecialidad) ||
+    idEspecialidad <= 0
+  ) {
+    return res.status(400).json({ error: "Identificador no válido." });
   }
   if (!Number.isInteger(cantidad) || cantidad < 1) {
-    return res.status(400).json({ error: 'Indica al menos un alumno para añadir el ciclo.' });
+    return res
+      .status(400)
+      .json({ error: "Indica al menos un alumno para añadir el ciclo." });
   }
 
   const { datos, error } = await resolveSolicitudForUser(req, id);
   if (error) return res.status(error.status).json({ error: error.message });
   if (!datos.convocatoria_activa) {
-    return res.status(400).json({ error: 'Solo se puede añadir un ciclo en la convocatoria activa.' });
+    return res.status(400).json({
+      error: "Solo se puede añadir un ciclo en la convocatoria activa.",
+    });
   }
 
   const conn = await pool.getConnection();
@@ -999,45 +1263,49 @@ exports.addEspecialidad = async function (req, res) {
          FROM dual_solicitudes_empresa
         WHERE id_solicitud_empresa = ?
         FOR UPDATE`,
-      [id]
+      [id],
     );
     if (!locked[0]) {
       await conn.rollback();
-      return res.status(404).json({ error: 'Solicitud no encontrada.' });
+      return res.status(404).json({ error: "Solicitud no encontrada." });
     }
 
     const [espRows] = await conn.query(
       `SELECT id_especialidad, nombre
          FROM dual_especialidades
         WHERE id_especialidad = ? AND activa = 1`,
-      [idEspecialidad]
+      [idEspecialidad],
     );
     if (!espRows[0]) {
       await conn.rollback();
-      return res.status(400).json({ error: 'El ciclo seleccionado no está disponible.' });
+      return res
+        .status(400)
+        .json({ error: "El ciclo seleccionado no está disponible." });
     }
 
     const [existing] = await conn.query(
       `SELECT id_solicitud_empresa_especialidad
          FROM dual_solicitud_empresa_especialidades
         WHERE id_solicitud_empresa = ? AND id_especialidad = ?`,
-      [id, idEspecialidad]
+      [id, idEspecialidad],
     );
     if (existing[0]) {
       await conn.rollback();
-      return res.status(409).json({ error: 'Este ciclo ya está en la solicitud.' });
+      return res
+        .status(409)
+        .json({ error: "Este ciclo ya está en la solicitud." });
     }
 
     const [ins] = await conn.query(
       `INSERT INTO dual_solicitud_empresa_especialidades
          (id_solicitud_empresa, id_especialidad, cantidad_alumnos)
        VALUES (?, ?, ?)`,
-      [id, idEspecialidad, cantidad]
+      [id, idEspecialidad, cantidad],
     );
 
     await conn.commit();
     return res.status(201).json({
-      message: 'Ciclo añadido.',
+      message: "Ciclo añadido.",
       id_solicitud_empresa_especialidad: ins.insertId,
       id_especialidad: idEspecialidad,
       nombre: espRows[0].nombre,
@@ -1056,25 +1324,37 @@ exports.updateCupoEspecialidad = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const idOferta = parseInt(req.params.idOferta, 10);
   const raw = req.body?.cantidad;
-  const cantidad = typeof raw === 'number' ? raw : Number(raw);
+  const cantidad = typeof raw === "number" ? raw : Number(raw);
   const confirmarCancelaciones = Boolean(req.body?.confirmar_cancelaciones);
 
-  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(idOferta) || idOferta <= 0) {
-    return res.status(400).json({ error: 'Identificador de oferta no válido.' });
+  if (
+    !Number.isInteger(id) ||
+    id <= 0 ||
+    !Number.isInteger(idOferta) ||
+    idOferta <= 0
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Identificador de oferta no válido." });
   }
   if (!Number.isInteger(cantidad) || cantidad < 0) {
-    return res.status(400).json({ error: 'La cantidad debe ser un entero mayor o igual que 0.' });
+    return res
+      .status(400)
+      .json({ error: "La cantidad debe ser un entero mayor o igual que 0." });
   }
 
   const { datos, error } = await resolveSolicitudForUser(req, id);
   if (error) return res.status(error.status).json({ error: error.message });
   if (!datos.convocatoria_activa) {
-    return res.status(400).json({ error: 'Solo se puede modificar el cupo de la convocatoria activa.' });
+    return res.status(400).json({
+      error: "Solo se puede modificar el cupo de la convocatoria activa.",
+    });
   }
 
-  const motivo = req.user.rol === 'EMPRESA'
-    ? 'Cupo reducido por la empresa.'
-    : 'Cupo reducido por administración.';
+  const motivo =
+    req.user.rol === "EMPRESA"
+      ? "Cupo reducido por la empresa."
+      : "Cupo reducido por administración.";
 
   const conn = await pool.getConnection();
   let canceladas = [];
@@ -1107,12 +1387,14 @@ exports.updateCupoEspecialidad = async function (req, res) {
         WHERE ee.id_solicitud_empresa_especialidad = ?
           AND ee.id_solicitud_empresa = ?
         FOR UPDATE`,
-      [idOferta, id]
+      [idOferta, id],
     );
     const offer = offers[0];
     if (!offer) {
       await conn.rollback();
-      return res.status(404).json({ error: 'La especialidad no pertenece a esta solicitud.' });
+      return res
+        .status(404)
+        .json({ error: "La especialidad no pertenece a esta solicitud." });
     }
 
     const [reservas] = await conn.query(
@@ -1125,11 +1407,13 @@ exports.updateCupoEspecialidad = async function (req, res) {
           AND er.nombre IN ('PENDIENTE', 'CONFIRMADA')
         ORDER BY r.id_reserva DESC
         FOR UPDATE`,
-      [idOferta]
+      [idOferta],
     );
 
-    const confirmadas = reservas.filter((r) => r.estado_reserva === 'CONFIRMADA');
-    const pendientes = reservas.filter((r) => r.estado_reserva === 'PENDIENTE');
+    const confirmadas = reservas.filter(
+      (r) => r.estado_reserva === "CONFIRMADA",
+    );
+    const pendientes = reservas.filter((r) => r.estado_reserva === "PENDIENTE");
     const activas = confirmadas.length + pendientes.length;
     cantidadAnterior = Number(offer.cantidad_alumnos);
     especialidadNombre = offer.especialidad;
@@ -1139,7 +1423,7 @@ exports.updateCupoEspecialidad = async function (req, res) {
     if (cantidad === cantidadAnterior) {
       await conn.rollback();
       return res.json({
-        message: 'La cantidad no ha cambiado.',
+        message: "La cantidad no ha cambiado.",
         cantidad,
         plazas_ocupadas: activas,
         plazas_confirmadas: confirmadas.length,
@@ -1161,7 +1445,7 @@ exports.updateCupoEspecialidad = async function (req, res) {
 
     if (cantidad < activas) {
       const nCancelar = activas - cantidad;
-      const aviso = `Al reducir de ${cantidadAnterior} a ${cantidad} plazas se cancelarán ${nCancelar} reserva${nCancelar !== 1 ? 's' : ''} pendiente${nCancelar !== 1 ? 's' : ''}. Las reservas confirmadas no se modificarán.`;
+      const aviso = `Al reducir de ${cantidadAnterior} a ${cantidad} plazas se cancelarán ${nCancelar} reserva${nCancelar !== 1 ? "s" : ""} pendiente${nCancelar !== 1 ? "s" : ""}. Las reservas confirmadas no se modificarán.`;
       if (!confirmarCancelaciones) {
         await conn.rollback();
         return res.status(409).json({
@@ -1184,12 +1468,13 @@ exports.updateCupoEspecialidad = async function (req, res) {
                   motivo = ?
             WHERE id_reserva = ?
               AND id_estado_reserva = (SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre = 'PENDIENTE' LIMIT 1)`,
-          [motivo, row.id_reserva]
+          [motivo, row.id_reserva],
         );
         if (!upd.affectedRows) {
           await conn.rollback();
           return res.status(409).json({
-            error: 'El estado de las reservas ha cambiado. Vuelve a intentar la reducción de plazas.',
+            error:
+              "El estado de las reservas ha cambiado. Vuelve a intentar la reducción de plazas.",
           });
         }
         canceladas.push({
@@ -1206,7 +1491,7 @@ exports.updateCupoEspecialidad = async function (req, res) {
       `UPDATE dual_solicitud_empresa_especialidades
           SET cantidad_alumnos = ?
         WHERE id_solicitud_empresa_especialidad = ?`,
-      [cantidad, idOferta]
+      [cantidad, idOferta],
     );
 
     await conn.commit();
@@ -1238,14 +1523,14 @@ exports.updateCupoEspecialidad = async function (req, res) {
         (SELECT COUNT(*) FROM dual_reservas r
            JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
           WHERE r.id_solicitud_empresa_especialidad = ? AND er.nombre = 'PENDIENTE') AS plazas_pendientes`,
-    [idOferta, idOferta, idOferta, idOferta]
+    [idOferta, idOferta, idOferta, idOferta],
   );
 
   const stats = ocup[0] || {};
   return res.json({
     message: canceladas.length
-      ? `Plazas actualizadas. Se han cancelado ${canceladas.length} reserva${canceladas.length !== 1 ? 's' : ''} pendiente${canceladas.length !== 1 ? 's' : ''}.`
-      : 'Número de plazas actualizado.',
+      ? `Plazas actualizadas. Se han cancelado ${canceladas.length} reserva${canceladas.length !== 1 ? "s" : ""} pendiente${canceladas.length !== 1 ? "s" : ""}.`
+      : "Número de plazas actualizado.",
     cantidad,
     cantidad_anterior: cantidadAnterior,
     plazas_ocupadas: Number(stats.plazas_ocupadas) || 0,

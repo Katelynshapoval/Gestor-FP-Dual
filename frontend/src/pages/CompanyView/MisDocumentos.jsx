@@ -9,7 +9,8 @@ const ESTADO_BADGE = {
   RECHAZADO: { label: "Rechazado", variant: "danger" },
 };
 
-const badgeFor = (estado) => ESTADO_BADGE[estado] || { label: "Sin documento", variant: "neutral" };
+const badgeFor = (estado) =>
+  ESTADO_BADGE[estado] || { label: "Sin documento", variant: "neutral" };
 
 const openDocumento = async (idDocumento) => {
   const blob = await getBlob(`/documentos/${idDocumento}/descargar`);
@@ -35,7 +36,10 @@ const UploadReplace = ({ endpoint, onUploaded, label = "Subir PDF" }) => {
       const fd = new FormData();
       fd.append("archivo", file);
       await postForm(endpoint, fd);
-      setMsg({ ok: true, text: "Documento enviado. Queda pendiente de revisión." });
+      setMsg({
+        ok: true,
+        text: "Documento enviado. Queda pendiente de revisión.",
+      });
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
       if (onUploaded) await onUploaded();
@@ -48,11 +52,15 @@ const UploadReplace = ({ endpoint, onUploaded, label = "Subir PDF" }) => {
 
   return (
     <div className="mt-3 border-t border-surface-200 pt-3">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">{label}</p>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">
+        {label}
+      </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label className="file-upload min-h-10 flex-1 px-3 py-2">
           <MdOutlineFileUpload className="file-upload-icon" />
-          <span className="file-upload-text text-sm">{file ? file.name : "Seleccionar archivo"}</span>
+          <span className="file-upload-text text-sm">
+            {file ? file.name : "Seleccionar archivo"}
+          </span>
           <input
             ref={inputRef}
             type="file"
@@ -97,8 +105,15 @@ const DocumentoCard = ({ doc, onRefresh }) => {
   const badge = badgeFor(doc.estado_validacion);
   const related =
     doc.ambito === "reserva"
-      ? [doc.alumno, doc.especialidad, doc.estado_reserva].filter(Boolean).join(" · ")
-      : [doc.convocatoria, doc.convocatoria_activa ? "Convocatoria activa" : null].filter(Boolean).join(" · ");
+      ? [doc.alumno, doc.especialidad, doc.estado_reserva]
+          .filter(Boolean)
+          .join(" · ")
+      : [
+          doc.convocatoria,
+          doc.convocatoria_activa ? "Convocatoria activa" : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
   const handleVer = async () => {
     if (!doc.id_documento) return;
@@ -116,7 +131,9 @@ const DocumentoCard = ({ doc, onRefresh }) => {
     <article className="px-4 py-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-charcoal-950">{doc.tipo_mostrar || doc.tipo}</p>
+          <p className="truncate text-sm font-semibold text-charcoal-950">
+            {doc.tipo_mostrar || doc.tipo}
+          </p>
           <p className="mt-1 text-xs leading-5 text-muted">{related || "—"}</p>
         </div>
         <StatusBadge variant={badge.variant}>{badge.label}</StatusBadge>
@@ -124,7 +141,8 @@ const DocumentoCard = ({ doc, onRefresh }) => {
 
       {doc.estado_validacion === "RECHAZADO" && (
         <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
-          <span className="font-semibold">Motivo del rechazo:</span> {doc.motivo || "Sin motivo indicado."}
+          <span className="font-semibold">Motivo del rechazo:</span>{" "}
+          {doc.motivo || "Sin motivo indicado."}
         </p>
       )}
 
@@ -139,7 +157,9 @@ const DocumentoCard = ({ doc, onRefresh }) => {
             {opening ? "Abriendo..." : "Ver documento"}
           </button>
         ) : (
-          <p className="text-xs text-muted">Todavía no hay un archivo subido.</p>
+          <p className="text-xs text-muted">
+            Todavía no hay un archivo subido.
+          </p>
         )}
       </div>
 
@@ -147,7 +167,11 @@ const DocumentoCard = ({ doc, onRefresh }) => {
         <UploadReplace
           endpoint={`/documentos/empresa/${doc.id_solicitud_empresa}/convenio`}
           onUploaded={onRefresh}
-          label={doc.id_documento ? "Reemplazar convenio (PDF)" : "Subir convenio (PDF)"}
+          label={
+            doc.id_documento
+              ? "Reemplazar convenio (PDF)"
+              : "Subir convenio (PDF)"
+          }
         />
       )}
 
@@ -163,7 +187,9 @@ const DocumentoCard = ({ doc, onRefresh }) => {
 };
 
 const MisDocumentos = ({ documentos, onRefresh }) => {
-  const [list, setList] = useState(documentos || { solicitudes: [], reservas: [] });
+  const [list, setList] = useState(
+    documentos || { solicitudes: [], reservas: [] },
+  );
 
   useEffect(() => {
     setList(documentos || { solicitudes: [], reservas: [] });
@@ -189,10 +215,12 @@ const MisDocumentos = ({ documentos, onRefresh }) => {
       <div className="form-card">
         <p className="form-section-title">Convenio</p>
         <p className="mb-4 text-sm text-gray-500">
-          Documentos de tu solicitud. El convenio subido con el enlace público también aparece aquí.
+          Documentos asociados a tu solicitud.
         </p>
         {solicitudes.length === 0 ? (
-          <p className="text-sm text-gray-400">No hay solicitudes de empresa.</p>
+          <p className="text-sm text-gray-400">
+            No hay solicitudes de empresa.
+          </p>
         ) : (
           <div className="divide-y divide-surface-200 overflow-hidden rounded-xl2 border border-surface-200 bg-white">
             {solicitudes.map((doc) => (
@@ -212,7 +240,9 @@ const MisDocumentos = ({ documentos, onRefresh }) => {
           Anexo H de cada reserva de tus alumnos, cuando existe.
         </p>
         {reservas.length === 0 ? (
-          <p className="text-sm text-gray-400">No hay anexos de reserva todavía.</p>
+          <p className="text-sm text-gray-400">
+            No hay anexos de reserva todavía.
+          </p>
         ) : (
           <div className="divide-y divide-surface-200 overflow-hidden rounded-xl2 border border-surface-200 bg-white">
             {reservas.map((doc) => (
