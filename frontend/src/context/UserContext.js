@@ -1,53 +1,82 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from "react";
 
 const UserContext = createContext();
 
-// Persists user session to localStorage with an 8-hour expiry.
-// Syncs logout across browser tabs via the storage event.
+const SESSION_DURATION = 8 * 60 * 60 * 1000;
+
 export const User = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('user');
+  // Restore session on app load
+  const [user, setUserState] = useState(() => {
+    const saved = localStorage.getItem("user");
+
     if (!saved) return null;
-    const { data, expires } = JSON.parse(saved);
-    if (expires > Date.now()) return data;
-    localStorage.removeItem('user');
-    return null;
+
+    try {
+      const { data, expires } = JSON.parse(saved);
+
+      if (expires > Date.now()) return data;
+
+      localStorage.removeItem("user");
+      return null;
+    } catch {
+      localStorage.removeItem("user");
+      return null;
+    }
   });
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('user', JSON.stringify({
-        data: user,
-        expires: Date.now() + 8 * 60 * 60 * 1000,
-      }));
+  // Save immediately to avoid auth race conditions after login
+  const setUser = (newUser) => {
+    if (newUser) {
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          data: newUser,
+          expires: Date.now() + SESSION_DURATION,
+        }),
+      );
     } else {
-      localStorage.removeItem('user');
+      localStorage.removeItem("user");
     }
-  }, [user]);
 
-  // Keeps other tabs in sync when the session changes
+    setUserState(newUser);
+  };
+
+  // Sync login/logout across browser tabs
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key !== 'user') return;
+      if (e.key !== "user") return;
+
       if (!e.newValue) {
-        setUser(null);
+        setUserState(null);
         return;
       }
-      const { data, expires } = JSON.parse(e.newValue);
-      if (expires > Date.now()) {
-        setUser(data);
-      } else {
-        localStorage.removeItem('user');
-        setUser(null);
+
+      try {
+        const { data, expires } = JSON.parse(e.newValue);
+
+        if (expires > Date.now()) {
+          setUserState(data);
+        } else {
+          localStorage.removeItem("user");
+          setUserState(null);
+        }
+      } catch {
+        localStorage.removeItem("user");
+        setUserState(null);
       }
     };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+
+    window.addEventListener("storage", onStorage);
+
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const logout = (navigate) => {
     setUser(null);
-    if (navigate) navigate('/login');
+
+    if (navigate) {
+      navigate("/login");
+    }
   };
 
   return (
