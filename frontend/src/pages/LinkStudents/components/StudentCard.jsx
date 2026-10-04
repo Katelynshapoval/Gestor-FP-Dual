@@ -40,7 +40,9 @@ const ESTADO_SOLICITUD = {
 
 // A2/A3 badge: green when the student has at least one confirmed reservation
 const AnexoBadge = ({ reservas }) => {
-  const confirmed = reservas?.some((rv) => isConfirmedReserva(rv.estado_reserva));
+  const confirmed = reservas?.some((rv) =>
+    isConfirmedReserva(rv.estado_reserva),
+  );
   const Icon = confirmed
     ? IoIosCheckmarkCircleOutline
     : IoIosCloseCircleOutline;
@@ -259,7 +261,9 @@ const StudentCard = ({
           {!isEmpresa ? (
             <div className={cardChipsClass}>
               {ESTADO_SOLICITUD[r.estado_validacion] && (
-                <StatusBadge variant={ESTADO_SOLICITUD[r.estado_validacion].variant}>
+                <StatusBadge
+                  variant={ESTADO_SOLICITUD[r.estado_validacion].variant}
+                >
                   {ESTADO_SOLICITUD[r.estado_validacion].label}
                 </StatusBadge>
               )}
@@ -373,11 +377,13 @@ const StudentCard = ({
                       onRechazar={onRechazarSolicitud}
                     />
                   )}
-                  <Evaluacion
-                    r={r}
-                    user={user}
-                    onGetEvaluation={onGetEvaluation}
-                  />
+                  {!isEmpresa && (
+                    <Evaluacion
+                      r={r}
+                      user={user}
+                      onGetEvaluation={onGetEvaluation}
+                    />
+                  )}
                 </div>
               </div>
             )}
