@@ -8,6 +8,12 @@ const {
 } = require("../helpers/dbHelpers");
 const empresaDatos = require("./empresaDatos");
 
+const fs = require("fs");
+const path = require("path");
+const mammoth = require("mammoth");
+const puppeteer = require("puppeteer");
+const { createReport } = require("docx-templates");
+
 const EMPRESA_YA_REGISTRADA =
   "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
 
@@ -19,7 +25,12 @@ try {
   /* mail not configured */
 }
 
-async function sendCompanyConfirmationEmail(email, empresa, convocatoria) {
+async function sendCompanyConfirmationEmail(
+  email,
+  empresa,
+  convocatoria,
+  convenioPdfPath,
+) {
   if (!transporter) {
     console.warn(
       "Mail not configured. Confirmation email not sent for",
@@ -27,6 +38,7 @@ async function sendCompanyConfirmationEmail(email, empresa, convocatoria) {
     );
     return;
   }
+
   try {
     await transporter.sendMail({
       from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
@@ -35,10 +47,16 @@ async function sendCompanyConfirmationEmail(email, empresa, convocatoria) {
       html: `
         <p>Estimado coordinador de <strong>${empresa}</strong>,</p>
         <p>Hemos recibido vuestra solicitud de participación en la convocatoria <strong>${convocatoria}</strong>.</p>
-        <p>Revisaremos la documentación y os informaremos del resultado.</p>
-        <p>Podéis gestionar la documentación desde vuestro panel de empresa.</p>
+        <p>Adjuntamos el convenio correspondiente para su firma.</p>
+        <p>Una vez firmado, podéis subirlo desde vuestro panel de empresa.</p>
         <p>Salesianos Zaragoza — Departamento Dual</p>
       `,
+      attachments: [
+        {
+          filename: `CONVENIO_${empresa}_${new Date().getFullYear()}.pdf`,
+          path: convenioPdfPath,
+        },
+      ],
     });
   } catch (err) {
     console.error("Error sending company confirmation email:", err.message);
@@ -107,6 +125,7 @@ exports.create = async function (req, res) {
       .status(400)
       .json({ error: "Faltan datos obligatorios de la empresa." });
   }
+
   if (
     !dniRepresentante ||
     !nombreRepresentante ||
@@ -117,6 +136,7 @@ exports.create = async function (req, res) {
       .status(400)
       .json({ error: "Faltan datos del representante legal." });
   }
+
   if (
     !dniCoordinador ||
     !nombreCoordinador ||
@@ -127,11 +147,13 @@ exports.create = async function (req, res) {
       .status(400)
       .json({ error: "Faltan datos del coordinador de empresa." });
   }
+
   if (!descripcion_puesto) {
     return res
       .status(400)
       .json({ error: "La descripción del puesto es obligatoria." });
   }
+
   if (
     !especialidades ||
     !Array.isArray(especialidades) ||
@@ -142,6 +164,7 @@ exports.create = async function (req, res) {
         "Debe seleccionar al menos una especialidad y cantidad de alumnos.",
     });
   }
+
   if (!passwordCoordinador) {
     return res.status(400).json({
       error: "Se requiere contraseña para la cuenta del coordinador.",
@@ -149,6 +172,7 @@ exports.create = async function (req, res) {
   }
 
   const convocatoria = await getActiveConvocatoria();
+
   if (!convocatoria) {
     return res.status(409).json({
       error:
@@ -157,6 +181,7 @@ exports.create = async function (req, res) {
   }
 
   const cifNorm = normalizeCif(cif);
+
   if (!cifNorm) {
     return res
       .status(400)
@@ -164,6 +189,7 @@ exports.create = async function (req, res) {
   }
 
   const conn = await pool.getConnection();
+
   try {
     await conn.beginTransaction();
 
@@ -172,14 +198,24 @@ exports.create = async function (req, res) {
       "SELECT idempresa FROM ge_empresas WHERE UPPER(TRIM(cif)) = ? FOR UPDATE",
       [cifNorm],
     );
+
     if (empExist[0]) {
       await conn.rollback();
       return res.status(409).json({ error: EMPRESA_YA_REGISTRADA });
     }
 
     const [r] = await conn.query(
-      `INSERT INTO ge_empresas (cif, empresa, convenio, fechaconvenio, web, observaciones,
-                                 emailEmpresa, telefonoEmpresa, menosdecincotrabajadores)
+      `INSERT INTO ge_empresas (
+         cif,
+         empresa,
+         convenio,
+         fechaconvenio,
+         web,
+         observaciones,
+         emailEmpresa,
+         telefonoEmpresa,
+         menosdecincotrabajadores
+       )
        VALUES (?, ?, '', '1000-01-01', ?, ?, ?, ?, ?)`,
       [
         cifNorm,
@@ -191,13 +227,18 @@ exports.create = async function (req, res) {
         menosdecincotrabajadores ? 1 : 0,
       ],
     );
+
     const idEmpresa = r.insertId;
 
     // Check for duplicate application in this convocatoria
     const [solExist] = await conn.query(
-      "SELECT id_solicitud_empresa FROM dual_solicitudes_empresa WHERE id_empresa = ? AND id_convocatoria = ?",
+      `SELECT id_solicitud_empresa
+         FROM dual_solicitudes_empresa
+        WHERE id_empresa = ?
+          AND id_convocatoria = ?`,
       [idEmpresa, convocatoria.id_convocatoria],
     );
+
     if (solExist[0]) {
       await conn.rollback();
       return res.status(409).json({
@@ -208,7 +249,17 @@ exports.create = async function (req, res) {
 
     // 2. Legal address
     const [domLegalRes] = await conn.query(
-      `INSERT INTO ge_domicilios (idempresa, domicilio, cp, provincia, localidad, telefono, email, especialidad, municipio)
+      `INSERT INTO ge_domicilios (
+         idempresa,
+         domicilio,
+         cp,
+         provincia,
+         localidad,
+         telefono,
+         email,
+         especialidad,
+         municipio
+       )
        VALUES (?, ?, ?, ?, ?, ?, ?, '', ?)`,
       [
         idEmpresa,
@@ -221,10 +272,12 @@ exports.create = async function (req, res) {
         municipioLegal,
       ],
     );
+
     const idDomicilioLegal = domLegalRes.insertId;
 
     // 3. Work address (may reuse legal)
     let idDomicilioTrabajo;
+
     if (mismoLugarTrabajo) {
       idDomicilioTrabajo = idDomicilioLegal;
     } else {
@@ -235,12 +288,24 @@ exports.create = async function (req, res) {
         !localidadTrabajo
       ) {
         await conn.rollback();
+
         return res
           .status(400)
           .json({ error: "Faltan datos del domicilio de trabajo." });
       }
+
       const [domTrabRes] = await conn.query(
-        `INSERT INTO ge_domicilios (idempresa, domicilio, cp, provincia, localidad, telefono, email, especialidad, municipio)
+        `INSERT INTO ge_domicilios (
+           idempresa,
+           domicilio,
+           cp,
+           provincia,
+           localidad,
+           telefono,
+           email,
+           especialidad,
+           municipio
+         )
          VALUES (?, ?, ?, ?, ?, ?, ?, '', ?)`,
         [
           idEmpresa,
@@ -253,12 +318,22 @@ exports.create = async function (req, res) {
           municipioTrabajo,
         ],
       );
+
       idDomicilioTrabajo = domTrabRes.insertId;
     }
 
-    // 4. Legal representative contact (attached to legal address)
+    // 4. Legal representative contact
     const [repRes] = await conn.query(
-      `INSERT INTO ge_contactos (iddomicilio, dni, nombre, email, telefono, cargo, observaciones, especialidad)
+      `INSERT INTO ge_contactos (
+         iddomicilio,
+         dni,
+         nombre,
+         email,
+         telefono,
+         cargo,
+         observaciones,
+         especialidad
+       )
        VALUES (?, ?, ?, ?, ?, ?, '', '')`,
       [
         idDomicilioLegal,
@@ -269,11 +344,21 @@ exports.create = async function (req, res) {
         cargoRepresentante,
       ],
     );
+
     const idRepresentante = repRes.insertId;
 
-    // 5. Company coordinator contact (attached to work address)
+    // 5. Company coordinator contact
     const [coordRes] = await conn.query(
-      `INSERT INTO ge_contactos (iddomicilio, dni, nombre, email, telefono, cargo, observaciones, especialidad)
+      `INSERT INTO ge_contactos (
+         iddomicilio,
+         dni,
+         nombre,
+         email,
+         telefono,
+         cargo,
+         observaciones,
+         especialidad
+       )
        VALUES (?, ?, ?, ?, ?, ?, '', '')`,
       [
         idDomicilioTrabajo,
@@ -284,13 +369,21 @@ exports.create = async function (req, res) {
         cargoCoordinador,
       ],
     );
+
     const idCoordinador = coordRes.insertId;
 
     // 6. Create solicitud empresa
     const [solRes] = await conn.query(
-      `INSERT INTO dual_solicitudes_empresa
-         (id_empresa, id_convocatoria, id_estado_validacion, id_representante_legal,
-          id_coordinador_empresa, id_domicilio_legal, id_domicilio_trabajo, descripcion_puesto)
+      `INSERT INTO dual_solicitudes_empresa (
+         id_empresa,
+         id_convocatoria,
+         id_estado_validacion,
+         id_representante_legal,
+         id_coordinador_empresa,
+         id_domicilio_legal,
+         id_domicilio_trabajo,
+         descripcion_puesto
+       )
        VALUES (?, ?, 1, ?, ?, ?, ?, ?)`,
       [
         idEmpresa,
@@ -302,20 +395,28 @@ exports.create = async function (req, res) {
         descripcion_puesto,
       ],
     );
+
     const idSolicitudEmpresa = solRes.insertId;
 
     // 7. Speciality rows
     for (const esp of especialidades) {
       const idEsp = parseInt(esp.idEspecialidad, 10);
       const cant = parseInt(esp.cantidadAlumnos, 10);
+
       if (!idEsp || !cant || cant < 1) {
         await conn.rollback();
+
         return res.status(400).json({
           error: "Cada especialidad debe tener un id válido y cantidad > 0.",
         });
       }
+
       await conn.query(
-        `INSERT INTO dual_solicitud_empresa_especialidades (id_solicitud_empresa, id_especialidad, cantidad_alumnos)
+        `INSERT INTO dual_solicitud_empresa_especialidades (
+           id_solicitud_empresa,
+           id_especialidad,
+           cantidad_alumnos
+         )
          VALUES (?, ?, ?)`,
         [idSolicitudEmpresa, idEsp, cant],
       );
@@ -334,24 +435,35 @@ exports.create = async function (req, res) {
       "SELECT id_rol FROM dual_roles WHERE nombre = ?",
       ["EMPRESA"],
     );
+
     const idRol = rolRow[0]?.id_rol;
-    if (!idRol)
+
+    if (!idRol) {
       throw new Error("Rol EMPRESA no encontrado en la base de datos.");
+    }
 
     const hash = await bcrypt.hash(passwordCoordinador, 10);
+
     // Login identifier is the company CIF. Coordinator email stays in ge_contactos.
     await conn.query(
-      `INSERT INTO dual_usuarios (nombre_mostrar, email, password_hash, id_rol, id_contacto, activo, must_change_password)
+      `INSERT INTO dual_usuarios (
+         nombre_mostrar,
+         email,
+         password_hash,
+         id_rol,
+         id_contacto,
+         activo,
+         must_change_password
+       )
        VALUES (?, NULL, ?, ?, ?, 1, 1)`,
       [nombreCoordinador, hash, idRol, idCoordinador],
     );
 
     await conn.commit();
 
-    sendCompanyConfirmationEmail(
-      emailCoordinador,
-      empresaNombre,
-      convocatoria.nombre,
+    await safelyGenerateAndSendConvenio(
+      idSolicitudEmpresa,
+      "Error al generar/enviar el convenio:",
     );
 
     return res.status(201).json({
@@ -360,12 +472,14 @@ exports.create = async function (req, res) {
     });
   } catch (err) {
     await conn.rollback();
+
     if (
       err.code === "ER_DUP_ENTRY" &&
       /uq_ge_empresas_cif|ge_empresas/i.test(err.message)
     ) {
       return res.status(409).json({ error: EMPRESA_YA_REGISTRADA });
     }
+
     return sendSqlError(res, err);
   } finally {
     conn.release();
@@ -375,65 +489,97 @@ exports.create = async function (req, res) {
 // GET /solicitudes/empresa — admin/coordinador: list all
 exports.getAll = async function (req, res) {
   const { estado, convocatoria } = req.query;
+
   let query = `
-    SELECT se.id_solicitud_empresa, se.id_empresa, se.id_convocatoria, se.fecha_solicitud,
-           se.descripcion_puesto, se.motivo,
-           ev.nombre AS estado_validacion,
-           emp.empresa, emp.cif,
-           c.nombre AS convocatoria,
-           rep.nombre AS representante_nombre, rep.email AS representante_email,
-           coord.nombre AS coordinador_nombre, coord.email AS coordinador_email
-      FROM dual_solicitudes_empresa se
-      JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
-      JOIN dual_estados_validacion ev ON ev.id_estado_validacion = se.id_estado_validacion
-      JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
-      JOIN ge_contactos rep ON rep.idcontacto = se.id_representante_legal
-      JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
-     WHERE 1=1
+    SELECT
+      se.id_solicitud_empresa,
+      se.id_empresa,
+      se.id_convocatoria,
+      se.fecha_solicitud,
+      se.descripcion_puesto,
+      se.motivo,
+      ev.nombre AS estado_validacion,
+      emp.empresa,
+      emp.cif,
+      c.nombre AS convocatoria,
+      rep.nombre AS representante_nombre,
+      rep.email AS representante_email,
+      coord.nombre AS coordinador_nombre,
+      coord.email AS coordinador_email
+    FROM dual_solicitudes_empresa se
+    JOIN ge_empresas emp
+      ON emp.idempresa = se.id_empresa
+    JOIN dual_estados_validacion ev
+      ON ev.id_estado_validacion = se.id_estado_validacion
+    JOIN dual_convocatorias c
+      ON c.id_convocatoria = se.id_convocatoria
+    JOIN ge_contactos rep
+      ON rep.idcontacto = se.id_representante_legal
+    JOIN ge_contactos coord
+      ON coord.idcontacto = se.id_coordinador_empresa
+    WHERE 1 = 1
   `;
+
   const params = [];
+
   if (estado) {
     query += " AND ev.nombre = ?";
     params.push(estado.toUpperCase());
   }
+
   if (convocatoria) {
     query += " AND se.id_convocatoria = ?";
     params.push(convocatoria);
   }
+
   query += " ORDER BY se.fecha_solicitud DESC";
 
   const [rows] = await pool.query(query, params);
+
   return res.json(rows);
 };
 
 // GET /solicitudes/empresa/mia — EMPRESA user's own application
 exports.getMia = async function (req, res) {
-  const { getCompanyIdFromUser } = require("../helpers/dbHelpers");
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
-  if (!idEmpresa)
+
+  if (!idEmpresa) {
     return res
       .status(404)
       .json({ error: "No se encontró empresa vinculada a este usuario." });
+  }
 
   const [rows] = await pool.query(
-    `SELECT se.id_solicitud_empresa, se.id_empresa, se.id_convocatoria, se.fecha_solicitud,
-            se.descripcion_puesto, se.motivo,
-            ev.nombre AS estado_validacion,
-            emp.empresa, emp.cif,
-            c.nombre AS convocatoria
-       FROM dual_solicitudes_empresa se
-       JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
-       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = se.id_estado_validacion
-       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
-      WHERE se.id_empresa = ?
-        AND c.activa = 1
-      LIMIT 1`,
+    `SELECT
+       se.id_solicitud_empresa,
+       se.id_empresa,
+       se.id_convocatoria,
+       se.fecha_solicitud,
+       se.descripcion_puesto,
+       se.motivo,
+       ev.nombre AS estado_validacion,
+       emp.empresa,
+       emp.cif,
+       c.nombre AS convocatoria
+     FROM dual_solicitudes_empresa se
+     JOIN ge_empresas emp
+       ON emp.idempresa = se.id_empresa
+     JOIN dual_estados_validacion ev
+       ON ev.id_estado_validacion = se.id_estado_validacion
+     JOIN dual_convocatorias c
+       ON c.id_convocatoria = se.id_convocatoria
+     WHERE se.id_empresa = ?
+       AND c.activa = 1
+     LIMIT 1`,
     [idEmpresa],
   );
-  if (!rows[0])
+
+  if (!rows[0]) {
     return res
       .status(404)
       .json({ error: "No hay solicitud para la convocatoria activa." });
+  }
+
   return res.json(rows[0]);
 };
 
@@ -441,11 +587,14 @@ exports.getMia = async function (req, res) {
 exports.getById = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const datos = await empresaDatos.loadEmpresaDatosRead(pool, id);
-  if (!datos)
+
+  if (!datos) {
     return res.status(404).json({ error: "Solicitud no encontrada." });
+  }
 
   if (req.user.rol === "EMPRESA") {
     const idEmpresa = await getCompanyIdFromUser(req.user.id);
+
     if (!idEmpresa || idEmpresa !== datos.id_empresa) {
       return res
         .status(403)
@@ -454,52 +603,91 @@ exports.getById = async function (req, res) {
   }
 
   const [esps] = await pool.query(
-    `SELECT see.id_solicitud_empresa_especialidad, see.id_especialidad, see.cantidad_alumnos,
-            esp.codigo, esp.nombre,
-            CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno
-       FROM dual_solicitud_empresa_especialidades see
-       JOIN dual_especialidades esp ON esp.id_especialidad = see.id_especialidad
-      WHERE see.id_solicitud_empresa = ?`,
+    `SELECT
+       see.id_solicitud_empresa_especialidad,
+       see.id_especialidad,
+       see.cantidad_alumnos,
+       esp.codigo,
+       esp.nombre,
+       CASE esp.turno
+         WHEN 0 THEN 'DIURNO'
+         WHEN 1 THEN 'VESPERTINO'
+       END AS turno
+     FROM dual_solicitud_empresa_especialidades see
+     JOIN dual_especialidades esp
+       ON esp.id_especialidad = see.id_especialidad
+     WHERE see.id_solicitud_empresa = ?`,
     [id],
   );
+
   datos.especialidades = esps;
+
   return res.json(datos);
 };
 
-// GET /solicitudes/empresa/:id/especialidades — speciality list + quotas
+// GET /solicitudes/empresa/:id/especialidades
 exports.getEspecialidades = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const { error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
   const [rows] = await pool.query(
-    `SELECT see.id_solicitud_empresa_especialidad, see.id_especialidad, see.cantidad_alumnos,
-            esp.codigo, esp.nombre,
-            CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
-            fn_cupos_disponibles(see.id_solicitud_empresa_especialidad) AS plazas_disponibles,
-            fn_reservas_activas(see.id_solicitud_empresa_especialidad) AS plazas_ocupadas,
-            (SELECT COUNT(*)
-               FROM dual_reservas r
-               JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-              WHERE r.id_solicitud_empresa_especialidad = see.id_solicitud_empresa_especialidad
-                AND er.nombre = 'CONFIRMADA') AS plazas_confirmadas,
-            (SELECT COUNT(*)
-               FROM dual_reservas r
-               JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-              WHERE r.id_solicitud_empresa_especialidad = see.id_solicitud_empresa_especialidad
-                AND er.nombre = 'PENDIENTE') AS plazas_pendientes
-       FROM dual_solicitud_empresa_especialidades see
-       JOIN dual_especialidades esp ON esp.id_especialidad = see.id_especialidad
-      WHERE see.id_solicitud_empresa = ?`,
+    `SELECT
+       see.id_solicitud_empresa_especialidad,
+       see.id_especialidad,
+       see.cantidad_alumnos,
+       esp.codigo,
+       esp.nombre,
+       CASE esp.turno
+         WHEN 0 THEN 'DIURNO'
+         WHEN 1 THEN 'VESPERTINO'
+       END AS turno,
+       fn_cupos_disponibles(
+         see.id_solicitud_empresa_especialidad
+       ) AS plazas_disponibles,
+       fn_reservas_activas(
+         see.id_solicitud_empresa_especialidad
+       ) AS plazas_ocupadas,
+       (
+         SELECT COUNT(*)
+         FROM dual_reservas r
+         JOIN dual_estados_reserva er
+           ON er.id_estado_reserva = r.id_estado_reserva
+         WHERE
+           r.id_solicitud_empresa_especialidad =
+             see.id_solicitud_empresa_especialidad
+           AND er.nombre = 'CONFIRMADA'
+       ) AS plazas_confirmadas,
+       (
+         SELECT COUNT(*)
+         FROM dual_reservas r
+         JOIN dual_estados_reserva er
+           ON er.id_estado_reserva = r.id_estado_reserva
+         WHERE
+           r.id_solicitud_empresa_especialidad =
+             see.id_solicitud_empresa_especialidad
+           AND er.nombre = 'PENDIENTE'
+       ) AS plazas_pendientes
+     FROM dual_solicitud_empresa_especialidades see
+     JOIN dual_especialidades esp
+       ON esp.id_especialidad = see.id_especialidad
+     WHERE see.id_solicitud_empresa = ?`,
     [id],
   );
+
   return res.json(rows);
 };
 
 // POST /solicitudes/empresa/:id/validar
 exports.validar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+
   try {
     await pool.query("CALL sp_validar_solicitud_empresa(?)", [id]);
+
     return res.json({
       message: "Solicitud de empresa validada correctamente.",
     });
@@ -512,100 +700,136 @@ exports.validar = async function (req, res) {
 exports.rechazar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const { motivo } = req.body;
+
   if (!motivo || !motivo.trim()) {
     return res
       .status(400)
       .json({ error: "Debe indicar el motivo del rechazo." });
   }
+
   try {
     await pool.query("CALL sp_rechazar_solicitud_empresa(?, ?)", [
       id,
       motivo.trim(),
     ]);
-    return res.json({ message: "Solicitud de empresa rechazada." });
+
+    return res.json({
+      message: "Solicitud de empresa rechazada.",
+    });
   } catch (err) {
     return sendSqlError(res, err);
   }
 };
 
-// GET /solicitudes/empresa/todas — admin: normalised list used by the company admin panel
+// GET /solicitudes/empresa/todas
 exports.getTodas = async function (req, res) {
   const [rows] = await pool.query(
     `SELECT
-        se.id_solicitud_empresa,
-        se.id_empresa,
-        se.fecha_solicitud,
-        se.descripcion_puesto,
-        se.motivo,
-        ev.nombre AS estado_validacion,
-        emp.empresa AS razonSocial,
-        emp.cif,
-        emp.telefonoEmpresa AS telEmpresa,
-        c.nombre AS convocatoria,
-        c.activa AS convocatoria_activa,
-        coord.nombre AS nombreCoordinador,
-        coord.email AS emailCoordinador,
-        coord.telefono AS telefonoCoordinador,
-        rep.nombre AS responsableLegal,
-        rep.dni AS dniRl,
-        rep.cargo,
-        dl.domicilio AS dirRazSocial,
-        dl.provincia,
-        dl.municipio,
-        dl.cp AS cpRazSoc,
-        dt.domicilio AS direccionLugarTrabajo,
-        u.id_usuario,
-        emp.cif AS username
+       se.id_solicitud_empresa,
+       se.id_empresa,
+       se.fecha_solicitud,
+       se.descripcion_puesto,
+       se.motivo,
+       ev.nombre AS estado_validacion,
+       emp.empresa AS razonSocial,
+       emp.cif,
+       emp.telefonoEmpresa AS telEmpresa,
+       c.nombre AS convocatoria,
+       c.activa AS convocatoria_activa,
+       coord.nombre AS nombreCoordinador,
+       coord.email AS emailCoordinador,
+       coord.telefono AS telefonoCoordinador,
+       rep.nombre AS responsableLegal,
+       rep.dni AS dniRl,
+       rep.cargo,
+       dl.domicilio AS dirRazSocial,
+       dl.provincia,
+       dl.municipio,
+       dl.cp AS cpRazSoc,
+       dt.domicilio AS direccionLugarTrabajo,
+       u.id_usuario,
+       emp.cif AS username
      FROM dual_solicitudes_empresa se
-     JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
-     JOIN dual_estados_validacion ev ON ev.id_estado_validacion = se.id_estado_validacion
-     JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
-     JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
-     JOIN ge_contactos rep ON rep.idcontacto = se.id_representante_legal
-     JOIN ge_domicilios dl ON dl.iddomicilio = se.id_domicilio_legal
-     JOIN ge_domicilios dt ON dt.iddomicilio = se.id_domicilio_trabajo
-     LEFT JOIN dual_usuarios u ON u.id_contacto = coord.idcontacto
-    ORDER BY se.fecha_solicitud DESC`,
+     JOIN ge_empresas emp
+       ON emp.idempresa = se.id_empresa
+     JOIN dual_estados_validacion ev
+       ON ev.id_estado_validacion = se.id_estado_validacion
+     JOIN dual_convocatorias c
+       ON c.id_convocatoria = se.id_convocatoria
+     JOIN ge_contactos coord
+       ON coord.idcontacto = se.id_coordinador_empresa
+     JOIN ge_contactos rep
+       ON rep.idcontacto = se.id_representante_legal
+     JOIN ge_domicilios dl
+       ON dl.iddomicilio = se.id_domicilio_legal
+     JOIN ge_domicilios dt
+       ON dt.iddomicilio = se.id_domicilio_trabajo
+     LEFT JOIN dual_usuarios u
+       ON u.id_contacto = coord.idcontacto
+     ORDER BY se.fecha_solicitud DESC`,
   );
 
-  if (rows.length === 0) return res.json([]);
+  if (rows.length === 0) {
+    return res.json([]);
+  }
 
-  // Batch-load specialities, transports, and convenio status for each solicitud
+  // Batch-load specialities, transports, and convenio status
   const ids = rows.map((r) => r.id_solicitud_empresa);
   const idEmpresas = rows.map((r) => r.id_empresa);
 
   const [esps] = await pool.query(
-    `SELECT see.id_solicitud_empresa, see.id_solicitud_empresa_especialidad, see.cantidad_alumnos,
-            esp.id_especialidad, esp.codigo, esp.nombre,
-            CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno
-       FROM dual_solicitud_empresa_especialidades see
-       JOIN dual_especialidades esp ON esp.id_especialidad = see.id_especialidad
-      WHERE see.id_solicitud_empresa IN (?)`,
+    `SELECT
+       see.id_solicitud_empresa,
+       see.id_solicitud_empresa_especialidad,
+       see.cantidad_alumnos,
+       esp.id_especialidad,
+       esp.codigo,
+       esp.nombre,
+       CASE esp.turno
+         WHEN 0 THEN 'DIURNO'
+         WHEN 1 THEN 'VESPERTINO'
+       END AS turno
+     FROM dual_solicitud_empresa_especialidades see
+     JOIN dual_especialidades esp
+       ON esp.id_especialidad = see.id_especialidad
+     WHERE see.id_solicitud_empresa IN (?)`,
     [ids],
   );
 
   const [transp] = await pool.query(
-    `SELECT det.id_empresa, dt.id_transporte, dt.nombre
-       FROM dual_empresa_transportes det
-       JOIN dual_transportes dt ON dt.id_transporte = det.id_transporte
-      WHERE det.id_empresa IN (?)`,
+    `SELECT
+       det.id_empresa,
+       dt.id_transporte,
+       dt.nombre
+     FROM dual_empresa_transportes det
+     JOIN dual_transportes dt
+       ON dt.id_transporte = det.id_transporte
+     WHERE det.id_empresa IN (?)`,
     [idEmpresas],
   );
 
   const [convenios] = await pool.query(
-    `SELECT d.id_solicitud_empresa, d.id_documento,
-            ev.nombre AS estado_validacion
-       FROM dual_documentos d
-       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-      WHERE d.id_solicitud_empresa IN (?)
-        AND td.nombre = 'CONVENIO'`,
+    `SELECT
+       d.id_solicitud_empresa,
+       d.id_documento,
+       ev.nombre AS estado_validacion
+     FROM dual_documentos d
+     JOIN dual_estados_validacion ev
+       ON ev.id_estado_validacion = d.id_estado_validacion
+     JOIN dual_tipos_documento td
+       ON td.id_tipo_documento = d.id_tipo_documento
+     WHERE d.id_solicitud_empresa IN (?)
+       AND td.nombre = 'CONVENIO'`,
     [ids],
   );
 
   const espMap = {};
+
   esps.forEach((e) => {
-    if (!espMap[e.id_solicitud_empresa]) espMap[e.id_solicitud_empresa] = [];
+    if (!espMap[e.id_solicitud_empresa]) {
+      espMap[e.id_solicitud_empresa] = [];
+    }
+
     espMap[e.id_solicitud_empresa].push({
       id_solicitud_empresa_especialidad: e.id_solicitud_empresa_especialidad,
       id_especialidad: e.id_especialidad,
@@ -617,8 +841,12 @@ exports.getTodas = async function (req, res) {
   });
 
   const transpMap = {};
+
   transp.forEach((t) => {
-    if (!transpMap[t.id_empresa]) transpMap[t.id_empresa] = [];
+    if (!transpMap[t.id_empresa]) {
+      transpMap[t.id_empresa] = [];
+    }
+
     transpMap[t.id_empresa].push({
       id_transporte: t.id_transporte,
       nombre: t.nombre,
@@ -626,26 +854,37 @@ exports.getTodas = async function (req, res) {
   });
 
   let cambiosPend = [];
+
   try {
     const [rowsC] = await pool.query(
-      `SELECT id_solicitud_empresa, id_cambio, fecha_solicitud
-         FROM dual_empresa_cambios
-        WHERE estado = 'PENDIENTE'
-          AND id_solicitud_empresa IN (?)`,
+      `SELECT
+         id_solicitud_empresa,
+         id_cambio,
+         fecha_solicitud
+       FROM dual_empresa_cambios
+       WHERE estado = 'PENDIENTE'
+         AND id_solicitud_empresa IN (?)`,
       [ids],
     );
+
     cambiosPend = rowsC;
   } catch (err) {
-    if (err.code !== "ER_NO_SUCH_TABLE") throw err;
+    if (err.code !== "ER_NO_SUCH_TABLE") {
+      throw err;
+    }
   }
+
   const cambioMap = {};
+
   cambiosPend.forEach((c) => {
     cambioMap[c.id_solicitud_empresa] = {
       id_cambio: c.id_cambio,
       fecha_solicitud: c.fecha_solicitud,
     };
   });
+
   const convenioMap = {};
+
   convenios.forEach((d) => {
     if (!convenioMap[d.id_solicitud_empresa]) {
       convenioMap[d.id_solicitud_empresa] = {
@@ -657,6 +896,7 @@ exports.getTodas = async function (req, res) {
 
   const result = rows.map((r) => {
     const conv = convenioMap[r.id_solicitud_empresa];
+
     return {
       ...r,
       // Aliased for frontend compatibility
@@ -679,16 +919,18 @@ exports.getTodas = async function (req, res) {
   return res.json(result);
 };
 
-// POST /solicitudes/empresa/reapply — authenticated empresa re-applies for the active convocatoria
+// POST /solicitudes/empresa/reapply
 exports.reapply = async function (req, res) {
-  const { getCompanyIdFromUser } = require("../helpers/dbHelpers");
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
-  if (!idEmpresa)
+
+  if (!idEmpresa) {
     return res
       .status(404)
       .json({ error: "No se encontró empresa vinculada a este usuario." });
+  }
 
   const convocatoria = await getActiveConvocatoria();
+
   if (!convocatoria) {
     return res
       .status(409)
@@ -715,35 +957,47 @@ exports.reapply = async function (req, res) {
   }
 
   const conn = await pool.getConnection();
+
   try {
     await conn.beginTransaction();
 
     // Guard against duplicate applications in the same convocatoria
     const [solExist] = await conn.query(
-      "SELECT id_solicitud_empresa FROM dual_solicitudes_empresa WHERE id_empresa = ? AND id_convocatoria = ?",
+      `SELECT id_solicitud_empresa
+       FROM dual_solicitudes_empresa
+       WHERE id_empresa = ?
+         AND id_convocatoria = ?`,
       [idEmpresa, convocatoria.id_convocatoria],
     );
+
     if (solExist[0]) {
       await conn.rollback();
+
       return res.status(409).json({
         error: "Ya existe una solicitud para la convocatoria activa.",
       });
     }
 
-    // Reuse legal representative and addresses from the most recent previous application
+    // Reuse legal representative and addresses from the previous application
     const [empData] = await conn.query(
-      `SELECT se.id_representante_legal, se.id_domicilio_legal, se.id_domicilio_trabajo,
-              coord.idcontacto AS id_coordinador_actual, coord.iddomicilio AS id_domicilio_coord
-         FROM dual_solicitudes_empresa se
-         JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
-        WHERE se.id_empresa = ?
-        ORDER BY se.fecha_solicitud DESC
-        LIMIT 1`,
+      `SELECT
+         se.id_representante_legal,
+         se.id_domicilio_legal,
+         se.id_domicilio_trabajo,
+         coord.idcontacto AS id_coordinador_actual,
+         coord.iddomicilio AS id_domicilio_coord
+       FROM dual_solicitudes_empresa se
+       JOIN ge_contactos coord
+         ON coord.idcontacto = se.id_coordinador_empresa
+       WHERE se.id_empresa = ?
+       ORDER BY se.fecha_solicitud DESC
+       LIMIT 1`,
       [idEmpresa],
     );
 
     if (!empData[0]) {
       await conn.rollback();
+
       return res.status(404).json({
         error:
           "No se encontró una solicitud previa de esta empresa para copiar los datos base.",
@@ -752,14 +1006,15 @@ exports.reapply = async function (req, res) {
 
     const prev = empData[0];
 
-    // Update coordinator contact fields with any new values provided
+    // Update coordinator fields with new values when provided
     if (nombreCoordinador || emailCoordinador || telefonoCoordinador) {
       await conn.query(
         `UPDATE ge_contactos
-            SET nombre = COALESCE(NULLIF(?, ''), nombre),
-                email = COALESCE(NULLIF(?, ''), email),
-                telefono = COALESCE(NULLIF(?, ''), telefono)
-          WHERE idcontacto = ?`,
+         SET
+           nombre = COALESCE(NULLIF(?, ''), nombre),
+           email = COALESCE(NULLIF(?, ''), email),
+           telefono = COALESCE(NULLIF(?, ''), telefono)
+         WHERE idcontacto = ?`,
         [
           nombreCoordinador,
           emailCoordinador,
@@ -767,21 +1022,31 @@ exports.reapply = async function (req, res) {
           prev.id_coordinador_actual,
         ],
       );
-      // Display name may change with the coordinator; login remains the company CIF.
+
+      // Display name may change; login remains the company CIF.
       if (nombreCoordinador) {
         await conn.query(
-          `UPDATE dual_usuarios SET nombre_mostrar = COALESCE(NULLIF(?, ''), nombre_mostrar)
-            WHERE id_contacto = ?`,
+          `UPDATE dual_usuarios
+           SET nombre_mostrar =
+             COALESCE(NULLIF(?, ''), nombre_mostrar)
+           WHERE id_contacto = ?`,
           [nombreCoordinador, prev.id_coordinador_actual],
         );
       }
     }
 
-    // Create the new solicitud, reusing addresses and legal representative from the previous one
+    // Create new solicitud using existing base company information
     const [solRes] = await conn.query(
-      `INSERT INTO dual_solicitudes_empresa
-         (id_empresa, id_convocatoria, id_estado_validacion, id_representante_legal,
-          id_coordinador_empresa, id_domicilio_legal, id_domicilio_trabajo, descripcion_puesto)
+      `INSERT INTO dual_solicitudes_empresa (
+         id_empresa,
+         id_convocatoria,
+         id_estado_validacion,
+         id_representante_legal,
+         id_coordinador_empresa,
+         id_domicilio_legal,
+         id_domicilio_trabajo,
+         descripcion_puesto
+       )
        VALUES (?, ?, 1, ?, ?, ?, ?, ?)`,
       [
         idEmpresa,
@@ -793,28 +1058,37 @@ exports.reapply = async function (req, res) {
         descripcion_puesto || "",
       ],
     );
+
     const idSolicitudEmpresa = solRes.insertId;
 
-    // Insert speciality rows for the new solicitud
+    // Insert speciality rows
     for (const esp of especialidades) {
       const idEsp = parseInt(esp.idEspecialidad, 10);
       const cant = parseInt(esp.cantidadAlumnos, 10);
+
       if (!idEsp || !cant || cant < 1) {
         await conn.rollback();
+
         return res.status(400).json({ error: "Especialidad inválida." });
       }
+
       await conn.query(
-        `INSERT INTO dual_solicitud_empresa_especialidades (id_solicitud_empresa, id_especialidad, cantidad_alumnos)
+        `INSERT INTO dual_solicitud_empresa_especialidades (
+           id_solicitud_empresa,
+           id_especialidad,
+           cantidad_alumnos
+         )
          VALUES (?, ?, ?)`,
         [idSolicitudEmpresa, idEsp, cant],
       );
     }
 
-    // Replace all existing transport assignments for this empresa
+    // Replace current transport assignments
     await conn.query(
       "DELETE FROM dual_empresa_transportes WHERE id_empresa = ?",
       [idEmpresa],
     );
+
     for (const idT of transportes) {
       await conn.query("CALL sp_asignar_transporte_empresa(?, ?)", [
         idEmpresa,
@@ -823,6 +1097,11 @@ exports.reapply = async function (req, res) {
     }
 
     await conn.commit();
+
+    await safelyGenerateAndSendConvenio(
+      idSolicitudEmpresa,
+      "Error al generar/enviar el convenio de reaplicación:",
+    );
 
     return res.status(201).json({
       message: "Reaplicación enviada correctamente.",
@@ -840,25 +1119,45 @@ exports.reapply = async function (req, res) {
 exports.getDocumentos = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const { error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
   const [rows] = await pool.query(
-    `SELECT d.id_documento, td.nombre AS tipo_documento, ev.nombre AS estado_validacion, d.motivo
-       FROM dual_documentos d
-       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-      WHERE d.id_solicitud_empresa = ?
-      ORDER BY d.id_tipo_documento`,
+    `SELECT
+       d.id_documento,
+       td.nombre AS tipo_documento,
+       ev.nombre AS estado_validacion,
+       d.motivo
+     FROM dual_documentos d
+     JOIN dual_tipos_documento td
+       ON td.id_tipo_documento = d.id_tipo_documento
+     JOIN dual_estados_validacion ev
+       ON ev.id_estado_validacion = d.id_estado_validacion
+     WHERE d.id_solicitud_empresa = ?
+     ORDER BY d.id_tipo_documento`,
     [id],
   );
+
   return res.json(rows);
 };
 
 async function resolveSolicitudForUser(req, idSolicitud) {
   const datos = await empresaDatos.loadEmpresaDatosRead(pool, idSolicitud);
-  if (!datos)
-    return { error: { status: 404, message: "Solicitud no encontrada." } };
+
+  if (!datos) {
+    return {
+      error: {
+        status: 404,
+        message: "Solicitud no encontrada.",
+      },
+    };
+  }
+
   if (req.user.rol === "EMPRESA") {
     const idEmpresa = await getCompanyIdFromUser(req.user.id);
+
     if (!idEmpresa || idEmpresa !== datos.id_empresa) {
       return {
         error: {
@@ -868,23 +1167,32 @@ async function resolveSolicitudForUser(req, idSolicitud) {
       };
     }
   }
+
   return { datos };
 }
 
 async function transportLabelMap(conn) {
   const [rows] = await conn.query(
-    "SELECT id_transporte, nombre, nombre_mostrar FROM dual_transportes",
+    `SELECT
+       id_transporte,
+       nombre,
+       nombre_mostrar
+     FROM dual_transportes`,
   );
+
   const map = {};
+
   rows.forEach((r) => {
     map[r.id_transporte] = r.nombre_mostrar || r.nombre;
   });
+
   return map;
 }
 
 function presentCambio(row, actualSnap, labels) {
   const payload = empresaDatos.parsePayload(row.payload) || {};
   const proposed = payload.proposed || {};
+
   return {
     id_cambio: row.id_cambio,
     id_solicitud_empresa: row.id_solicitud_empresa,
@@ -900,15 +1208,25 @@ function presentCambio(row, actualSnap, labels) {
 
 exports.getDatos = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+
   const { datos, error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
   return res.json(datos);
 };
 
 exports.putDatos = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+
   const { datos, error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
   if (!datos.convocatoria_activa) {
     return res.status(400).json({
       error: "Solo se pueden editar los datos de la convocatoria activa.",
@@ -916,31 +1234,45 @@ exports.putDatos = async function (req, res) {
   }
 
   const conn = await pool.getConnection();
+
   try {
     await conn.beginTransaction();
+
     const snapshot = empresaDatos.pickSnapshot(datos);
+
     const proposedAll = empresaDatos.sanitizeProposed(req.body, {
       allowCif: true,
     });
+
     const proposed = empresaDatos.diffProposed(snapshot, proposedAll);
+
     if (!Object.keys(proposed).length) {
       await conn.rollback();
+
       return res
         .status(400)
         .json({ error: "No hay cambios respecto a los datos actuales." });
     }
+
     await empresaDatos.applyEmpresaDatos(conn, datos, proposed, {
       allowCif: true,
     });
+
     await conn.commit();
+
     const updated = await empresaDatos.loadEmpresaDatosRead(pool, id);
+
     return res.json({
       message: "Datos de la empresa actualizados.",
       datos: updated,
     });
   } catch (err) {
     await conn.rollback();
-    if (err.status) return res.status(err.status).json({ error: err.message });
+
+    if (err.status) {
+      return res.status(err.status).json({ error: err.message });
+    }
+
     return sendSqlError(res, err);
   } finally {
     conn.release();
@@ -949,25 +1281,38 @@ exports.putDatos = async function (req, res) {
 
 exports.getCambio = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+
   const { datos, error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
 
   const [pend] = await pool.query(
-    `SELECT * FROM dual_empresa_cambios
-      WHERE id_solicitud_empresa = ? AND estado = ?
-      ORDER BY id_cambio DESC LIMIT 1`,
+    `SELECT *
+     FROM dual_empresa_cambios
+     WHERE id_solicitud_empresa = ?
+       AND estado = ?
+     ORDER BY id_cambio DESC
+     LIMIT 1`,
     [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE],
   );
+
   const [ultimo] = await pool.query(
-    `SELECT * FROM dual_empresa_cambios
-      WHERE id_solicitud_empresa = ? AND estado <> ?
-      ORDER BY COALESCE(fecha_resolucion, fecha_solicitud) DESC, id_cambio DESC
-      LIMIT 1`,
+    `SELECT *
+     FROM dual_empresa_cambios
+     WHERE id_solicitud_empresa = ?
+       AND estado <> ?
+     ORDER BY
+       COALESCE(fecha_resolucion, fecha_solicitud) DESC,
+       id_cambio DESC
+     LIMIT 1`,
     [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE],
   );
 
   const labels = await transportLabelMap(pool);
   const actualSnap = empresaDatos.pickSnapshot(datos);
+
   return res.json({
     pending: pend[0] ? presentCambio(pend[0], actualSnap, labels) : null,
     ultimo: ultimo[0] ? presentCambio(ultimo[0], actualSnap, labels) : null,
@@ -976,13 +1321,19 @@ exports.getCambio = async function (req, res) {
 
 exports.upsertCambio = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+
   const { datos, error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
   if (!datos.convocatoria_activa) {
     return res.status(400).json({
       error: "Solo se pueden solicitar cambios sobre la convocatoria activa.",
     });
   }
+
   if ("cif" in (req.body || {})) {
     return res
       .status(403)
@@ -992,45 +1343,73 @@ exports.upsertCambio = async function (req, res) {
   const proposedAll = empresaDatos.sanitizeProposed(req.body, {
     allowCif: false,
   });
+
   const snapshot = empresaDatos.pickSnapshot(datos);
+
   const proposed = empresaDatos.diffProposed(snapshot, proposedAll);
+
   if (!Object.keys(proposed).length) {
     return res
       .status(400)
       .json({ error: "No hay cambios respecto a los datos actuales." });
   }
+
   const invalid = empresaDatos.validateMerged(
-    { ...snapshot, ...proposed },
-    { allowCif: false },
+    {
+      ...snapshot,
+      ...proposed,
+    },
+    {
+      allowCif: false,
+    },
   );
+
   if (invalid) {
     return res.status(400).json({ error: invalid });
   }
 
   const conn = await pool.getConnection();
+
   try {
     await conn.beginTransaction();
+
     const [pend] = await conn.query(
-      `SELECT id_cambio FROM dual_empresa_cambios
-        WHERE id_solicitud_empresa = ? AND estado = ?
-        FOR UPDATE`,
+      `SELECT id_cambio
+       FROM dual_empresa_cambios
+       WHERE id_solicitud_empresa = ?
+         AND estado = ?
+       FOR UPDATE`,
       [id, empresaDatos.ESTADOS_CAMBIO.PENDIENTE],
     );
 
-    const payload = JSON.stringify({ proposed, snapshot });
+    const payload = JSON.stringify({
+      proposed,
+      snapshot,
+    });
+
     let idCambio;
+
     if (pend[0]) {
       await conn.query(
         `UPDATE dual_empresa_cambios
-            SET payload = ?, fecha_solicitud = NOW(), motivo = NULL
-          WHERE id_cambio = ?`,
+         SET
+           payload = ?,
+           fecha_solicitud = NOW(),
+           motivo = NULL
+         WHERE id_cambio = ?`,
         [payload, pend[0].id_cambio],
       );
+
       idCambio = pend[0].id_cambio;
     } else {
       const [ins] = await conn.query(
-        `INSERT INTO dual_empresa_cambios
-           (id_solicitud_empresa, id_empresa, id_usuario_solicitante, payload, estado)
+        `INSERT INTO dual_empresa_cambios (
+           id_solicitud_empresa,
+           id_empresa,
+           id_usuario_solicitante,
+           payload,
+           estado
+         )
          VALUES (?, ?, ?, ?, ?)`,
         [
           id,
@@ -1040,15 +1419,19 @@ exports.upsertCambio = async function (req, res) {
           empresaDatos.ESTADOS_CAMBIO.PENDIENTE,
         ],
       );
+
       idCambio = ins.insertId;
     }
+
     await conn.commit();
 
     const labels = await transportLabelMap(pool);
+
     const [row] = await pool.query(
       "SELECT * FROM dual_empresa_cambios WHERE id_cambio = ?",
       [idCambio],
     );
+
     return res.status(pend[0] ? 200 : 201).json({
       message: "Cambios enviados para revisión",
       cambio: presentCambio(row[0], snapshot, labels),
@@ -1064,39 +1447,56 @@ exports.upsertCambio = async function (req, res) {
 exports.aprobarCambio = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const idCambio = parseInt(req.params.idCambio, 10);
+
   const confirmarConflicto = Boolean(req.body?.confirmar_conflicto);
 
   const { error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
 
   const conn = await pool.getConnection();
+
   try {
     await conn.beginTransaction();
+
     const [rows] = await conn.query(
-      `SELECT * FROM dual_empresa_cambios
-        WHERE id_cambio = ? AND id_solicitud_empresa = ?
-        FOR UPDATE`,
+      `SELECT *
+       FROM dual_empresa_cambios
+       WHERE id_cambio = ?
+         AND id_solicitud_empresa = ?
+       FOR UPDATE`,
       [idCambio, id],
     );
+
     const cambio = rows[0];
+
     if (!cambio) {
       await conn.rollback();
+
       return res
         .status(404)
         .json({ error: "Solicitud de cambio no encontrada." });
     }
+
     if (cambio.estado !== empresaDatos.ESTADOS_CAMBIO.PENDIENTE) {
       await conn.rollback();
+
       return res
         .status(400)
         .json({ error: "Esta solicitud de cambio ya está resuelta." });
     }
 
     const payload = empresaDatos.parsePayload(cambio.payload) || {};
+
     const proposed = payload.proposed || {};
     const snapshot = payload.snapshot || {};
+
     const live = await empresaDatos.loadEmpresaDatos(conn, id);
+
     const liveSnap = empresaDatos.pickSnapshot(live);
+
     const conflictos = empresaDatos.detectConflicts(
       snapshot,
       liveSnap,
@@ -1105,7 +1505,9 @@ exports.aprobarCambio = async function (req, res) {
 
     if (conflictos.length && !confirmarConflicto) {
       await conn.rollback();
+
       const labels = await transportLabelMap(pool);
+
       return res.status(409).json({
         error:
           "Los datos actuales han cambiado desde que se envió la solicitud.",
@@ -1121,22 +1523,33 @@ exports.aprobarCambio = async function (req, res) {
     await empresaDatos.applyEmpresaDatos(conn, live, proposed, {
       allowCif: false,
     });
+
     await conn.query(
       `UPDATE dual_empresa_cambios
-          SET estado = ?, fecha_resolucion = NOW(), id_usuario_resolutor = ?, motivo = NULL
-        WHERE id_cambio = ?`,
+       SET
+         estado = ?,
+         fecha_resolucion = NOW(),
+         id_usuario_resolutor = ?,
+         motivo = NULL
+       WHERE id_cambio = ?`,
       [empresaDatos.ESTADOS_CAMBIO.APROBADO, req.user.id, idCambio],
     );
+
     await conn.commit();
 
     const updated = await empresaDatos.loadEmpresaDatosRead(pool, id);
+
     return res.json({
       message: "Cambios aprobados y aplicados.",
       datos: updated,
     });
   } catch (err) {
     await conn.rollback();
-    if (err.status) return res.status(err.status).json({ error: err.message });
+
+    if (err.status) {
+      return res.status(err.status).json({ error: err.message });
+    }
+
     return sendSqlError(res, err);
   } finally {
     conn.release();
@@ -1146,7 +1559,9 @@ exports.aprobarCambio = async function (req, res) {
 exports.rechazarCambio = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const idCambio = parseInt(req.params.idCambio, 10);
+
   const motivo = String(req.body?.motivo || "").trim();
+
   if (!motivo) {
     return res
       .status(400)
@@ -1154,17 +1569,25 @@ exports.rechazarCambio = async function (req, res) {
   }
 
   const { error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
 
   const [rows] = await pool.query(
-    `SELECT id_cambio, estado FROM dual_empresa_cambios
-      WHERE id_cambio = ? AND id_solicitud_empresa = ?`,
+    `SELECT id_cambio, estado
+     FROM dual_empresa_cambios
+     WHERE id_cambio = ?
+       AND id_solicitud_empresa = ?`,
     [idCambio, id],
   );
-  if (!rows[0])
+
+  if (!rows[0]) {
     return res
       .status(404)
       .json({ error: "Solicitud de cambio no encontrada." });
+  }
+
   if (rows[0].estado !== empresaDatos.ESTADOS_CAMBIO.PENDIENTE) {
     return res
       .status(400)
@@ -1173,11 +1596,18 @@ exports.rechazarCambio = async function (req, res) {
 
   await pool.query(
     `UPDATE dual_empresa_cambios
-        SET estado = ?, fecha_resolucion = NOW(), id_usuario_resolutor = ?, motivo = ?
-      WHERE id_cambio = ?`,
+     SET
+       estado = ?,
+       fecha_resolucion = NOW(),
+       id_usuario_resolutor = ?,
+       motivo = ?
+     WHERE id_cambio = ?`,
     [empresaDatos.ESTADOS_CAMBIO.RECHAZADO, req.user.id, motivo, idCambio],
   );
-  return res.json({ message: "Solicitud de cambio rechazada." });
+
+  return res.json({
+    message: "Solicitud de cambio rechazada.",
+  });
 };
 
 const ERROR_CUPO_CONFIRMADAS =
@@ -1198,14 +1628,17 @@ async function sendCupoReductionEmail({
       especialidad,
       canceladas.map((c) => c.id_reserva),
     );
+
     return;
   }
+
   const list = canceladas
     .map(
       (c) =>
         `<li>Reserva #${c.id_reserva} — ${c.alumno || "alumno"} (${c.dni_alumno || "sin DNI"}) · ${c.especialidad || especialidad}</li>`,
     )
     .join("");
+
   try {
     await transporter.sendMail({
       from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
@@ -1225,11 +1658,14 @@ async function sendCupoReductionEmail({
   }
 }
 
-// POST /solicitudes/empresa/:id/especialidades — add a cycle that was not on the request
+// POST /solicitudes/empresa/:id/especialidades
 exports.addEspecialidad = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+
   const idEspecialidad = parseInt(req.body?.id_especialidad, 10);
+
   const raw = req.body?.cantidad;
+
   const cantidad = typeof raw === "number" ? raw : Number(raw);
 
   if (
@@ -1240,14 +1676,19 @@ exports.addEspecialidad = async function (req, res) {
   ) {
     return res.status(400).json({ error: "Identificador no válido." });
   }
+
   if (!Number.isInteger(cantidad) || cantidad < 1) {
-    return res
-      .status(400)
-      .json({ error: "Indica al menos un alumno para añadir el ciclo." });
+    return res.status(400).json({
+      error: "Indica al menos un alumno para añadir el ciclo.",
+    });
   }
 
   const { datos, error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
   if (!datos.convocatoria_activa) {
     return res.status(400).json({
       error: "Solo se puede añadir un ciclo en la convocatoria activa.",
@@ -1255,55 +1696,68 @@ exports.addEspecialidad = async function (req, res) {
   }
 
   const conn = await pool.getConnection();
+
   try {
     await conn.beginTransaction();
 
     const [locked] = await conn.query(
       `SELECT id_solicitud_empresa
-         FROM dual_solicitudes_empresa
-        WHERE id_solicitud_empresa = ?
-        FOR UPDATE`,
+       FROM dual_solicitudes_empresa
+       WHERE id_solicitud_empresa = ?
+       FOR UPDATE`,
       [id],
     );
+
     if (!locked[0]) {
       await conn.rollback();
+
       return res.status(404).json({ error: "Solicitud no encontrada." });
     }
 
     const [espRows] = await conn.query(
       `SELECT id_especialidad, nombre
-         FROM dual_especialidades
-        WHERE id_especialidad = ? AND activa = 1`,
+       FROM dual_especialidades
+       WHERE id_especialidad = ?
+         AND activa = 1`,
       [idEspecialidad],
     );
+
     if (!espRows[0]) {
       await conn.rollback();
-      return res
-        .status(400)
-        .json({ error: "El ciclo seleccionado no está disponible." });
+
+      return res.status(400).json({
+        error: "El ciclo seleccionado no está disponible.",
+      });
     }
 
     const [existing] = await conn.query(
       `SELECT id_solicitud_empresa_especialidad
-         FROM dual_solicitud_empresa_especialidades
-        WHERE id_solicitud_empresa = ? AND id_especialidad = ?`,
+       FROM dual_solicitud_empresa_especialidades
+       WHERE id_solicitud_empresa = ?
+         AND id_especialidad = ?`,
       [id, idEspecialidad],
     );
+
     if (existing[0]) {
       await conn.rollback();
+
       return res
         .status(409)
         .json({ error: "Este ciclo ya está en la solicitud." });
     }
 
     const [ins] = await conn.query(
-      `INSERT INTO dual_solicitud_empresa_especialidades
-         (id_solicitud_empresa, id_especialidad, cantidad_alumnos)
+      `INSERT INTO dual_solicitud_empresa_especialidades (
+         id_solicitud_empresa,
+         id_especialidad,
+         cantidad_alumnos
+       )
        VALUES (?, ?, ?)`,
       [id, idEspecialidad, cantidad],
     );
 
     await conn.commit();
+
     return res.status(201).json({
       message: "Ciclo añadido.",
       id_solicitud_empresa_especialidad: ins.insertId,
@@ -1322,9 +1776,13 @@ exports.addEspecialidad = async function (req, res) {
 // PUT /solicitudes/empresa/:id/especialidades/:idOferta/cantidad
 exports.updateCupoEspecialidad = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+
   const idOferta = parseInt(req.params.idOferta, 10);
+
   const raw = req.body?.cantidad;
+
   const cantidad = typeof raw === "number" ? raw : Number(raw);
+
   const confirmarCancelaciones = Boolean(req.body?.confirmar_cancelaciones);
 
   if (
@@ -1333,18 +1791,23 @@ exports.updateCupoEspecialidad = async function (req, res) {
     !Number.isInteger(idOferta) ||
     idOferta <= 0
   ) {
-    return res
-      .status(400)
-      .json({ error: "Identificador de oferta no válido." });
+    return res.status(400).json({
+      error: "Identificador de oferta no válido.",
+    });
   }
+
   if (!Number.isInteger(cantidad) || cantidad < 0) {
-    return res
-      .status(400)
-      .json({ error: "La cantidad debe ser un entero mayor o igual que 0." });
+    return res.status(400).json({
+      error: "La cantidad debe ser un entero mayor o igual que 0.",
+    });
   }
 
   const { datos, error } = await resolveSolicitudForUser(req, id);
-  if (error) return res.status(error.status).json({ error: error.message });
+
+  if (error) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
   if (!datos.convocatoria_activa) {
     return res.status(400).json({
       error: "Solo se puede modificar el cupo de la convocatoria activa.",
@@ -1357,71 +1820,93 @@ exports.updateCupoEspecialidad = async function (req, res) {
       : "Cupo reducido por administración.";
 
   const conn = await pool.getConnection();
+
   let canceladas = [];
   let cantidadAnterior;
   let especialidadNombre;
   let emailCoordinador;
   let empresaNombre;
+
   try {
     await conn.beginTransaction();
 
     const [offers] = await conn.query(
       `SELECT
-          ee.id_solicitud_empresa_especialidad,
-          ee.cantidad_alumnos,
-          ee.id_especialidad,
-          se.id_solicitud_empresa,
-          se.id_empresa,
-          se.id_coordinador_empresa,
-          c.activa AS convocatoria_activa,
-          emp.empresa,
-          coord.email AS email_coordinador,
-          coord.nombre AS nombre_coordinador,
-          esp.nombre AS especialidad
-         FROM dual_solicitud_empresa_especialidades ee
-         JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
-         JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
-         JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
-         JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
-         JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
-        WHERE ee.id_solicitud_empresa_especialidad = ?
-          AND ee.id_solicitud_empresa = ?
-        FOR UPDATE`,
+         ee.id_solicitud_empresa_especialidad,
+         ee.cantidad_alumnos,
+         ee.id_especialidad,
+         se.id_solicitud_empresa,
+         se.id_empresa,
+         se.id_coordinador_empresa,
+         c.activa AS convocatoria_activa,
+         emp.empresa,
+         coord.email AS email_coordinador,
+         coord.nombre AS nombre_coordinador,
+         esp.nombre AS especialidad
+       FROM dual_solicitud_empresa_especialidades ee
+       JOIN dual_solicitudes_empresa se
+         ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+       JOIN dual_convocatorias c
+         ON c.id_convocatoria = se.id_convocatoria
+       JOIN ge_empresas emp
+         ON emp.idempresa = se.id_empresa
+       JOIN ge_contactos coord
+         ON coord.idcontacto = se.id_coordinador_empresa
+       JOIN dual_especialidades esp
+         ON esp.id_especialidad = ee.id_especialidad
+       WHERE ee.id_solicitud_empresa_especialidad = ?
+         AND ee.id_solicitud_empresa = ?
+       FOR UPDATE`,
       [idOferta, id],
     );
+
     const offer = offers[0];
+
     if (!offer) {
       await conn.rollback();
-      return res
-        .status(404)
-        .json({ error: "La especialidad no pertenece a esta solicitud." });
+
+      return res.status(404).json({
+        error: "La especialidad no pertenece a esta solicitud.",
+      });
     }
 
     const [reservas] = await conn.query(
-      `SELECT r.id_reserva, er.nombre AS estado_reserva, a.nombre AS alumno, a.dni AS dni_alumno
-         FROM dual_reservas r
-         JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-         JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
-         JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
-        WHERE r.id_solicitud_empresa_especialidad = ?
-          AND er.nombre IN ('PENDIENTE', 'CONFIRMADA')
-        ORDER BY r.id_reserva DESC
-        FOR UPDATE`,
+      `SELECT
+         r.id_reserva,
+         er.nombre AS estado_reserva,
+         a.nombre AS alumno,
+         a.dni AS dni_alumno
+       FROM dual_reservas r
+       JOIN dual_estados_reserva er
+         ON er.id_estado_reserva = r.id_estado_reserva
+       JOIN dual_solicitudes_alumno sa
+         ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+       JOIN gf_alumnosfct a
+         ON a.idalumno = sa.id_alumno
+       WHERE r.id_solicitud_empresa_especialidad = ?
+         AND er.nombre IN ('PENDIENTE', 'CONFIRMADA')
+       ORDER BY r.id_reserva DESC
+       FOR UPDATE`,
       [idOferta],
     );
 
     const confirmadas = reservas.filter(
       (r) => r.estado_reserva === "CONFIRMADA",
     );
+
     const pendientes = reservas.filter((r) => r.estado_reserva === "PENDIENTE");
+
     const activas = confirmadas.length + pendientes.length;
+
     cantidadAnterior = Number(offer.cantidad_alumnos);
+
     especialidadNombre = offer.especialidad;
     emailCoordinador = offer.email_coordinador;
     empresaNombre = offer.empresa;
 
     if (cantidad === cantidadAnterior) {
       await conn.rollback();
+
       return res.json({
         message: "La cantidad no ha cambiado.",
         cantidad,
@@ -1435,6 +1920,7 @@ exports.updateCupoEspecialidad = async function (req, res) {
 
     if (cantidad < confirmadas.length) {
       await conn.rollback();
+
       return res.status(400).json({
         error: ERROR_CUPO_CONFIRMADAS,
         plazas_confirmadas: confirmadas.length,
@@ -1445,9 +1931,18 @@ exports.updateCupoEspecialidad = async function (req, res) {
 
     if (cantidad < activas) {
       const nCancelar = activas - cantidad;
-      const aviso = `Al reducir de ${cantidadAnterior} a ${cantidad} plazas se cancelarán ${nCancelar} reserva${nCancelar !== 1 ? "s" : ""} pendiente${nCancelar !== 1 ? "s" : ""}. Las reservas confirmadas no se modificarán.`;
+
+      const aviso =
+        `Al reducir de ${cantidadAnterior} a ${cantidad} plazas ` +
+        `se cancelarán ${nCancelar} reserva${
+          nCancelar !== 1 ? "s" : ""
+        } pendiente${
+          nCancelar !== 1 ? "s" : ""
+        }. Las reservas confirmadas no se modificarán.`;
+
       if (!confirmarCancelaciones) {
         await conn.rollback();
+
         return res.status(409).json({
           error: aviso,
           requires_confirm: true,
@@ -1460,23 +1955,38 @@ exports.updateCupoEspecialidad = async function (req, res) {
       }
 
       const toCancel = pendientes.slice(0, nCancelar);
+
       for (const row of toCancel) {
         const [upd] = await conn.query(
           `UPDATE dual_reservas
-              SET id_estado_reserva = (SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre = 'CANCELADA' LIMIT 1),
-                  id_tipo_contrato = NULL,
-                  motivo = ?
-            WHERE id_reserva = ?
-              AND id_estado_reserva = (SELECT id_estado_reserva FROM dual_estados_reserva WHERE nombre = 'PENDIENTE' LIMIT 1)`,
+           SET
+             id_estado_reserva = (
+               SELECT id_estado_reserva
+               FROM dual_estados_reserva
+               WHERE nombre = 'CANCELADA'
+               LIMIT 1
+             ),
+             id_tipo_contrato = NULL,
+             motivo = ?
+           WHERE id_reserva = ?
+             AND id_estado_reserva = (
+               SELECT id_estado_reserva
+               FROM dual_estados_reserva
+               WHERE nombre = 'PENDIENTE'
+               LIMIT 1
+             )`,
           [motivo, row.id_reserva],
         );
+
         if (!upd.affectedRows) {
           await conn.rollback();
+
           return res.status(409).json({
             error:
               "El estado de las reservas ha cambiado. Vuelve a intentar la reducción de plazas.",
           });
         }
+
         canceladas.push({
           id_reserva: row.id_reserva,
           alumno: row.alumno,
@@ -1489,8 +1999,8 @@ exports.updateCupoEspecialidad = async function (req, res) {
 
     await conn.query(
       `UPDATE dual_solicitud_empresa_especialidades
-          SET cantidad_alumnos = ?
-        WHERE id_solicitud_empresa_especialidad = ?`,
+       SET cantidad_alumnos = ?
+       WHERE id_solicitud_empresa_especialidad = ?`,
       [cantidad, idOferta],
     );
 
@@ -1515,21 +2025,36 @@ exports.updateCupoEspecialidad = async function (req, res) {
 
   const [ocup] = await pool.query(
     `SELECT
-        fn_reservas_activas(?) AS plazas_ocupadas,
-        fn_cupos_disponibles(?) AS plazas_disponibles,
-        (SELECT COUNT(*) FROM dual_reservas r
-           JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-          WHERE r.id_solicitud_empresa_especialidad = ? AND er.nombre = 'CONFIRMADA') AS plazas_confirmadas,
-        (SELECT COUNT(*) FROM dual_reservas r
-           JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-          WHERE r.id_solicitud_empresa_especialidad = ? AND er.nombre = 'PENDIENTE') AS plazas_pendientes`,
+       fn_reservas_activas(?) AS plazas_ocupadas,
+       fn_cupos_disponibles(?) AS plazas_disponibles,
+       (
+         SELECT COUNT(*)
+         FROM dual_reservas r
+         JOIN dual_estados_reserva er
+           ON er.id_estado_reserva = r.id_estado_reserva
+         WHERE
+           r.id_solicitud_empresa_especialidad = ?
+           AND er.nombre = 'CONFIRMADA'
+       ) AS plazas_confirmadas,
+       (
+         SELECT COUNT(*)
+         FROM dual_reservas r
+         JOIN dual_estados_reserva er
+           ON er.id_estado_reserva = r.id_estado_reserva
+         WHERE
+           r.id_solicitud_empresa_especialidad = ?
+           AND er.nombre = 'PENDIENTE'
+       ) AS plazas_pendientes`,
     [idOferta, idOferta, idOferta, idOferta],
   );
 
   const stats = ocup[0] || {};
+
   return res.json({
     message: canceladas.length
-      ? `Plazas actualizadas. Se han cancelado ${canceladas.length} reserva${canceladas.length !== 1 ? "s" : ""} pendiente${canceladas.length !== 1 ? "s" : ""}.`
+      ? `Plazas actualizadas. Se han cancelado ${canceladas.length} reserva${
+          canceladas.length !== 1 ? "s" : ""
+        } pendiente${canceladas.length !== 1 ? "s" : ""}.`
       : "Número de plazas actualizado.",
     cantidad,
     cantidad_anterior: cantidadAnterior,
@@ -1540,3 +2065,150 @@ exports.updateCupoEspecialidad = async function (req, res) {
     canceladas,
   });
 };
+
+async function generateConvenioDocx(data, specialityCodes, idSolicitudEmpresa) {
+  const templatePath = path.join(
+    __dirname,
+    "..",
+    "..",
+    "required_documents",
+    "CONVENIO_GENERAL_PLANTILLA.docx",
+  );
+
+  const outputDir = path.join(__dirname, "..", "..", "uploads");
+
+  fs.mkdirSync(outputDir, {
+    recursive: true,
+  });
+
+  const outputPath = path.join(
+    outputDir,
+    `CONVENIO_${idSolicitudEmpresa}.docx`,
+  );
+
+  const buffer = await createReport({
+    template: fs.readFileSync(templatePath),
+    data: {
+      razonSocial: data.empresa,
+      responsableLegal: data.nombreRepresentante,
+      dniRl: data.dniRepresentante,
+      dirRazSocial: [
+        data.domicilioLegal,
+        data.cpLegal,
+        data.localidadLegal,
+        data.provinciaLegal,
+      ]
+        .filter(Boolean)
+        .join(", "),
+      cif: data.cif,
+      cargo: data.cargoRepresentante,
+      specialities: specialityCodes.join(", "),
+      fechaPeticion: new Date().toLocaleDateString("es-ES"),
+    },
+    cmdDelimiter: ["<<", ">>"],
+  });
+
+  fs.writeFileSync(outputPath, buffer);
+
+  return outputPath;
+}
+
+async function docxToPdf(docxPath) {
+  const pdfPath = docxPath.replace(/\.docx$/, ".pdf");
+
+  const { value: html } = await mammoth.convertToHtml({
+    path: docxPath,
+  });
+
+  const browser = await puppeteer.launch();
+
+  try {
+    const page = await browser.newPage();
+
+    await page.setContent(html, {
+      waitUntil: "networkidle0",
+    });
+
+    await page.pdf({
+      path: pdfPath,
+      format: "A4",
+      margin: {
+        top: "2cm",
+        bottom: "2cm",
+        left: "2cm",
+        right: "2cm",
+      },
+      printBackground: true,
+    });
+  } finally {
+    await browser.close();
+  }
+
+  fs.unlinkSync(docxPath);
+
+  return pdfPath;
+}
+
+async function safelyGenerateAndSendConvenio(idSolicitudEmpresa, errorMessage) {
+  try {
+    await generateAndSendConvenio(idSolicitudEmpresa);
+  } catch (err) {
+    console.error(errorMessage, err.message);
+  }
+}
+
+async function generateAndSendConvenio(idSolicitudEmpresa) {
+  const datos = await empresaDatos.loadEmpresaDatosRead(
+    pool,
+    idSolicitudEmpresa,
+  );
+
+  if (!datos) {
+    throw new Error("No se encontró la solicitud para generar el convenio.");
+  }
+
+  const [specialityRows] = await pool.query(
+    `SELECT esp.codigo
+     FROM dual_solicitud_empresa_especialidades see
+     JOIN dual_especialidades esp
+       ON esp.id_especialidad = see.id_especialidad
+     WHERE see.id_solicitud_empresa = ?
+     ORDER BY esp.codigo`,
+    [idSolicitudEmpresa],
+  );
+
+  const specialityCodes = specialityRows.map((row) => row.codigo);
+
+  const convenioDocxPath = await generateConvenioDocx(
+    {
+      empresa: datos.empresa,
+      cif: datos.cif,
+      nombreRepresentante: datos.nombreRepresentante,
+      dniRepresentante: datos.dniRepresentante,
+      cargoRepresentante: datos.cargoRepresentante,
+      domicilioLegal: datos.domicilioLegal,
+      cpLegal: datos.cpLegal,
+      localidadLegal: datos.localidadLegal,
+      provinciaLegal: datos.provinciaLegal,
+    },
+    specialityCodes,
+    idSolicitudEmpresa,
+  );
+
+  const convenioPdfPath = await docxToPdf(convenioDocxPath);
+
+  try {
+    await sendCompanyConfirmationEmail(
+      datos.emailCoordinador,
+      datos.empresa,
+      datos.convocatoria,
+      convenioPdfPath,
+    );
+  } finally {
+    fs.unlink(convenioPdfPath, (err) => {
+      if (err) {
+        console.warn("No se pudo eliminar el PDF temporal:", err.message);
+      }
+    });
+  }
+}
