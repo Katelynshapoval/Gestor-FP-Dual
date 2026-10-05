@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 import { getJSON, postJSON, putJSON } from "../../../utils/api.js";
-import CompanyEditForm, { datosToForm } from "../../CompanyView/CompanyEditForm.jsx";
+import CompanyEditForm, {
+  datosToForm,
+} from "../../CompanyView/CompanyEditForm.jsx";
 import CambioDiff from "../../CompanyView/CambioDiff.jsx";
 
-const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
+const EmpresaDatosActions = ({
+  empresa,
+  transports = [],
+  onUpdated,
+  editSignal = 0,
+  onEditingChange,
+}) => {
   const id = empresa.id_solicitud_empresa;
   const [cambio, setCambio] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -33,14 +41,29 @@ const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
   const startEdit = async () => {
     setMsg(null);
     setConflict(null);
+
     try {
       const datos = await getJSON(`/solicitudes/empresa/${id}/datos`);
       setForm(datosToForm(datos));
       setEditing(true);
+
+      if (onEditingChange) {
+        onEditingChange(true);
+      }
     } catch (err) {
-      setMsg({ ok: false, text: err.message || "No se pudieron cargar los datos." });
+      setMsg({
+        ok: false,
+        text: err.message || "No se pudieron cargar los datos.",
+      });
     }
   };
+
+  useEffect(() => {
+    if (!editSignal) return;
+
+    startEdit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editSignal]);
 
   const handleDirectSave = async (body) => {
     if (submitting) return;
@@ -50,6 +73,9 @@ const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
       await putJSON(`/solicitudes/empresa/${id}/datos`, body);
       setEditing(false);
       setForm(null);
+      if (onEditingChange) {
+        onEditingChange(false);
+      }
       setMsg({ ok: true, text: "Datos actualizados." });
       if (onUpdated) onUpdated();
       await loadCambio();
@@ -65,9 +91,12 @@ const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
     setSubmitting(true);
     setMsg(null);
     try {
-      await postJSON(`/solicitudes/empresa/${id}/cambios/${pending.id_cambio}/aprobar`, {
-        confirmar_conflicto: confirmar,
-      });
+      await postJSON(
+        `/solicitudes/empresa/${id}/cambios/${pending.id_cambio}/aprobar`,
+        {
+          confirmar_conflicto: confirmar,
+        },
+      );
       setConflict(null);
       setMsg({ ok: true, text: "Cambios aprobados y aplicados." });
       if (onUpdated) onUpdated();
@@ -92,9 +121,12 @@ const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
     setSubmitting(true);
     setMsg(null);
     try {
-      await postJSON(`/solicitudes/empresa/${id}/cambios/${pending.id_cambio}/rechazar`, {
-        motivo: motivo.trim(),
-      });
+      await postJSON(
+        `/solicitudes/empresa/${id}/cambios/${pending.id_cambio}/rechazar`,
+        {
+          motivo: motivo.trim(),
+        },
+      );
       setMotivo("");
       setConflict(null);
       setMsg({ ok: true, text: "Solicitud de cambio rechazada." });
@@ -110,27 +142,36 @@ const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
   return (
     <div className="space-y-4">
       {msg && (
-        <p className={`text-sm px-4 py-2 rounded-lg ${msg.ok ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}>
+        <p
+          className={`text-sm px-4 py-2 rounded-lg ${msg.ok ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}
+        >
           {msg.text}
         </p>
       )}
 
       {pending && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-          <p className="text-sm font-semibold text-amber-900">La empresa ha solicitado cambios</p>
+          <p className="text-sm font-semibold text-amber-900">
+            La empresa ha solicitado cambios
+          </p>
           <p className="text-xs text-amber-800">Actual → Solicitado</p>
           <CambioDiff diff={pending.diff} />
 
           {conflict && (
             <div className="rounded-md border border-red-200 bg-white p-3 space-y-2">
-              <p className="text-sm font-semibold text-red-800">{conflict.error}</p>
+              <p className="text-sm font-semibold text-red-800">
+                {conflict.error}
+              </p>
               <p className="text-xs text-gray-600">
-                Los datos vigentes han cambiado desde que la empresa envió la solicitud. Si apruebas, se aplicarán los valores solicitados sobre los datos actuales.
+                Los datos vigentes han cambiado desde que la empresa envió la
+                solicitud. Si apruebas, se aplicarán los valores solicitados
+                sobre los datos actuales.
               </p>
               <ul className="text-xs text-gray-700 list-disc pl-4">
                 {(conflict.conflictos || []).map((c) => (
                   <li key={c.field}>
-                    {c.label}: original «{c.original || "—"}» → ahora «{c.actual || "—"}» (solicita «{c.solicitado || "—"}»)
+                    {c.label}: original «{c.original || "—"}» → ahora «
+                    {c.actual || "—"}» (solicita «{c.solicitado || "—"}»)
                   </li>
                 ))}
               </ul>
@@ -155,7 +196,9 @@ const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
               Aprobar
             </button>
             <div className="flex-1">
-              <label className="text-xs font-semibold text-gray-600">Motivo del rechazo</label>
+              <label className="text-xs font-semibold text-gray-600">
+                Motivo del rechazo
+              </label>
               <input
                 className="input mt-1"
                 value={motivo}
@@ -175,19 +218,11 @@ const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
         </div>
       )}
 
-      {empresa.convocatoria_activa && !editing && (
-        <button
-          type="button"
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-          onClick={startEdit}
-        >
-          Editar
-        </button>
-      )}
-
       {editing && form && (
         <div className="rounded-lg border border-surface-200 bg-white p-4">
-          <p className="text-sm font-semibold mb-3">Edición directa (sin aprobación)</p>
+          <p className="text-sm font-semibold mb-3">
+            Edición directa (sin aprobación)
+          </p>
           <CompanyEditForm
             key={`admin-${id}`}
             values={form}
@@ -197,7 +232,14 @@ const EmpresaDatosActions = ({ empresa, transports = [], onUpdated }) => {
             submitting={submitting}
             submitLabel="Guardar cambios"
             onSubmit={handleDirectSave}
-            onCancel={() => { setEditing(false); setForm(null); }}
+            onCancel={() => {
+              setEditing(false);
+              setForm(null);
+
+              if (onEditingChange) {
+                onEditingChange(false);
+              }
+            }}
           />
         </div>
       )}

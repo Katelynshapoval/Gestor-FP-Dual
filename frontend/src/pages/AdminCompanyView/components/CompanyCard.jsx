@@ -2,7 +2,12 @@ import { useState } from "react";
 import { FaKey, FaBuilding } from "react-icons/fa6";
 import { formatDate, InfoRow } from "../helpers";
 import { IoMdArrowDropdown } from "react-icons/io";
-import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
+import {
+  MdEdit,
+  MdOutlineCancel,
+  MdOutlineFileUpload,
+  MdPendingActions,
+} from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 
 import {
@@ -28,7 +33,12 @@ const estadoCls = {
 };
 
 // Requested specialities with student count badges
-const EspecialidadList = ({ especialidades, solicitudId, canEdit, onUpdated }) => {
+const EspecialidadList = ({
+  especialidades,
+  solicitudId,
+  canEdit,
+  onUpdated,
+}) => {
   const [drafts, setDrafts] = useState({});
   const [savingId, setSavingId] = useState(null);
 
@@ -47,7 +57,7 @@ const EspecialidadList = ({ especialidades, solicitudId, canEdit, onUpdated }) =
       try {
         const data = await putJSON(
           `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
-          { cantidad, confirmar_cancelaciones: confirmar }
+          { cantidad, confirmar_cancelaciones: confirmar },
         );
         if (data.canceladas?.length) {
           alert(data.message);
@@ -60,7 +70,16 @@ const EspecialidadList = ({ especialidades, solicitudId, canEdit, onUpdated }) =
         if (onUpdated) onUpdated();
       } catch (err) {
         if (err.status === 409 && err.body?.requires_confirm) {
-          if (window.confirm(err.body.error || warnReducePending(e.cantidad_alumnos, cantidad, err.body.cancelar_pendientes))) {
+          if (
+            window.confirm(
+              err.body.error ||
+                warnReducePending(
+                  e.cantidad_alumnos,
+                  cantidad,
+                  err.body.cancelar_pendientes,
+                ),
+            )
+          ) {
             await send(true);
           }
         } else {
@@ -83,7 +102,9 @@ const EspecialidadList = ({ especialidades, solicitudId, canEdit, onUpdated }) =
             key={idOferta || e.id_especialidad}
             className="flex items-center justify-between gap-2 rounded-md bg-surface-50/60 px-3 py-1.5"
           >
-            <span className="text-sm">{e.nombre || `ID ${e.id_especialidad}`}</span>
+            <span className="text-sm">
+              {e.nombre || `ID ${e.id_especialidad}`}
+            </span>
             {canEdit && idOferta ? (
               <span className="flex items-center gap-1 shrink-0">
                 <input
@@ -93,12 +114,20 @@ const EspecialidadList = ({ especialidades, solicitudId, canEdit, onUpdated }) =
                   className="input w-16 py-0.5 text-xs"
                   value={current}
                   disabled={savingId === idOferta}
-                  onChange={(ev) => setDrafts((prev) => ({ ...prev, [idOferta]: ev.target.value }))}
+                  onChange={(ev) =>
+                    setDrafts((prev) => ({
+                      ...prev,
+                      [idOferta]: ev.target.value,
+                    }))
+                  }
                 />
                 <button
                   type="button"
                   className="text-xs px-2 py-0.5 rounded border border-gray-300 bg-white"
-                  disabled={savingId === idOferta || Number(current) === Number(e.cantidad_alumnos)}
+                  disabled={
+                    savingId === idOferta ||
+                    Number(current) === Number(e.cantidad_alumnos)
+                  }
                   onClick={() => save(e)}
                 >
                   {savingId === idOferta ? "…" : "OK"}
@@ -119,7 +148,11 @@ const EspecialidadList = ({ especialidades, solicitudId, canEdit, onUpdated }) =
 // Students reserved by this empresa, shown in the Reservas inner tab
 const ReservasList = ({ reservations }) => {
   if (!reservations || reservations.length === 0)
-    return <p className="text-sm text-gray-500 py-4 text-center">Sin reservas asociadas.</p>;
+    return (
+      <p className="text-sm text-gray-500 py-4 text-center">
+        Sin reservas asociadas.
+      </p>
+    );
 
   return (
     <div className="space-y-2">
@@ -130,14 +163,20 @@ const ReservasList = ({ reservations }) => {
         >
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{r.alumno}</p>
-            <p className="text-xs text-gray-500">{r.especialidad} · {r.dni_alumno}</p>
+            <p className="text-xs text-gray-500">
+              {r.especialidad} · {r.dni_alumno}
+            </p>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className={`${signedBadgeClass} ${estadoCls[r.estado_reserva] || "bg-gray-100 text-gray-600"}`}>
+            <span
+              className={`${signedBadgeClass} ${estadoCls[r.estado_reserva] || "bg-gray-100 text-gray-600"}`}
+            >
               {r.estado_reserva}
             </span>
             {r.tipo_contrato && (
-              <span className="text-[0.7rem] text-gray-400">{r.tipo_contrato}</span>
+              <span className="text-[0.7rem] text-gray-400">
+                {r.tipo_contrato}
+              </span>
             )}
           </div>
         </div>
@@ -160,35 +199,51 @@ const CompanyCard = ({
 }) => {
   const id = empresa.id_solicitud_empresa;
   const [innerTab, setInnerTab] = useState("info");
+  const [editSignal, setEditSignal] = useState(0);
+  const [editingCompany, setEditingCompany] = useState(false);
 
   const convenioStatus = empresa.convenio_validado
     ? "validado"
     : empresa.tieneConvenio
-    ? "pendiente"
-    : "sin_convenio";
+      ? "pendiente"
+      : "sin_convenio";
 
   const statusConfig = {
-    validado:     { label: "Convenio firmado",  cls: "bg-green-500/10 text-green-800",   Icon: IoIosCheckmarkCircleOutline },
-    pendiente:    { label: "Pendiente validar", cls: "bg-yellow-400/15 text-yellow-800", Icon: MdPendingActions },
-    sin_convenio: { label: "Sin convenio",      cls: "bg-red-500/10 text-red-800",       Icon: MdOutlineCancel },
+    validado: {
+      label: "Convenio firmado",
+      cls: "bg-green-500/10 text-green-800",
+      Icon: IoIosCheckmarkCircleOutline,
+    },
+    pendiente: {
+      label: "Pendiente validar",
+      cls: "bg-yellow-400/15 text-yellow-800",
+      Icon: MdPendingActions,
+    },
+    sin_convenio: {
+      label: "Sin convenio",
+      cls: "bg-red-500/10 text-red-800",
+      Icon: MdOutlineCancel,
+    },
   };
   const { label, cls, Icon } = statusConfig[convenioStatus];
 
   const razonSocial = empresa.empresa || empresa.razonSocial;
-  const emailCoord  = empresa.emailCoordinador;
+  const emailCoord = empresa.emailCoordinador;
   const nombreCoord = empresa.nombreCoordinador;
-  const telCoord    = empresa.telefonoCoordinador;
-  const telEmpresa  = empresa.telEmpresa;
+  const telCoord = empresa.telefonoCoordinador;
+  const telEmpresa = empresa.telEmpresa;
   const dirRazSocial = empresa.dirRazSocial;
-  const municipio    = empresa.municipio;
-  const provincia    = empresa.provincia;
-  const cp           = empresa.cpRazSoc;
-  const responsable  = empresa.responsableLegal;
-  const dniRl        = empresa.dniRl;
-  const cargo        = empresa.cargo;
-  const descripcion  = empresa.descripcion_puesto || empresa.descripcionPuesto;
+  const municipio = empresa.municipio;
+  const provincia = empresa.provincia;
+  const cp = empresa.cpRazSoc;
+  const responsable = empresa.responsableLegal;
+  const dniRl = empresa.dniRl;
+  const cargo = empresa.cargo;
+  const descripcion = empresa.descripcion_puesto || empresa.descripcionPuesto;
 
-  const direccion = [dirRazSocial, municipio, provincia, cp].filter(Boolean).join(", ");
+  const direccion = [dirRazSocial, municipio, provincia, cp]
+    .filter(Boolean)
+    .join(", ");
 
   const innerTabCls = (active) =>
     `px-4 py-1.5 text-xs font-semibold border-b-2 transition ${
@@ -212,29 +267,58 @@ const CompanyCard = ({
               ({empresa.cif})
             </span>
           </p>
-          <p className={`${cardEspClass} hidden truncate text-sm text-gray-500 sm:block`}>
+          <p
+            className={`${cardEspClass} hidden truncate text-sm text-gray-500 sm:block`}
+          >
             {formatDate(empresa.fechaPeticion)} · {emailCoord}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {empresa.cambio_pendiente ? (
-            <span className={`${signedBadgeClass} bg-amber-100 text-amber-800 flex items-center gap-1 whitespace-nowrap`}>
+            <span
+              className={`${signedBadgeClass} bg-amber-100 text-amber-800 flex items-center gap-1 whitespace-nowrap`}
+            >
               <MdPendingActions className="text-[13px]" />
               Cambios pendientes
             </span>
           ) : null}
-          <span className={`${signedBadgeClass} ${cls} flex items-center gap-1 whitespace-nowrap`}>
+          <span
+            className={`${signedBadgeClass} ${cls} flex items-center gap-1 whitespace-nowrap`}
+          >
             <Icon className="text-[13px]" />
             {label}
           </span>
           {reservations.length > 0 && (
             <span className="text-[0.7rem] bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 shrink-0">
-              {reservations.length} reserva{reservations.length !== 1 ? "s" : ""}
+              {reservations.length} reserva
+              {reservations.length !== 1 ? "s" : ""}
             </span>
+          )}
+          {empresa.convocatoria_activa && !editingCompany && (
+            <button
+              type="button"
+              title="Editar datos"
+              aria-label="Editar datos"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-brand-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                setInnerTab("info");
+                setEditSignal((v) => v + 1);
+
+                if (!isExpanded) {
+                  onToggle(id);
+                }
+              }}
+            >
+              <MdEdit className="text-lg" />
+            </button>
           )}
           <button
             className={`${toggleBtnClass} ${isExpanded ? "rotate-180" : ""}`}
-            onClick={(e) => { e.stopPropagation(); onToggle(id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(id);
+            }}
           >
             <IoMdArrowDropdown className="text-[1.5rem]" />
           </button>
@@ -273,117 +357,137 @@ const CompanyCard = ({
             {/* Information tab */}
             {innerTab === "info" && (
               <div className="space-y-5">
-                {isExpanded && (empresa.cambio_pendiente || empresa.convocatoria_activa) && (
-                  <EmpresaDatosActions
-                    empresa={empresa}
-                    transports={transports}
-                    onUpdated={onUpdated}
-                  />
-                )}
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {/* Left column: company and coordinator data */}
-                <div className="space-y-5">
-                  <div>
-                    <p className={sectionLabelClass}>Datos de la empresa</p>
-                    <div className="space-y-1">
-                      <InfoRow label="Razón social"      value={razonSocial} />
-                      <InfoRow label="CIF"               value={empresa.cif} />
-                      <InfoRow label="Email"             value={emailCoord} />
-                      <InfoRow label="Coordinador"       value={nombreCoord} />
-                      <InfoRow label="Teléfono coord."   value={telCoord} />
-                      <InfoRow label="Tel. empresa"      value={telEmpresa} />
-                      <InfoRow label="Dirección"         value={direccion} />
-                      <InfoRow label="Responsable legal" value={`${responsable || "—"} · ${dniRl || "—"}`} />
-                      <InfoRow label="Cargo"             value={cargo} />
-                      <InfoRow label="Registro"          value={formatDate(empresa.fechaPeticion)} />
+                {isExpanded &&
+                  (empresa.cambio_pendiente || empresa.convocatoria_activa) && (
+                    <EmpresaDatosActions
+                      empresa={empresa}
+                      transports={transports}
+                      onUpdated={onUpdated}
+                      editSignal={editSignal}
+                      onEditingChange={setEditingCompany}
+                    />
+                  )}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {/* Left column: company and coordinator data */}
+                  <div className="space-y-5">
+                    <div>
+                      <p className={sectionLabelClass}>Datos de la empresa</p>
+                      <div className="space-y-1">
+                        <InfoRow label="Razón social" value={razonSocial} />
+                        <InfoRow label="CIF" value={empresa.cif} />
+                        <InfoRow label="Email" value={emailCoord} />
+                        <InfoRow label="Coordinador" value={nombreCoord} />
+                        <InfoRow label="Teléfono coord." value={telCoord} />
+                        <InfoRow label="Tel. empresa" value={telEmpresa} />
+                        <InfoRow label="Dirección" value={direccion} />
+                        <InfoRow
+                          label="Responsable legal"
+                          value={`${responsable || "—"} · ${dniRl || "—"}`}
+                        />
+                        <InfoRow label="Cargo" value={cargo} />
+                        <InfoRow
+                          label="Registro"
+                          value={formatDate(empresa.fechaPeticion)}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Login credentials and password reset */}
-                  <div>
-                    <p className={sectionLabelClass}>Credenciales de acceso</p>
-                    <div className="p-3 rounded-lg border border-surface-200 bg-white space-y-2">
-                      <InfoRow
-                        label="Usuario"
-                        value={empresa.username || emailCoord || "Sin usuario"}
-                        mono={!!(empresa.username || emailCoord)}
-                      />
-                      <div className="flex items-center gap-2 flex-wrap mt-2">
-                        <button
-                          onClick={() => onResetPassword(id)}
-                          className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50"
-                        >
-                          <FaKey className="text-xs" />
-                          Resetear contraseña
-                        </button>
-                        {resetResult?.[id] && (
-                          <span className="text-xs font-mono bg-yellow-50 border border-yellow-200 text-yellow-800 px-2 py-1 rounded">
-                            Nueva contraseña: <strong>{resetResult[id]}</strong>
-                          </span>
-                        )}
+                    {/* Login credentials and password reset */}
+                    <div>
+                      <p className={sectionLabelClass}>
+                        Credenciales de acceso
+                      </p>
+                      <div className="p-3 rounded-lg border border-surface-200 bg-white space-y-2">
+                        <InfoRow
+                          label="Usuario"
+                          value={
+                            empresa.username || emailCoord || "Sin usuario"
+                          }
+                          mono={!!(empresa.username || emailCoord)}
+                        />
+                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                          <button
+                            onClick={() => onResetPassword(id)}
+                            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50"
+                          >
+                            <FaKey className="text-xs" />
+                            Resetear contraseña
+                          </button>
+                          {resetResult?.[id] && (
+                            <span className="text-xs font-mono bg-yellow-50 border border-yellow-200 text-yellow-800 px-2 py-1 rounded">
+                              Nueva contraseña:{" "}
+                              <strong>{resetResult[id]}</strong>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Right column: specialities, job description, and convenio */}
-                <div className="space-y-5">
-                  <div>
-                    <p className={sectionLabelClass}>Especialidades solicitadas</p>
-                    <EspecialidadList
-                      especialidades={empresa.especialidades}
-                      solicitudId={id}
-                      canEdit={!!empresa.convocatoria_activa}
-                      onUpdated={onUpdated}
-                    />
-                  </div>
-
-                  {descripcion && (
+                  {/* Right column: specialities, job description, and convenio */}
+                  <div className="space-y-5">
                     <div>
-                      <p className={sectionLabelClass}>Descripción del puesto</p>
-                      <p className="text-sm text-gray-700">{descripcion}</p>
+                      <p className={sectionLabelClass}>
+                        Especialidades solicitadas
+                      </p>
+                      <EspecialidadList
+                        especialidades={empresa.especialidades}
+                        solicitudId={id}
+                        canEdit={!!empresa.convocatoria_activa}
+                        onUpdated={onUpdated}
+                      />
                     </div>
-                  )}
 
-                  {/* Convenio status and viewer button */}
-                  <div>
-                    <p className={sectionLabelClass}>Convenio</p>
-                    <div
-                      className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${
-                        convenioStatus === "validado"
-                          ? "border-green-200 bg-green-50 text-green-700"
-                          : convenioStatus === "pendiente"
-                          ? "border-yellow-200 bg-yellow-50 text-yellow-700"
-                          : "border-red-200 bg-red-50 text-red-700"
-                      }`}
-                    >
-                      <Icon className="shrink-0" />
-                      {convenioStatus === "validado" && "Convenio validado."}
-                      {convenioStatus === "pendiente" && "Convenio subido — pendiente de validación."}
-                      {convenioStatus === "sin_convenio" && "La empresa no ha subido el convenio."}
-                    </div>
-                    {convenioStatus !== "sin_convenio" && (
-                      <div className="flex gap-2 flex-wrap mt-2">
-                        <button
-                          onClick={() => onViewConvenio(empresa)}
-                          className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
-                        >
-                          <MdOutlineFileUpload className="text-brand-600" />
-                          Ver convenio
-                        </button>
-                        {!empresa.convenio_validado && (
-                          <button
-                            onClick={() => onViewConvenio(empresa)}
-                            className="flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-700 transition-colors duration-150 hover:bg-green-100"
-                          >
-                            ✓ Validar
-                          </button>
-                        )}
+                    {descripcion && (
+                      <div>
+                        <p className={sectionLabelClass}>
+                          Descripción del puesto
+                        </p>
+                        <p className="text-sm text-gray-700">{descripcion}</p>
                       </div>
                     )}
+
+                    {/* Convenio status and viewer button */}
+                    <div>
+                      <p className={sectionLabelClass}>Convenio</p>
+                      <div
+                        className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${
+                          convenioStatus === "validado"
+                            ? "border-green-200 bg-green-50 text-green-700"
+                            : convenioStatus === "pendiente"
+                              ? "border-yellow-200 bg-yellow-50 text-yellow-700"
+                              : "border-red-200 bg-red-50 text-red-700"
+                        }`}
+                      >
+                        <Icon className="shrink-0" />
+                        {convenioStatus === "validado" && "Convenio validado."}
+                        {convenioStatus === "pendiente" &&
+                          "Convenio subido — pendiente de validación."}
+                        {convenioStatus === "sin_convenio" &&
+                          "La empresa no ha subido el convenio."}
+                      </div>
+                      {convenioStatus !== "sin_convenio" && (
+                        <div className="flex gap-2 flex-wrap mt-2">
+                          <button
+                            onClick={() => onViewConvenio(empresa)}
+                            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
+                          >
+                            <MdOutlineFileUpload className="text-brand-600" />
+                            Ver convenio
+                          </button>
+                          {!empresa.convenio_validado && (
+                            <button
+                              onClick={() => onViewConvenio(empresa)}
+                              className="flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-700 transition-colors duration-150 hover:bg-green-100"
+                            >
+                              ✓ Validar
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
               </div>
             )}
 
