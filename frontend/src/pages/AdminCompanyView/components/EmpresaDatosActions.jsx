@@ -10,6 +10,7 @@ const EmpresaDatosActions = ({
   transports = [],
   onUpdated,
   editSignal = 0,
+  onEditHandled,
   onEditingChange,
 }) => {
   const id = empresa.id_solicitud_empresa;
@@ -62,6 +63,11 @@ const EmpresaDatosActions = ({
     if (!editSignal) return;
 
     startEdit();
+
+    if (onEditHandled) {
+      onEditHandled();
+    }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editSignal]);
 

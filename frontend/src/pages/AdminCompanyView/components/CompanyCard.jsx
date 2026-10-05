@@ -364,6 +364,7 @@ const CompanyCard = ({
                       transports={transports}
                       onUpdated={onUpdated}
                       editSignal={editSignal}
+                      onEditHandled={() => setEditSignal(0)}
                       onEditingChange={setEditingCompany}
                     />
                   )}

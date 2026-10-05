@@ -7,7 +7,8 @@ const espId = (esp) => Number(esp.id_especialidad ?? esp.idEspecialidad);
 
 const turnoLabel = (turnoRaw) => {
   if (turnoRaw === 0 || turnoRaw === "0" || turnoRaw === "DIURNO") return null;
-  if (turnoRaw === 1 || turnoRaw === "1" || turnoRaw === "VESPERTINO") return "Vespertino";
+  if (turnoRaw === 1 || turnoRaw === "1" || turnoRaw === "VESPERTINO")
+    return "Vespertino";
   return null;
 };
 
@@ -29,7 +30,13 @@ const countChanged = (raw, saved) => {
   return parsed !== n(saved);
 };
 
-const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = [], onUpdated }) => {
+const EspecialidadCuposEditor = ({
+  solicitudId,
+  especialidades = [],
+  catalogo = [],
+  onUpdated,
+  canEdit = true,
+}) => {
   const [drafts, setDrafts] = useState({});
   const [adding, setAdding] = useState(false);
   const [newEspId, setNewEspId] = useState("");
@@ -38,7 +45,8 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
   const [msg, setMsg] = useState(null);
 
   const valueFor = (esp) =>
-    drafts[esp.id_solicitud_empresa_especialidad] ?? String(esp.cantidad_alumnos ?? 0);
+    drafts[esp.id_solicitud_empresa_especialidad] ??
+    String(esp.cantidad_alumnos ?? 0);
 
   const ownedIds = new Set(especialidades.map((esp) => espId(esp)));
   const missing = catalogo.filter((esp) => !ownedIds.has(espId(esp)));
@@ -58,7 +66,10 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
       window.alert(text);
       setMsg({ ok: "warn", text });
     } else {
-      setMsg({ ok: true, text: extraText || data.message || "Número de plazas actualizado." });
+      setMsg({
+        ok: true,
+        text: extraText || data.message || "Número de plazas actualizado.",
+      });
     }
     if (onUpdated) await onUpdated();
   };
@@ -67,7 +78,10 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
     const idOferta = esp.id_solicitud_empresa_especialidad;
     const cantidad = Number(valueFor(esp));
     if (!Number.isInteger(cantidad) || cantidad < 0) {
-      setMsg({ ok: false, text: "Indica un número entero de plazas mayor o igual que 0." });
+      setMsg({
+        ok: false,
+        text: "Indica un número entero de plazas mayor o igual que 0.",
+      });
       return;
     }
 
@@ -85,7 +99,8 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
 
     if (!confirmar && cantidad < ocupadas) {
       const nCancelar = ocupadas - cantidad;
-      if (!window.confirm(warnReducePending(actual, cantidad, nCancelar))) return;
+      if (!window.confirm(warnReducePending(actual, cantidad, nCancelar)))
+        return;
       confirmar = true;
     }
 
@@ -94,29 +109,37 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
     try {
       const data = await putJSON(
         `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
-        { cantidad, confirmar_cancelaciones: confirmar }
+        { cantidad, confirmar_cancelaciones: confirmar },
       );
       await applyResult(esp, data);
     } catch (err) {
       if (err.status === 409 && err.body?.requires_confirm) {
-        const aviso = err.body.error || warnReducePending(
-          err.body.cantidad_actual,
-          err.body.cantidad_nueva,
-          err.body.cancelar_pendientes
-        );
+        const aviso =
+          err.body.error ||
+          warnReducePending(
+            err.body.cantidad_actual,
+            err.body.cantidad_nueva,
+            err.body.cancelar_pendientes,
+          );
         if (window.confirm(aviso)) {
           try {
             const data = await putJSON(
               `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
-              { cantidad, confirmar_cancelaciones: true }
+              { cantidad, confirmar_cancelaciones: true },
             );
             await applyResult(esp, data);
           } catch (retryErr) {
-            setMsg({ ok: false, text: retryErr.message || "Error al actualizar las plazas." });
+            setMsg({
+              ok: false,
+              text: retryErr.message || "Error al actualizar las plazas.",
+            });
           }
         }
       } else {
-        setMsg({ ok: false, text: err.message || "Error al actualizar las plazas." });
+        setMsg({
+          ok: false,
+          text: err.message || "Error al actualizar las plazas.",
+        });
       }
     } finally {
       setSavingId(null);
@@ -134,11 +157,17 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
     const raw = String(newCantidad).trim();
     const cantidad = Number(raw);
     if (!missing.some((esp) => espId(esp) === id)) {
-      setMsg({ ok: false, text: "Selecciona un ciclo que aún no esté en la solicitud." });
+      setMsg({
+        ok: false,
+        text: "Selecciona un ciclo que aún no esté en la solicitud.",
+      });
       return;
     }
     if (raw === "" || !Number.isInteger(cantidad) || cantidad < 1) {
-      setMsg({ ok: false, text: "Indica al menos un alumno para añadir el ciclo." });
+      setMsg({
+        ok: false,
+        text: "Indica al menos un alumno para añadir el ciclo.",
+      });
       return;
     }
 
@@ -147,7 +176,7 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
     try {
       const data = await postJSON(
         `/solicitudes/empresa/${solicitudId}/especialidades`,
-        { id_especialidad: id, cantidad }
+        { id_especialidad: id, cantidad },
       );
       cancelAdd();
       setMsg({ ok: true, text: data.message || "Ciclo añadido." });
@@ -167,17 +196,23 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
 
   return (
     <div className="space-y-3">
-      <p className="field-hint">
-        Puedes cambiar el número de alumnos de un ciclo, o añadir uno que no estuviera en la solicitud. El cambio se aplica de inmediato y no pasa por la revisión de datos de empresa.
-      </p>
+      {canEdit && (
+        <p className="field-hint">
+          Puedes cambiar el número de alumnos de un ciclo, o añadir uno que no
+          estuviera en la solicitud. El cambio se aplica de inmediato y no pasa
+          por la revisión de datos de empresa.
+        </p>
+      )}
       {msg && (
-        <p className={`text-sm px-4 py-2 rounded-lg ${
-          msg.ok === "warn"
-            ? "bg-amber-50 border border-amber-200 text-amber-900"
-            : msg.ok
-            ? "bg-green-50 border border-green-200 text-green-800"
-            : "bg-red-50 border border-red-200 text-red-700"
-        }`}>
+        <p
+          className={`text-sm px-4 py-2 rounded-lg ${
+            msg.ok === "warn"
+              ? "bg-amber-50 border border-amber-200 text-amber-900"
+              : msg.ok
+                ? "bg-green-50 border border-green-200 text-green-800"
+                : "bg-red-50 border border-red-200 text-red-700"
+          }`}
+        >
           {msg.text}
         </p>
       )}
@@ -189,50 +224,73 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
         const saving = savingId === idOferta;
         const changed = countChanged(valueFor(esp), esp.cantidad_alumnos);
         return (
-          <div key={idOferta || esp.id_especialidad} className="rounded-lg border bg-gray-50 px-4 py-3">
+          <div
+            key={idOferta || esp.id_especialidad}
+            className="rounded-lg border bg-gray-50 px-4 py-3"
+          >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-medium">{cicloLabel(esp)}</p>
                 <p className="text-xs text-gray-500">
-                  Ocupadas {ocupadas} · Confirmadas {confirmadas} · Disponibles {disponibles}
+                  Ocupadas {ocupadas} · Confirmadas {confirmadas} · Disponibles{" "}
+                  {disponibles}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-gray-600 whitespace-nowrap" htmlFor={`cupo-${idOferta}`}>
-                  Alumnos
-                </label>
-                <input
-                  id={`cupo-${idOferta}`}
-                  type="number"
-                  min="0"
-                  step="1"
-                  className="input w-20 py-1"
-                  value={valueFor(esp)}
-                  disabled={saving}
-                  onChange={(e) =>
-                    setDrafts((prev) => ({ ...prev, [idOferta]: e.target.value }))
-                  }
-                />
-                {changed && (
-                  <button
-                    type="button"
-                    className={`btn btn-primary btn-sm shadow-none ${saving ? "btn-disabled" : ""}`}
-                    disabled={saving}
-                    onClick={() => save(esp)}
+              {canEdit ? (
+                <div className="flex items-center gap-2">
+                  <label
+                    className="text-xs font-semibold text-gray-600 whitespace-nowrap"
+                    htmlFor={`cupo-${idOferta}`}
                   >
-                    {saving ? "Guardando…" : "Guardar"}
-                  </button>
-                )}
-              </div>
+                    Alumnos
+                  </label>
+
+                  <input
+                    id={`cupo-${idOferta}`}
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="input w-20 py-1"
+                    value={valueFor(esp)}
+                    disabled={saving}
+                    onChange={(e) =>
+                      setDrafts((prev) => ({
+                        ...prev,
+                        [idOferta]: e.target.value,
+                      }))
+                    }
+                  />
+
+                  {changed && (
+                    <button
+                      type="button"
+                      className={`btn btn-primary btn-sm shadow-none ${
+                        saving ? "btn-disabled" : ""
+                      }`}
+                      disabled={saving}
+                      onClick={() => save(esp)}
+                    >
+                      {saving ? "Guardando…" : "Guardar"}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <span className="text-xs px-2 py-1 rounded-full bg-black/5">
+                  {esp.cantidad_alumnos}
+                </span>
+              )}
             </div>
           </div>
         );
       })}
-      {adding && missing.length > 0 && (
+      {canEdit && adding && missing.length > 0 && (
         <div className="rounded-lg border bg-white px-4 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
-              <label className="mb-1 block text-xs font-semibold text-gray-600" htmlFor="nuevo-ciclo">
+              <label
+                className="mb-1 block text-xs font-semibold text-gray-600"
+                htmlFor="nuevo-ciclo"
+              >
                 Ciclo
               </label>
               <select
@@ -251,7 +309,10 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600" htmlFor="nuevo-ciclo-alumnos">
+              <label
+                className="mb-1 block text-xs font-semibold text-gray-600"
+                htmlFor="nuevo-ciclo-alumnos"
+              >
                 Alumnos
               </label>
               <input
@@ -288,7 +349,7 @@ const EspecialidadCuposEditor = ({ solicitudId, especialidades = [], catalogo = 
           </div>
         </div>
       )}
-      {missing.length > 0 && (
+      {canEdit && missing.length > 0 && (
         <button
           type="button"
           className="w-full rounded-lg border border-dashed border-gray-300 bg-white px-4 py-3 text-left text-sm font-medium text-gray-700 hover:border-brand-300 hover:bg-brand-50 disabled:cursor-default disabled:hover:border-gray-300 disabled:hover:bg-white"
