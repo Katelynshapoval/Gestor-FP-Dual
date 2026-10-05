@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { getJSON } from "../../utils/api.js";
+import { useState } from "react";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import Seguimiento from "./Seguimiento.jsx";
 import Plantillas from "./Plantillas.jsx";
@@ -7,25 +6,7 @@ import "../../styles/forms.css";
 
 export default function AdminDocumentsView() {
   const [tab, setTab] = useState("seguimiento");
-  const [items, setItems] = useState([]);
-  const [tipos, setTipos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = async () => {
-    const [docs, templates] = await Promise.all([
-      getJSON("/documentos/seguimiento"),
-      getJSON("/documentos/plantillas"),
-    ]);
-    setItems(Array.isArray(docs?.items) ? docs.items : []);
-    setTipos(Array.isArray(templates?.tipos) ? templates.tipos : []);
-  };
-
-  useEffect(() => {
-    load()
-      .catch((err) => setError(err.message || "No se pudieron cargar los documentos."))
-      .finally(() => setLoading(false));
-  }, []);
+  const [summary, setSummary] = useState(null);
 
   const tabCls = (active) =>
     `whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
@@ -33,37 +14,51 @@ export default function AdminDocumentsView() {
     }`;
 
   return (
-    <div className="page-container">
-      <PageHeader
-        kicker="Administración"
-        title="Documentos"
-        subtitle="Seguimiento de requisitos, estados y plantillas de generación."
-      />
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200">
-        <button type="button" className={tabCls(tab === "seguimiento")} onClick={() => setTab("seguimiento")}>
-          Seguimiento
-        </button>
-        <button type="button" className={tabCls(tab === "plantillas")} onClick={() => setTab("plantillas")}>
-          Plantillas
-        </button>
-      </div>
-      {loading ? (
-        <p className="py-16 text-center text-gray-400">Cargando…</p>
-      ) : error ? (
-        <p className="text-sm text-red-700">{error}</p>
-      ) : tab === "seguimiento" ? (
-        <Seguimiento items={items} onChange={setItems} onOpenTemplates={() => setTab("plantillas")} />
-      ) : (
-        <Plantillas
-          tipos={tipos}
-          onChange={async () => {
-            const templates = await getJSON("/documentos/plantillas");
-            setTipos(Array.isArray(templates?.tipos) ? templates.tipos : []);
-            const docs = await getJSON("/documentos/seguimiento");
-            setItems(Array.isArray(docs?.items) ? docs.items : []);
-          }}
+    <div className="flex-1 bg-surface-100">
+      <div className="page-container space-y-6">
+        <PageHeader
+          kicker="Administración"
+          title="Gestión de documentos"
+          subtitle="Consulta, valida y controla los documentos del proceso Dual."
+          meta={tab === "seguimiento" ? <SummaryChips summary={summary} /> : null}
         />
-      )}
+
+        <div className="flex gap-1 overflow-x-auto border-b border-surface-200">
+          <button type="button" className={tabCls(tab === "seguimiento")} onClick={() => setTab("seguimiento")}>
+            Seguimiento
+          </button>
+          <button type="button" className={tabCls(tab === "plantillas")} onClick={() => setTab("plantillas")}>
+            Plantillas
+          </button>
+        </div>
+
+        {tab === "seguimiento" ? (
+          <Seguimiento onSummary={setSummary} onOpenTemplates={() => setTab("plantillas")} />
+        ) : (
+          <Plantillas />
+        )}
+      </div>
     </div>
+  );
+}
+
+function SummaryChips({ summary }) {
+  const chips = [
+    ["Total", summary?.total],
+    ["Pendientes", summary?.pendientes],
+    ["Acción del centro", summary?.accionCentro],
+  ];
+  return (
+    <>
+      {chips.map(([label, value]) => (
+        <div
+          key={label}
+          className="min-w-[8.5rem] rounded-xl2 border border-surface-200 bg-white px-3 py-2 shadow-card"
+        >
+          <p className="text-lg font-semibold leading-none text-charcoal-950">{value == null ? "—" : value}</p>
+          <p className="mt-1 text-[0.72rem] font-medium text-muted">{label}</p>
+        </div>
+      ))}
+    </>
   );
 }

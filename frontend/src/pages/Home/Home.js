@@ -4,6 +4,7 @@ import "./Home.css";
 import {
   FaArrowRightLong,
   FaBuilding,
+  FaFileLines,
   FaFileSignature,
   FaLink,
   FaUserGraduate,
@@ -60,6 +61,12 @@ function Home() {
             Icon: FaFileSignature,
             title: "Empresas colaboradoras",
             desc: "Administra las empresas registradas en Dual: consulta datos, gestiona anexos.",
+          },
+          {
+            to: "/documentsView",
+            Icon: FaFileLines,
+            title: "Documentos",
+            desc: "Consulta, valida y gestiona los documentos y firmas del proceso Dual.",
           },
         ]
       : []),

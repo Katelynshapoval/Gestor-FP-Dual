@@ -1,4 +1,5 @@
 const pool = require("../db/pool");
+const { buildStaffPage } = require("./documentStaffQuery");
 const {
   staffRole,
   defByClave,
@@ -123,6 +124,10 @@ function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
     cif: ctx.cif || null,
     especialidad: ctx.especialidad || null,
     tipo_contrato: ctx.tipo_contrato || null,
+    id_alumno: ctx.id_alumno || null,
+    id_empresa: ctx.id_empresa || null,
+    id_especialidad: ctx.id_especialidad || null,
+    id_convocatoria: ctx.id_convocatoria || null,
     legacy: false,
   };
 }
@@ -191,6 +196,9 @@ function itemsForSolicitudAlumno(rol, solicitud, docMap, firmaMap, templates) {
       rol,
       {
         id_solicitud_alumno: solicitud.id_solicitud_alumno,
+        id_alumno: solicitud.id_alumno || null,
+        id_convocatoria: solicitud.id_convocatoria || null,
+        id_especialidad: solicitud.id_especialidad || null,
         convocatoria: solicitud.convocatoria,
         alumno: solicitud.nombre || solicitud.alumno,
         dni: solicitud.dni || null,
@@ -437,7 +445,8 @@ async function buildEmpresaList(idEmpresa) {
 
 async function buildStaffList() {
   const [alumnos] = await pool.query(
-    `SELECT sa.id_solicitud_alumno, c.nombre AS convocatoria, a.nombre AS alumno, a.dni,
+    `SELECT sa.id_solicitud_alumno, sa.id_alumno, sa.id_convocatoria, c.nombre AS convocatoria,
+            a.nombre AS alumno, a.dni, a.id_especialidad_dual AS id_especialidad,
             esp.nombre AS especialidad
        FROM dual_solicitudes_alumno sa
        JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
@@ -446,16 +455,17 @@ async function buildStaffList() {
       ORDER BY a.nombre, sa.id_solicitud_alumno DESC`,
   );
   const [empresas] = await pool.query(
-    `SELECT se.id_solicitud_empresa, c.nombre AS convocatoria, emp.empresa, emp.cif
+    `SELECT se.id_solicitud_empresa, se.id_empresa, se.id_convocatoria, c.nombre AS convocatoria,
+            emp.empresa, emp.cif
        FROM dual_solicitudes_empresa se
        JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
        JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
       ORDER BY emp.empresa, se.id_solicitud_empresa DESC`,
   );
   const [reservas] = await pool.query(
-    `SELECT r.id_reserva, tc.nombre AS tipo_contrato, a.nombre AS alumno, a.dni,
-            emp.empresa, emp.cif, esp.nombre AS especialidad, se.id_solicitud_empresa,
-            sa.id_solicitud_alumno, c.nombre AS convocatoria
+    `SELECT r.id_reserva, tc.nombre AS tipo_contrato, a.nombre AS alumno, a.dni, sa.id_alumno,
+            emp.empresa, emp.cif, se.id_empresa, esp.nombre AS especialidad, ee.id_especialidad,
+            se.id_solicitud_empresa, sa.id_solicitud_alumno, se.id_convocatoria, c.nombre AS convocatoria
        FROM dual_reservas r
        JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
        LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
@@ -496,6 +506,8 @@ async function buildStaffList() {
         "ADMINISTRADOR",
         {
           id_solicitud_empresa: se.id_solicitud_empresa,
+          id_empresa: se.id_empresa,
+          id_convocatoria: se.id_convocatoria,
           convocatoria: se.convocatoria,
           empresa: se.empresa,
           cif: se.cif,
@@ -520,6 +532,10 @@ async function buildStaffList() {
           id_reserva: reserva.id_reserva,
           id_solicitud_alumno: reserva.id_solicitud_alumno,
           id_solicitud_empresa: reserva.id_solicitud_empresa,
+          id_alumno: reserva.id_alumno,
+          id_empresa: reserva.id_empresa,
+          id_especialidad: reserva.id_especialidad,
+          id_convocatoria: reserva.id_convocatoria,
           alumno: reserva.alumno,
           dni: reserva.dni,
           empresa: reserva.empresa,
@@ -542,6 +558,10 @@ async function buildStaffList() {
       "ADMINISTRADOR",
       {
         id_reserva: reserva.id_reserva,
+        id_alumno: reserva.id_alumno,
+        id_empresa: reserva.id_empresa,
+        id_especialidad: reserva.id_especialidad,
+        id_convocatoria: reserva.id_convocatoria,
         alumno: reserva.alumno,
         dni: reserva.dni,
         empresa: reserva.empresa,
@@ -557,6 +577,11 @@ async function buildStaffList() {
   }
 
   return items;
+}
+
+async function queryStaffPage(rawQuery) {
+  const items = await buildStaffList();
+  return buildStaffPage(items, rawQuery);
 }
 
 async function attachSolicitudDocumentos(rows, rol) {
@@ -600,6 +625,7 @@ module.exports = {
   buildAlumnoList,
   buildEmpresaList,
   buildStaffList,
+  queryStaffPage,
   attachSolicitudDocumentos,
   missingStudentValidation,
   alumnoMaySee,

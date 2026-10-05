@@ -558,8 +558,8 @@ exports.firmarContexto = async function (req, res) {
 };
 
 exports.seguimiento = async function (req, res) {
-  const items = await workflow.buildStaffList();
-  return res.json({ items });
+  const page = await workflow.queryStaffPage(req.query || {});
+  return res.json(page);
 };
 
 exports.generar = async function (req, res) {
