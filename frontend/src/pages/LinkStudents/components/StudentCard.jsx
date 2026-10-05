@@ -366,9 +366,6 @@ const StudentCard = ({
               >
                 <div className="space-y-5">
                   <DatosRapidos r={r} />
-                </div>
-                <div className="space-y-5">
-                  <Documentos r={r} user={user} onGetDoc={onGetDoc} />
                   {!isEmpresa && (
                     <EstadoSolicitud
                       r={r}
@@ -376,6 +373,9 @@ const StudentCard = ({
                       onRechazar={onRechazarSolicitud}
                     />
                   )}
+                </div>
+                <div className="space-y-5">
+                  <Documentos r={r} user={user} onGetDoc={onGetDoc} />
                 </div>
               </div>
             )}
