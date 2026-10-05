@@ -211,6 +211,62 @@ async function empresaOwnsDocumento(idEmpresa, doc) {
   return false;
 }
 
+// Student CVs belong to the application, not the company. A company may open
+// one when it can already see that candidate, or when it has a live reservation.
+async function empresaMayViewStudentDocument(idEmpresa, doc) {
+  if (!idEmpresa || !doc?.id_solicitud_alumno) return false;
+  const def = defByClave(doc.tipo);
+  if (!def || def.legacy || def.actor?.EMPRESA === "hidden" || !def.actor?.EMPRESA) return false;
+
+  const [rows] = await pool.query(
+    `SELECT sa.id_solicitud_alumno
+       FROM dual_solicitudes_alumno sa
+       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+       JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
+      WHERE sa.id_solicitud_alumno = ?
+        AND (
+          EXISTS (
+            SELECT 1
+              FROM dual_reservas r
+              JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+              JOIN dual_solicitud_empresa_especialidades ee
+                ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+              JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+             WHERE r.id_solicitud_alumno = sa.id_solicitud_alumno
+               AND se.id_empresa = ?
+               AND er.nombre <> 'CANCELADA'
+          )
+          OR (
+            c.activa = 1
+            AND sa.id_estado_validacion = (
+                  SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'VALIDADO' LIMIT 1
+                )
+            AND a.id_especialidad_dual IN (
+                  SELECT ee.id_especialidad
+                    FROM dual_solicitud_empresa_especialidades ee
+                    JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+                    JOIN dual_convocatorias ce ON ce.id_convocatoria = se.id_convocatoria
+                   WHERE se.id_empresa = ?
+                     AND ce.activa = 1
+                     AND se.id_estado_validacion = (
+                           SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'VALIDADO' LIMIT 1
+                         )
+                )
+            AND NOT EXISTS (
+                  SELECT 1
+                    FROM dual_reservas r
+                    JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+                   WHERE r.id_solicitud_alumno = sa.id_solicitud_alumno
+                     AND er.nombre = 'CONFIRMADA'
+                )
+          )
+        )
+      LIMIT 1`,
+    [doc.id_solicitud_alumno, idEmpresa, idEmpresa],
+  );
+  return Boolean(rows[0]);
+}
+
 async function alumnoMayDownload(idAlumno, doc) {
   if (!idAlumno || !doc) return false;
   const def = defByClave(doc.tipo);
@@ -254,7 +310,8 @@ async function canDownloadDocumento(user, doc) {
   if (user.rol === "ADMINISTRADOR" || user.rol === "COORDINADOR") return true;
   if (user.rol === "EMPRESA") {
     const idEmpresa = await getCompanyIdFromUser(user.id);
-    return empresaOwnsDocumento(idEmpresa, doc);
+    if (await empresaOwnsDocumento(idEmpresa, doc)) return true;
+    return empresaMayViewStudentDocument(idEmpresa, doc);
   }
   if (user.rol === "ALUMNO") {
     const idAlumno = await getStudentIdFromUser(user.id);
