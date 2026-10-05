@@ -12,6 +12,7 @@ import CompanyView from "./pages/CompanyView/";
 import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
 import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
 import StudentMain from "./pages/StudentMain";
+import AdminDocumentsView from "./pages/AdminDocumentsView";
 import RequireRole from "./components/auth/RequireRole.jsx";
 
 import "./styles/main.css";
@@ -96,6 +97,16 @@ function App() {
                 <Page>
                   <RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}>
                     <Convocatorias />
+                  </RequireRole>
+                </Page>
+              }
+            />
+            <Route
+              path="/documentsView"
+              element={
+                <Page>
+                  <RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}>
+                    <AdminDocumentsView />
                   </RequireRole>
                 </Page>
               }

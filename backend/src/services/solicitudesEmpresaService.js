@@ -7,12 +7,7 @@ const {
   getCompanyIdFromUser,
 } = require("../helpers/dbHelpers");
 const empresaDatos = require("./empresaDatos");
-
-const fs = require("fs");
-const path = require("path");
-const mammoth = require("mammoth");
-const puppeteer = require("puppeteer");
-const { createReport } = require("docx-templates");
+const { generateDocument } = require("./documentGenerationService");
 
 const EMPRESA_YA_REGISTRADA =
   "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
@@ -25,17 +20,9 @@ try {
   /* mail not configured */
 }
 
-async function sendCompanyConfirmationEmail(
-  email,
-  empresa,
-  convocatoria,
-  convenioPdfPath,
-) {
-  if (!transporter) {
-    console.warn(
-      "Mail not configured. Confirmation email not sent for",
-      empresa,
-    );
+async function sendCompanyConfirmationEmail(email, empresa, convocatoria, pdfBuffer) {
+  if (!transporter || !pdfBuffer) {
+    console.warn("Mail not configured or convenio not generated. Confirmation email not sent for", empresa);
     return;
   }
 
@@ -47,14 +34,13 @@ async function sendCompanyConfirmationEmail(
       html: `
         <p>Estimado coordinador de <strong>${empresa}</strong>,</p>
         <p>Hemos recibido vuestra solicitud de participación en la convocatoria <strong>${convocatoria}</strong>.</p>
-        <p>Adjuntamos el convenio correspondiente para su firma.</p>
-        <p>Una vez firmado, podéis subirlo desde vuestro panel de empresa.</p>
+        <p>Adjuntamos el convenio generado. La firma y la validación se registran en el portal.</p>
         <p>Salesianos Zaragoza — Departamento Dual</p>
       `,
       attachments: [
         {
           filename: `CONVENIO_${empresa}_${new Date().getFullYear()}.pdf`,
-          path: convenioPdfPath,
+          content: pdfBuffer,
         },
       ],
     });
@@ -471,6 +457,7 @@ exports.create = async function (req, res) {
     await safelyGenerateAndSendConvenio(
       idSolicitudEmpresa,
       "Error al generar/enviar el convenio:",
+      null,
     );
 
     return res.status(201).json({
@@ -1116,6 +1103,7 @@ exports.reapply = async function (req, res) {
     await safelyGenerateAndSendConvenio(
       idSolicitudEmpresa,
       "Error al generar/enviar el convenio de reaplicación:",
+      req.user?.id || null,
     );
 
     return res.status(201).json({
@@ -1946,32 +1934,35 @@ exports.updateCupoEspecialidad = async function (req, res) {
 
     if (cantidad < activas) {
       const nCancelar = activas - cantidad;
-
+      const requested = Array.isArray(req.body?.ids_reservas_cancelar)
+        ? [...new Set(req.body.ids_reservas_cancelar.map((value) => parseInt(value, 10)).filter((value) => value > 0))]
+        : [];
       const aviso =
-        `Al reducir de ${cantidadAnterior} a ${cantidad} plazas ` +
-        `se cancelarán ${nCancelar} reserva${
+        `Al reducir de ${cantidadAnterior} a ${cantidad} plazas hay que cancelar ${nCancelar} reserva${
           nCancelar !== 1 ? "s" : ""
-        } pendiente${
-          nCancelar !== 1 ? "s" : ""
-        }. Las reservas confirmadas no se modificarán.`;
+        } pendiente${nCancelar !== 1 ? "s" : ""}. Elige cuáles. Las reservas confirmadas no se modifican.`;
 
-      if (!confirmarCancelaciones) {
+      const selected = pendientes.filter((row) => requested.includes(row.id_reserva));
+      if (!confirmarCancelaciones || selected.length !== nCancelar) {
         await conn.rollback();
-
         return res.status(409).json({
           error: aviso,
           requires_confirm: true,
+          requires_selection: true,
           cancelar_pendientes: nCancelar,
           cantidad_actual: cantidadAnterior,
           cantidad_nueva: cantidad,
           plazas_confirmadas: confirmadas.length,
           plazas_pendientes: pendientes.length,
+          pendientes: pendientes.map((row) => ({
+            id_reserva: row.id_reserva,
+            alumno: row.alumno,
+            dni_alumno: row.dni_alumno,
+          })),
         });
       }
 
-      const toCancel = pendientes.slice(0, nCancelar);
-
-      for (const row of toCancel) {
+      for (const row of selected) {
         const [upd] = await conn.query(
           `UPDATE dual_reservas
            SET
@@ -2081,149 +2072,20 @@ exports.updateCupoEspecialidad = async function (req, res) {
   });
 };
 
-async function generateConvenioDocx(data, specialityCodes, idSolicitudEmpresa) {
-  const templatePath = path.join(
-    __dirname,
-    "..",
-    "..",
-    "required_documents",
-    "CONVENIO_GENERAL_PLANTILLA.docx",
-  );
-
-  const outputDir = path.join(__dirname, "..", "..", "uploads");
-
-  fs.mkdirSync(outputDir, {
-    recursive: true,
-  });
-
-  const outputPath = path.join(
-    outputDir,
-    `CONVENIO_${idSolicitudEmpresa}.docx`,
-  );
-
-  const buffer = await createReport({
-    template: fs.readFileSync(templatePath),
-    data: {
-      razonSocial: data.empresa,
-      responsableLegal: data.nombreRepresentante,
-      dniRl: data.dniRepresentante,
-      dirRazSocial: [
-        data.domicilioLegal,
-        data.cpLegal,
-        data.localidadLegal,
-        data.provinciaLegal,
-      ]
-        .filter(Boolean)
-        .join(", "),
-      cif: data.cif,
-      cargo: data.cargoRepresentante,
-      specialities: specialityCodes.join(", "),
-      fechaPeticion: new Date().toLocaleDateString("es-ES"),
-    },
-    cmdDelimiter: ["<<", ">>"],
-  });
-
-  fs.writeFileSync(outputPath, buffer);
-
-  return outputPath;
-}
-
-async function docxToPdf(docxPath) {
-  const pdfPath = docxPath.replace(/\.docx$/, ".pdf");
-
-  const { value: html } = await mammoth.convertToHtml({
-    path: docxPath,
-  });
-
-  const browser = await puppeteer.launch();
-
+async function safelyGenerateAndSendConvenio(idSolicitudEmpresa, errorMessage, userId) {
   try {
-    const page = await browser.newPage();
-
-    await page.setContent(html, {
-      waitUntil: "networkidle0",
+    const result = await generateDocument({
+      clave: "CONVENIO",
+      parents: { id_solicitud_empresa: idSolicitudEmpresa },
+      userId: userId || null,
+      regenerar: false,
     });
-
-    await page.pdf({
-      path: pdfPath,
-      format: "A4",
-      margin: {
-        top: "2cm",
-        bottom: "2cm",
-        left: "2cm",
-        right: "2cm",
-      },
-      printBackground: true,
-    });
-  } finally {
-    await browser.close();
-  }
-
-  fs.unlinkSync(docxPath);
-
-  return pdfPath;
-}
-
-async function safelyGenerateAndSendConvenio(idSolicitudEmpresa, errorMessage) {
-  try {
-    await generateAndSendConvenio(idSolicitudEmpresa);
+    if (!result.ok) {
+      console.warn(`${errorMessage} no hay plantilla activa de convenio. La solicitud se ha guardado.`);
+      return;
+    }
+    await sendCompanyConfirmationEmail(result.email, result.empresa, result.convocatoria, result.pdf);
   } catch (err) {
     console.error(errorMessage, err.message);
-  }
-}
-
-async function generateAndSendConvenio(idSolicitudEmpresa) {
-  const datos = await empresaDatos.loadEmpresaDatosRead(
-    pool,
-    idSolicitudEmpresa,
-  );
-
-  if (!datos) {
-    throw new Error("No se encontró la solicitud para generar el convenio.");
-  }
-
-  const [specialityRows] = await pool.query(
-    `SELECT esp.codigo
-     FROM dual_solicitud_empresa_especialidades see
-     JOIN dual_especialidades esp
-       ON esp.id_especialidad = see.id_especialidad
-     WHERE see.id_solicitud_empresa = ?
-     ORDER BY esp.codigo`,
-    [idSolicitudEmpresa],
-  );
-
-  const specialityCodes = specialityRows.map((row) => row.codigo);
-
-  const convenioDocxPath = await generateConvenioDocx(
-    {
-      empresa: datos.empresa,
-      cif: datos.cif,
-      nombreRepresentante: datos.nombreRepresentante,
-      dniRepresentante: datos.dniRepresentante,
-      cargoRepresentante: datos.cargoRepresentante,
-      domicilioLegal: datos.domicilioLegal,
-      cpLegal: datos.cpLegal,
-      localidadLegal: datos.localidadLegal,
-      provinciaLegal: datos.provinciaLegal,
-    },
-    specialityCodes,
-    idSolicitudEmpresa,
-  );
-
-  const convenioPdfPath = await docxToPdf(convenioDocxPath);
-
-  try {
-    await sendCompanyConfirmationEmail(
-      datos.emailCoordinador,
-      datos.empresa,
-      datos.convocatoria,
-      convenioPdfPath,
-    );
-  } finally {
-    fs.unlink(convenioPdfPath, (err) => {
-      if (err) {
-        console.warn("No se pudo eliminar el PDF temporal:", err.message);
-      }
-    });
   }
 }

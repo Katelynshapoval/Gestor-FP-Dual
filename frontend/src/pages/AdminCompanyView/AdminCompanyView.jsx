@@ -45,6 +45,7 @@ const AdminCompanyView = () => {
   const [filterCambios, setFilterCambios] = useState("");
   const [sortBy, setSortBy] = useState("fecha_desc");
   const [transports, setTransports] = useState([]);
+  const [catalogo, setCatalogo] = useState([]);
 
   useEffect(() => {
     if (!user) {
@@ -56,13 +57,15 @@ const AdminCompanyView = () => {
       getJSON("/solicitudes/empresa/todas"),
       getJSON("/reservas"),
       getJSON("/transportes"),
+      getJSON("/especialidades"),
     ])
-      .then(([companiesData, reservationsData, transportsData]) => {
+      .then(([companiesData, reservationsData, transportsData, especialidadesData]) => {
         setCompanies(Array.isArray(companiesData) ? companiesData : []);
         setAllReservations(
           Array.isArray(reservationsData) ? reservationsData : [],
         );
         setTransports(Array.isArray(transportsData) ? transportsData : []);
+        setCatalogo(Array.isArray(especialidadesData) ? especialidadesData : []);
         setLoading(false);
       })
       .catch((err) => {
@@ -75,6 +78,13 @@ const AdminCompanyView = () => {
     getJSON("/solicitudes/empresa/todas")
       .then((d) => setCompanies(Array.isArray(d) ? d : []))
       .catch(console.error);
+
+  const fetchReservations = () =>
+    getJSON("/reservas")
+      .then((d) => setAllReservations(Array.isArray(d) ? d : []))
+      .catch(console.error);
+
+  const refreshCompanyData = () => Promise.all([fetchCompanies(), fetchReservations()]);
 
   const toggleCard = (id) =>
     setExpandedCards((prev) => {
@@ -386,11 +396,12 @@ const AdminCompanyView = () => {
                   (r) => String(r.idempresa) === String(empresa.id_empresa),
                 )}
                 transports={transports}
+                catalogo={catalogo}
                 isExpanded={expandedCards.has(empresa.id_solicitud_empresa)}
                 onToggle={toggleCard}
                 onViewConvenio={setViewingConvenio}
                 onResetPassword={handleResetPassword}
-                onUpdated={fetchCompanies}
+                onUpdated={refreshCompanyData}
                 resetResult={resetResult}
               />
             ))}

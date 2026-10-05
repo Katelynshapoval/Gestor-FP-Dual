@@ -180,15 +180,24 @@ exports.create = async function (req, res) {
       'SELECT id_usuario FROM dual_usuarios WHERE id_alumno = ? FOR UPDATE',
       [idAlumno]
     );
+    let idUsuarioOrigen = existingUser[0]?.id_usuario || null;
     if (!existingUser[0]) {
       const hash = await bcrypt.hash(String(password), 10);
-      await conn.query(
+      const [createdUser] = await conn.query(
         `INSERT INTO dual_usuarios
            (nombre_mostrar, email, password_hash, id_rol, id_contacto, id_alumno, activo, must_change_password)
          VALUES (?, NULL, ?, ?, NULL, ?, 1, 0)`,
         [nombre, hash, idRolAlumno, idAlumno]
       );
+      idUsuarioOrigen = createdUser.insertId;
     }
+
+    await conn.query(
+      `UPDATE dual_documentos
+          SET id_usuario_origen = ?, origen_documento = 'SUBIDA', registrado_en = NOW()
+        WHERE id_solicitud_alumno = ?`,
+      [idUsuarioOrigen, idSolicitudAlumno]
+    );
 
     await conn.commit();
 

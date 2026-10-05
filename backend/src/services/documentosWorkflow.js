@@ -5,9 +5,13 @@ const {
   activeDefs,
   requiredForStudentValidation,
   anexoClaveForContrato,
-  appliesToContrato,
   workflowLabel,
   reviewLabel,
+  deriveDocumentState,
+  hasFile,
+  mapActor,
+  actorLabel,
+  CONTEXTO_LABEL,
   SIGN_ROLES,
 } = require("./documentCatalogue");
 
@@ -17,6 +21,16 @@ async function tipoIdByNombre(clave, conn = pool) {
     [clave],
   );
   return rows[0]?.id_tipo_documento ?? null;
+}
+
+async function activeTemplateClaves() {
+  const [rows] = await pool.query(
+    `SELECT td.nombre AS clave
+       FROM dual_documento_plantillas p
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = p.id_tipo_documento
+      WHERE p.es_activa = 1`,
+  );
+  return new Set(rows.map((row) => row.clave));
 }
 
 function actorOf(rol) {
@@ -31,71 +45,82 @@ function canUpload(def, rol) {
   return false;
 }
 
-function projectItem(def, rol, ctx, row, firmas = []) {
+function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
   const actor = actorOf(rol);
   const mode = def.actor[actor] || "hidden";
-  if (mode === "hidden") return null;
+  if (mode === "hidden" || def.legacy) return null;
 
-  const hasFile = Boolean(row?.archivo_presente || row?.id_documento && row?.tiene_archivo);
-  const storedWorkflow = row?.estado_workflow || null;
-  let estadoWorkflow = "NO_SUBIDO";
-
-  if (mode === "view" || (mode === "review" && def.kind === "event")) {
-    estadoWorkflow = def.kind === "event" ? "SUBIDO" : "NO_HACE_NADA";
-  } else if (mode === "event" || def.kind === "event") {
-    estadoWorkflow = "SUBIDO";
-  } else if (mode === "sign" || def.kind === "signature") {
-    const mine = firmas.find((f) => f.rol === actor);
-    estadoWorkflow = mine?.estado === "FIRMADO" ? "FIRMADO" : "SIN_FIRMAR";
-  } else if (!row?.id_documento || row.tiene_archivo === 0) {
-    estadoWorkflow = "NO_SUBIDO";
-  } else {
-    estadoWorkflow = storedWorkflow || def.workflowOnUpload || "SUBIDO";
-  }
-
-  const review = def.requiresReview && row?.id_documento ? row.estado_validacion || "PENDIENTE" : null;
-  const validated = review === "VALIDADO";
-  const rejected = review === "RECHAZADO";
+  const templateAvailable = options.templateAvailable ?? options.templates?.has?.(def.clave) ?? false;
+  const derived = deriveDocumentState(def, row, firmas, { templateAvailable });
+  const file = hasFile(row);
+  const validated = derived.estado_validacion === "VALIDADO";
   const ownsUpload = canUpload(def, rol);
-  const puedeSubir = ownsUpload && !row?.id_documento && def.kind !== "event";
-  const puedeReemplazar =
-    ownsUpload &&
-    Boolean(row?.id_documento) &&
-    def.kind !== "event" &&
-    (def.replaceIfValidated || !validated);
+  const isStaff = actor === "GESTOR";
+  const viewer = mapActor(actor);
+  const signRole = actor;
+  const ownSignature = derived.firmas.find((f) => f.rol === signRole);
 
-  const firmaList = (def.signers || []).map((signRol) => {
-    const found = firmas.find((f) => f.rol === signRol);
-    return {
-      rol: signRol,
-      estado: found?.estado || "SIN_FIRMAR",
-      estado_label: workflowLabel(found?.estado || "SIN_FIRMAR"),
-    };
-  });
+  const puedeSubir = ownsUpload && !file;
+  const puedeReemplazar = ownsUpload && file && (def.replaceIfValidated || !validated);
+  const puedeRevisar = isStaff && derived.estado_operativo === "PENDIENTE_VALIDACION" && Boolean(row?.id_documento);
+  const puedeFirmar = Boolean(file && ownSignature && ownSignature.estado !== "FIRMADO" && def.signers?.includes(signRole));
+  const puedeGenerar = isStaff && def.generated && !file && templateAvailable;
+  const puedeRegenerar = isStaff && def.generated && file && (def.replaceIfValidated || !validated);
+
+  const origen = row?.origen_documento || null;
+  const origenConocido = origen === "SUBIDA" || origen === "GENERADO";
 
   return {
     clave: def.clave,
     nombre: def.nombre,
     ambito: def.ambito,
+    contexto: def.ambito,
+    contexto_label: CONTEXTO_LABEL[def.ambito] || def.ambito,
+    generado: Boolean(def.generated),
     id_documento: row?.id_documento || null,
-    estado_workflow: estadoWorkflow,
-    estado_workflow_label: workflowLabel(estadoWorkflow),
-    estado_validacion: review,
-    estado_validacion_label: reviewLabel(review),
-    motivo: rejected ? row?.motivo || null : null,
-    puede_ver: Boolean(row?.id_documento && row?.tiene_archivo),
-    puede_subir: puedeSubir || (ownsUpload && estadoWorkflow === "NO_SUBIDO"),
+    estado_workflow: file ? row?.estado_workflow || def.workflowOnUpload || "SUBIDO" : "NO_SUBIDO",
+    estado_workflow_label: derived.estado_operativo_label,
+    estado_operativo: derived.estado_operativo,
+    estado_operativo_label: derived.estado_operativo_label,
+    estado_validacion: derived.estado_validacion,
+    estado_validacion_label: reviewLabel(derived.estado_validacion),
+    motivo: derived.estado_operativo === "RECHAZADO" ? row?.motivo || null : null,
+    accion_pendiente: derived.accion_pendiente,
+    accion_pendiente_de: derived.accion_pendiente_de,
+    requiere_accion_actual: derived.accion_pendiente_de.includes(viewer),
+    falta_plantilla: derived.falta_plantilla,
+    responsable: derived.responsable,
+    responsable_label: derived.responsable_label,
+    puede_ver: Boolean(row?.id_documento && file),
+    puede_subir: puedeSubir,
     puede_reemplazar: puedeReemplazar,
-    puede_revisar: actor === "GESTOR" && def.requiresReview && Boolean(row?.id_documento),
-    puede_firmar: mode === "sign",
-    firmas: firmaList,
+    puede_revisar: puedeRevisar,
+    puede_firmar: puedeFirmar,
+    puede_generar: puedeGenerar,
+    puede_regenerar: puedeRegenerar,
+    firmas: derived.firmas,
+    origen_documento: origenConocido ? origen : "LEGACY",
+    origen_label: origen === "GENERADO" ? "Generado" : origen === "SUBIDA" ? "Subida" : "No registrado",
+    id_usuario_origen: row?.id_usuario_origen || null,
+    origen_nombre: row?.origen_nombre || null,
+    origen_rol: row?.origen_rol || null,
+    origen_rol_label: row?.origen_rol ? actorLabel(row.origen_rol) : null,
+    subido_por: row?.origen_nombre
+      ? `${row.origen_nombre}${row.origen_rol ? ` (${actorLabel(row.origen_rol)})` : ""}`
+      : "No registrado",
+    fecha: row?.registrado_en || null,
+    id_plantilla: row?.id_plantilla || null,
+    plantilla_nombre: row?.plantilla_nombre || null,
+    plantilla_version: row?.plantilla_version || null,
     requerido_para_validar: Boolean(def.requeridoParaValidarAlumno),
     id_solicitud_alumno: ctx.id_solicitud_alumno || null,
     id_solicitud_empresa: ctx.id_solicitud_empresa || null,
     id_reserva: ctx.id_reserva || null,
     convocatoria: ctx.convocatoria || null,
     alumno: ctx.alumno || null,
+    dni: ctx.dni || null,
     empresa: ctx.empresa || null,
+    cif: ctx.cif || null,
     especialidad: ctx.especialidad || null,
     tipo_contrato: ctx.tipo_contrato || null,
     legacy: false,
@@ -119,13 +144,21 @@ async function loadFirmas(ids) {
 async function latestDocs(whereSql, params) {
   const [rows] = await pool.query(
     `SELECT d.id_documento, d.id_solicitud_alumno, d.id_solicitud_empresa, d.id_reserva,
-            d.motivo, d.estado_workflow,
+            d.motivo, d.estado_workflow, d.origen_documento, d.id_usuario_origen,
+            d.id_plantilla, d.registrado_en,
             td.nombre AS clave,
             ev.nombre AS estado_validacion,
+            uo.nombre_mostrar AS origen_nombre,
+            ro.nombre AS origen_rol,
+            pl.nombre_archivo AS plantilla_nombre,
+            pl.version AS plantilla_version,
             CASE WHEN d.archivo IS NULL THEN 0 ELSE 1 END AS tiene_archivo
        FROM dual_documentos d
        JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
        JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+       LEFT JOIN dual_usuarios uo ON uo.id_usuario = d.id_usuario_origen
+       LEFT JOIN dual_roles ro ON ro.id_rol = uo.id_rol
+       LEFT JOIN dual_documento_plantillas pl ON pl.id_plantilla = d.id_plantilla
       WHERE ${whereSql}
         AND (d.es_actual = 1 OR d.es_actual IS NULL)
       ORDER BY d.id_documento DESC`,
@@ -149,10 +182,10 @@ function pick(map, parent, clave) {
   return map[`${parent}:${clave}`] || null;
 }
 
-async function itemsForSolicitudAlumno(rol, solicitud, docMap, firmaMap) {
+function itemsForSolicitudAlumno(rol, solicitud, docMap, firmaMap, templates) {
   const items = [];
   for (const def of activeDefs().filter((d) => d.ambito === "solicitud_alumno")) {
-    const row = def.kind === "event" ? { id_documento: null, tiene_archivo: 0 } : pick(docMap, `A:${solicitud.id_solicitud_alumno}`, def.clave);
+    const row = pick(docMap, `A:${solicitud.id_solicitud_alumno}`, def.clave);
     const item = projectItem(
       def,
       rol,
@@ -160,9 +193,12 @@ async function itemsForSolicitudAlumno(rol, solicitud, docMap, firmaMap) {
         id_solicitud_alumno: solicitud.id_solicitud_alumno,
         convocatoria: solicitud.convocatoria,
         alumno: solicitud.nombre || solicitud.alumno,
+        dni: solicitud.dni || null,
+        especialidad: solicitud.especialidad || null,
       },
-      def.kind === "event" ? { id_documento: null, tiene_archivo: 0, estado_workflow: "SUBIDO" } : row,
+      row,
       row ? firmaMap[row.id_documento] || [] : [],
+      { templates },
     );
     if (item) items.push(item);
   }
@@ -171,10 +207,12 @@ async function itemsForSolicitudAlumno(rol, solicitud, docMap, firmaMap) {
 
 async function buildAlumnoList(idAlumno) {
   const [sols] = await pool.query(
-    `SELECT sa.id_solicitud_alumno, c.nombre AS convocatoria, a.nombre
+    `SELECT sa.id_solicitud_alumno, c.nombre AS convocatoria, a.nombre, a.dni,
+            esp.nombre AS especialidad
        FROM dual_solicitudes_alumno sa
        JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
       WHERE sa.id_alumno = ?
       ORDER BY c.activa DESC, sa.fecha_solicitud DESC
       LIMIT 1`,
@@ -185,7 +223,7 @@ async function buildAlumnoList(idAlumno) {
 
   const [reservas] = await pool.query(
     `SELECT r.id_reserva, er.nombre AS estado_reserva, tc.nombre AS tipo_contrato,
-            emp.empresa, se.id_solicitud_empresa, c.nombre AS convocatoria, esp.nombre AS especialidad
+            emp.empresa, emp.cif, se.id_solicitud_empresa, c.nombre AS convocatoria, esp.nombre AS especialidad
        FROM dual_reservas r
        JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
        LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
@@ -211,8 +249,8 @@ async function buildAlumnoList(idAlumno) {
   );
   const ids = Object.values(docMap).map((d) => d.id_documento);
   const firmaMap = await loadFirmas(ids);
-
-  const items = await itemsForSolicitudAlumno("ALUMNO", solicitud, docMap, firmaMap);
+  const templates = await activeTemplateClaves();
+  const items = itemsForSolicitudAlumno("ALUMNO", solicitud, docMap, firmaMap, templates);
 
   const seenConvenio = new Set();
   for (const reserva of reservas) {
@@ -227,9 +265,13 @@ async function buildAlumnoList(idAlumno) {
           id_solicitud_empresa: reserva.id_solicitud_empresa,
           convocatoria: reserva.convocatoria,
           empresa: reserva.empresa,
+          cif: reserva.cif,
+          alumno: solicitud.nombre,
+          dni: solicitud.dni,
         },
         row,
         row ? firmaMap[row.id_documento] || [] : [],
+        { templates },
       );
       if (item) items.push(item);
     }
@@ -243,13 +285,18 @@ async function buildAlumnoList(idAlumno) {
         "ALUMNO",
         {
           id_reserva: reserva.id_reserva,
+          id_solicitud_alumno: solicitud.id_solicitud_alumno,
+          alumno: solicitud.nombre,
+          dni: solicitud.dni,
           empresa: reserva.empresa,
+          cif: reserva.cif,
           especialidad: reserva.especialidad,
           tipo_contrato: reserva.tipo_contrato,
           convocatoria: reserva.convocatoria,
         },
         row,
         row ? firmaMap[row.id_documento] || [] : [],
+        { templates },
       );
       if (item) items.push(item);
     }
@@ -261,12 +308,16 @@ async function buildAlumnoList(idAlumno) {
       "ALUMNO",
       {
         id_reserva: reserva.id_reserva,
+        alumno: solicitud.nombre,
+        dni: solicitud.dni,
         empresa: reserva.empresa,
+        cif: reserva.cif,
         especialidad: reserva.especialidad,
         convocatoria: reserva.convocatoria,
       },
       calRow,
       calRow ? firmaMap[calRow.id_documento] || [] : [],
+      { templates },
     );
     if (calItem) items.push(calItem);
   }
@@ -276,7 +327,7 @@ async function buildAlumnoList(idAlumno) {
 
 async function buildEmpresaList(idEmpresa) {
   const [solicitudes] = await pool.query(
-    `SELECT se.id_solicitud_empresa, c.nombre AS convocatoria, c.activa AS convocatoria_activa, emp.empresa
+    `SELECT se.id_solicitud_empresa, c.nombre AS convocatoria, c.activa AS convocatoria_activa, emp.empresa, emp.cif
        FROM dual_solicitudes_empresa se
        JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
        JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
@@ -287,7 +338,8 @@ async function buildEmpresaList(idEmpresa) {
   const solIds = solicitudes.map((s) => s.id_solicitud_empresa);
   const [reservas] = await pool.query(
     `SELECT r.id_reserva, tc.nombre AS tipo_contrato, er.nombre AS estado_reserva,
-            a.nombre AS alumno, esp.nombre AS especialidad, se.id_solicitud_empresa, c.nombre AS convocatoria
+            a.nombre AS alumno, a.dni, esp.nombre AS especialidad, se.id_solicitud_empresa,
+            c.nombre AS convocatoria, emp.empresa, emp.cif
        FROM dual_reservas r
        JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
        LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
@@ -296,6 +348,7 @@ async function buildEmpresaList(idEmpresa) {
        JOIN dual_solicitud_empresa_especialidades ee
          ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+       JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
        JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
        JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
       WHERE se.id_empresa = ?
@@ -309,6 +362,7 @@ async function buildEmpresaList(idEmpresa) {
     [solIds.concat([-1]), reservas.map((r) => r.id_reserva).concat([-1])],
   );
   const firmaMap = await loadFirmas(Object.values(docMap).map((d) => d.id_documento));
+  const templates = await activeTemplateClaves();
   const items = [];
 
   for (const se of solicitudes) {
@@ -322,9 +376,11 @@ async function buildEmpresaList(idEmpresa) {
           id_solicitud_empresa: se.id_solicitud_empresa,
           convocatoria: se.convocatoria,
           empresa: se.empresa,
+          cif: se.cif,
         },
         row,
         row ? firmaMap[row.id_documento] || [] : [],
+        { templates },
       );
       if (item) items.push(item);
     }
@@ -341,6 +397,9 @@ async function buildEmpresaList(idEmpresa) {
         {
           id_reserva: reserva.id_reserva,
           alumno: reserva.alumno,
+          dni: reserva.dni,
+          empresa: reserva.empresa,
+          cif: reserva.cif,
           especialidad: reserva.especialidad,
           tipo_contrato: reserva.tipo_contrato,
           convocatoria: reserva.convocatoria,
@@ -348,6 +407,7 @@ async function buildEmpresaList(idEmpresa) {
         },
         row,
         row ? firmaMap[row.id_documento] || [] : [],
+        { templates },
       );
       if (item) items.push(item);
     }
@@ -359,11 +419,139 @@ async function buildEmpresaList(idEmpresa) {
       {
         id_reserva: reserva.id_reserva,
         alumno: reserva.alumno,
+        dni: reserva.dni,
+        empresa: reserva.empresa,
+        cif: reserva.cif,
         especialidad: reserva.especialidad,
         convocatoria: reserva.convocatoria,
       },
       row,
       row ? firmaMap[row.id_documento] || [] : [],
+      { templates },
+    );
+    if (item) items.push(item);
+  }
+
+  return items;
+}
+
+async function buildStaffList() {
+  const [alumnos] = await pool.query(
+    `SELECT sa.id_solicitud_alumno, c.nombre AS convocatoria, a.nombre AS alumno, a.dni,
+            esp.nombre AS especialidad
+       FROM dual_solicitudes_alumno sa
+       JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
+       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+      ORDER BY a.nombre, sa.id_solicitud_alumno DESC`,
+  );
+  const [empresas] = await pool.query(
+    `SELECT se.id_solicitud_empresa, c.nombre AS convocatoria, emp.empresa, emp.cif
+       FROM dual_solicitudes_empresa se
+       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
+       JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+      ORDER BY emp.empresa, se.id_solicitud_empresa DESC`,
+  );
+  const [reservas] = await pool.query(
+    `SELECT r.id_reserva, tc.nombre AS tipo_contrato, a.nombre AS alumno, a.dni,
+            emp.empresa, emp.cif, esp.nombre AS especialidad, se.id_solicitud_empresa,
+            sa.id_solicitud_alumno, c.nombre AS convocatoria
+       FROM dual_reservas r
+       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+       LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+       JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+       JOIN dual_solicitud_empresa_especialidades ee
+         ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+       JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+       JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
+       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
+      WHERE er.nombre <> 'CANCELADA'
+      ORDER BY r.id_reserva DESC`,
+  );
+
+  const docMap = await latestDocs(
+    `(d.id_solicitud_alumno IN (?) OR d.id_solicitud_empresa IN (?) OR d.id_reserva IN (?))`,
+    [
+      alumnos.map((a) => a.id_solicitud_alumno).concat([-1]),
+      empresas.map((e) => e.id_solicitud_empresa).concat([-1]),
+      reservas.map((r) => r.id_reserva).concat([-1]),
+    ],
+  );
+  const firmaMap = await loadFirmas(Object.values(docMap).map((d) => d.id_documento));
+  const templates = await activeTemplateClaves();
+  const items = [];
+
+  for (const sa of alumnos) {
+    items.push(...itemsForSolicitudAlumno("ADMINISTRADOR", sa, docMap, firmaMap, templates));
+  }
+
+  for (const se of empresas) {
+    for (const clave of ["CONVENIO", "ANEXO_XIV", "ANEXO_G", "EXCEL"]) {
+      const def = defByClave(clave);
+      const row = pick(docMap, `E:${se.id_solicitud_empresa}`, clave);
+      const item = projectItem(
+        def,
+        "ADMINISTRADOR",
+        {
+          id_solicitud_empresa: se.id_solicitud_empresa,
+          convocatoria: se.convocatoria,
+          empresa: se.empresa,
+          cif: se.cif,
+        },
+        row,
+        row ? firmaMap[row.id_documento] || [] : [],
+        { templates },
+      );
+      if (item) items.push(item);
+    }
+  }
+
+  for (const reserva of reservas) {
+    const anexoClave = anexoClaveForContrato(reserva.tipo_contrato);
+    if (anexoClave) {
+      const def = defByClave(anexoClave);
+      const row = pick(docMap, `R:${reserva.id_reserva}`, anexoClave);
+      const item = projectItem(
+        def,
+        "ADMINISTRADOR",
+        {
+          id_reserva: reserva.id_reserva,
+          id_solicitud_alumno: reserva.id_solicitud_alumno,
+          id_solicitud_empresa: reserva.id_solicitud_empresa,
+          alumno: reserva.alumno,
+          dni: reserva.dni,
+          empresa: reserva.empresa,
+          cif: reserva.cif,
+          especialidad: reserva.especialidad,
+          tipo_contrato: reserva.tipo_contrato,
+          convocatoria: reserva.convocatoria,
+        },
+        row,
+        row ? firmaMap[row.id_documento] || [] : [],
+        { templates },
+      );
+      if (item) items.push(item);
+    }
+
+    const cal = defByClave("CALENDARIO");
+    const row = pick(docMap, `R:${reserva.id_reserva}`, "CALENDARIO");
+    const item = projectItem(
+      cal,
+      "ADMINISTRADOR",
+      {
+        id_reserva: reserva.id_reserva,
+        alumno: reserva.alumno,
+        dni: reserva.dni,
+        empresa: reserva.empresa,
+        cif: reserva.cif,
+        especialidad: reserva.especialidad,
+        convocatoria: reserva.convocatoria,
+      },
+      row,
+      row ? firmaMap[row.id_documento] || [] : [],
+      { templates },
     );
     if (item) items.push(item);
   }
@@ -376,17 +564,16 @@ async function attachSolicitudDocumentos(rows, rol) {
   const ids = rows.map((r) => r.id_solicitud_alumno);
   const docMap = await latestDocs("d.id_solicitud_alumno IN (?)", [ids]);
   const firmaMap = await loadFirmas(Object.values(docMap).map((d) => d.id_documento));
-  return Promise.all(
-    rows.map(async (row) => {
-      const documentos = await itemsForSolicitudAlumno(rol, row, docMap, firmaMap);
-      const required = documentos.filter((d) => d.requerido_para_validar);
-      const puedeValidar =
-        row.estado_validacion === "PENDIENTE" &&
-        required.length > 0 &&
-        required.every((d) => d.estado_validacion === "VALIDADO");
-      return { ...row, documentos, puede_validar_solicitud: puedeValidar };
-    }),
-  );
+  const templates = await activeTemplateClaves();
+  return rows.map((row) => {
+    const documentos = itemsForSolicitudAlumno(rol, row, docMap, firmaMap, templates);
+    const required = documentos.filter((d) => d.requerido_para_validar);
+    const puedeValidar =
+      row.estado_validacion === "PENDIENTE" &&
+      required.length > 0 &&
+      required.every((d) => d.estado_validacion === "VALIDADO");
+    return { ...row, documentos, puede_validar_solicitud: puedeValidar };
+  });
 }
 
 async function missingStudentValidation(idSolicitud) {
@@ -412,10 +599,12 @@ module.exports = {
   projectItem,
   buildAlumnoList,
   buildEmpresaList,
+  buildStaffList,
   attachSolicitudDocumentos,
   missingStudentValidation,
   alumnoMaySee,
   actorOf,
+  activeTemplateClaves,
   SIGN_ROLES,
-  appliesToContrato,
+  workflowLabel,
 };

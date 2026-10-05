@@ -6,6 +6,7 @@ import {
   FaAnglesLeft,
   FaAnglesRight,
   FaBuilding,
+  FaFileLines,
   FaFileSignature,
   FaHouse,
   FaLink,
@@ -73,7 +74,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
     },
     {
       to: "/studentMain",
-      label: "Mi proceso",
+      label: "Portal alumno",
       Icon: FaUserGraduate,
       show: user?.rol === "ALUMNO",
     },
@@ -87,6 +88,12 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
       to: "/convocatorias",
       label: "Convocatorias",
       Icon: MdEventNote,
+      show: isAdmin,
+    },
+    {
+      to: "/documentsView",
+      label: "Documentos",
+      Icon: FaFileLines,
       show: isAdmin,
     },
     {

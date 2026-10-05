@@ -22,24 +22,33 @@ import {
 } from "../../../components/ui/cardStyles";
 import { reservaEstadoClass } from "../../../utils/reservaEstados.js";
 import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
-import { putJSON } from "../../../utils/api.js";
-import { warnReducePending } from "../../../utils/cupos.js";
-import { useConfirm, useToast } from "../../../components/feedback/ToastProvider.jsx";
+import AsignarAlumnoModal from "./AsignarAlumnoModal.jsx";
+import CupoReductionDialog from "../../../components/CupoReductionDialog.jsx";
+import { postJSON, putJSON } from "../../../utils/api.js";
+import { cicloLabel, countChanged, espId } from "../../../utils/especialidades.js";
+import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../../components/ui/InlineNotice.jsx";
 
 const EspecialidadList = ({
   especialidades,
+  catalogo = [],
   solicitudId,
   canEdit,
   onUpdated,
 }) => {
   const toast = useToast();
-  const confirm = useConfirm();
   const [drafts, setDrafts] = useState({});
   const [savingId, setSavingId] = useState(null);
   const [fieldError, setFieldError] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [newEspId, setNewEspId] = useState("");
+  const [newCantidad, setNewCantidad] = useState("1");
+  const [picker, setPicker] = useState(null);
 
-  const save = async (e) => {
+  const owned = new Set((especialidades || []).map((esp) => espId(esp)));
+  const missing = catalogo.filter((esp) => !owned.has(espId(esp)));
+
+  const save = async (e, ids) => {
     const idOferta = e.id_solicitud_empresa_especialidad;
     const cantidad = Number(drafts[idOferta] ?? e.cantidad_alumnos);
     if (!Number.isInteger(cantidad) || cantidad < 0) {
@@ -47,67 +56,149 @@ const EspecialidadList = ({
       return;
     }
     setFieldError("");
-    const send = async (confirmar) => {
-      setSavingId(idOferta);
-      try {
-        const data = await putJSON(
-          `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
-          { cantidad, confirmar_cancelaciones: confirmar },
-        );
-        setDrafts((prev) => {
-          const next = { ...prev };
-          delete next[idOferta];
-          return next;
-        });
-        if (data.canceladas?.length) {
-          toast.warning(data.message || "Se han cancelado reservas pendientes.");
-        } else {
-          toast.success(data.message || "Número de plazas actualizado.");
-        }
-        if (onUpdated) onUpdated();
-      } catch (err) {
-        if (err.status === 409 && err.body?.requires_confirm) {
-          const accepted = await confirm({
-            title: "Reducir plazas",
-            message:
-              err.body.error ||
-              warnReducePending(
-                e.cantidad_alumnos,
-                cantidad,
-                err.body.cancelar_pendientes,
-              ),
-            confirmLabel: "Reducir plazas",
-          });
-          if (accepted) await send(true);
-        } else {
-          toast.error(err.message || "Error al actualizar las plazas.");
-        }
-      } finally {
-        setSavingId(null);
+    setSavingId(idOferta);
+    try {
+      const data = await putJSON(
+        `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
+        {
+          cantidad,
+          confirmar_cancelaciones: Boolean(ids),
+          ids_reservas_cancelar: ids || [],
+        },
+      );
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[idOferta];
+        return next;
+      });
+      setPicker(null);
+      if (data.canceladas?.length) {
+        toast.warning(data.message || "Se han cancelado las reservas pendientes seleccionadas.");
+      } else {
+        toast.success("Número de plazas actualizado.");
       }
-    };
-    await send(false);
+      if (onUpdated) onUpdated();
+    } catch (err) {
+      if (err.status === 409 && err.body?.requires_selection) {
+        setPicker({
+          esp: e,
+          desde: err.body.cantidad_actual,
+          hasta: err.body.cantidad_nueva,
+          pendientes: err.body.pendientes || [],
+          requiredCount: err.body.cancelar_pendientes,
+        });
+      } else {
+        toast.error(err.message || "Error al actualizar las plazas.");
+      }
+    } finally {
+      setSavingId(null);
+    }
   };
 
-  if (!especialidades || especialidades.length === 0)
-    return <p className="text-sm text-gray-500">Sin datos</p>;
+  const add = async () => {
+    const id = Number(newEspId);
+    const cantidad = Number(newCantidad);
+    if (!missing.some((esp) => espId(esp) === id)) {
+      setFieldError("Selecciona un ciclo que aún no esté en la solicitud.");
+      return;
+    }
+    if (!Number.isInteger(cantidad) || cantidad < 1) {
+      setFieldError("Indica al menos un alumno para añadir el ciclo.");
+      return;
+    }
+    setSavingId("new");
+    setFieldError("");
+    try {
+      await postJSON(`/solicitudes/empresa/${solicitudId}/especialidades`, {
+        id_especialidad: id,
+        cantidad,
+      });
+      setAdding(false);
+      setNewEspId("");
+      setNewCantidad("1");
+      toast.success("Ciclo añadido correctamente.");
+      if (onUpdated) onUpdated();
+    } catch (err) {
+      toast.error(err.message || "Error al añadir el ciclo.");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  if ((!especialidades || especialidades.length === 0) && !adding) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className={sectionLabelClass}>Especialidades solicitadas</p>
+          {canEdit && missing.length > 0 && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAdding(true)} aria-label="Añadir ciclo">
+              +
+            </button>
+          )}
+        </div>
+        {!adding && <p className="text-sm text-gray-500">Sin datos</p>}
+        {adding && (
+          <AddRow
+            missing={missing}
+            newEspId={newEspId}
+            newCantidad={newCantidad}
+            setNewEspId={setNewEspId}
+            setNewCantidad={setNewCantidad}
+            saving={savingId === "new"}
+            onAdd={add}
+            onCancel={() => {
+              setAdding(false);
+              setNewEspId("");
+              setNewCantidad("1");
+              setFieldError("");
+            }}
+          />
+        )}
+        <InlineNotice tone="error">{fieldError}</InlineNotice>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className={sectionLabelClass}>Especialidades solicitadas</p>
+        {canEdit && missing.length > 0 && !adding && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAdding(true)} aria-label="Añadir ciclo">
+            +
+          </button>
+        )}
+      </div>
       <InlineNotice tone="error">{fieldError}</InlineNotice>
-      {especialidades.map((e) => {
+      {adding && (
+        <AddRow
+          missing={missing}
+          newEspId={newEspId}
+          newCantidad={newCantidad}
+          setNewEspId={setNewEspId}
+          setNewCantidad={setNewCantidad}
+          saving={savingId === "new"}
+          onAdd={add}
+          onCancel={() => {
+            setAdding(false);
+            setNewEspId("");
+            setNewCantidad("1");
+            setFieldError("");
+          }}
+        />
+      )}
+      {(especialidades || []).map((e) => {
         const idOferta = e.id_solicitud_empresa_especialidad;
         const current = drafts[idOferta] ?? String(e.cantidad_alumnos);
+        const changed = countChanged(current, e.cantidad_alumnos);
         return (
           <div
             key={idOferta || e.id_especialidad}
             className="flex items-center justify-between gap-2 rounded-md bg-surface-50/60 px-3 py-1.5"
           >
-            <span className="text-sm">
-              {e.nombre || `ID ${e.id_especialidad}`}
-            </span>
+            <span className="text-sm">{cicloLabel(e)}</span>
             {canEdit && idOferta ? (
-              <span className="flex items-center gap-1 shrink-0">
+              <span className="flex shrink-0 items-center gap-1">
                 <input
                   type="number"
                   min="0"
@@ -122,66 +213,101 @@ const EspecialidadList = ({
                     }))
                   }
                 />
-                <button
-                  type="button"
-                  className="text-xs px-2 py-0.5 rounded border border-gray-300 bg-white"
-                  disabled={
-                    savingId === idOferta ||
-                    Number(current) === Number(e.cantidad_alumnos)
-                  }
-                  onClick={() => save(e)}
-                >
-                  {savingId === idOferta ? "…" : "OK"}
-                </button>
+                {changed && (
+                  <button
+                    type="button"
+                    className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs"
+                    disabled={savingId === idOferta}
+                    onClick={() => save(e)}
+                  >
+                    {savingId === idOferta ? "…" : "Guardar"}
+                  </button>
+                )}
               </span>
             ) : (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-black/5 shrink-0">
+              <span className="shrink-0 rounded-full bg-black/5 px-2 py-0.5 text-xs">
                 {e.cantidad_alumnos}
               </span>
             )}
           </div>
         );
       })}
+      <CupoReductionDialog
+        open={Boolean(picker)}
+        desde={picker?.desde}
+        hasta={picker?.hasta}
+        pendientes={picker?.pendientes || []}
+        requiredCount={picker?.requiredCount || 0}
+        busy={Boolean(savingId)}
+        onCancel={() => setPicker(null)}
+        onConfirm={(ids) => save(picker.esp, ids)}
+      />
     </div>
   );
 };
 
-// Students reserved by this empresa, shown in the Reservas inner tab
-const ReservasList = ({ reservations }) => {
-  if (!reservations || reservations.length === 0)
-    return (
-      <p className="text-sm text-gray-500 py-4 text-center">
-        Sin reservas asociadas.
-      </p>
-    );
-
+function AddRow({ missing, newEspId, newCantidad, setNewEspId, setNewCantidad, saving, onAdd, onCancel }) {
   return (
-    <div className="space-y-2">
-      {reservations.map((r) => (
-        <div
-          key={r.id_reserva}
-          className="flex items-center justify-between gap-3 rounded-lg border border-surface-200 bg-white px-4 py-2.5"
-        >
-          <div className="min-w-0">
-            <p className="text-sm font-semibold truncate">{r.alumno}</p>
-            <p className="text-xs text-gray-500">
-              {r.especialidad} · {r.dni_alumno}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <span
-              className={`${signedBadgeClass} ${reservaEstadoClass(r.estado_reserva, { bordered: false })}`}
+    <div className="space-y-2 rounded-lg border border-surface-200 bg-white p-3">
+      <label className="block text-xs font-semibold text-gray-600">
+        Ciclo
+        <select className="select-input mt-1" value={newEspId} disabled={saving} onChange={(event) => setNewEspId(event.target.value)}>
+          <option value="">Selecciona un ciclo</option>
+          {missing.map((esp) => (
+            <option key={espId(esp)} value={espId(esp)}>{cicloLabel(esp)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block text-xs font-semibold text-gray-600">
+        Alumnos
+        <input type="number" min="1" step="1" className="input mt-1 w-24" value={newCantidad} disabled={saving} onChange={(event) => setNewCantidad(event.target.value)} />
+      </label>
+      <div className="flex gap-2">
+        <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={onAdd}>
+          {saving ? "…" : "Añadir"}
+        </button>
+        <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={onCancel}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Students reserved by this empresa, shown in the Reservas inner tab
+const ReservasList = ({ reservations, onAssign }) => {
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button type="button" className="btn btn-primary btn-sm" onClick={onAssign}>
+          Asignar alumno
+        </button>
+      </div>
+      {!reservations || reservations.length === 0 ? (
+        <p className="py-4 text-center text-sm text-gray-500">Sin reservas asociadas.</p>
+      ) : (
+        <div className="space-y-2">
+          {reservations.map((r) => (
+            <div
+              key={r.id_reserva}
+              className="flex items-center justify-between gap-3 rounded-lg border border-surface-200 bg-white px-4 py-2.5"
             >
-              {r.estado_reserva}
-            </span>
-            {r.tipo_contrato && (
-              <span className="text-[0.7rem] text-gray-400">
-                {r.tipo_contrato}
-              </span>
-            )}
-          </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{r.alumno}</p>
+                <p className="text-xs text-gray-500">
+                  {r.especialidad} · {r.dni_alumno}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className={`${signedBadgeClass} ${reservaEstadoClass(r.estado_reserva, { bordered: false })}`}>
+                  {r.estado_reserva}
+                </span>
+                {r.tipo_contrato && <span className="text-[0.7rem] text-gray-400">{r.tipo_contrato}</span>}
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 };
@@ -191,6 +317,7 @@ const CompanyCard = ({
   empresa,
   reservations = [],
   transports = [],
+  catalogo = [],
   isExpanded,
   onToggle,
   onViewConvenio,
@@ -202,6 +329,7 @@ const CompanyCard = ({
   const [innerTab, setInnerTab] = useState("info");
   const [editSignal, setEditSignal] = useState(0);
   const [editingCompany, setEditingCompany] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   const convenioStatus = empresa.convenio_validado
     ? "validado"
@@ -211,7 +339,7 @@ const CompanyCard = ({
 
   const statusConfig = {
     validado: {
-      label: "Convenio firmado",
+      label: "Convenio validado",
       cls: "bg-green-500/10 text-green-800",
       Icon: IoIosCheckmarkCircleOutline,
     },
@@ -429,11 +557,9 @@ const CompanyCard = ({
                   {/* Right column: specialities, job description, and convenio */}
                   <div className="space-y-5">
                     <div>
-                      <p className={sectionLabelClass}>
-                        Especialidades solicitadas
-                      </p>
                       <EspecialidadList
                         especialidades={empresa.especialidades}
+                        catalogo={catalogo}
                         solicitudId={id}
                         canEdit={!!empresa.convocatoria_activa}
                         onUpdated={onUpdated}
@@ -464,9 +590,9 @@ const CompanyCard = ({
                         <Icon className="shrink-0" />
                         {convenioStatus === "validado" && "Convenio validado."}
                         {convenioStatus === "pendiente" &&
-                          "Convenio subido — pendiente de validación."}
+                          "Convenio pendiente de validar."}
                         {convenioStatus === "sin_convenio" &&
-                          "La empresa no ha subido el convenio."}
+                          "Convenio pendiente de generar."}
                       </div>
                       {convenioStatus !== "sin_convenio" && (
                         <div className="flex gap-2 flex-wrap mt-2">
@@ -495,7 +621,14 @@ const CompanyCard = ({
 
             {/* Reservations tab */}
             {innerTab === "reservas" && (
-              <ReservasList reservations={reservations} />
+              <ReservasList reservations={reservations} onAssign={() => setAssigning(true)} />
+            )}
+            {assigning && (
+              <AsignarAlumnoModal
+                solicitudId={id}
+                onClose={() => setAssigning(false)}
+                onAssigned={onUpdated}
+              />
             )}
           </div>
         </div>

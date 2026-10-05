@@ -178,7 +178,7 @@ export function ToastProvider({ children }) {
     <FeedbackContext.Provider value={{ toast, confirm }}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-4 right-4 z-[300] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2"
+        className="pointer-events-none fixed top-20 left-1/2 z-[300] flex w-[min(38rem,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2"
         aria-label="Notificaciones"
       >
         {toasts.map((item) => (

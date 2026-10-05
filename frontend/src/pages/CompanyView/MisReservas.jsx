@@ -32,7 +32,7 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
       const fd = new FormData();
       fd.append("archivo", file);
       await postForm(`/documentos/reserva/${idReserva}/anexo`, fd);
-      toast.success("Documento subido. Pendiente de revisión por el centro.");
+      toast.success("Documento enviado. Pendiente de validar por el centro.");
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
       if (onUploaded) onUploaded();

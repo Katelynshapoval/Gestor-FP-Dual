@@ -6,83 +6,11 @@ const {
 } = require("../helpers/dbHelpers");
 const { defByClave, anexoClaveForContrato } = require("./documentCatalogue");
 const workflow = require("./documentosWorkflow");
+const { saveByClave } = require("./documentosStore");
+const { generateDocument } = require("./documentGenerationService");
 
-function extractIdDocumento(results) {
-  const queue = [results];
-  while (queue.length) {
-    const current = queue.shift();
-    if (Array.isArray(current)) {
-      for (const item of current) queue.push(item);
-      continue;
-    }
-    if (
-      current &&
-      typeof current === "object" &&
-      current.id_documento != null
-    ) {
-      return current.id_documento;
-    }
-  }
-  return null;
-}
-
-async function resolveDocumentoId(results, whereSql, params) {
-  const fromCall = extractIdDocumento(results);
-  if (fromCall != null) return fromCall;
-  const [rows] = await pool.query(
-    `SELECT id_documento FROM dual_documentos WHERE ${whereSql} ORDER BY id_documento DESC LIMIT 1`,
-    params,
-  );
-  return rows[0]?.id_documento ?? null;
-}
-
-async function saveByClave(clave, parents, buffer) {
-  const idTipo = await workflow.tipoIdByNombre(clave);
-  if (!idTipo) {
-    const err = new Error("Tipo de documento no configurado.");
-    err.status = 400;
-    throw err;
-  }
-  const [results] = await pool.query(
-    "CALL sp_guardar_documento(?, ?, ?, ?, ?)",
-    [
-      parents.id_solicitud_alumno || null,
-      parents.id_solicitud_empresa || null,
-      parents.id_reserva || null,
-      idTipo,
-      buffer,
-    ],
-  );
-  const idDocumento = await resolveDocumentoId(
-    results,
-    parents.id_solicitud_alumno
-      ? "id_solicitud_alumno = ? AND id_tipo_documento = ?"
-      : parents.id_solicitud_empresa
-        ? "id_solicitud_empresa = ? AND id_tipo_documento = ?"
-        : "id_reserva = ? AND id_tipo_documento = ?",
-    [
-      parents.id_solicitud_alumno || parents.id_solicitud_empresa || parents.id_reserva,
-      idTipo,
-    ],
-  );
-  const def = defByClave(clave);
-  if (idDocumento && def?.workflowOnUpload) {
-    await pool.query(
-      "UPDATE dual_documentos SET estado_workflow = ? WHERE id_documento = ?",
-      [def.workflowOnUpload, idDocumento],
-    );
-  }
-  if (idDocumento && def?.signers) {
-    for (const rol of def.signers) {
-      await pool.query(
-        `INSERT INTO dual_documento_firmas (id_documento, rol, estado)
-         VALUES (?, ?, 'SIN_FIRMAR')
-         ON DUPLICATE KEY UPDATE id_documento = id_documento`,
-        [idDocumento, rol],
-      );
-    }
-  }
-  return idDocumento;
+function provenance(req) {
+  return { origen: "SUBIDA", idUsuario: req.user?.id || null };
 }
 
 async function assertAlumnoOwnsSolicitud(req, idSolicitud) {
@@ -136,7 +64,7 @@ exports.uploadAlumno = async function (req, res) {
   }
 
   try {
-    const idDocumento = await saveByClave(clave, { id_solicitud_alumno: idSolicitudAlumno }, file.buffer);
+    const idDocumento = await saveByClave(clave, { id_solicitud_alumno: idSolicitudAlumno }, file.buffer, provenance(req));
     return res.json({ message: "Documento subido correctamente.", id_documento: idDocumento, clave });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -179,6 +107,7 @@ exports.uploadEmpresa = async function (req, res) {
       "CONVENIO",
       { id_solicitud_empresa: idSolicitudEmpresa },
       file.buffer,
+      provenance(req),
     );
     return res.json({
       message: "Convenio subido correctamente.",
@@ -226,7 +155,7 @@ exports.uploadReserva = async function (req, res) {
   }
 
   try {
-    const idDocumento = await saveByClave(clave, { id_reserva: idReserva }, file.buffer);
+    const idDocumento = await saveByClave(clave, { id_reserva: idReserva }, file.buffer, provenance(req));
     return res.json({
       message: "Documento subido correctamente.",
       id_documento: idDocumento,
@@ -236,22 +165,6 @@ exports.uploadReserva = async function (req, res) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     return sendSqlError(res, err);
   }
-};
-
-const TIPO_LABEL = {
-  CONVENIO: "Convenio (Formulario)",
-  CV: "CV",
-  ANEXO_DGA: "Anexo DGA",
-  ANEXO_XIV: "Anexo XIV",
-  ANEXO_II: "Anexo II",
-  ANEXO_III: "Anexo III",
-  CALENDARIO: "Calendario",
-  ANEXO_G: "Anexo G",
-  EXCEL: "Excel",
-  FORMULARIO: "Formulario",
-  ANEXO_H: "Anexo H (histórico)",
-  ANEXO_2: "Anexo 2 (histórico)",
-  OTRO: "Documento",
 };
 
 async function loadDocumentoMeta(idDocumento) {
@@ -544,6 +457,7 @@ exports.uploadContexto = async function (req, res) {
         id_reserva: def.ambito === "reserva" ? idReserva : null,
       },
       file.buffer,
+      provenance(req),
     );
     return res.json({ message: "Documento subido correctamente.", id_documento: idDocumento, clave });
   } catch (err) {
@@ -555,7 +469,7 @@ exports.uploadContexto = async function (req, res) {
 exports.firmar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const doc = await loadDocumentoMeta(id);
-  if (!doc) return res.status(404).json({ error: "Documento no encontrado." });
+  if (!doc || !doc.archivo) return res.status(404).json({ error: "No hay un documento que firmar." });
   const def = defByClave(doc.tipo);
   if (!def?.signers?.length) {
     return res.status(400).json({ error: "Este documento no requiere firma." });
@@ -620,23 +534,16 @@ exports.firmarContexto = async function (req, res) {
   }
 
   const [existing] = await pool.query(
-    `SELECT id_documento FROM dual_documentos
+    `SELECT id_documento, CASE WHEN archivo IS NULL THEN 0 ELSE 1 END AS tiene_archivo
+       FROM dual_documentos
       WHERE id_reserva = ? AND id_tipo_documento = ? AND es_actual = 1
       ORDER BY id_documento DESC LIMIT 1`,
     [idReserva, idTipo],
   );
-  let idDocumento = existing[0]?.id_documento;
-  if (!idDocumento) {
-    const [ins] = await pool.query(
-      `INSERT INTO dual_documentos
-         (id_solicitud_alumno, id_solicitud_empresa, id_reserva, id_tipo_documento, archivo, id_estado_validacion, estado_workflow, es_actual)
-       VALUES (NULL, NULL, ?, ?, NULL,
-         (SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'PENDIENTE' LIMIT 1),
-         'SUBIDO', 1)`,
-      [idReserva, idTipo],
-    );
-    idDocumento = ins.insertId;
+  if (!existing[0]?.tiene_archivo) {
+    return res.status(400).json({ error: "No hay un documento que firmar." });
   }
+  const idDocumento = existing[0].id_documento;
   const doc = await loadDocumentoMeta(idDocumento);
   if (!(await canDownloadDocumento(req.user, doc))) {
     return res.status(403).json({ error: "No puedes firmar este documento." });
@@ -648,4 +555,50 @@ exports.firmarContexto = async function (req, res) {
     [idDocumento, rolFirma],
   );
   return res.json({ message: "Firma registrada.", id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO" });
+};
+
+exports.seguimiento = async function (req, res) {
+  const items = await workflow.buildStaffList();
+  return res.json({ items });
+};
+
+exports.generar = async function (req, res) {
+  const clave = String(req.body?.clave || "").toUpperCase();
+  const def = defByClave(clave);
+  if (!def?.generated) {
+    return res.status(400).json({ error: "Este documento no se genera desde plantilla." });
+  }
+  const parents = {
+    id_solicitud_alumno: null,
+    id_solicitud_empresa: def.ambito === "solicitud_empresa" ? parseInt(req.body.id_solicitud_empresa, 10) || null : null,
+    id_reserva: def.ambito === "reserva" ? parseInt(req.body.id_reserva, 10) || null : null,
+  };
+  if (def.ambito === "solicitud_empresa" && !parents.id_solicitud_empresa) {
+    return res.status(400).json({ error: "Falta la solicitud de empresa." });
+  }
+  if (def.ambito === "reserva" && !parents.id_reserva) {
+    return res.status(400).json({ error: "Falta la reserva." });
+  }
+  try {
+    const result = await generateDocument({
+      clave,
+      parents,
+      userId: req.user.id,
+      regenerar: Boolean(req.body?.regenerar),
+    });
+    if (!result.ok) {
+      return res.status(409).json({
+        error: `No hay una plantilla activa para generar ${def.nombre}.`,
+        code: result.code,
+      });
+    }
+    return res.json({
+      message: `${def.nombre} generado correctamente.`,
+      id_documento: result.id_documento,
+      clave,
+    });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    return sendSqlError(res, err);
+  }
 };

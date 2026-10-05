@@ -1,34 +1,11 @@
 import { useState } from "react";
 import { postJSON, putJSON } from "../../utils/api.js";
-import { warnReducePending } from "../../utils/cupos.js";
-import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
+import { cicloLabel, countChanged, espId } from "../../utils/especialidades.js";
+import CupoReductionDialog from "../../components/CupoReductionDialog.jsx";
+import { useToast } from "../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../components/ui/InlineNotice.jsx";
 
 const n = (value) => Number(value) || 0;
-
-const espId = (esp) => Number(esp.id_especialidad ?? esp.idEspecialidad);
-
-const turnoLabel = (turnoRaw) => {
-  if (turnoRaw === 0 || turnoRaw === "0" || turnoRaw === "DIURNO") return null;
-  if (turnoRaw === 1 || turnoRaw === "1" || turnoRaw === "VESPERTINO")
-    return "Vespertino";
-  return null;
-};
-
-const cicloLabel = (esp) => {
-  const nombre = esp.nombre || esp.nombreEsp || `ID ${espId(esp)}`;
-  const codigo = esp.codigo ? ` (${esp.codigo})` : "";
-  const turno = turnoLabel(esp.turno);
-  return `${nombre}${codigo}${turno ? ` · ${turno}` : ""}`;
-};
-
-const countChanged = (raw, saved) => {
-  const text = String(raw ?? "").trim();
-  if (text === "") return n(saved) !== 0;
-  const parsed = Number(text);
-  if (!Number.isFinite(parsed)) return true;
-  return parsed !== n(saved);
-};
 
 const EspecialidadCuposEditor = ({
   solicitudId,
@@ -38,13 +15,13 @@ const EspecialidadCuposEditor = ({
   canEdit = true,
 }) => {
   const toast = useToast();
-  const confirm = useConfirm();
   const [drafts, setDrafts] = useState({});
   const [adding, setAdding] = useState(false);
   const [newEspId, setNewEspId] = useState("");
   const [newCantidad, setNewCantidad] = useState("");
   const [savingId, setSavingId] = useState(null);
   const [fieldError, setFieldError] = useState("");
+  const [picker, setPicker] = useState(null);
 
   const valueFor = (esp) =>
     drafts[esp.id_solicitud_empresa_especialidad] ??
@@ -72,7 +49,7 @@ const EspecialidadCuposEditor = ({
     if (onUpdated) await onUpdated();
   };
 
-  const save = async (esp, confirmar = false) => {
+  const save = async (esp, ids) => {
     const idOferta = esp.id_solicitud_empresa_especialidad;
     const cantidad = Number(valueFor(esp));
     if (!Number.isInteger(cantidad) || cantidad < 0) {
@@ -80,10 +57,7 @@ const EspecialidadCuposEditor = ({
       return;
     }
 
-    const actual = n(esp.cantidad_alumnos);
-    const ocupadas = n(esp.plazas_ocupadas);
     const confirmadas = n(esp.plazas_confirmadas);
-
     if (cantidad < confirmadas) {
       setFieldError(
         "No se puede reducir el número de plazas por debajo de los alumnos ya confirmados. Cancela o reasigna primero las reservas confirmadas desde administración.",
@@ -91,50 +65,28 @@ const EspecialidadCuposEditor = ({
       return;
     }
 
-    if (!confirmar && cantidad < ocupadas) {
-      const nCancelar = ocupadas - cantidad;
-      const accepted = await confirm({
-        title: "Reducir plazas",
-        message: warnReducePending(actual, cantidad, nCancelar),
-        confirmLabel: "Reducir plazas",
-      });
-      if (!accepted) return;
-      confirmar = true;
-    }
-
     setSavingId(idOferta);
     setFieldError("");
     try {
       const data = await putJSON(
         `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
-        { cantidad, confirmar_cancelaciones: confirmar },
+        {
+          cantidad,
+          confirmar_cancelaciones: Boolean(ids),
+          ids_reservas_cancelar: ids || [],
+        },
       );
+      setPicker(null);
       await applyResult(esp, data);
     } catch (err) {
-      if (err.status === 409 && err.body?.requires_confirm) {
-        const aviso =
-          err.body.error ||
-          warnReducePending(
-            err.body.cantidad_actual,
-            err.body.cantidad_nueva,
-            err.body.cancelar_pendientes,
-          );
-        const accepted = await confirm({
-          title: "Reducir plazas",
-          message: aviso,
-          confirmLabel: "Reducir plazas",
+      if (err.status === 409 && err.body?.requires_selection) {
+        setPicker({
+          esp,
+          desde: err.body.cantidad_actual,
+          hasta: err.body.cantidad_nueva,
+          pendientes: err.body.pendientes || [],
+          requiredCount: err.body.cancelar_pendientes,
         });
-        if (accepted) {
-          try {
-            const data = await putJSON(
-              `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
-              { cantidad, confirmar_cancelaciones: true },
-            );
-            await applyResult(esp, data);
-          } catch (retryErr) {
-            toast.error(retryErr.message || "Error al actualizar las plazas.");
-          }
-        }
       } else {
         toast.error(err.message || "Error al actualizar las plazas.");
       }
@@ -165,12 +117,12 @@ const EspecialidadCuposEditor = ({
     setSavingId("new");
     setFieldError("");
     try {
-      const data = await postJSON(
+      await postJSON(
         `/solicitudes/empresa/${solicitudId}/especialidades`,
         { id_especialidad: id, cantidad },
       );
       cancelAdd();
-      toast.success(data.message || "Ciclo añadido.");
+      toast.success("Ciclo añadido correctamente.");
       if (onUpdated) await onUpdated();
     } catch (err) {
       toast.error(err.message || "Error al añadir el ciclo.");
@@ -338,6 +290,16 @@ const EspecialidadCuposEditor = ({
           Añadir ciclo
         </button>
       )}
+      <CupoReductionDialog
+        open={Boolean(picker)}
+        desde={picker?.desde}
+        hasta={picker?.hasta}
+        pendientes={picker?.pendientes || []}
+        requiredCount={picker?.requiredCount || 0}
+        busy={Boolean(savingId)}
+        onCancel={() => setPicker(null)}
+        onConfirm={(ids) => save(picker.esp, ids)}
+      />
     </div>
   );
 };

@@ -368,6 +368,23 @@ exports.getReservasAlumno = async function (req, res) {
   return res.json(rows);
 };
 
+const ACTIVE_PAIR_SQL = `
+  AND NOT EXISTS (
+        SELECT 1
+          FROM dual_reservas r
+          JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+         WHERE r.id_solicitud_alumno = sa.id_solicitud_alumno
+           AND r.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad
+           AND er.nombre IN (?, ?)
+      )
+  AND NOT EXISTS (
+        SELECT 1
+          FROM dual_reservas r
+          JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+         WHERE r.id_solicitud_alumno = sa.id_solicitud_alumno
+           AND er.nombre = ?
+      )`;
+
 // GET /reservas/ofertas-elegibles — staff: validated offers matching a student
 exports.getOfertasElegibles = async function (req, res) {
   const idSolicitudAlumno = parseId(req.query.id_solicitud_alumno);
@@ -406,16 +423,67 @@ exports.getOfertasElegibles = async function (req, res) {
        JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
       WHERE sa.id_solicitud_alumno = ?
         AND fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) > 0
-        AND NOT EXISTS (
-              SELECT 1
-                FROM dual_reservas r
-                JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-               WHERE r.id_solicitud_alumno = sa.id_solicitud_alumno
-                 AND r.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad
-                 AND er.nombre IN (?, ?)
-            )
+        ${ACTIVE_PAIR_SQL}
       ORDER BY emp.empresa, esp.nombre`,
-    [idSolicitudAlumno, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA]
+    [idSolicitudAlumno, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, ESTADOS_RESERVA.CONFIRMADA]
+  );
+
+  return res.json(rows);
+};
+
+// GET /reservas/alumnos-elegibles — staff: validated students matching one company offer
+exports.getAlumnosElegibles = async function (req, res) {
+  const idOferta = parseId(req.query.id_solicitud_empresa_especialidad);
+  if (!idOferta) {
+    return res.status(400).json({ error: 'Se requiere id_solicitud_empresa_especialidad.' });
+  }
+
+  const [offer] = await pool.query(
+    `SELECT ee.id_solicitud_empresa_especialidad
+       FROM dual_solicitud_empresa_especialidades ee
+      WHERE ee.id_solicitud_empresa_especialidad = ?`,
+    [idOferta]
+  );
+  if (!offer[0]) return res.status(404).json({ error: 'No se encontró la especialidad de la empresa.' });
+
+  const [rows] = await pool.query(
+    `SELECT
+        sa.id_solicitud_alumno,
+        a.nombre,
+        a.dni,
+        esp.nombre AS especialidad,
+        esp.codigo AS codigo_especialidad,
+        c.nombre AS convocatoria,
+        (
+          SELECT GROUP_CONCAT(CONCAT(emp2.empresa, ' · ', er2.nombre) ORDER BY r2.id_reserva DESC SEPARATOR ' | ')
+            FROM dual_reservas r2
+            JOIN dual_estados_reserva er2 ON er2.id_estado_reserva = r2.id_estado_reserva
+            JOIN dual_solicitud_empresa_especialidades ee2
+              ON ee2.id_solicitud_empresa_especialidad = r2.id_solicitud_empresa_especialidad
+            JOIN dual_solicitudes_empresa se2 ON se2.id_solicitud_empresa = ee2.id_solicitud_empresa
+            JOIN ge_empresas emp2 ON emp2.idempresa = se2.id_empresa
+           WHERE r2.id_solicitud_alumno = sa.id_solicitud_alumno
+             AND er2.nombre = ?
+        ) AS reserva_actual
+       FROM dual_solicitud_empresa_especialidades ee
+       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+       JOIN dual_estados_validacion ev_e
+         ON ev_e.id_estado_validacion = se.id_estado_validacion
+        AND ev_e.nombre = 'VALIDADO'
+       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
+       JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
+       JOIN dual_solicitudes_alumno sa ON sa.id_convocatoria = se.id_convocatoria
+       JOIN dual_estados_validacion ev_a
+         ON ev_a.id_estado_validacion = sa.id_estado_validacion
+        AND ev_a.nombre = 'VALIDADO'
+       JOIN gf_alumnosfct a
+         ON a.idalumno = sa.id_alumno
+        AND a.id_especialidad_dual = ee.id_especialidad
+      WHERE ee.id_solicitud_empresa_especialidad = ?
+        AND fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) > 0
+        ${ACTIVE_PAIR_SQL}
+      ORDER BY a.nombre`,
+    [ESTADOS_RESERVA.PENDIENTE, idOferta, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, ESTADOS_RESERVA.CONFIRMADA]
   );
 
   return res.json(rows);

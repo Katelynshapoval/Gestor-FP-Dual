@@ -22,6 +22,7 @@ router.get('/reservas/alumno', requireAuth, requireRole('ALUMNO'), asyncHandler(
 
 // Admin / Coordinador: eligible company offers for a student
 router.get('/reservas/ofertas-elegibles', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getOfertasElegibles));
+router.get('/reservas/alumnos-elegibles', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getAlumnosElegibles));
 
 // Empresa: reserve a student
 router.post('/reservas', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.reservar));
