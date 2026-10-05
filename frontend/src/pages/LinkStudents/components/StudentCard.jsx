@@ -223,6 +223,7 @@ const StudentCard = ({
   onAdminReserve,
   onAdminCancel,
   onAdminReassign,
+  onTutorChange,
   onValidarAlumno,
   onRechazarSolicitud,
   user,
@@ -395,6 +396,7 @@ const StudentCard = ({
                 onAdminReserve={onAdminReserve}
                 onAdminCancel={onAdminCancel}
                 onAdminReassign={onAdminReassign}
+                onTutorChange={onTutorChange}
               />
             )}
           </div>

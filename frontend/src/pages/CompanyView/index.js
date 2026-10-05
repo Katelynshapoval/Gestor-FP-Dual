@@ -13,6 +13,7 @@ import CompanyEditForm, {
 } from "./CompanyEditForm.jsx";
 import CambioDiff from "./CambioDiff.jsx";
 import EspecialidadCuposEditor from "./EspecialidadCuposEditor.jsx";
+import TutoresEmpresa from "./TutoresEmpresa.jsx";
 import "../../styles/forms.css";
 
 // Read-only field styled to match the rest of the form layout
@@ -168,24 +169,25 @@ const MisDatos = ({
         />
       )}
 
-      {/* Coordinator section */}
+      {/* Principal coordinator section */}
       <div className="form-card">
-        <p className="form-section-title">Datos del coordinador</p>
+        <p className="form-section-title">Coordinador principal</p>
         <p className="field-hint">
-          <strong>Importante:</strong> Esta persona recibe todas las
-          notificaciones y documentos del proyecto DUAL.
+          <strong>Importante:</strong> Esta persona recibe las notificaciones y
+          documentos del proyecto DUAL y gestiona el acceso al portal con el CIF.
+          Los tutores de alumnos se gestionan en la pestaña «Tutores».
         </p>
         <div className="grid gap-4 md:grid-cols-3">
           <ReadField
-            label="Email coordinador"
+            label="Email coordinador principal"
             value={solicitud.emailCoordinador || solicitud.coordinador_email}
           />
           <ReadField
-            label="Nombre coordinador"
+            label="Nombre coordinador principal"
             value={solicitud.nombreCoordinador || solicitud.coordinador_nombre}
           />
           <ReadField
-            label="Teléfono coordinador"
+            label="Teléfono coordinador principal"
             value={
               solicitud.telefonoCoordinador || solicitud.coordinador_telefono
             }
@@ -444,13 +446,13 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
   return (
     <div className="space-y-5">
       <p className="text-sm text-gray-500">
-        Puedes modificar los datos del coordinador y las especialidades. Los
+        Puedes modificar los datos del coordinador principal y las especialidades. Los
         datos de empresa se mantienen.
       </p>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="field">
-          <label>Nombre coordinador</label>
+          <label>Nombre coordinador principal</label>
           <input
             className="input"
             value={nombreCoordinador}
@@ -458,7 +460,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
           />
         </div>
         <div className="field">
-          <label>Email coordinador</label>
+          <label>Email coordinador principal</label>
           <input
             className="input"
             type="email"
@@ -467,7 +469,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
           />
         </div>
         <div className="field">
-          <label>Teléfono coordinador</label>
+          <label>Teléfono coordinador principal</label>
           <input
             className="input"
             value={telefonoCoordinador}
@@ -608,7 +610,7 @@ const CompanyView = () => {
   if (!user || user.rol !== "EMPRESA") return null;
 
   const tabCls = (active) =>
-    `px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
+    `whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
       active
         ? "border-brand-500 text-brand-500"
         : "border-transparent text-gray-500 hover:text-gray-700"
@@ -622,12 +624,18 @@ const CompanyView = () => {
         subtitle={`${user.nombre}${user.email ? ` · ${user.email}` : user.cif ? ` · ${user.cif}` : ""}`}
       />
 
-      <div className="mb-6 flex border-b border-surface-200">
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200">
         <button
           className={tabCls(view === "datos")}
           onClick={() => setView("datos")}
         >
           Mis datos
+        </button>
+        <button
+          className={tabCls(view === "tutores")}
+          onClick={() => setView("tutores")}
+        >
+          Tutores
         </button>
         <button
           className={tabCls(view === "reservas")}
@@ -671,6 +679,8 @@ const CompanyView = () => {
             await fetchReservations();
           }}
         />
+      ) : view === "tutores" ? (
+        <TutoresEmpresa />
       ) : view === "reservas" ? (
         <div className="form-card">
           <p className="form-section-title">Mis reservas</p>
@@ -681,6 +691,7 @@ const CompanyView = () => {
               await fetchDocumentos();
             }}
             onCancel={handleCancelReservation}
+            onTutorChange={fetchReservations}
           />
         </div>
       ) : (

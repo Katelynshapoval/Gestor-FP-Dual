@@ -226,8 +226,11 @@ const CompanyEditForm = ({
       </div>
 
       <div className="form-card">
-        <p className="form-section-title">Coordinador dual</p>
-        <p className="field-hint">El acceso al portal sigue siendo el CIF de la empresa, no este correo.</p>
+        <p className="form-section-title">Coordinador principal</p>
+        <p className="field-hint">
+          Contacto principal del acceso al portal (CIF). Los tutores de alumnos se
+          gestionan aparte en el portal de empresa.
+        </p>
         <div className="grid gap-4 md:grid-cols-2">
           <Field id="ed_nCoord" label="Nombre">
             <input id="ed_nCoord" className="input" value={values.nombreCoordinador} onChange={(e) => setField("nombreCoordinador", e.target.value)} maxLength={100} />

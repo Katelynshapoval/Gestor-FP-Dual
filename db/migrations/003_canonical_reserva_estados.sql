@@ -170,7 +170,7 @@ BEGIN
       SET MESSAGE_TEXT = 'Una reserva confirmada solo puede cancelarse de forma administrativa.';
   END IF;
 
-  IF NEW.id_estado_reserva = 2 AND OLD.id_estado_reserva <> 1 THEN
+  IF NEW.id_estado_reserva = 2 AND OLD.id_estado_reserva NOT IN (1, 2) THEN
     SIGNAL SQLSTATE '45000'
       SET MESSAGE_TEXT = 'Solo una reserva PENDIENTE puede pasar a CONFIRMADA.';
   END IF;

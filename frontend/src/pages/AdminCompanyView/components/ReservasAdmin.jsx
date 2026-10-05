@@ -7,6 +7,7 @@ import {
   isConfirmedReserva,
   isPendingReserva,
 } from "../../../utils/reservaEstados.js";
+import TutorAssignSelect from "../../../components/TutorAssignSelect.jsx";
 
 function estadoLabel(r) {
   if (isConfirmedReserva(r.estado_reserva)) {
@@ -86,51 +87,67 @@ const CancelModal = ({ reserva, onConfirm, onClose }) => {
   );
 };
 
-const FilaReserva = ({ r, onVerDoc, onCancel }) => {
+const FilaReserva = ({ r, onVerDoc, onCancel, onTutorChange }) => {
   const { text, cls, Icono } = estadoLabel(r);
   const canCancel = isPendingReserva(r.estado_reserva) || isConfirmedReserva(r.estado_reserva);
 
   return (
-    <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-4 rounded-lg border bg-white px-4 py-3 text-sm">
-      <div>
-        <p className="font-medium text-gray-900">{r.empresa}</p>
-        <p className="text-xs text-gray-400">{r.email_coordinador}</p>
+    <div className="space-y-2 rounded-lg border bg-white px-4 py-3 text-sm">
+      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[1.2fr_1.2fr_auto_auto] xl:items-center">
+        <div>
+          <p className="font-medium text-gray-900">{r.empresa}</p>
+          <p className="text-xs text-gray-400">{r.email_coordinador}</p>
+        </div>
+
+        <div>
+          <p className="font-medium text-gray-900">{r.alumno}</p>
+          <p className="text-xs text-gray-400">
+            {r.dni_alumno} · {r.especialidad}
+          </p>
+        </div>
+
+        <span className={`flex w-fit items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium ${cls}`}>
+          <Icono className="shrink-0 text-sm" />
+          {text}
+        </span>
+
+        <div className="flex items-center gap-2">
+          {r.id_documento_reserva && (
+            <button
+              type="button"
+              onClick={() => onVerDoc(r)}
+              title="Ver documento firmado"
+              className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
+            >
+              <MdOutlineFileUpload className="text-brand-600" />
+              Ver doc
+            </button>
+          )}
+          {canCancel && (
+            <button
+              type="button"
+              onClick={() => onCancel(r)}
+              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors duration-150 hover:bg-red-50"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
       </div>
 
-      <div>
-        <p className="font-medium text-gray-900">{r.alumno}</p>
-        <p className="text-xs text-gray-400">
-          {r.dni_alumno} · {r.especialidad}
-        </p>
-      </div>
+      {canCancel && (
+        <TutorAssignSelect
+          idReserva={r.id_reserva}
+          idEmpresa={r.idempresa || r.id_empresa}
+          idEmpresaTutor={r.id_empresa_tutor}
+          tutorNombre={r.tutor_nombre}
+          onAssigned={() => onTutorChange && onTutorChange()}
+        />
+      )}
 
-      <span className={`flex w-fit items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium ${cls}`}>
-        <Icono className="shrink-0 text-sm" />
-        {text}
-      </span>
-
-      <div className="flex items-center gap-2">
-        {r.id_documento_reserva && (
-          <button
-            type="button"
-            onClick={() => onVerDoc(r)}
-            title="Ver documento firmado"
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
-          >
-            <MdOutlineFileUpload className="text-brand-600" />
-            Ver doc
-          </button>
-        )}
-        {canCancel && (
-          <button
-            type="button"
-            onClick={() => onCancel(r)}
-            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors duration-150 hover:bg-red-50"
-          >
-            Cancelar
-          </button>
-        )}
-      </div>
+      {!canCancel && r.tutor_nombre && (
+        <p className="text-xs text-gray-400">Tutor: {r.tutor_nombre}</p>
+      )}
     </div>
   );
 };
@@ -180,6 +197,7 @@ const ReservasAdmin = ({ reservations, onReservationUpdate, onAdminCancel }) => 
             r={r}
             onVerDoc={setViewingDoc}
             onCancel={setCancelTarget}
+            onTutorChange={onReservationUpdate}
           />
         ))}
       </div>

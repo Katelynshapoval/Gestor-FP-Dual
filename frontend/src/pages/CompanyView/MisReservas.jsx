@@ -3,7 +3,8 @@ import { postForm } from "../../utils/api.js";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
 import { RxClock } from "react-icons/rx";
-import { ESTADOS_RESERVA, isCancelledReserva, isPendingReserva } from "../../utils/reservaEstados.js";
+import { ESTADOS_RESERVA, isCancelledReserva, isConfirmedReserva, isPendingReserva } from "../../utils/reservaEstados.js";
+import TutorAssignSelect from "../../components/TutorAssignSelect.jsx";
 
 const ESTADO_COLOR = {
   [ESTADOS_RESERVA.PENDIENTE]: "bg-amber-50 text-amber-800 border-amber-200",
@@ -145,7 +146,7 @@ const documentText = (docEstado) => {
   return "Sin documento firmado";
 };
 
-const MisReservas = ({ reservations, onUpload, onCancel }) => {
+const MisReservas = ({ reservations, onUpload, onCancel, onTutorChange }) => {
   const [cancelModal, setCancelModal] = useState(null);
 
   if (!reservations || reservations.length === 0) {
@@ -176,6 +177,8 @@ const MisReservas = ({ reservations, onUpload, onCancel }) => {
           const docEstado = reserva.estado_documento || null;
           const isCancelled = isCancelledReserva(reserva.estado_reserva);
           const needsUpload = !isCancelled && docEstado !== "VALIDADO";
+          const canAssignTutor =
+            isPendingReserva(reserva.estado_reserva) || isConfirmedReserva(reserva.estado_reserva);
 
           return (
             <article
@@ -197,6 +200,23 @@ const MisReservas = ({ reservations, onUpload, onCancel }) => {
                   {reserva.estado_reserva}
                 </span>
               </div>
+
+              {canAssignTutor && (
+                <TutorAssignSelect
+                  className="mt-3"
+                  idReserva={reserva.id_reserva}
+                  idEmpresa={reserva.id_empresa}
+                  idEmpresaTutor={reserva.id_empresa_tutor}
+                  tutorNombre={reserva.tutor_nombre}
+                  onAssigned={() => onTutorChange && onTutorChange()}
+                />
+              )}
+
+              {!canAssignTutor && reserva.tutor_nombre && (
+                <p className="mt-3 text-xs text-muted">
+                  Tutor: {reserva.tutor_nombre}
+                </p>
+              )}
 
               <div className="mt-3 flex items-center gap-2 text-xs leading-5 text-muted">
                 <DocStatusIcon estado={docEstado} />

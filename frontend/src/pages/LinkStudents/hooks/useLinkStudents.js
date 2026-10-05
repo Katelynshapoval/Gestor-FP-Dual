@@ -267,5 +267,6 @@ export const useLinkStudents = () => {
     adminReserve,
     adminCancel,
     adminReassign,
+    fetchLinkRequests,
   };
 };

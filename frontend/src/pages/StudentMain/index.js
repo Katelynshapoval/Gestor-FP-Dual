@@ -144,6 +144,20 @@ function StudentMain() {
                     {r.tipo_contrato && (
                       <p className="mt-1 text-xs text-muted">Contrato: {r.tipo_contrato}</p>
                     )}
+                    {r.tutor_nombre && (
+                      <div className="mt-3 rounded-md border border-green-100 bg-white/70 px-3 py-2">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+                          Tutor de empresa
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-charcoal-950">{r.tutor_nombre}</p>
+                        {r.tutor_email && (
+                          <p className="mt-0.5 text-xs text-muted">{r.tutor_email}</p>
+                        )}
+                        {r.tutor_telefono && (
+                          <p className="mt-0.5 text-xs text-muted">{r.tutor_telefono}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

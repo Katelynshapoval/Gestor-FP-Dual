@@ -7,6 +7,7 @@ import {
   isConfirmedReserva,
   isPendingReserva,
 } from "../../../../utils/reservaEstados.js";
+import TutorAssignSelect from "../../../../components/TutorAssignSelect.jsx";
 
 const ESTADO_CLS = {
   [ESTADOS_RESERVA.PENDIENTE]: "bg-yellow-50 text-yellow-800 border-yellow-200",
@@ -148,7 +149,7 @@ const ReassignModal = ({ ofertas, onConfirm, onClose }) => {
   );
 };
 
-const EmpresaControl = ({ r, onAdminReserve, onAdminCancel, onAdminReassign }) => {
+const EmpresaControl = ({ r, onAdminReserve, onAdminCancel, onAdminReassign, onTutorChange }) => {
   const reservas = r.reservas || [];
   const [ofertas, setOfertas] = useState([]);
   const [idOfertaNueva, setIdOfertaNueva] = useState("");
@@ -239,24 +240,37 @@ const EmpresaControl = ({ r, onAdminReserve, onAdminCancel, onAdminReassign }) =
               </span>
             </div>
             {canMutate && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCancelTarget(rv)}
-                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors duration-150 hover:bg-red-50"
-                >
-                  Cancelar
-                </button>
-                {ofertas.length > 0 && (
+              <div className="mt-3 space-y-3">
+                <TutorAssignSelect
+                  idReserva={rv.id_reserva}
+                  idEmpresa={rv.id_empresa}
+                  idEmpresaTutor={rv.id_empresa_tutor}
+                  tutorNombre={rv.tutor_nombre}
+                  onAssigned={() => onTutorChange && onTutorChange()}
+                />
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setReassignTarget(rv)}
-                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-50"
+                    onClick={() => setCancelTarget(rv)}
+                    className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors duration-150 hover:bg-red-50"
                   >
-                    Reasignar
+                    Cancelar
                   </button>
-                )}
+                  {ofertas.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setReassignTarget(rv)}
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-50"
+                    >
+                      Reasignar
+                    </button>
+                  )}
+                </div>
               </div>
+            )}
+
+            {!canMutate && rv.tutor_nombre && (
+              <p className="mt-2 text-xs text-muted">Tutor: {rv.tutor_nombre}</p>
             )}
           </div>
         );

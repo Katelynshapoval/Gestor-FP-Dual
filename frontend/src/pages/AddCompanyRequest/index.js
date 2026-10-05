@@ -185,13 +185,15 @@ const AddCompanyRequest = () => {
       <form ref={formRef} className="space-y-6">
         {/* Coordinator section */}
         <div className="form-card">
-          <div className="form-section-title">Datos del coordinador</div>
+          <div className="form-section-title">Coordinador principal</div>
           <p className="field-hint">
-            <strong>Importante:</strong> Esta persona recibirá todas las
-            notificaciones y documentos del proyecto DUAL.
+            <strong>Importante:</strong> Esta persona recibirá las notificaciones
+            y documentos del proyecto DUAL y será el contacto de acceso al portal
+            (CIF). También se registrará como primer tutor de la empresa; podréis
+            añadir más tutores después desde el portal.
           </p>
           <div className="grid gap-4 md:grid-cols-3">
-            <Field id="eCoord" label="Email coordinador">
+            <Field id="eCoord" label="Email coordinador principal">
               <input
                 id="eCoord"
                 className="input"
@@ -203,7 +205,7 @@ const AddCompanyRequest = () => {
                 required
               />
             </Field>
-            <Field id="nCoord" label="Nombre coordinador">
+            <Field id="nCoord" label="Nombre coordinador principal">
               <input
                 id="nCoord"
                 className="input"
@@ -214,7 +216,7 @@ const AddCompanyRequest = () => {
                 required
               />
             </Field>
-            <Field id="tCoord" label="Teléfono coordinador">
+            <Field id="tCoord" label="Teléfono coordinador principal">
               <input
                 id="tCoord"
                 className="input"
@@ -228,7 +230,7 @@ const AddCompanyRequest = () => {
           </div>
           <Field id="pwdCoord" label="Contraseña inicial (acceso con el CIF de la empresa)">
             <p className="field-hint">
-              El coordinador accede al panel con el CIF de la empresa, no con su correo electrónico.
+              El coordinador principal accede al panel con el CIF de la empresa, no con su correo electrónico.
             </p>
             <input
               id="pwdCoord"

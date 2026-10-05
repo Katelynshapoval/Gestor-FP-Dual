@@ -229,6 +229,11 @@ exports.getAll = async function (req, res) {
         emp.empresa,
         ee.cantidad_alumnos AS plazas_ofertadas,
         coord.email AS email_coordinador,
+        r.id_empresa_tutor,
+        tutor_c.nombre AS tutor_nombre,
+        tutor_c.email AS tutor_email,
+        tutor_c.telefono AS tutor_telefono,
+        t.activo AS tutor_activo,
         (SELECT d.id_documento FROM dual_documentos d
            JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
           WHERE d.id_reserva = r.id_reserva AND td.nombre = 'ANEXO_H'
@@ -249,6 +254,8 @@ exports.getAll = async function (req, res) {
      JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
      JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
      JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
+     LEFT JOIN dual_empresa_tutores t ON t.id_empresa_tutor = r.id_empresa_tutor
+     LEFT JOIN ge_contactos tutor_c ON tutor_c.idcontacto = t.id_contacto
     ORDER BY r.id_reserva DESC`
   );
 
@@ -276,6 +283,12 @@ exports.getMisReservas = async function (req, res) {
         a.tieneCoche,
         esp.codigo AS codigo_especialidad,
         esp.nombre AS especialidad,
+        se.id_empresa,
+        r.id_empresa_tutor,
+        tutor_c.nombre AS tutor_nombre,
+        tutor_c.email AS tutor_email,
+        tutor_c.telefono AS tutor_telefono,
+        t.activo AS tutor_activo,
         (SELECT d.id_documento FROM dual_documentos d
            JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
           WHERE d.id_reserva = r.id_reserva AND td.nombre = 'ANEXO_H'
@@ -294,6 +307,8 @@ exports.getMisReservas = async function (req, res) {
        ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
      JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
      JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+     LEFT JOIN dual_empresa_tutores t ON t.id_empresa_tutor = r.id_empresa_tutor
+     LEFT JOIN ge_contactos tutor_c ON tutor_c.idcontacto = t.id_contacto
     WHERE se.id_empresa = ?
     ORDER BY r.id_reserva DESC`,
     [idEmpresa]
@@ -317,7 +332,12 @@ exports.getReservasAlumno = async function (req, res) {
         esp.nombre AS especialidad,
         esp.codigo AS codigo_especialidad,
         sa.id_solicitud_alumno,
-        c.nombre AS convocatoria
+        c.nombre AS convocatoria,
+        r.id_empresa_tutor,
+        tutor_c.nombre AS tutor_nombre,
+        tutor_c.email AS tutor_email,
+        tutor_c.telefono AS tutor_telefono,
+        t.activo AS tutor_activo
      FROM dual_reservas r
      JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
      LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
@@ -328,6 +348,8 @@ exports.getReservasAlumno = async function (req, res) {
      JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
      JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
      JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
+     LEFT JOIN dual_empresa_tutores t ON t.id_empresa_tutor = r.id_empresa_tutor
+     LEFT JOIN ge_contactos tutor_c ON tutor_c.idcontacto = t.id_contacto
     WHERE sa.id_alumno = ?
     ORDER BY r.id_reserva DESC`,
     [idAlumno]

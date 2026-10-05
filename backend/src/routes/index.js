@@ -11,6 +11,7 @@ router.use(require("./solicitudesAlumnoRoute"));
 router.use(require("./solicitudesEmpresaRoute"));
 router.use(require("./documentosRoute"));
 router.use(require("./reservasRoute"));
+router.use(require("./empresaTutoresRoute"));
 router.use(require("./evaluacionesRoute"));
 
 // Global error handler — must come after all routes

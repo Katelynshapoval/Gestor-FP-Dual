@@ -54,6 +54,8 @@ export const postJSON = async (url, body, method = 'POST') => {
 
 export const putJSON = (url, body) => postJSON(url, body, 'PUT');
 
+export const patchJSON = (url, body) => postJSON(url, body, 'PATCH');
+
 // Authenticated POST with FormData (multipart file upload)
 export const postForm = async (url, formData) => {
   const response = await fetch(url, {

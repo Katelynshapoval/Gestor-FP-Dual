@@ -34,7 +34,10 @@ const LinkStudents = () => {
     adminReserve,
     adminCancel,
     adminReassign,
+    fetchLinkRequests,
   } = useLinkStudents();
+
+  const refreshStudents = fetchLinkRequests;
 
   const companyValidated = !isEmpresa || companyStatus === "VALIDADO";
 
@@ -104,6 +107,7 @@ const LinkStudents = () => {
               onAdminReserve={adminReserve}
               onAdminCancel={adminCancel}
               onAdminReassign={adminReassign}
+              onTutorChange={refreshStudents}
               onValidarAlumno={validateAlumno}
               onRechazarSolicitud={rejectSolicitud}
               user={user}

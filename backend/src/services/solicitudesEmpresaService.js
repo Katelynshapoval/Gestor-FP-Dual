@@ -459,6 +459,13 @@ exports.create = async function (req, res) {
       [nombreCoordinador, hash, idRol, idCoordinador],
     );
 
+    // Principal coordinator is also the company's first active tutor.
+    await conn.query(
+      `INSERT INTO dual_empresa_tutores (id_empresa, id_contacto, activo)
+       VALUES (?, ?, 1)`,
+      [idEmpresa, idCoordinador],
+    );
+
     await conn.commit();
 
     await safelyGenerateAndSendConvenio(
@@ -1061,6 +1068,13 @@ exports.reapply = async function (req, res) {
     );
 
     const idSolicitudEmpresa = solRes.insertId;
+
+    // Ensure principal coordinator remains registered as a company tutor.
+    await conn.query(
+      `INSERT IGNORE INTO dual_empresa_tutores (id_empresa, id_contacto, activo)
+       VALUES (?, ?, 1)`,
+      [idEmpresa, prev.id_coordinador_actual],
+    );
 
     // Insert speciality rows
     for (const esp of especialidades) {

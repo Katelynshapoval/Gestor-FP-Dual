@@ -282,6 +282,11 @@ exports.getAll = async function (req, res) {
             esp.codigo AS codigo_especialidad,
             se.id_empresa,
             r.id_solicitud_empresa_especialidad,
+            r.id_empresa_tutor,
+            tutor_c.nombre AS tutor_nombre,
+            tutor_c.email AS tutor_email,
+            tutor_c.telefono AS tutor_telefono,
+            t.activo AS tutor_activo,
             (SELECT id_documento FROM dual_documentos d WHERE d.id_reserva = r.id_reserva LIMIT 1) AS id_documento_reserva
        FROM dual_reservas r
        JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
@@ -291,6 +296,8 @@ exports.getAll = async function (req, res) {
        JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
        JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+       LEFT JOIN dual_empresa_tutores t ON t.id_empresa_tutor = r.id_empresa_tutor
+       LEFT JOIN ge_contactos tutor_c ON tutor_c.idcontacto = t.id_contacto
       WHERE r.id_solicitud_alumno IN (?)`,
     [ids]
   );
