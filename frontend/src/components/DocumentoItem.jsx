@@ -16,7 +16,7 @@ const OPERATIONAL_VARIANT = {
   COMPLETO: "success",
 };
 
-const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
+const DocumentoItem = ({ doc, onRefresh, onOpen, showStatus = true }) => {
   const toast = useToast();
   const confirm = useConfirm();
   const [file, setFile] = useState(null);
@@ -133,7 +133,9 @@ const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
           <p className="text-sm font-semibold text-charcoal-950">{doc.nombre}</p>
           {context && <p className="mt-1 text-xs leading-5 text-muted">{context}</p>}
         </div>
-        <StatusBadge variant={OPERATIONAL_VARIANT[status] || "neutral"}>{statusLabel}</StatusBadge>
+        {showStatus && (
+          <StatusBadge variant={OPERATIONAL_VARIANT[status] || "neutral"}>{statusLabel}</StatusBadge>
+        )}
       </div>
 
       {doc.accion_pendiente && (
