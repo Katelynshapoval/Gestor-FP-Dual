@@ -6,8 +6,7 @@
 |-------|---------|
 | `AuxiliarAlumno` | `dualStudentsService` |
 | `AuxiliarEmpresa` / `auxiliarempresa` | `companyRequestService`, `linkingService`, `reservasService` |
-| `gestiondual` | `linkingService`, `evaluationService`, `reservasService` |
-| `evaluacion` | `evaluationService` |
+| `gestiondual` | `linkingService`, `reservasService` |
 | `especialidad` | `specialitiesService`, `linkingService` |
 | `preferencia` | `preferencesService` |
 | `posiblestransportes` | `possibleTransportsService` |
@@ -39,9 +38,6 @@
 | POST | `/reapplyCompanyRequest` | Reaplicación de empresa |
 | GET | `/getAllCompanies` | Lista de empresas (admin) |
 | POST | `/resetPassword/:id` | Reset de contraseña empresa |
-| POST | `/getEvaluationByManagementId` | Obtener evaluación (por idGestion) |
-| POST | `/createEvaluation` | Crear evaluación |
-| POST | `/updateEvaluation` | Actualizar evaluación |
 | POST | `/linkStudents` | Listar candidaturas (admin/empresa) |
 | POST | `/getCompanyRequests` | Listar solicitudes empresa disponibles |
 | POST | `/sendMail` | Enviar info candidato a empresa |
@@ -84,13 +80,6 @@
 | `tipocontrato` | `dual_tipos_contrato` |
 | `reservas.documentoFirmado` | `dual_documentos` (tipo ANEXO_H, padre = reserva) |
 
-### Evaluaciones
-| Legacy | Nuevo |
-|--------|-------|
-| `evaluacion.idGestion` | `dual_evaluaciones.id_solicitud_alumno` |
-| `notaMedia`, `idiomas`, etc. | `nota_media`, `idiomas`, etc. |
-| `fecha` (en tabla evaluacion) | No existe en nuevo esquema → patch añade `updated_at` |
-
 ### Autenticación
 | Legacy | Nuevo |
 |--------|-------|
@@ -113,7 +102,6 @@
 | Preferencias de alumno sin tabla en esquema final | `db/after_schema_patch.sql`: tablas `dual_preferencias` y `dual_solicitud_preferencias` |
 | `fn_reservas_activas`, `fn_cupos_disponibles` ausentes del dump | `db/after_schema_patch.sql`: implementación de las funciones |
 | Stored procedures referenciados pero no en dump | `db/after_schema_patch.sql`: todos los SPs necesarios |
-| `updated_at` ausente en `dual_evaluaciones` | `db/after_schema_patch.sql`: columna `updated_at` con `ON UPDATE CURRENT_TIMESTAMP` |
 | URL pública de convenio usaba ID ofuscado aritmético | `db/after_schema_patch.sql`: tabla `dual_convenio_tokens` para tokens seguros |
 | `userscourses` (especialidades del tutor) sin equivalente | No replicado: los tutores ven todas las solicitudes. Documentado como limitación. |
 | `calendario` ligado a alumno+empresa directa | Preservado: el calendario se accede por `idAlumno`+`idEmpresa`, que se derivan de la reserva confirmada |
@@ -125,10 +113,9 @@ Todas en `db/after_schema_patch.sql`:
 - `dual_preferencias` — catálogo de preferencias por especialidad
 - `dual_solicitud_preferencias` — preferencias elegidas por el alumno en su solicitud
 - `dual_convenio_tokens` — tokens seguros para subida pública de convenio
-- `dual_evaluaciones.updated_at` — fecha de última actualización de evaluación
 - `fn_reservas_activas(id_solicitud_empresa_especialidad)` — cuenta reservas activas
 - `fn_cupos_disponibles(id_solicitud_empresa_especialidad)` — calcula plazas libres
-- `sp_activar_convocatoria`, `sp_guardar_documento`, `sp_validar_*`, `sp_rechazar_*`, `sp_guardar_evaluacion`, `sp_asignar_transporte_empresa`, `sp_reservar_alumno`, `sp_cancelar_reserva`, `sp_confirmar_reserva` — procedimientos almacenados
+- `sp_activar_convocatoria`, `sp_guardar_documento`, `sp_validar_*`, `sp_rechazar_*`, `sp_asignar_transporte_empresa`, `sp_reservar_alumno`, `sp_cancelar_reserva`, `sp_confirmar_reserva` — procedimientos almacenados
 
 ## 7. Archivos frontend modificados y motivo
 
@@ -151,8 +138,6 @@ Todas en `db/after_schema_patch.sql`:
 | `pages/LinkStudents/components/StudentCard.jsx` | Usa `id_solicitud_alumno` en lugar de `idGestion`; reservas dinámicas |
 | `pages/LinkStudents/components/student-card/EmpresaControl.jsx` | Reemplaza slots fijos por reservas dinámicas |
 | `pages/LinkStudents/components/student-card/Documentos.jsx` | Usar nuevos IDs de documento |
-| `pages/LinkStudents/components/student-card/Evaluacion.jsx` | Usa `id_solicitud_alumno` para navegar a evaluación |
-| `components/Evaluation.js` | Usar `/evaluaciones/:idSolicitudAlumno` |
 | `App.js` | Añadir ruta `/convocatorias` |
 | `pages/AddConvenio.js` | Usar token seguro en lugar de ID ofuscado |
 

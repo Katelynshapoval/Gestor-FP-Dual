@@ -1,5 +1,3 @@
-import { ofuscarId } from "../../utils/idObfuscation.js";
-
 import DocViewer from "./components/DocViewer";
 import RequestFilters from "./components/RequestFilters";
 import StudentCard from "./components/StudentCard";
@@ -9,7 +7,6 @@ import PageHeader from "../../components/ui/PageHeader";
 const LinkStudents = () => {
   const {
     user,
-    navigate,
     companyOffers,
     companyStatus,
     showDoc,
@@ -101,7 +98,6 @@ const LinkStudents = () => {
               onToggle={toggleCard}
               companyOffers={companyOffers}
               onGetDoc={getDoc}
-              onGetEvaluation={(id) => navigate(`/evaluate/${ofuscarId(id)}`)}
               onReserve={reserveStudent}
               onCancel={cancelReservation}
               onAdminReserve={adminReserve}

@@ -23,7 +23,6 @@ import {
 import DatosRapidos from "./student-card/DatosRapidos";
 import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
-import Evaluacion from "./student-card/Evaluacion";
 import EstadoSolicitud from "./student-card/EstadoSolicitud";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import {
@@ -217,7 +216,6 @@ const StudentCard = ({
   onToggle,
   companyOffers,
   onGetDoc,
-  onGetEvaluation,
   onReserve,
   onCancel,
   onAdminReserve,
@@ -376,13 +374,6 @@ const StudentCard = ({
                       r={r}
                       onValidar={onValidarAlumno}
                       onRechazar={onRechazarSolicitud}
-                    />
-                  )}
-                  {!isEmpresa && (
-                    <Evaluacion
-                      r={r}
-                      user={user}
-                      onGetEvaluation={onGetEvaluation}
                     />
                   )}
                 </div>

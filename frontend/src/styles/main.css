@@ -165,51 +165,6 @@ a {
   border: none;
 }
 
-/* Evaluation form */
-.eval-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.75rem;
-  padding-bottom: 1rem;
-  @apply border-b border-surface-200;
-}
-.eval-meta {
-  display: flex;
-  gap: 0.5rem;
-}
-.eval-badge {
-  font-size: 0.75rem;
-  padding: 0.28rem 0.65rem;
-  border-radius: 6px;
-  @apply border border-surface-200 bg-white text-muted;
-}
-.eval-score-box {
-  @apply rounded-xl2 border border-brand-200 bg-brand-50;
-  padding: 1.25rem 1.5rem;
-  color: var(--color-brand-dark);
-  margin-bottom: 1.25rem;
-}
-.eval-score-box .score-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.75;
-}
-.eval-score-box .score-value {
-  font-family: "Roboto", sans-serif;
-  font-size: 2.5rem;
-  font-weight: 700;
-  line-height: 1;
-  margin: 0.25rem 0 0;
-}
-.eval-score-box .score-formula {
-  font-size: 0.73rem;
-  opacity: 0.65;
-  margin-top: 0.35rem;
-}
-
 /* Utilidades de layout */
 .divider {
   height: 1px;

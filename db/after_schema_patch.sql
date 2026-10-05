@@ -59,16 +59,6 @@ CREATE TABLE IF NOT EXISTS `dual_convenio_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3. FECHA DE ACTUALIZACIÓN EN EVALUACIONES
--- La tabla dual_evaluaciones no incluye un campo de fecha.
--- Se añade updated_at para mostrar en la UI cuándo fue la última modificación.
--- ─────────────────────────────────────────────────────────────────────────────
-
-ALTER TABLE `dual_evaluaciones`
-  ADD COLUMN IF NOT EXISTS `updated_at` datetime DEFAULT NULL
-    ON UPDATE CURRENT_TIMESTAMP;
-
--- ─────────────────────────────────────────────────────────────────────────────
 -- 4. FUNCIONES NECESARIAS PARA LA VISTA vw_cupos_empresa_disponibles
 -- La vista referencia fn_reservas_activas y fn_cupos_disponibles, que no están
 -- incluidas en el dump. Se definen aquí de forma idempotente.
@@ -266,34 +256,6 @@ BEGIN
          ),
          motivo = p_motivo
    WHERE id_documento = p_id;
-END$$
-DELIMITER ;
-
--- 5.9 Guardar evaluación (upsert)
-DROP PROCEDURE IF EXISTS `sp_guardar_evaluacion`;
-DELIMITER $$
-CREATE PROCEDURE `sp_guardar_evaluacion`(
-  IN p_id_solicitud_alumno INT,
-  IN p_nota_media    DECIMAL(4,2),
-  IN p_idiomas       DECIMAL(4,2),
-  IN p_madurez       DECIMAL(4,2),
-  IN p_competencia   DECIMAL(4,2),
-  IN p_faltas        SMALLINT UNSIGNED,
-  IN p_nota_total    DECIMAL(5,2)
-)
-BEGIN
-  INSERT INTO dual_evaluaciones
-    (id_solicitud_alumno, nota_media, idiomas, madurez, competencia, faltas, nota_total, updated_at)
-  VALUES
-    (p_id_solicitud_alumno, p_nota_media, p_idiomas, p_madurez, p_competencia, p_faltas, p_nota_total, NOW())
-  ON DUPLICATE KEY UPDATE
-    nota_media   = p_nota_media,
-    idiomas      = p_idiomas,
-    madurez      = p_madurez,
-    competencia  = p_competencia,
-    faltas       = p_faltas,
-    nota_total   = p_nota_total,
-    updated_at   = NOW();
 END$$
 DELIMITER ;
 

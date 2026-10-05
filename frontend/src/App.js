@@ -6,7 +6,6 @@ import Home from "./pages/Home/Home.js";
 import Login from "./pages/Login";
 import AddDualStudent from "./pages/AddDualStudent";
 import AddCompanyRequest from "./pages/AddCompanyRequest";
-import Evaluation from "./components/Evaluation";
 import LinkStudents from "./pages/LinkStudents";
 import CompanyView from "./pages/CompanyView/";
 import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
@@ -54,16 +53,6 @@ function App() {
               element={
                 <Page>
                   <AddCompanyRequest />
-                </Page>
-              }
-            />
-            <Route
-              path="/evaluate/:id"
-              element={
-                <Page>
-                  <RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}>
-                    <Evaluation />
-                  </RequireRole>
                 </Page>
               }
             />

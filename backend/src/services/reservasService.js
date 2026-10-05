@@ -126,13 +126,6 @@ exports.getAlumnosDisponibles = async function (req, res) {
         esp.nombre AS especialidad,
         CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
         c.nombre AS convocatoria,
-        CASE WHEN ev.id_evaluacion IS NOT NULL THEN
-          ROUND(LEAST(10, GREATEST(0,
-            0.6 * ev.nota_media + 0.05 * ev.idiomas +
-            0.1 * ev.madurez + 0.1 * ev.competencia +
-            GREATEST(0, -0.1 * ((ev.faltas / 1050.0) * 100) + 1.5)
-          )), 2)
-        ELSE NULL END AS nota_total,
         (SELECT id_reserva FROM dual_reservas r_propia
           JOIN dual_solicitud_empresa_especialidades ee_propia
             ON ee_propia.id_solicitud_empresa_especialidad = r_propia.id_solicitud_empresa_especialidad
@@ -148,7 +141,6 @@ exports.getAlumnosDisponibles = async function (req, res) {
      JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
      JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
      JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
-     LEFT JOIN dual_evaluaciones ev ON ev.id_solicitud_alumno = sa.id_solicitud_alumno
      LEFT JOIN dual_reservas r_confirmada
        ON r_confirmada.id_solicitud_alumno = sa.id_solicitud_alumno
       AND r_confirmada.id_estado_reserva = (

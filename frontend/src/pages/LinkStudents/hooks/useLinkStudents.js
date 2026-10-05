@@ -236,7 +236,6 @@ export const useLinkStudents = () => {
 
   return {
     user,
-    navigate,
     linkRequests,
     companyOffers,
     companyStatus,

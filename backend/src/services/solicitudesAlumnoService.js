@@ -220,16 +220,6 @@ exports.getAll = async function (req, res) {
            esp.id_especialidad, esp.codigo AS codigo_especialidad, esp.nombre AS especialidad,
            CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
            c.nombre AS convocatoria,
-           de.id_evaluacion,
-           CASE WHEN de.id_evaluacion IS NOT NULL THEN
-             ROUND(LEAST(10, GREATEST(0,
-               0.6  * de.nota_media +
-               0.05 * de.idiomas +
-               0.1  * de.madurez +
-               0.1  * de.competencia +
-               GREATEST(0, -0.1 * ((de.faltas / 1050.0) * 100) + 1.5)
-             )), 2)
-           ELSE NULL END AS nota_total,
            CASE WHEN u.id_usuario IS NOT NULL THEN 1 ELSE 0 END AS tiene_cuenta
       FROM dual_solicitudes_alumno sa
       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
@@ -237,7 +227,6 @@ exports.getAll = async function (req, res) {
       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = sa.id_estado_validacion
       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
       JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
-      LEFT JOIN dual_evaluaciones de ON de.id_solicitud_alumno = sa.id_solicitud_alumno
      WHERE 1=1
   `;
   const params = [];
