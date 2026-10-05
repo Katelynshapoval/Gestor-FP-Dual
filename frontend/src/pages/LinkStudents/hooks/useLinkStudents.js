@@ -76,12 +76,7 @@ export const useLinkStudents = () => {
           if (currentDocUrl) URL.revokeObjectURL(currentDocUrl);
           const url = URL.createObjectURL(blob);
           setCurrentDocUrl(url);
-          const label =
-            tipo === "cv"
-              ? "CV"
-              : tipo === "anexo2"
-                ? "Anexo 2"
-                : String(tipo || "").toUpperCase();
+          const label = meta.nombre || String(tipo || "");
           setShowDoc({
             tipo,
             url,
@@ -91,7 +86,7 @@ export const useLinkStudents = () => {
             idSolicitudAlumno: extra.idSolicitudAlumno || null,
             estado: extra.estado || null,
             motivo: extra.motivo || null,
-            canReview: !isEmpresa,
+            canReview: extra.canReview != null ? extra.canReview : !isEmpresa,
           });
         })
         .catch((err) => alert(err.message));

@@ -15,12 +15,27 @@ const pdfUpload = multer({
   },
 });
 
-// Re-upload CV or ANEXO_2 for a student application (admin / coordinador)
+// Re-upload a student document the caller is allowed to replace
 router.post(
   '/documentos/alumno/:idSolicitud/:tipo',
-  requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'),
+  requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'ALUMNO'),
   pdfUpload.single('archivo'),
   asyncHandler(svc.uploadAlumno)
+);
+
+router.get('/documentos/alumno/mios', requireAuth, requireRole('ALUMNO'), asyncHandler(svc.getMios));
+
+router.post(
+  '/documentos/subir',
+  requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA', 'ALUMNO'),
+  pdfUpload.single('archivo'),
+  asyncHandler(svc.uploadContexto)
+);
+
+router.post(
+  '/documentos/firmar',
+  requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA', 'ALUMNO'),
+  asyncHandler(svc.firmarContexto)
 );
 
 // Upload CONVENIO for a company application
@@ -31,9 +46,9 @@ router.post(
   asyncHandler(svc.uploadEmpresa)
 );
 
-// Upload ANEXO_H for a confirmed reservation
+// Upload the active reservation annex (Anexo II or III)
 router.post(
-  '/documentos/reserva/:idReserva/anexoh',
+  '/documentos/reserva/:idReserva/anexo',
   requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'),
   pdfUpload.single('archivo'),
   asyncHandler(svc.uploadReserva)

@@ -4,6 +4,8 @@ const {
   getCompanyIdFromUser,
   getStudentIdFromUser,
 } = require("../helpers/dbHelpers");
+const { defByClave, anexoClaveForContrato } = require("./documentCatalogue");
+const workflow = require("./documentosWorkflow");
 
 function extractIdDocumento(results) {
   const queue = [results];
@@ -34,40 +36,119 @@ async function resolveDocumentoId(results, whereSql, params) {
   return rows[0]?.id_documento ?? null;
 }
 
+async function saveByClave(clave, parents, buffer) {
+  const idTipo = await workflow.tipoIdByNombre(clave);
+  if (!idTipo) {
+    const err = new Error("Tipo de documento no configurado.");
+    err.status = 400;
+    throw err;
+  }
+  const [results] = await pool.query(
+    "CALL sp_guardar_documento(?, ?, ?, ?, ?)",
+    [
+      parents.id_solicitud_alumno || null,
+      parents.id_solicitud_empresa || null,
+      parents.id_reserva || null,
+      idTipo,
+      buffer,
+    ],
+  );
+  const idDocumento = await resolveDocumentoId(
+    results,
+    parents.id_solicitud_alumno
+      ? "id_solicitud_alumno = ? AND id_tipo_documento = ?"
+      : parents.id_solicitud_empresa
+        ? "id_solicitud_empresa = ? AND id_tipo_documento = ?"
+        : "id_reserva = ? AND id_tipo_documento = ?",
+    [
+      parents.id_solicitud_alumno || parents.id_solicitud_empresa || parents.id_reserva,
+      idTipo,
+    ],
+  );
+  const def = defByClave(clave);
+  if (idDocumento && def?.workflowOnUpload) {
+    await pool.query(
+      "UPDATE dual_documentos SET estado_workflow = ? WHERE id_documento = ?",
+      [def.workflowOnUpload, idDocumento],
+    );
+  }
+  if (idDocumento && def?.signers) {
+    for (const rol of def.signers) {
+      await pool.query(
+        `INSERT INTO dual_documento_firmas (id_documento, rol, estado)
+         VALUES (?, ?, 'SIN_FIRMAR')
+         ON DUPLICATE KEY UPDATE id_documento = id_documento`,
+        [idDocumento, rol],
+      );
+    }
+  }
+  return idDocumento;
+}
+
+async function assertAlumnoOwnsSolicitud(req, idSolicitud) {
+  if (req.user.rol !== "ALUMNO") return null;
+  const idAlumno = await getStudentIdFromUser(req.user.id);
+  if (!idAlumno) return { status: 404, error: "No se encontró alumno vinculado a este usuario." };
+  const [rows] = await pool.query(
+    "SELECT id_alumno FROM dual_solicitudes_alumno WHERE id_solicitud_alumno = ?",
+    [idSolicitud],
+  );
+  if (!rows[0] || rows[0].id_alumno !== idAlumno) {
+    return { status: 403, error: "No puedes modificar documentos de otra solicitud." };
+  }
+  return null;
+}
+
 // Upload a document for a student application
-// POST /documentos/alumno/:idSolicitud/:tipo   (tipo = cv | anexo2)
+// POST /documentos/alumno/:idSolicitud/:tipo
 exports.uploadAlumno = async function (req, res) {
   const idSolicitudAlumno = parseInt(req.params.idSolicitud, 10);
-  const tipo = req.params.tipo.toUpperCase(); // CV | ANEXO_2
+  const clave = String(req.params.tipo || "").toUpperCase().replace(/-/g, "_");
   const file = req.file;
+  const def = defByClave(clave);
 
-  if (!file)
-    return res.status(400).json({ error: "No se ha subido ningún archivo." });
+  if (!file) return res.status(400).json({ error: "No se ha subido ningún archivo." });
+  if (!def || def.legacy || def.ambito !== "solicitud_alumno" || def.kind === "event") {
+    return res.status(400).json({ error: "Tipo de documento no válido para el alumno." });
+  }
+  if (!workflow.canUpload(def, req.user.rol)) {
+    return res.status(403).json({ error: "No puedes subir este tipo de documento." });
+  }
 
-  const TIPO_MAP = { CV: 1, ANEXO_2: 2 };
-  const idTipo = TIPO_MAP[tipo];
-  if (!idTipo)
-    return res
-      .status(400)
-      .json({ error: "Tipo de documento no válido. Use cv o anexo2." });
+  const denied = await assertAlumnoOwnsSolicitud(req, idSolicitudAlumno);
+  if (denied) return res.status(denied.status).json({ error: denied.error });
+
+  const [current] = await pool.query(
+    `SELECT ev.nombre AS estado
+       FROM dual_documentos d
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+      WHERE d.id_solicitud_alumno = ? AND td.nombre = ? AND d.es_actual = 1
+      ORDER BY d.id_documento DESC LIMIT 1`,
+    [idSolicitudAlumno, clave],
+  );
+  if (
+    req.user.rol === "ALUMNO" &&
+    current[0]?.estado === "VALIDADO" &&
+    !def.replaceIfValidated
+  ) {
+    return res.status(400).json({ error: "Un documento validado no se puede reemplazar." });
+  }
 
   try {
-    const [results] = await pool.query(
-      "CALL sp_guardar_documento(?, NULL, NULL, ?, ?)",
-      [idSolicitudAlumno, idTipo, file.buffer],
-    );
-    const idDocumento = await resolveDocumentoId(
-      results,
-      "id_solicitud_alumno = ? AND id_tipo_documento = ?",
-      [idSolicitudAlumno, idTipo],
-    );
-    return res.json({
-      message: "Documento subido correctamente.",
-      id_documento: idDocumento,
-    });
+    const idDocumento = await saveByClave(clave, { id_solicitud_alumno: idSolicitudAlumno }, file.buffer);
+    return res.json({ message: "Documento subido correctamente.", id_documento: idDocumento, clave });
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     return sendSqlError(res, err);
   }
+};
+
+exports.getMios = async function (req, res) {
+  const idAlumno = await getStudentIdFromUser(req.user.id);
+  if (!idAlumno) return res.status(404).json({ error: "No se encontró alumno vinculado a este usuario." });
+  const items = await workflow.buildAlumnoList(idAlumno);
+  return res.json({ items });
 };
 
 // Upload a convenio for a company application
@@ -94,26 +175,23 @@ exports.uploadEmpresa = async function (req, res) {
   }
 
   try {
-    const [results] = await pool.query(
-      "CALL sp_guardar_documento(NULL, ?, NULL, 3, ?)",
-      [idSolicitudEmpresa, file.buffer],
-    );
-    const idDocumento = await resolveDocumentoId(
-      results,
-      "id_solicitud_empresa = ? AND id_tipo_documento = 3",
-      [idSolicitudEmpresa],
+    const idDocumento = await saveByClave(
+      "CONVENIO",
+      { id_solicitud_empresa: idSolicitudEmpresa },
+      file.buffer,
     );
     return res.json({
       message: "Convenio subido correctamente.",
       id_documento: idDocumento,
     });
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     return sendSqlError(res, err);
   }
 };
 
-// Upload ANEXO_H for a reservation
-// POST /documentos/reserva/:idReserva/anexoh
+// Upload the contract annex (Anexo II or Anexo III) for a reservation.
+// POST /documentos/reserva/:idReserva/anexo
 exports.uploadReserva = async function (req, res) {
   const idReserva = parseInt(req.params.idReserva, 10);
   const file = req.file;
@@ -121,49 +199,58 @@ exports.uploadReserva = async function (req, res) {
   if (!file)
     return res.status(400).json({ error: "No se ha subido ningún archivo." });
 
-  // If EMPRESA user, verify they own this reserva
+  const [rows] = await pool.query(
+    `SELECT se.id_empresa, tc.nombre AS tipo_contrato, er.nombre AS estado_reserva
+       FROM dual_reservas r
+       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+       LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+       JOIN dual_solicitud_empresa_especialidades see
+         ON see.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = see.id_solicitud_empresa
+      WHERE r.id_reserva = ?`,
+    [idReserva],
+  );
+  if (!rows[0]) return res.status(404).json({ error: "Reserva no encontrada." });
   if (req.user.rol === "EMPRESA") {
     const idEmpresa = await getCompanyIdFromUser(req.user.id);
-    const [rows] = await pool.query(
-      `SELECT se.id_empresa
-         FROM dual_reservas r
-         JOIN dual_solicitud_empresa_especialidades see
-           ON see.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
-         JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = see.id_solicitud_empresa
-        WHERE r.id_reserva = ?`,
-      [idReserva],
-    );
-    if (!rows[0] || rows[0].id_empresa !== idEmpresa) {
-      return res.status(403).json({
-        error: "No tiene permiso para subir documentos a esta reserva.",
-      });
+    if (rows[0].id_empresa !== idEmpresa) {
+      return res.status(403).json({ error: "No tiene permiso para subir documentos a esta reserva." });
     }
+  }
+  const clave = anexoClaveForContrato(rows[0].tipo_contrato);
+  if (!clave) {
+    return res.status(400).json({ error: "El anexo II o III aparece cuando el centro indica el tipo de contrato." });
+  }
+  if (rows[0].estado_reserva === "CANCELADA") {
+    return res.status(400).json({ error: "No se puede subir documentación de una reserva cancelada." });
   }
 
   try {
-    const [results] = await pool.query(
-      "CALL sp_guardar_documento(NULL, NULL, ?, 4, ?)",
-      [idReserva, file.buffer],
-    );
-    const idDocumento = await resolveDocumentoId(
-      results,
-      "id_reserva = ? AND id_tipo_documento = 4",
-      [idReserva],
-    );
+    const idDocumento = await saveByClave(clave, { id_reserva: idReserva }, file.buffer);
     return res.json({
-      message: "Anexo H subido correctamente.",
+      message: "Documento subido correctamente.",
       id_documento: idDocumento,
+      clave,
     });
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     return sendSqlError(res, err);
   }
 };
 
 const TIPO_LABEL = {
-  CONVENIO: "Convenio",
-  ANEXO_H: "Anexo H",
+  CONVENIO: "Convenio (Formulario)",
   CV: "CV",
-  ANEXO_2: "Anexo 2",
+  ANEXO_DGA: "Anexo DGA",
+  ANEXO_XIV: "Anexo XIV",
+  ANEXO_II: "Anexo II",
+  ANEXO_III: "Anexo III",
+  CALENDARIO: "Calendario",
+  ANEXO_G: "Anexo G",
+  EXCEL: "Excel",
+  FORMULARIO: "Formulario",
+  ANEXO_H: "Anexo H (histórico)",
+  ANEXO_2: "Anexo 2 (histórico)",
   OTRO: "Documento",
 };
 
@@ -213,15 +300,40 @@ async function empresaOwnsDocumento(idEmpresa, doc) {
 
 async function alumnoMayDownload(idAlumno, doc) {
   if (!idAlumno || !doc) return false;
-  // Students may only download documents that belong to their own application
-  // (CV / Anexo 2). Company convenio and Anexo H are not student downloads.
-  if (!doc.id_solicitud_alumno) return false;
-  if (!["CV", "ANEXO_2"].includes(doc.tipo)) return false;
-  const [rows] = await pool.query(
-    "SELECT id_alumno FROM dual_solicitudes_alumno WHERE id_solicitud_alumno = ?",
-    [doc.id_solicitud_alumno],
-  );
-  return rows[0]?.id_alumno === idAlumno;
+  const def = defByClave(doc.tipo);
+  if (!workflow.alumnoMaySee(def, doc)) return false;
+  if (doc.id_solicitud_alumno) {
+    const [rows] = await pool.query(
+      "SELECT id_alumno FROM dual_solicitudes_alumno WHERE id_solicitud_alumno = ?",
+      [doc.id_solicitud_alumno],
+    );
+    return rows[0]?.id_alumno === idAlumno;
+  }
+  if (doc.id_reserva) {
+    const [rows] = await pool.query(
+      `SELECT sa.id_alumno
+         FROM dual_reservas r
+         JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+        WHERE r.id_reserva = ?`,
+      [doc.id_reserva],
+    );
+    return rows[0]?.id_alumno === idAlumno;
+  }
+  if (doc.id_solicitud_empresa) {
+    const [rows] = await pool.query(
+      `SELECT sa.id_alumno
+         FROM dual_reservas r
+         JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+         JOIN dual_solicitud_empresa_especialidades ee
+           ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+         JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+        WHERE se.id_solicitud_empresa = ? AND sa.id_alumno = ?
+        LIMIT 1`,
+      [doc.id_solicitud_empresa, idAlumno],
+    );
+    return Boolean(rows[0]);
+  }
+  return false;
 }
 
 async function canDownloadDocumento(user, doc) {
@@ -263,126 +375,12 @@ exports.descargar = async function (req, res) {
   return res.send(pdf);
 };
 
-// GET /documentos/empresa — EMPRESA: convenio + anexo H of own company
 exports.getEmpresaDocumentos = async function (req, res) {
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
   if (!idEmpresa)
-    return res
-      .status(404)
-      .json({ error: "No se encontró empresa vinculada a este usuario." });
-
-  const [solicitudes] = await pool.query(
-    `SELECT
-        d.id_documento,
-        td.nombre AS tipo,
-        ev.nombre AS estado_validacion,
-        d.motivo,
-        se.id_solicitud_empresa,
-        c.nombre AS convocatoria,
-        c.activa AS convocatoria_activa,
-        se.fecha_solicitud
-       FROM dual_documentos d
-       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = d.id_solicitud_empresa
-       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
-      WHERE se.id_empresa = ?
-        AND td.nombre = 'CONVENIO'
-      ORDER BY c.activa DESC, se.fecha_solicitud DESC, d.id_documento DESC`,
-    [idEmpresa],
-  );
-
-  const [reservas] = await pool.query(
-    `SELECT
-        d.id_documento,
-        td.nombre AS tipo,
-        ev.nombre AS estado_validacion,
-        d.motivo,
-        r.id_reserva,
-        er.nombre AS estado_reserva,
-        a.nombre AS alumno,
-        a.dni AS dni_alumno,
-        esp.nombre AS especialidad,
-        c.nombre AS convocatoria
-       FROM dual_documentos d
-       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-       JOIN dual_reservas r ON r.id_reserva = d.id_reserva
-       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-       JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
-       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
-       JOIN dual_solicitud_empresa_especialidades ee
-         ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
-       JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
-       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
-       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
-      WHERE se.id_empresa = ?
-        AND td.nombre = 'ANEXO_H'
-      ORDER BY r.id_reserva DESC`,
-    [idEmpresa],
-  );
-
-  const [todasSolicitudes] = await pool.query(
-    `SELECT se.id_solicitud_empresa, c.nombre AS convocatoria, c.activa AS convocatoria_activa, se.fecha_solicitud
-       FROM dual_solicitudes_empresa se
-       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
-      WHERE se.id_empresa = ?
-      ORDER BY c.activa DESC, se.fecha_solicitud DESC`,
-    [idEmpresa],
-  );
-
-  const present = (row, extra = {}) => ({
-    id_documento: row.id_documento,
-    tipo: row.tipo,
-    tipo_mostrar: TIPO_LABEL[row.tipo] || row.tipo,
-    estado_validacion: row.estado_validacion,
-    motivo: row.motivo || null,
-    convocatoria: row.convocatoria || null,
-    ...extra,
-  });
-
-  const convenioBySolicitud = new Map(
-    solicitudes.map((row) => [row.id_solicitud_empresa, row]),
-  );
-
-  return res.json({
-    solicitudes: todasSolicitudes.map((se) => {
-      const row = convenioBySolicitud.get(se.id_solicitud_empresa);
-      if (row) {
-        return present(row, {
-          ambito: "solicitud",
-          id_solicitud_empresa: se.id_solicitud_empresa,
-          convocatoria_activa: Number(se.convocatoria_activa) === 1,
-          puede_reemplazar: row.estado_validacion !== "VALIDADO",
-        });
-      }
-      return {
-        id_documento: null,
-        tipo: "CONVENIO",
-        tipo_mostrar: "Convenio",
-        estado_validacion: null,
-        motivo: null,
-        convocatoria: se.convocatoria,
-        ambito: "solicitud",
-        id_solicitud_empresa: se.id_solicitud_empresa,
-        convocatoria_activa: Number(se.convocatoria_activa) === 1,
-        puede_reemplazar: true,
-      };
-    }),
-    reservas: reservas.map((row) =>
-      present(row, {
-        ambito: "reserva",
-        id_reserva: row.id_reserva,
-        alumno: row.alumno,
-        dni_alumno: row.dni_alumno,
-        especialidad: row.especialidad,
-        estado_reserva: row.estado_reserva,
-        puede_reemplazar:
-          row.estado_validacion !== "VALIDADO" &&
-          row.estado_reserva !== "CANCELADA",
-      }),
-    ),
-  });
+    return res.status(404).json({ error: "No se encontró empresa vinculada a este usuario." });
+  const items = await workflow.buildEmpresaList(idEmpresa);
+  return res.json({ items });
 };
 
 // POST /documentos/:id/validar
@@ -457,4 +455,197 @@ exports.rechazar = async function (req, res) {
   } catch (err) {
     return sendSqlError(res, err);
   }
+};
+
+exports.uploadContexto = async function (req, res) {
+  const clave = String(req.body?.clave || "").toUpperCase();
+  const def = defByClave(clave);
+  const file = req.file;
+  if (!def || def.legacy || def.kind === "event") {
+    return res.status(400).json({ error: "Tipo de documento no válido." });
+  }
+  if (!file) return res.status(400).json({ error: "No se ha subido ningún archivo." });
+  if (!workflow.canUpload(def, req.user.rol)) {
+    return res.status(403).json({ error: "No puedes subir este documento." });
+  }
+
+  const idSolicitudAlumno = parseInt(req.body.id_solicitud_alumno, 10) || null;
+  const idSolicitudEmpresa = parseInt(req.body.id_solicitud_empresa, 10) || null;
+  const idReserva = parseInt(req.body.id_reserva, 10) || null;
+
+  if (def.ambito === "solicitud_alumno") {
+    if (!idSolicitudAlumno) return res.status(400).json({ error: "Falta la solicitud del alumno." });
+    const denied = await assertAlumnoOwnsSolicitud(req, idSolicitudAlumno);
+    if (denied) return res.status(denied.status).json({ error: denied.error });
+  }
+  if (def.ambito === "solicitud_empresa") {
+    if (!idSolicitudEmpresa) return res.status(400).json({ error: "Falta la solicitud de empresa." });
+    if (req.user.rol === "EMPRESA") {
+      const idEmpresa = await getCompanyIdFromUser(req.user.id);
+      const [rows] = await pool.query(
+        "SELECT id_empresa FROM dual_solicitudes_empresa WHERE id_solicitud_empresa = ?",
+        [idSolicitudEmpresa],
+      );
+      if (!rows[0] || rows[0].id_empresa !== idEmpresa) {
+        return res.status(403).json({ error: "No puedes subir documentos de otra empresa." });
+      }
+    }
+  }
+  if (def.ambito === "reserva") {
+    if (!idReserva) return res.status(400).json({ error: "Falta la reserva." });
+    if (req.user.rol === "EMPRESA") {
+      const idEmpresa = await getCompanyIdFromUser(req.user.id);
+      const [rows] = await pool.query(
+        `SELECT se.id_empresa
+           FROM dual_reservas r
+           JOIN dual_solicitud_empresa_especialidades ee
+             ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+           JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+          WHERE r.id_reserva = ?`,
+        [idReserva],
+      );
+      if (!rows[0] || rows[0].id_empresa !== idEmpresa) {
+        return res.status(403).json({ error: "No puedes subir documentos de otra empresa." });
+      }
+    }
+  }
+
+  const parentSql =
+    def.ambito === "solicitud_alumno"
+      ? "d.id_solicitud_alumno = ?"
+      : def.ambito === "solicitud_empresa"
+        ? "d.id_solicitud_empresa = ?"
+        : "d.id_reserva = ?";
+  const parentId =
+    def.ambito === "solicitud_alumno"
+      ? idSolicitudAlumno
+      : def.ambito === "solicitud_empresa"
+        ? idSolicitudEmpresa
+        : idReserva;
+  const [current] = await pool.query(
+    `SELECT ev.nombre AS estado
+       FROM dual_documentos d
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+      WHERE ${parentSql} AND td.nombre = ? AND d.es_actual = 1
+      ORDER BY d.id_documento DESC LIMIT 1`,
+    [parentId, clave],
+  );
+  if (current[0]?.estado === "VALIDADO" && !def.replaceIfValidated && req.user.rol !== "ADMINISTRADOR" && req.user.rol !== "COORDINADOR") {
+    return res.status(400).json({ error: "Un documento validado no se puede reemplazar." });
+  }
+
+  try {
+    const idDocumento = await saveByClave(
+      clave,
+      {
+        id_solicitud_alumno: def.ambito === "solicitud_alumno" ? idSolicitudAlumno : null,
+        id_solicitud_empresa: def.ambito === "solicitud_empresa" ? idSolicitudEmpresa : null,
+        id_reserva: def.ambito === "reserva" ? idReserva : null,
+      },
+      file.buffer,
+    );
+    return res.json({ message: "Documento subido correctamente.", id_documento: idDocumento, clave });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    return sendSqlError(res, err);
+  }
+};
+
+exports.firmar = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const doc = await loadDocumentoMeta(id);
+  if (!doc) return res.status(404).json({ error: "Documento no encontrado." });
+  const def = defByClave(doc.tipo);
+  if (!def?.signers?.length) {
+    return res.status(400).json({ error: "Este documento no requiere firma." });
+  }
+  const rolFirma = workflow.actorOf(req.user.rol);
+  if (!def.signers.includes(rolFirma)) {
+    return res.status(403).json({ error: "Tu rol no firma este documento." });
+  }
+  if (!(await canDownloadDocumento(req.user, doc))) {
+    return res.status(403).json({ error: "No puedes firmar este documento." });
+  }
+  await pool.query(
+    `INSERT INTO dual_documento_firmas (id_documento, rol, estado, firmado_en)
+     VALUES (?, ?, 'FIRMADO', NOW())
+     ON DUPLICATE KEY UPDATE estado = 'FIRMADO', firmado_en = NOW()`,
+    [id, rolFirma],
+  );
+  return res.json({ message: "Firma registrada.", rol: rolFirma, estado: "FIRMADO" });
+};
+
+exports.firmarContexto = async function (req, res) {
+  const clave = String(req.body?.clave || "").toUpperCase();
+  const idReserva = parseInt(req.body?.id_reserva, 10);
+  const def = defByClave(clave);
+  if (!def?.signers?.length || !idReserva) {
+    return res.status(400).json({ error: "No se puede registrar la firma." });
+  }
+  const rolFirma = workflow.actorOf(req.user.rol);
+  if (!def.signers.includes(rolFirma)) {
+    return res.status(403).json({ error: "Tu rol no firma este documento." });
+  }
+  const idTipo = await workflow.tipoIdByNombre(clave);
+  if (!idTipo) return res.status(400).json({ error: "Tipo de documento no configurado." });
+
+  if (req.user.rol === "EMPRESA") {
+    const idEmpresa = await getCompanyIdFromUser(req.user.id);
+    const [own] = await pool.query(
+      `SELECT se.id_empresa
+         FROM dual_reservas r
+         JOIN dual_solicitud_empresa_especialidades ee
+           ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+         JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+        WHERE r.id_reserva = ?`,
+      [idReserva],
+    );
+    if (!own[0] || own[0].id_empresa !== idEmpresa) {
+      return res.status(403).json({ error: "No puedes firmar documentos de otra empresa." });
+    }
+  }
+  if (req.user.rol === "ALUMNO") {
+    const idAlumno = await getStudentIdFromUser(req.user.id);
+    const [own] = await pool.query(
+      `SELECT sa.id_alumno
+         FROM dual_reservas r
+         JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+        WHERE r.id_reserva = ?`,
+      [idReserva],
+    );
+    if (!own[0] || own[0].id_alumno !== idAlumno) {
+      return res.status(403).json({ error: "No puedes firmar documentos de otra reserva." });
+    }
+  }
+
+  const [existing] = await pool.query(
+    `SELECT id_documento FROM dual_documentos
+      WHERE id_reserva = ? AND id_tipo_documento = ? AND es_actual = 1
+      ORDER BY id_documento DESC LIMIT 1`,
+    [idReserva, idTipo],
+  );
+  let idDocumento = existing[0]?.id_documento;
+  if (!idDocumento) {
+    const [ins] = await pool.query(
+      `INSERT INTO dual_documentos
+         (id_solicitud_alumno, id_solicitud_empresa, id_reserva, id_tipo_documento, archivo, id_estado_validacion, estado_workflow, es_actual)
+       VALUES (NULL, NULL, ?, ?, NULL,
+         (SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'PENDIENTE' LIMIT 1),
+         'SUBIDO', 1)`,
+      [idReserva, idTipo],
+    );
+    idDocumento = ins.insertId;
+  }
+  const doc = await loadDocumentoMeta(idDocumento);
+  if (!(await canDownloadDocumento(req.user, doc))) {
+    return res.status(403).json({ error: "No puedes firmar este documento." });
+  }
+  await pool.query(
+    `INSERT INTO dual_documento_firmas (id_documento, rol, estado, firmado_en)
+     VALUES (?, ?, 'FIRMADO', NOW())
+     ON DUPLICATE KEY UPDATE estado = 'FIRMADO', firmado_en = NOW()`,
+    [idDocumento, rolFirma],
+  );
+  return res.json({ message: "Firma registrada.", id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO" });
 };

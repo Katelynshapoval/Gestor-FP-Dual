@@ -149,7 +149,7 @@ function AddDualStudent() {
       if (preference3) data.append("idPreferencia3", preference3);
       data.append("tutorLegal", legalGuardianName);
       data.append("dniTutorLegal", legalGuardianDni);
-      if (file) data.append("anexo2", file);
+      if (file) data.append("anexoDga", file);
       if (cv) data.append("cv", cv);
       data.append("password", password);
       await postForm("/solicitudes/alumno", data);
@@ -463,22 +463,7 @@ function AddDualStudent() {
               />
             </label>
           </Field>
-          <Field
-            label={
-              <>
-                Anexo 2 firmado (
-                <a
-                  href="https://docs.google.com/forms/d/e/1FAIpQLSfnDOKn6jRMtjhdqJTh2FnHTu_sa-ZiuodFvTRvbT-gm082ow/viewform"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-brand"
-                >
-                  descargar aquí
-                </a>
-                )
-              </>
-            }
-          >
+          <Field label="Anexo DGA (PDF)">
             <label className="file-upload">
               <MdOutlineFileUpload className="file-upload-icon" />
               <span className="file-upload-text">

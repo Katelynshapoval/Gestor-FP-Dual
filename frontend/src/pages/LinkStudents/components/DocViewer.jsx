@@ -7,7 +7,7 @@ const DOC_BADGE = {
   RECHAZADO: { label: "Rechazado", variant: "danger" },
 };
 
-const isStudentDoc = (tipo) => tipo === "cv" || tipo === "anexo2";
+const isReviewable = (doc) => Boolean(doc?.canReview);
 
 const DocViewer = ({ showDoc, onClose, onValidate, onReject }) => {
   const [showReject, setShowReject] = useState(false);
@@ -18,7 +18,7 @@ const DocViewer = ({ showDoc, onClose, onValidate, onReject }) => {
   if (!showDoc) return null;
 
   const estado = showDoc.estado || null;
-  const canReview = Boolean(showDoc.canReview) && isStudentDoc(showDoc.tipo);
+  const canReview = isReviewable(showDoc);
   const canValidate = canReview && estado !== "VALIDADO" && estado !== "RECHAZADO";
   const canReject = canReview && estado !== "VALIDADO" && estado !== "RECHAZADO";
   const badge = DOC_BADGE[estado];

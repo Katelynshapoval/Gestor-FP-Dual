@@ -71,6 +71,23 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
     if (onReservationUpdate) await onReservationUpdate();
   };
 
+  const saveTipo = async () => {
+    if (!idTipoContrato) return;
+    setSubmitting(true);
+    setActionMsg(null);
+    try {
+      await postJSON(`/reservas/${reserva.id_reserva}/tipo-contrato`, {
+        id_tipo_contrato: Number(idTipoContrato),
+      });
+      setActionMsg({ ok: true, text: "Tipo de contrato guardado. Ya puede subirse el Anexo II o III correspondiente." });
+      await refresh();
+    } catch (err) {
+      setActionMsg({ ok: false, text: err.message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleValidarDocumento = async () => {
     setSubmitting(true);
     setActionMsg(null);
@@ -167,6 +184,36 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
             </button>
           </div>
         </div>
+
+        {isPendingReserva(reserva.estado_reserva) && !cancelled && (
+          <div className="border-b border-gray-200 bg-white px-4 py-3">
+            <p className="mb-2 text-sm text-gray-700">
+              Tipo de contrato. Beca activa el Anexo III; el resto activa el Anexo II.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select
+                className="input flex-1 text-sm"
+                value={idTipoContrato}
+                onChange={(e) => setIdTipoContrato(e.target.value)}
+              >
+                <option value="">Tipo de contrato…</option>
+                {tiposContrato.map((t) => (
+                  <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>
+                    {t.nombre_mostrar || t.nombre}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={saveTipo}
+                disabled={submitting || !idTipoContrato}
+                className={`btn btn-secondary btn-sm ${submitting || !idTipoContrato ? "btn-disabled" : ""}`}
+              >
+                Guardar tipo
+              </button>
+            </div>
+          </div>
+        )}
 
         {puedeConfirmar && !showReject && (
           <div className="border-b border-gray-200 bg-green-50 px-4 py-3">

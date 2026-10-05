@@ -110,13 +110,9 @@ const TutoresEmpresa = () => {
     <div className="space-y-4">
       <div className="form-card flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="form-section-title mb-1">Tutores de empresa</p>
-          <p className="text-sm leading-6 text-gray-500">
-            Una empresa puede tener varios tutores. Cada alumno reservado se asigna a uno
-            de ellos. El coordinador principal del acceso con CIF se gestiona en «Mis datos».
-          </p>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-widest text-muted">
-            {activos} activo{activos === 1 ? "" : "s"} · {tutores.length} en total
+          <p className="form-section-title mb-1">Tutores</p>
+          <p className="text-sm text-gray-500">
+            {activos} en activo, {tutores.length} en total. El acceso al portal sigue siendo el CIF, en Mis datos.
           </p>
         </div>
         {!adding && (
@@ -211,7 +207,7 @@ const TutoresEmpresa = () => {
                       {t.nombre}
                     </p>
                     <span
-                      className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${
+                      className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs ${
                         activo
                           ? "border-green-200 bg-green-50 text-green-800"
                           : "border-gray-200 bg-white text-gray-500"
@@ -240,24 +236,12 @@ const TutoresEmpresa = () => {
                 </div>
 
                 {!isEditing && (
-                  <dl className="mt-4 grid grid-cols-1 gap-3 border-t border-surface-200 pt-4 text-sm sm:grid-cols-2">
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-widest text-muted">Email</dt>
-                      <dd className="mt-1 break-all text-charcoal-800">{t.email || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-widest text-muted">Teléfono</dt>
-                      <dd className="mt-1 text-charcoal-800">{t.telefono || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-widest text-muted">DNI / NIE</dt>
-                      <dd className="mt-1 text-charcoal-800">{t.dni || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-widest text-muted">Cargo</dt>
-                      <dd className="mt-1 text-charcoal-800">{t.cargo || "—"}</dd>
-                    </div>
-                  </dl>
+                  <div className="mt-3 grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
+                    <p>{t.email || "Sin email"}</p>
+                    <p>{t.telefono || "Sin teléfono"}</p>
+                    <p>{t.dni || "Sin DNI"}</p>
+                    <p>{t.cargo || "Sin cargo"}</p>
+                  </div>
                 )}
 
                 {isEditing && (

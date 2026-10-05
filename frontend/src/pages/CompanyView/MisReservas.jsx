@@ -34,7 +34,7 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
     try {
       const fd = new FormData();
       fd.append("archivo", file);
-      await postForm(`/documentos/reserva/${idReserva}/anexoh`, fd);
+      await postForm(`/documentos/reserva/${idReserva}/anexo`, fd);
       setMsg({ ok: true, text: "Documento subido. Pendiente de revisión por el centro." });
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
@@ -49,7 +49,7 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
   return (
     <div className="border-t border-surface-200 pt-3">
       <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">
-        Anexo H firmado (PDF)
+        Anexo II o III (PDF)
       </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label className="file-upload min-h-10 flex-1 px-3 py-2">
@@ -229,8 +229,13 @@ const MisReservas = ({ reservations, onUpload, onCancel, onTutorChange }) => {
                 </p>
               )}
 
-              {needsUpload && (
+              {needsUpload && reserva.tipo_contrato && (
                 <SubirDocReserva idReserva={reserva.id_reserva} onUploaded={onUpload} />
+              )}
+              {needsUpload && !reserva.tipo_contrato && (
+                <p className="mt-3 text-xs text-muted">
+                  El Anexo II o III se podrá subir cuando el centro indique el tipo de contrato.
+                </p>
               )}
 
               {isPendingReserva(reserva.estado_reserva) && (

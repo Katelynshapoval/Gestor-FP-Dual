@@ -3,16 +3,16 @@ import { sectionLabelClass } from "../../../../components/ui/cardStyles";
 import StatusBadge from "../../../../components/ui/StatusBadge";
 
 function validateHint(r) {
-  const cvOk = r.cv_estado === "VALIDADO";
-  const anexoOk = r.anexo2_estado === "VALIDADO";
-  if (r.cv_estado === "RECHAZADO" || r.anexo2_estado === "RECHAZADO") {
-    return "Hay documentación rechazada pendiente de corrección.";
+  const required = (r.documentos || []).filter((d) => d.requerido_para_validar);
+  if (!required.length) return "No hay documentos configurados para validar la solicitud.";
+  const rejected = required.filter((d) => d.estado_validacion === "RECHAZADO");
+  if (rejected.length) {
+    return `Hay documentación rechazada: ${rejected.map((d) => d.nombre).join(", ")}.`;
   }
-  if (!cvOk && !anexoOk) {
-    return "Para validar al alumno, primero debes validar el CV y el ANEXO 2.";
+  const pending = required.filter((d) => d.estado_validacion !== "VALIDADO");
+  if (pending.length) {
+    return `Para validar al alumno, primero valida: ${pending.map((d) => d.nombre).join(", ")}.`;
   }
-  if (!cvOk) return "Falta validar el CV.";
-  if (!anexoOk) return "Falta validar el ANEXO 2.";
   return null;
 }
 

@@ -572,11 +572,10 @@ const CompanyView = () => {
     try {
       const data = await getJSON("/documentos/empresa");
       setDocumentos({
-        solicitudes: Array.isArray(data?.solicitudes) ? data.solicitudes : [],
-        reservas: Array.isArray(data?.reservas) ? data.reservas : [],
+        items: Array.isArray(data?.items) ? data.items : [],
       });
     } catch {
-      setDocumentos({ solicitudes: [], reservas: [] });
+      setDocumentos({ items: [] });
     }
   }, []);
 
@@ -653,12 +652,9 @@ const CompanyView = () => {
           onClick={() => setView("documentos")}
         >
           Mis documentos
-          {documentos.solicitudes.filter((d) => d.id_documento).length +
-            documentos.reservas.length >
-            0 && (
+          {(documentos.items || []).filter((d) => d.id_documento).length > 0 && (
             <span className="ml-1.5 inline-block text-[0.7rem] bg-brand-500 text-white rounded-full px-1.5 py-0.5 leading-none">
-              {documentos.solicitudes.filter((d) => d.id_documento).length +
-                documentos.reservas.length}
+              {(documentos.items || []).filter((d) => d.id_documento).length}
             </span>
           )}
         </button>

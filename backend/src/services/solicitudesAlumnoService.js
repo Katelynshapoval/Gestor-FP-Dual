@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
 const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni } = require('../helpers/dbHelpers');
+const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation } = require('./documentosWorkflow');
 const MIN_PASSWORD_LENGTH = 8;
 
 let transporter = null;
@@ -42,10 +43,10 @@ exports.create = async function (req, res) {
   } = req.body;
 
   const cvFile = req.files?.cv?.[0];
-  const anexo2File = req.files?.anexo2?.[0];
+  const anexoDgaFile = req.files?.anexoDga?.[0];
 
-  if (!cvFile || !anexo2File) {
-    return res.status(400).json({ error: 'Se requiere el CV y el ANEXO_2 en formato PDF.' });
+  if (!cvFile || !anexoDgaFile) {
+    return res.status(400).json({ error: 'Se requiere el CV y el Anexo DGA en formato PDF.' });
   }
   if (!nombre || !dni || !domicilio || !cp || !localidad || !telalumno || !email || !id_especialidad_dual) {
     return res.status(400).json({ error: 'Faltan campos obligatorios del formulario.' });
@@ -138,9 +139,20 @@ exports.create = async function (req, res) {
     );
     const idSolicitudAlumno = solResult.insertId;
 
-    // tipo 1 = CV, tipo 2 = ANEXO_2
-    await conn.query('CALL sp_guardar_documento(?, NULL, NULL, 1, ?)', [idSolicitudAlumno, cvFile.buffer]);
-    await conn.query('CALL sp_guardar_documento(?, NULL, NULL, 2, ?)', [idSolicitudAlumno, anexo2File.buffer]);
+    const idCv = await tipoIdByNombre('CV', conn);
+    const idDga = await tipoIdByNombre('ANEXO_DGA', conn);
+    if (!idCv || !idDga) {
+      throw new Error('El catálogo de documentos no está actualizado. Ejecuta la migración 008.');
+    }
+    await conn.query('CALL sp_guardar_documento(?, NULL, NULL, ?, ?)', [idSolicitudAlumno, idCv, cvFile.buffer]);
+    await conn.query('CALL sp_guardar_documento(?, NULL, NULL, ?, ?)', [idSolicitudAlumno, idDga, anexoDgaFile.buffer]);
+    await conn.query(
+      `UPDATE dual_documentos d
+         JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+          SET d.estado_workflow = 'SUBIDO_FIRMADO'
+        WHERE d.id_solicitud_alumno = ? AND td.nombre = 'ANEXO_DGA'`,
+      [idSolicitudAlumno],
+    );
 
     // Save student preferences if provided (up to 3, ordered)
     const prefs = [idPreferencia1, idPreferencia2, idPreferencia3];
@@ -218,32 +230,6 @@ exports.getAll = async function (req, res) {
                GREATEST(0, -0.1 * ((de.faltas / 1050.0) * 100) + 1.5)
              )), 2)
            ELSE NULL END AS nota_total,
-           (SELECT id_documento FROM dual_documentos d
-             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'CV'
-            ORDER BY d.id_documento DESC LIMIT 1) AS cv_id,
-           (SELECT ev.nombre FROM dual_documentos d
-             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-             JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'CV'
-            ORDER BY d.id_documento DESC LIMIT 1) AS cv_estado,
-           (SELECT d.motivo FROM dual_documentos d
-             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'CV'
-            ORDER BY d.id_documento DESC LIMIT 1) AS cv_motivo,
-           (SELECT id_documento FROM dual_documentos d
-             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'ANEXO_2'
-            ORDER BY d.id_documento DESC LIMIT 1) AS anexo2_id,
-           (SELECT ev.nombre FROM dual_documentos d
-             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-             JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'ANEXO_2'
-            ORDER BY d.id_documento DESC LIMIT 1) AS anexo2_estado,
-           (SELECT d.motivo FROM dual_documentos d
-             JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-            WHERE d.id_solicitud_alumno = sa.id_solicitud_alumno AND td.nombre = 'ANEXO_2'
-            ORDER BY d.id_documento DESC LIMIT 1) AS anexo2_motivo,
            CASE WHEN u.id_usuario IS NOT NULL THEN 1 ELSE 0 END AS tiene_cuenta
       FROM dual_solicitudes_alumno sa
       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
@@ -267,13 +253,14 @@ exports.getAll = async function (req, res) {
   query += ' ORDER BY a.nombre ASC';
 
   const [rows] = await pool.query(query, params);
+  const withDocs = rows.length ? await attachSolicitudDocumentos(rows, 'GESTOR') : [];
 
-  if (!includeExtra || rows.length === 0) {
-    return res.json(rows);
+  if (!includeExtra || withDocs.length === 0) {
+    return res.json(withDocs);
   }
 
   // With include=full: fetch all reservations and attach them to each solicitud
-  const ids = rows.map(r => r.id_solicitud_alumno);
+  const ids = withDocs.map(r => r.id_solicitud_alumno);
   const [reservas] = await pool.query(
     `SELECT r.id_reserva, r.id_solicitud_alumno, r.motivo,
             er.nombre AS estado_reserva,
@@ -308,7 +295,7 @@ exports.getAll = async function (req, res) {
     reservaMap[r.id_solicitud_alumno].push(r);
   });
 
-  const result = rows.map(r => ({
+  const result = withDocs.map(r => ({
     ...r,
     reservas: reservaMap[r.id_solicitud_alumno] || [],
   }));
@@ -372,6 +359,12 @@ exports.getById = async function (req, res) {
 // POST /solicitudes/alumno/:id/validar
 exports.validar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+  const pending = await missingStudentValidation(id);
+  if (pending.length) {
+    return res.status(400).json({
+      error: `Para validar al alumno primero hay que validar: ${pending.join(', ')}.`,
+    });
+  }
   try {
     await pool.query('CALL sp_validar_solicitud_alumno(?)', [id]);
     return res.json({ message: 'Solicitud de alumno validada correctamente.' });

@@ -15,10 +15,10 @@ const pdfUpload = multer({
   },
 });
 
-// Public: submit student application with CV + ANEXO_2
+// Public: submit student application with CV + Anexo DGA
 router.post(
   '/solicitudes/alumno',
-  pdfUpload.fields([{ name: 'cv', maxCount: 1 }, { name: 'anexo2', maxCount: 1 }]),
+  pdfUpload.fields([{ name: 'cv', maxCount: 1 }, { name: 'anexoDga', maxCount: 1 }]),
   asyncHandler(svc.create)
 );
 

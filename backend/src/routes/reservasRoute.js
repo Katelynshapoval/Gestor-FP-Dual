@@ -38,6 +38,8 @@ router.post('/reservas/:id/cancelar-admin', requireAuth, requireRole('ADMINISTRA
 // Admin / Coordinador: atomic reassignment to another eligible offer
 router.post('/reservas/:id/reasignar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.reasignar));
 
+router.post('/reservas/:id/tipo-contrato', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.setTipoContrato));
+
 // Admin / Coordinador: confirm reservation
 router.post('/reservas/:id/confirmar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.confirmar));
 
