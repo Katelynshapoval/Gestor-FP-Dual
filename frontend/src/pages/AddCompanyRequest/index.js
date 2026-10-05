@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import * as FormatValidation from "../../utils/formatValidation.js";
-import { useFormMessage } from "../../hooks/useFormMessage.js";
 import { postJSON } from "../../utils/api.js";
 import SpecialitySelector from "./SpecialitySelector.jsx";
 import TransportSelector from "./TransportSelector.jsx";
 import FormMessage from "../../components/ui/FormMessage.jsx";
 import PageHeader from "../../components/ui/PageHeader.jsx";
+import { useToast } from "../../components/feedback/ToastProvider.jsx";
 import "../../styles/forms.css";
 
 const Field = ({ id, label, hint, children }) => (
@@ -22,7 +22,8 @@ const Field = ({ id, label, hint, children }) => (
 // Company application page for joining the Dual programme
 const AddCompanyRequest = () => {
   const navigate = useNavigate();
-  const { message, showMessage } = useFormMessage();
+  const toast = useToast();
+  const [validation, setValidation] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formRef = useRef(null);
 
@@ -103,30 +104,31 @@ const AddCompanyRequest = () => {
     }
 
     if (!FormatValidation.dniNieValido(dniRl)) {
-      await showMessage("DNI/NIE del responsable legal no válido.");
+      setValidation("DNI/NIE del responsable legal no válido.");
       setIsSubmitting(false);
       return;
     }
     if (!FormatValidation.cifValido(cif)) {
-      await showMessage("CIF de la empresa no válido.");
+      setValidation("CIF de la empresa no válido.");
       setIsSubmitting(false);
       return;
     }
     if (specialities[0].length === 0) {
-      await showMessage("Selecciona al menos un ciclo de grado.");
+      setValidation("Selecciona al menos un ciclo de grado.");
       setIsSubmitting(false);
       return;
     }
     if (specialities[1].some((c) => c <= 0)) {
-      await showMessage("Indica al menos un alumno por grado.");
+      setValidation("Indica al menos un alumno por grado.");
       setIsSubmitting(false);
       return;
     }
     if (!passwordCoordinador || passwordCoordinador.length < 8) {
-      await showMessage("La contraseña del coordinador debe tener al menos 8 caracteres.");
+      setValidation("La contraseña del coordinador debe tener al menos 8 caracteres.");
       setIsSubmitting(false);
       return;
     }
+    setValidation("");
 
     try {
       const especialidades = specialities[0].map((id, i) => ({
@@ -165,10 +167,10 @@ const AddCompanyRequest = () => {
         passwordCoordinador,
       });
 
-      await showMessage("La solicitud se ha enviado correctamente.");
-      setTimeout(() => navigate("/"), 1200);
+      toast.success("La solicitud se ha enviado correctamente.");
+      navigate("/");
     } catch (err) {
-      await showMessage(err.message || "Error al procesar la solicitud. Inténtalo de nuevo.");
+      toast.error(err.message || "Error al procesar la solicitud. Inténtalo de nuevo.");
     } finally {
       setIsSubmitting(false);
     }
@@ -414,7 +416,7 @@ const AddCompanyRequest = () => {
           {isSubmitting ? "Enviando..." : "Enviar solicitud"}
         </button>
 
-        <FormMessage message={message} />
+        <FormMessage message={validation} tone="error" />
       </form>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { sectionLabelClass } from "../../../../components/ui/cardStyles";
 import StatusBadge from "../../../../components/ui/StatusBadge";
+import { useToast } from "../../../../components/feedback/ToastProvider.jsx";
 
 function validateHint(r) {
   const required = (r.documentos || []).filter((d) => d.requerido_para_validar);
@@ -23,10 +24,10 @@ const APP_BADGE = {
 };
 
 const EstadoSolicitud = ({ r, onValidar, onRechazar }) => {
+  const toast = useToast();
   const [showReject, setShowReject] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [msg, setMsg] = useState(null);
 
   const pending = r.estado_validacion === "PENDIENTE";
   const hint = pending ? validateHint(r) : null;
@@ -38,11 +39,11 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar }) => {
   const handleValidar = async () => {
     if (!canValidar || submitting) return;
     setSubmitting(true);
-    setMsg(null);
     try {
       await onValidar(r.id_solicitud_alumno);
+      toast.success("Solicitud validada.");
     } catch (err) {
-      setMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo validar la solicitud.");
     } finally {
       setSubmitting(false);
     }
@@ -51,13 +52,13 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar }) => {
   const handleRechazar = async () => {
     if (!motivo.trim() || submitting) return;
     setSubmitting(true);
-    setMsg(null);
     try {
       await onRechazar(r.id_solicitud_alumno, motivo.trim());
       setShowReject(false);
       setMotivo("");
+      toast.success("Solicitud rechazada.");
     } catch (err) {
-      setMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo rechazar la solicitud.");
     } finally {
       setSubmitting(false);
     }
@@ -78,12 +79,6 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar }) => {
 
       {pending && hint && (
         <p className="mb-3 text-xs leading-5 text-muted">{hint}</p>
-      )}
-
-      {msg && (
-        <p className={`mb-3 rounded-md border px-3 py-2 text-xs ${msg.ok ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-700"}`}>
-          {msg.text}
-        </p>
       )}
 
       {pending && !showReject && (

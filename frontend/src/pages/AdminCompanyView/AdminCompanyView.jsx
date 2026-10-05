@@ -7,6 +7,7 @@ import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 import "../../styles/forms.css";
 import { signedBadgeClass } from "../../components/ui/cardStyles";
 import { getJSON, postJSON } from "../../utils/api.js";
+import { useToast } from "../../components/feedback/ToastProvider.jsx";
 
 import ConvenioViewer from "./components/ConvenioViewer";
 import CompanyCard from "./components/CompanyCard";
@@ -26,6 +27,7 @@ function getCourseLabel(dateStr) {
 const AdminCompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [mainView, setMainView] = useState("empresas");
 
@@ -84,10 +86,11 @@ const AdminCompanyView = () => {
   const handleValidateConvenio = async (idDocumento) => {
     try {
       await postJSON(`/documentos/${idDocumento}/validar`, {});
+      toast.success("Convenio validado.");
       setViewingConvenio(null);
       fetchCompanies();
     } catch (err) {
-      console.error(err);
+      toast.error(err.message || "No se pudo validar el convenio.");
     }
   };
 
@@ -97,7 +100,7 @@ const AdminCompanyView = () => {
     );
     const idUsuario = empresa?.id_usuario;
     if (!idUsuario) {
-      alert("No se encontró usuario para esta empresa");
+      toast.error("No se encontró usuario para esta empresa");
       return;
     }
     try {
@@ -109,8 +112,9 @@ const AdminCompanyView = () => {
         ...prev,
         [idSolicitudEmpresa]: newPassword,
       }));
+      toast.success("Contraseña restablecida.");
     } catch (err) {
-      alert("Error al resetear la contraseña");
+      toast.error(err.message || "Error al resetear la contraseña");
     }
   };
 
@@ -271,8 +275,9 @@ const AdminCompanyView = () => {
               });
               const data = await getJSON("/reservas");
               setAllReservations(Array.isArray(data) ? data : []);
+              toast.success("Reserva cancelada correctamente.");
             } catch (err) {
-              alert(err.message || "Error al cancelar la reserva.");
+              toast.error(err.message || "Error al cancelar la reserva.");
               throw err;
             }
           }}

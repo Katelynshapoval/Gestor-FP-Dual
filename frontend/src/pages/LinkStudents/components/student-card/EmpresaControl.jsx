@@ -2,18 +2,13 @@ import { useEffect, useState } from "react";
 import { getJSON } from "../../../../utils/api.js";
 import { empresaSlotClass } from "../../../../components/ui/cardStyles";
 import {
-  ESTADOS_RESERVA,
   isCancelledReserva,
   isConfirmedReserva,
   isPendingReserva,
+  reservaEstadoClass,
 } from "../../../../utils/reservaEstados.js";
 import TutorAssignSelect from "../../../../components/TutorAssignSelect.jsx";
-
-const ESTADO_CLS = {
-  [ESTADOS_RESERVA.PENDIENTE]: "bg-yellow-50 text-yellow-800 border-yellow-200",
-  [ESTADOS_RESERVA.CONFIRMADA]: "bg-green-50 text-green-800 border-green-200",
-  [ESTADOS_RESERVA.CANCELADA]: "bg-red-50 text-red-700 border-red-200",
-};
+import { useConfirm } from "../../../../components/feedback/ToastProvider.jsx";
 
 const MotivoModal = ({ title, description, confirmLabel, onConfirm, onClose }) => {
   const [motivo, setMotivo] = useState("");
@@ -150,6 +145,7 @@ const ReassignModal = ({ ofertas, onConfirm, onClose }) => {
 };
 
 const EmpresaControl = ({ r, onAdminReserve, onAdminCancel, onAdminReassign, onTutorChange }) => {
+  const confirm = useConfirm();
   const reservas = r.reservas || [];
   const [ofertas, setOfertas] = useState([]);
   const [idOfertaNueva, setIdOfertaNueva] = useState("");
@@ -176,9 +172,12 @@ const EmpresaControl = ({ r, onAdminReserve, onAdminCancel, onAdminReassign, onT
     const oferta = ofertas.find(
       (o) => String(o.id_solicitud_empresa_especialidad) === String(idOfertaNueva),
     );
-    if (!window.confirm(`¿Crear una reserva pendiente con ${oferta?.empresa || "esta empresa"}?`)) {
-      return;
-    }
+    const accepted = await confirm({
+      title: "Crear reserva",
+      message: `¿Crear una reserva pendiente con ${oferta?.empresa || "esta empresa"}?`,
+      confirmLabel: "Crear reserva",
+    });
+    if (!accepted) return;
     setBusy(true);
     try {
       await onAdminReserve(r.id_solicitud_alumno, Number(idOfertaNueva));
@@ -220,7 +219,7 @@ const EmpresaControl = ({ r, onAdminReserve, onAdminCancel, onAdminReassign, onT
       )}
 
       {reservas.map((rv) => {
-        const statusCls = ESTADO_CLS[rv.estado_reserva] || "bg-gray-50 text-gray-600 border-gray-200";
+        const statusCls = reservaEstadoClass(rv.estado_reserva);
         const canMutate = isPendingReserva(rv.estado_reserva) || isConfirmedReserva(rv.estado_reserva);
 
         return (

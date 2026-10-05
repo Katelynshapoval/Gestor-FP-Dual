@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
+import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 import { getBlob, getJSON, postJSON } from "../../../utils/api.js";
 
 // Data, filters and actions for the student-linking module.
@@ -8,6 +9,7 @@ import { getBlob, getJSON, postJSON } from "../../../utils/api.js";
 export const useLinkStudents = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const toast = useToast();
 
   // Staff sees all student applications; empresa sees available students for its specialities
   const [linkRequests, setLinkRequests] = useState([]);
@@ -66,7 +68,7 @@ export const useLinkStudents = () => {
   const getDoc = useCallback(
     (idDocumento, tipo, nombreAlumno, meta = {}) => {
       if (!idDocumento) {
-        alert("No hay documento disponible.");
+        toast.warning("No hay documento disponible.");
         return;
       }
       const extra =
@@ -89,9 +91,9 @@ export const useLinkStudents = () => {
             canReview: extra.canReview != null ? extra.canReview : !isEmpresa,
           });
         })
-        .catch((err) => alert(err.message));
+        .catch((err) => toast.error(err.message || "No se pudo abrir el documento."));
     },
-    [currentDocUrl, isEmpresa],
+    [currentDocUrl, isEmpresa, toast],
   );
 
   // Closes the document viewer and releases the object URL
@@ -155,18 +157,20 @@ export const useLinkStudents = () => {
         id_solicitud_alumno: idSolicitudAlumno,
         id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
       });
+      toast.success("Reserva creada.");
       fetchLinkRequests();
     } catch (err) {
-      alert(err.message || "Error al reservar el alumno.");
+      toast.error(err.message || "Error al reservar el alumno.");
     }
   };
 
   const cancelReservation = async (idReserva, motivo) => {
     try {
       await postJSON(`/reservas/${idReserva}/cancelar`, { motivo });
+      toast.success("Reserva cancelada correctamente.");
       fetchLinkRequests();
     } catch (err) {
-      alert(err.message || "Error al cancelar la reserva.");
+      toast.error(err.message || "Error al cancelar la reserva.");
     }
   };
 
@@ -179,18 +183,20 @@ export const useLinkStudents = () => {
         id_solicitud_alumno: idSolicitudAlumno,
         id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
       });
+      toast.success("Reserva creada.");
       fetchLinkRequests();
     } catch (err) {
-      alert(err.message || "Error al reservar el alumno.");
+      toast.error(err.message || "Error al reservar el alumno.");
     }
   };
 
   const adminCancel = async (idReserva, motivo) => {
     try {
       await postJSON(`/reservas/${idReserva}/cancelar-admin`, { motivo });
+      toast.success("Reserva cancelada correctamente.");
       fetchLinkRequests();
     } catch (err) {
-      alert(err.message || "Error al cancelar la reserva.");
+      toast.error(err.message || "Error al cancelar la reserva.");
     }
   };
 
@@ -204,9 +210,10 @@ export const useLinkStudents = () => {
         id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
         motivo,
       });
+      toast.success("Alumno reasignado.");
       fetchLinkRequests();
     } catch (err) {
-      alert(err.message || "Error al reasignar al alumno.");
+      toast.error(err.message || "Error al reasignar al alumno.");
     }
   };
 

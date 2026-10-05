@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import * as FormatValidation from "../../utils/formatValidation.js";
-import { useFormMessage } from "../../hooks/useFormMessage.js";
 import { postForm } from "../../utils/api.js";
 import LegalGuardianFields from "./LegalGuardianFields.jsx";
 import FormMessage from "../../components/ui/FormMessage.jsx";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import { MdOutlineFileUpload } from "react-icons/md";
+import { useToast } from "../../components/feedback/ToastProvider.jsx";
 
 import "../../styles/forms.css";
 
@@ -35,7 +35,8 @@ function PreferenciaSelect({ label, value, onChange, dataPreferences }) {
 
 // Student application page for the FP Dual programme
 function AddDualStudent() {
-  const { message, showMessage } = useFormMessage();
+  const toast = useToast();
+  const [validation, setValidation] = useState("");
   const formRef = useRef(null);
   const [dataSpecialities, setDataSpecialities] = useState([]);
   const [dataPreferences, setDataPreferences] = useState([]);
@@ -103,11 +104,11 @@ function AddDualStudent() {
       return;
     }
     if (!FormatValidation.dniNieValido(dniNie)) {
-      await showMessage("Formato de DNI/NIE del alumno no válido.");
+      setValidation("Formato de DNI/NIE del alumno no válido.");
       return;
     }
     if (SSnumber && !FormatValidation.nSSValido(SSnumber)) {
-      await showMessage("Formato del número de Seguridad Social no válido.");
+      setValidation("Formato del número de Seguridad Social no válido.");
       return;
     }
     if (
@@ -115,17 +116,18 @@ function AddDualStudent() {
       legalGuardianDni &&
       !FormatValidation.dniNieValido(legalGuardianDni)
     ) {
-      await showMessage("Formato de DNI/NIE del tutor legal no válido.");
+      setValidation("Formato de DNI/NIE del tutor legal no válido.");
       return;
     }
     if (!password || password.length < 8) {
-      await showMessage("La contraseña debe tener al menos 8 caracteres.");
+      setValidation("La contraseña debe tener al menos 8 caracteres.");
       return;
     }
     if (password !== confirmPassword) {
-      await showMessage("Las contraseñas no coinciden.");
+      setValidation("Las contraseñas no coinciden.");
       return;
     }
+    setValidation("");
     try {
       const data = new FormData();
       data.append("emailColegio", studiesEmail);
@@ -153,14 +155,12 @@ function AddDualStudent() {
       if (cv) data.append("cv", cv);
       data.append("password", password);
       await postForm("/solicitudes/alumno", data);
-      await showMessage("La candidatura se ha enviado correctamente. Ya puedes iniciar sesión con tu DNI/NIE.");
+      toast.success("La candidatura se ha enviado correctamente. Ya puedes iniciar sesión con tu DNI/NIE.");
       setPassword("");
       setConfirmPassword("");
       formRef.current.reset();
     } catch (err) {
-      await showMessage(
-        err.message || "Ha ocurrido un error. Inténtalo de nuevo.",
-      );
+      toast.error(err.message || "Ha ocurrido un error. Inténtalo de nuevo.");
     }
   };
 
@@ -521,7 +521,7 @@ function AddDualStudent() {
         >
           Presentar candidatura
         </button>
-        <FormMessage message={message} />
+        <FormMessage message={validation} tone="error" />
       </form>
     </div>
   );

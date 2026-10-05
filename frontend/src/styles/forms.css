@@ -147,6 +147,10 @@
   @apply mt-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-base text-green-800 animate-slide-in;
 }
 
+.form-message-error {
+  @apply border-red-200 bg-red-50 text-red-800;
+}
+
 .file-upload {
   @apply flex w-full cursor-pointer flex-row items-center gap-3 rounded-lg border border-dashed border-brand-200 bg-white px-4 py-4 text-gray-700 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-400 hover:bg-brand-50 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-500/20;
 }

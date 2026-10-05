@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { getBlob, postForm, postJSON } from "../utils/api.js";
 import { MdOutlineFileUpload } from "react-icons/md";
 import StatusBadge from "./ui/StatusBadge.jsx";
+import InlineNotice from "./ui/InlineNotice.jsx";
+import { useToast } from "./feedback/ToastProvider.jsx";
 
 const WORKFLOW_VARIANT = {
   NO_SUBIDO: "neutral",
@@ -26,9 +28,10 @@ const openDocumento = async (idDocumento) => {
 };
 
 const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
+  const toast = useToast();
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState(null);
+  const [fileError, setFileError] = useState("");
   const inputRef = useRef(null);
   const canUpload = doc.puede_subir || doc.puede_reemplazar;
 
@@ -46,7 +49,7 @@ const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
     try {
       await openDocumento(doc.id_documento);
     } catch (err) {
-      setMsg({ ok: false, text: err.message || "No se pudo abrir el documento." });
+      toast.error(err.message || "No se pudo abrir el documento.");
     } finally {
       setBusy(false);
     }
@@ -55,7 +58,7 @@ const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
   const handleUpload = async () => {
     if (!file) return;
     setBusy(true);
-    setMsg(null);
+    setFileError("");
     try {
       const fd = new FormData();
       fd.append("archivo", file);
@@ -70,10 +73,10 @@ const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
       await postForm(endpoint, fd);
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
-      setMsg({ ok: true, text: "Documento enviado." });
+      toast.success(doc.id_documento ? "Documento reemplazado." : "Documento enviado.");
       if (onRefresh) await onRefresh();
     } catch (err) {
-      setMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo enviar el documento.");
     } finally {
       setBusy(false);
     }
@@ -81,15 +84,15 @@ const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
 
   const handleFirmar = async () => {
     setBusy(true);
-    setMsg(null);
     try {
       await postJSON("/documentos/firmar", {
         clave: doc.clave,
         id_reserva: doc.id_reserva,
       });
+      toast.success("Documento marcado como firmado.");
       if (onRefresh) await onRefresh();
     } catch (err) {
-      setMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo firmar el documento.");
     } finally {
       setBusy(false);
     }
@@ -155,11 +158,11 @@ const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
                 onChange={(e) => {
                   const next = e.target.files[0];
                   if (next && next.type !== "application/pdf") {
-                    setMsg({ ok: false, text: "Solo se admiten PDFs." });
+                    setFileError("Solo se admiten PDFs.");
                     return;
                   }
                   setFile(next);
-                  setMsg(null);
+                  setFileError("");
                 }}
               />
             </label>
@@ -175,11 +178,7 @@ const DocumentoItem = ({ doc, onRefresh, onOpen }) => {
         </div>
       )}
 
-      {msg && (
-        <p className={`mt-2 rounded-md border px-3 py-2 text-xs ${msg.ok ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-700"}`}>
-          {msg.text}
-        </p>
-      )}
+      <InlineNotice tone="error" className="mt-2 px-3 py-2 text-xs">{fileError}</InlineNotice>
     </article>
   );
 };

@@ -4,6 +4,8 @@ import CompanyEditForm, {
   datosToForm,
 } from "../../CompanyView/CompanyEditForm.jsx";
 import CambioDiff from "../../CompanyView/CambioDiff.jsx";
+import { useToast } from "../../../components/feedback/ToastProvider.jsx";
+import InlineNotice from "../../../components/ui/InlineNotice.jsx";
 
 const EmpresaDatosActions = ({
   empresa,
@@ -13,6 +15,7 @@ const EmpresaDatosActions = ({
   onEditHandled,
   onEditingChange,
 }) => {
+  const toast = useToast();
   const id = empresa.id_solicitud_empresa;
   const [cambio, setCambio] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -20,7 +23,7 @@ const EmpresaDatosActions = ({
   const [submitting, setSubmitting] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [conflict, setConflict] = useState(null);
-  const [msg, setMsg] = useState(null);
+  const [motivoError, setMotivoError] = useState("");
 
   const loadCambio = async () => {
     try {
@@ -40,7 +43,7 @@ const EmpresaDatosActions = ({
   const pending = cambio?.pending;
 
   const startEdit = async () => {
-    setMsg(null);
+    setMotivoError("");
     setConflict(null);
 
     try {
@@ -52,10 +55,7 @@ const EmpresaDatosActions = ({
         onEditingChange(true);
       }
     } catch (err) {
-      setMsg({
-        ok: false,
-        text: err.message || "No se pudieron cargar los datos.",
-      });
+      toast.error(err.message || "No se pudieron cargar los datos.");
     }
   };
 
@@ -74,7 +74,6 @@ const EmpresaDatosActions = ({
   const handleDirectSave = async (body) => {
     if (submitting) return;
     setSubmitting(true);
-    setMsg(null);
     try {
       await putJSON(`/solicitudes/empresa/${id}/datos`, body);
       setEditing(false);
@@ -82,11 +81,11 @@ const EmpresaDatosActions = ({
       if (onEditingChange) {
         onEditingChange(false);
       }
-      setMsg({ ok: true, text: "Datos actualizados." });
+      toast.success("Datos actualizados.");
       if (onUpdated) onUpdated();
       await loadCambio();
     } catch (err) {
-      setMsg({ ok: false, text: err.message || "Error al guardar." });
+      toast.error(err.message || "Error al guardar.");
     } finally {
       setSubmitting(false);
     }
@@ -95,7 +94,6 @@ const EmpresaDatosActions = ({
   const aprobar = async (confirmar = false) => {
     if (!pending || submitting) return;
     setSubmitting(true);
-    setMsg(null);
     try {
       await postJSON(
         `/solicitudes/empresa/${id}/cambios/${pending.id_cambio}/aprobar`,
@@ -104,14 +102,14 @@ const EmpresaDatosActions = ({
         },
       );
       setConflict(null);
-      setMsg({ ok: true, text: "Cambios aprobados y aplicados." });
+      toast.success("Cambios aprobados y aplicados.");
       if (onUpdated) onUpdated();
       await loadCambio();
     } catch (err) {
       if (err.status === 409 && err.body?.requires_confirm) {
         setConflict(err.body);
       } else {
-        setMsg({ ok: false, text: err.message || "Error al aprobar." });
+        toast.error(err.message || "Error al aprobar.");
       }
     } finally {
       setSubmitting(false);
@@ -121,11 +119,11 @@ const EmpresaDatosActions = ({
   const rechazar = async () => {
     if (!pending || submitting) return;
     if (!motivo.trim()) {
-      setMsg({ ok: false, text: "Indica el motivo del rechazo." });
+      setMotivoError("Indica el motivo del rechazo.");
       return;
     }
     setSubmitting(true);
-    setMsg(null);
+    setMotivoError("");
     try {
       await postJSON(
         `/solicitudes/empresa/${id}/cambios/${pending.id_cambio}/rechazar`,
@@ -135,11 +133,11 @@ const EmpresaDatosActions = ({
       );
       setMotivo("");
       setConflict(null);
-      setMsg({ ok: true, text: "Solicitud de cambio rechazada." });
+      toast.success("Solicitud de cambio rechazada.");
       if (onUpdated) onUpdated();
       await loadCambio();
     } catch (err) {
-      setMsg({ ok: false, text: err.message || "Error al rechazar." });
+      toast.error(err.message || "Error al rechazar.");
     } finally {
       setSubmitting(false);
     }
@@ -147,14 +145,6 @@ const EmpresaDatosActions = ({
 
   return (
     <div className="space-y-4">
-      {msg && (
-        <p
-          className={`text-sm px-4 py-2 rounded-lg ${msg.ok ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}
-        >
-          {msg.text}
-        </p>
-      )}
-
       {pending && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
           <p className="text-sm font-semibold text-amber-900">
@@ -208,9 +198,13 @@ const EmpresaDatosActions = ({
               <input
                 className="input mt-1"
                 value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
+                onChange={(e) => {
+                  setMotivo(e.target.value);
+                  if (motivoError) setMotivoError("");
+                }}
                 placeholder="Obligatorio para rechazar"
               />
+              <InlineNotice tone="error" className="mt-2">{motivoError}</InlineNotice>
             </div>
             <button
               type="button"

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getJSON, patchJSON } from "../utils/api.js";
+import { useToast } from "./feedback/ToastProvider.jsx";
 
 /**
  * Tutor selector for a pending/confirmed reservation.
@@ -13,12 +14,12 @@ const TutorAssignSelect = ({
   onAssigned,
   className = "",
 }) => {
+  const toast = useToast();
   const [tutores, setTutores] = useState([]);
   const [value, setValue] = useState(
     idEmpresaTutor != null ? String(idEmpresaTutor) : "",
   );
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     setValue(idEmpresaTutor != null ? String(idEmpresaTutor) : "");
@@ -62,16 +63,16 @@ const TutorAssignSelect = ({
     const prev = value;
     setValue(next);
     setSaving(true);
-    setError(null);
     try {
       const body = {
         id_empresa_tutor: next === "" ? null : Number(next),
       };
       const updated = await patchJSON(`/reservas/${idReserva}/tutor`, body);
+      toast.success(next === "" ? "Tutor retirado de la reserva." : "Tutor asignado.");
       if (onAssigned) onAssigned(updated);
     } catch (err) {
       setValue(prev);
-      setError(err.message || "No se pudo actualizar el tutor.");
+      toast.error(err.message || "No se pudo actualizar el tutor.");
     } finally {
       setSaving(false);
     }
@@ -103,11 +104,6 @@ const TutorAssignSelect = ({
         </select>
       </div>
       {saving && <p className="mt-1.5 text-xs text-muted">Guardando…</p>}
-      {error && (
-        <p className="mt-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
-          {error}
-        </p>
-      )}
     </div>
   );
 };

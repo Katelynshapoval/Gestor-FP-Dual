@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { User } from "./context/UserContext";
 import PageLayout from "./components/layout/PageLayout.jsx";
+import { ToastProvider } from "./components/feedback/ToastProvider.jsx";
 
 import Home from "./pages/Home/Home.js";
 import Login from "./pages/Login";
@@ -21,8 +22,9 @@ const Page = ({ children }) => <PageLayout>{children}</PageLayout>;
 function App() {
   return (
     <User>
-      <div className="app">
-        <BrowserRouter>
+      <ToastProvider>
+        <div className="app">
+          <BrowserRouter>
           <Routes>
             <Route
               path="/login"
@@ -110,7 +112,8 @@ function App() {
             />
           </Routes>
         </BrowserRouter>
-      </div>
+        </div>
+      </ToastProvider>
     </User>
   );
 }

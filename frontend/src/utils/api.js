@@ -3,7 +3,7 @@
 
 function getToken() {
   try {
-    const saved = localStorage.getItem('user');
+    const saved = localStorage.getItem("user");
     if (!saved) return null;
     const { data, expires } = JSON.parse(saved);
     if (expires > Date.now()) return data?.token ?? null;
@@ -14,65 +14,80 @@ function getToken() {
 function authHeaders(extra = {}) {
   const token = getToken();
   const headers = { ...extra };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   return headers;
 }
 
+async function readResponseBody(response) {
+  const text = await response.text().catch(() => "");
+  if (!text) return {};
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === "object") return parsed;
+    return { error: String(parsed) };
+  } catch {
+    return { error: text };
+  }
+}
+
+function messageFromBody(body, url, status) {
+  const raw = body?.error || body?.message;
+  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  return `Error en ${url}: ${status}`;
+}
+
 function throwApiError(url, status, body) {
-  const err = new Error(body.error || `Error en ${url}: ${status}`);
+  const payload = body && typeof body === "object" ? body : {};
+  const err = new Error(messageFromBody(payload, url, status));
   err.status = status;
-  err.body = body;
+  err.body = payload;
+  err.url = url;
   throw err;
 }
 
-// Authenticated GET that returns parsed JSON
-export const getJSON = async (url) => {
-  const response = await fetch(url, { headers: authHeaders() });
-  const body = await response.json().catch(() => ({}));
+async function requestJSON(url, options) {
+  const response = await fetch(url, options);
+  const body = await readResponseBody(response);
   if (!response.ok) throwApiError(url, response.status, body);
   return body;
-};
+}
+
+// Authenticated GET that returns parsed JSON
+export const getJSON = (url) => requestJSON(url, { headers: authHeaders() });
 
 // Authenticated GET that returns a Blob (used for PDF downloads)
 export const getBlob = async (url) => {
   const response = await fetch(url, { headers: authHeaders() });
-  if (!response.ok) throw new Error(`Error al obtener archivo: ${response.status}`);
+  if (!response.ok) {
+    const body = await readResponseBody(response);
+    throwApiError(url, response.status, body);
+  }
   return response.blob();
 };
 
 // Authenticated POST or PUT with a JSON body
-export const postJSON = async (url, body, method = 'POST') => {
-  const response = await fetch(url, {
+export const postJSON = (url, body, method = "POST") =>
+  requestJSON(url, {
     method,
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
-  const b = await response.json().catch(() => ({}));
-  if (!response.ok) throwApiError(url, response.status, b);
-  return b;
-};
 
-export const putJSON = (url, body) => postJSON(url, body, 'PUT');
+export const putJSON = (url, body) => postJSON(url, body, "PUT");
 
-export const patchJSON = (url, body) => postJSON(url, body, 'PATCH');
+export const patchJSON = (url, body) => postJSON(url, body, "PATCH");
 
 // Authenticated POST with FormData (multipart file upload)
-export const postForm = async (url, formData) => {
-  const response = await fetch(url, {
-    method: 'POST',
+export const postForm = (url, formData) =>
+  requestJSON(url, {
+    method: "POST",
     headers: authHeaders(),
     body: formData,
   });
-  if (!response.ok) {
-    const b = await response.json().catch(() => ({}));
-    throw new Error(b.error || `Error en ${url}: ${response.status}`);
-  }
-  return response.json();
-};
 
 // Builds fetch options for callers that construct their own request manually
 export const buildPostOptions = (body) => ({
-  method: 'POST',
-  headers: authHeaders({ 'Content-Type': 'application/json' }),
+  method: "POST",
+  headers: authHeaders({ "Content-Type": "application/json" }),
   body: JSON.stringify(body),
 });

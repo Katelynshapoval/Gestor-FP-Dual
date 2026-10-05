@@ -3,14 +3,10 @@ import { postForm } from "../../utils/api.js";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlineCancel, MdOutlineFileUpload, MdPendingActions } from "react-icons/md";
 import { RxClock } from "react-icons/rx";
-import { ESTADOS_RESERVA, isCancelledReserva, isConfirmedReserva, isPendingReserva } from "../../utils/reservaEstados.js";
+import { isCancelledReserva, isConfirmedReserva, isPendingReserva, reservaEstadoClass } from "../../utils/reservaEstados.js";
 import TutorAssignSelect from "../../components/TutorAssignSelect.jsx";
-
-const ESTADO_COLOR = {
-  [ESTADOS_RESERVA.PENDIENTE]: "bg-amber-50 text-amber-800 border-amber-200",
-  [ESTADOS_RESERVA.CONFIRMADA]: "bg-green-50 text-green-800 border-green-200",
-  [ESTADOS_RESERVA.CANCELADA]: "bg-red-50 text-red-700 border-red-200",
-};
+import { useToast } from "../../components/feedback/ToastProvider.jsx";
+import InlineNotice from "../../components/ui/InlineNotice.jsx";
 
 const DocStatusIcon = ({ estado }) => {
   if (estado === "VALIDADO") return <IoIosCheckmarkCircleOutline className="shrink-0 text-green-600" />;
@@ -19,28 +15,29 @@ const DocStatusIcon = ({ estado }) => {
 };
 
 const SubirDocReserva = ({ idReserva, onUploaded }) => {
+  const toast = useToast();
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [msg, setMsg] = useState(null);
+  const [fileError, setFileError] = useState("");
   const inputRef = useRef(null);
 
   const handleUpload = async () => {
     if (!file) {
-      setMsg({ ok: false, text: "Selecciona un PDF." });
+      setFileError("Selecciona un PDF.");
       return;
     }
     setUploading(true);
-    setMsg(null);
+    setFileError("");
     try {
       const fd = new FormData();
       fd.append("archivo", file);
       await postForm(`/documentos/reserva/${idReserva}/anexo`, fd);
-      setMsg({ ok: true, text: "Documento subido. Pendiente de revisión por el centro." });
+      toast.success("Documento subido. Pendiente de revisión por el centro.");
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
       if (onUploaded) onUploaded();
     } catch (err) {
-      setMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo subir el documento.");
     } finally {
       setUploading(false);
     }
@@ -64,11 +61,11 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
             onChange={(e) => {
               const f = e.target.files[0];
               if (f && f.type !== "application/pdf") {
-                setMsg({ ok: false, text: "Solo se admiten PDFs." });
+                setFileError("Solo se admiten PDFs.");
                 return;
               }
               setFile(f);
-              setMsg(null);
+              setFileError("");
             }}
           />
         </label>
@@ -80,17 +77,7 @@ const SubirDocReserva = ({ idReserva, onUploaded }) => {
           {uploading ? "Subiendo..." : "Subir"}
         </button>
       </div>
-      {msg && (
-        <p
-          className={`mt-2 rounded-md border px-3 py-2 text-xs ${
-            msg.ok
-              ? "border-green-200 bg-green-50 text-green-800"
-              : "border-red-200 bg-red-50 text-red-700"
-          }`}
-        >
-          {msg.text}
-        </p>
-      )}
+      <InlineNotice tone="error" className="mt-2 px-3 py-2 text-xs">{fileError}</InlineNotice>
     </div>
   );
 };
@@ -173,7 +160,7 @@ const MisReservas = ({ reservations, onUpload, onCancel, onTutorChange }) => {
 
       <div className="divide-y divide-surface-200 overflow-hidden rounded-xl2 border border-surface-200 bg-white">
         {reservations.map((reserva) => {
-          const estadoClass = ESTADO_COLOR[reserva.estado_reserva] || "bg-gray-100 text-gray-600 border-gray-200";
+          const estadoClass = reservaEstadoClass(reserva.estado_reserva);
           const docEstado = reserva.estado_documento || null;
           const isCancelled = isCancelledReserva(reserva.estado_reserva);
           const needsUpload = !isCancelled && docEstado !== "VALIDADO";

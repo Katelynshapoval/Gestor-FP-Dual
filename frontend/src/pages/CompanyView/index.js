@@ -14,6 +14,8 @@ import CompanyEditForm, {
 import CambioDiff from "./CambioDiff.jsx";
 import EspecialidadCuposEditor from "./EspecialidadCuposEditor.jsx";
 import TutoresEmpresa from "./TutoresEmpresa.jsx";
+import { useToast } from "../../components/feedback/ToastProvider.jsx";
+import InlineNotice from "../../components/ui/InlineNotice.jsx";
 import "../../styles/forms.css";
 
 // Read-only field styled to match the rest of the form layout
@@ -34,12 +36,12 @@ const MisDatos = ({
   onCambioChange,
   onCupoChange,
 }) => {
+  const toast = useToast();
   const [showReapply, setShowReapply] = useState(false);
   const [reapplyDone, setReapplyDone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => datosToForm(solicitud));
   const [submitting, setSubmitting] = useState(false);
-  const [msg, setMsg] = useState(null);
 
   if (!solicitud) {
     return (
@@ -76,30 +78,22 @@ const MisDatos = ({
         ? applyProposed(solicitud, pending.proposed)
         : datosToForm(solicitud),
     );
-    setMsg(null);
     setEditing(true);
   };
 
   const handleSubmitCambio = async (body) => {
     if (submitting) return;
     setSubmitting(true);
-    setMsg(null);
     try {
       const data = await postJSON(
         `/solicitudes/empresa/${solicitud.id_solicitud_empresa}/cambios`,
         body,
       );
       setEditing(false);
-      setMsg({
-        ok: true,
-        text: data.message || "Cambios enviados para revisión",
-      });
+      toast.success(data.message || "Cambios enviados para revisión");
       if (onCambioChange) await onCambioChange();
     } catch (err) {
-      setMsg({
-        ok: false,
-        text: err.message || "Error al enviar los cambios.",
-      });
+      toast.error(err.message || "Error al enviar los cambios.");
     } finally {
       setSubmitting(false);
     }
@@ -121,14 +115,6 @@ const MisDatos = ({
           </button>
         )}
       </div>
-
-      {msg && (
-        <p
-          className={`text-sm px-4 py-2 rounded-lg ${msg.ok ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}
-        >
-          {msg.text}
-        </p>
-      )}
 
       {pending && (
         <div className="form-card border-amber-200 bg-amber-50">
@@ -347,6 +333,7 @@ const MisDatos = ({
 
 // Re-apply form — lets the empresa re-submit with updated coordinator data and speciality picks
 const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
+  const toast = useToast();
   const initEsps = () => {
     const ids = (solicitud?.especialidades || []).map((e) => e.id_especialidad);
     const amts = (solicitud?.especialidades || []).map(
@@ -372,7 +359,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
   const [selectedEsps, setSelectedEsps] = useState(initEsps);
   const [selectedTransps, setSelectedTransps] = useState(initTransports);
   const [submitting, setSubmitting] = useState(false);
-  const [msg, setMsg] = useState(null);
+  const [fieldError, setFieldError] = useState("");
 
   const handleEspToggle = (id) =>
     setSelectedEsps(([ids, amts]) => {
@@ -407,15 +394,15 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
   const handleSubmit = async () => {
     if (submitting) return;
     if (selectedEsps[0].length === 0) {
-      setMsg({ ok: false, text: "Selecciona al menos un ciclo." });
+      setFieldError("Selecciona al menos un ciclo.");
       return;
     }
     if (selectedEsps[1].some((a) => a <= 0)) {
-      setMsg({ ok: false, text: "Indica al menos un alumno por ciclo." });
+      setFieldError("Indica al menos un alumno por ciclo.");
       return;
     }
     setSubmitting(true);
-    setMsg(null);
+    setFieldError("");
     try {
       await postJSON("/solicitudes/empresa/reapply", {
         nombreCoordinador,
@@ -431,13 +418,12 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
       if (onSuccess) onSuccess();
     } catch (err) {
       const dup =
-        err.message?.includes("ya existe") || err.message?.includes("409");
-      setMsg({
-        ok: false,
-        text: dup
+        err.message?.includes("ya existe") || err.status === 409;
+      toast.error(
+        dup
           ? "Ya existe una solicitud para la convocatoria activa."
           : err.message || "Error al enviar.",
-      });
+      );
     } finally {
       setSubmitting(false);
     }
@@ -509,13 +495,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
         {submitting ? "Enviando…" : "Enviar reaplicación"}
       </button>
 
-      {msg && (
-        <p
-          className={`text-sm px-4 py-2 rounded-lg ${msg.ok ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}
-        >
-          {msg.text}
-        </p>
-      )}
+      <InlineNotice tone="error">{fieldError}</InlineNotice>
     </div>
   );
 };
@@ -524,6 +504,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
 const CompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const toast = useToast();
   const [view, setView] = useState("datos");
 
   const [solicitud, setSolicitud] = useState(null);
@@ -582,9 +563,10 @@ const CompanyView = () => {
   const handleCancelReservation = async (idReserva, motivo) => {
     try {
       await postJSON(`/reservas/${idReserva}/cancelar`, { motivo });
+      toast.success("Reserva cancelada correctamente.");
       fetchReservations();
     } catch (err) {
-      alert(err.message || "Error al cancelar la reserva.");
+      toast.error(err.message || "Error al cancelar la reserva.");
     }
   };
 

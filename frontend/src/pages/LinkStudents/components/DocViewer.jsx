@@ -1,5 +1,6 @@
 import { useState } from "react";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 
 const DOC_BADGE = {
   PENDIENTE: { label: "Pendiente", variant: "warning" },
@@ -10,10 +11,10 @@ const DOC_BADGE = {
 const isReviewable = (doc) => Boolean(doc?.canReview);
 
 const DocViewer = ({ showDoc, onClose, onValidate, onReject }) => {
+  const toast = useToast();
   const [showReject, setShowReject] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [actionMsg, setActionMsg] = useState(null);
 
   if (!showDoc) return null;
 
@@ -26,11 +27,11 @@ const DocViewer = ({ showDoc, onClose, onValidate, onReject }) => {
   const handleValidar = async () => {
     if (!canValidate || submitting) return;
     setSubmitting(true);
-    setActionMsg(null);
     try {
       await onValidate();
+      toast.success("Documento validado.");
     } catch (err) {
-      setActionMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo validar el documento.");
     } finally {
       setSubmitting(false);
     }
@@ -39,13 +40,13 @@ const DocViewer = ({ showDoc, onClose, onValidate, onReject }) => {
   const handleRechazar = async () => {
     if (!motivo.trim() || submitting) return;
     setSubmitting(true);
-    setActionMsg(null);
     try {
       await onReject(motivo.trim());
       setShowReject(false);
       setMotivo("");
+      toast.success("Documento rechazado.");
     } catch (err) {
-      setActionMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo rechazar el documento.");
     } finally {
       setSubmitting(false);
     }
@@ -145,12 +146,6 @@ const DocViewer = ({ showDoc, onClose, onValidate, onReject }) => {
               </button>
             </div>
           </div>
-        )}
-
-        {actionMsg && (
-          <p className={`px-5 py-2 text-sm ${actionMsg.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>
-            {actionMsg.text}
-          </p>
         )}
 
         <div className="flex-1 overflow-hidden">

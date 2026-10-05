@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { getBlob, getJSON, postJSON } from "../../../utils/api.js";
 import { isCancelledReserva, isPendingReserva } from "../../../utils/reservaEstados.js";
+import { useToast } from "../../../components/feedback/ToastProvider.jsx";
+import InlineNotice from "../../../components/ui/InlineNotice.jsx";
 
 const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
+  const toast = useToast();
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [actionMsg, setActionMsg] = useState(null);
+  const [fieldError, setFieldError] = useState("");
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [showReject, setShowReject] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -15,7 +18,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
 
   useEffect(() => {
     setEstadoDoc(reserva?.estado_documento || null);
-    setActionMsg(null);
+    setFieldError("");
     setShowReject(false);
     setMotivoRechazo("");
   }, [reserva]);
@@ -74,15 +77,14 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
   const saveTipo = async () => {
     if (!idTipoContrato) return;
     setSubmitting(true);
-    setActionMsg(null);
     try {
       await postJSON(`/reservas/${reserva.id_reserva}/tipo-contrato`, {
         id_tipo_contrato: Number(idTipoContrato),
       });
-      setActionMsg({ ok: true, text: "Tipo de contrato guardado. Ya puede subirse el Anexo II o III correspondiente." });
+      toast.success("Tipo de contrato guardado. Ya puede subirse el Anexo II o III correspondiente.");
       await refresh();
     } catch (err) {
-      setActionMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo guardar el tipo de contrato.");
     } finally {
       setSubmitting(false);
     }
@@ -90,14 +92,13 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
 
   const handleValidarDocumento = async () => {
     setSubmitting(true);
-    setActionMsg(null);
     try {
       await postJSON(`/documentos/${reserva.id_documento_reserva}/validar`, {});
       setEstadoDoc("VALIDADO");
-      setActionMsg({ ok: true, text: "Documento validado. El estado ya no está en revisión." });
+      toast.success("Documento validado.");
       await refresh();
     } catch (err) {
-      setActionMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo validar el documento.");
     } finally {
       setSubmitting(false);
     }
@@ -105,20 +106,20 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
 
   const handleConfirmarReserva = async () => {
     if (!idTipoContrato) {
-      setActionMsg({ ok: false, text: "Selecciona el tipo de contrato para confirmar la reserva." });
+      setFieldError("Selecciona el tipo de contrato para confirmar la reserva.");
       return;
     }
     setSubmitting(true);
-    setActionMsg(null);
+    setFieldError("");
     try {
       await postJSON(`/reservas/${reserva.id_reserva}/confirmar`, {
         id_tipo_contrato: Number(idTipoContrato),
       });
-      setActionMsg({ ok: true, text: "Reserva confirmada correctamente." });
+      toast.success("Reserva confirmada correctamente.");
       await refresh();
-      setTimeout(() => onClose(), 1200);
+      onClose();
     } catch (err) {
-      setActionMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo confirmar la reserva.");
     } finally {
       setSubmitting(false);
     }
@@ -127,15 +128,14 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
   const handleRechazar = async () => {
     if (!motivoRechazo.trim()) return;
     setSubmitting(true);
-    setActionMsg(null);
     try {
       await postJSON(`/documentos/${reserva.id_documento_reserva}/rechazar`, { motivo: motivoRechazo });
       setEstadoDoc("RECHAZADO");
-      setActionMsg({ ok: true, text: "Documento rechazado." });
+      toast.success("Documento rechazado.");
       setShowReject(false);
       await refresh();
     } catch (err) {
-      setActionMsg({ ok: false, text: err.message });
+      toast.error(err.message || "No se pudo rechazar el documento.");
     } finally {
       setSubmitting(false);
     }
@@ -241,6 +241,7 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
                 Confirmar reserva
               </button>
             </div>
+            <InlineNotice tone="error" className="mt-2">{fieldError}</InlineNotice>
           </div>
         )}
 
@@ -273,16 +274,6 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
               </button>
             </div>
           </div>
-        )}
-
-        {actionMsg && (
-          <p
-            className={`px-4 py-2 text-sm ${
-              actionMsg.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"
-            }`}
-          >
-            {actionMsg.text}
-          </p>
         )}
 
         <div className="modal-body">

@@ -20,38 +20,33 @@ import {
   signedBadgeClass,
   toggleBtnClass,
 } from "../../../components/ui/cardStyles";
-import { ESTADOS_RESERVA } from "../../../utils/reservaEstados.js";
+import { reservaEstadoClass } from "../../../utils/reservaEstados.js";
 import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
 import { putJSON } from "../../../utils/api.js";
-import { warnReducePending } from "../../CompanyView/EspecialidadCuposEditor.jsx";
+import { warnReducePending } from "../../../utils/cupos.js";
+import { useConfirm, useToast } from "../../../components/feedback/ToastProvider.jsx";
+import InlineNotice from "../../../components/ui/InlineNotice.jsx";
 
-// Tailwind class map for reservation status badges
-const estadoCls = {
-  [ESTADOS_RESERVA.CONFIRMADA]: "bg-green-500/10 text-green-800",
-  [ESTADOS_RESERVA.PENDIENTE]: "bg-yellow-400/15 text-yellow-800",
-  [ESTADOS_RESERVA.CANCELADA]: "bg-red-500/10 text-red-800",
-};
-
-// Requested specialities with student count badges
 const EspecialidadList = ({
   especialidades,
   solicitudId,
   canEdit,
   onUpdated,
 }) => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [drafts, setDrafts] = useState({});
   const [savingId, setSavingId] = useState(null);
-
-  if (!especialidades || especialidades.length === 0)
-    return <p className="text-sm text-gray-500">Sin datos</p>;
+  const [fieldError, setFieldError] = useState("");
 
   const save = async (e) => {
     const idOferta = e.id_solicitud_empresa_especialidad;
     const cantidad = Number(drafts[idOferta] ?? e.cantidad_alumnos);
     if (!Number.isInteger(cantidad) || cantidad < 0) {
-      alert("La cantidad debe ser un entero mayor o igual que 0.");
+      setFieldError("La cantidad debe ser un entero mayor o igual que 0.");
       return;
     }
+    setFieldError("");
     const send = async (confirmar) => {
       setSavingId(idOferta);
       try {
@@ -59,31 +54,33 @@ const EspecialidadList = ({
           `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
           { cantidad, confirmar_cancelaciones: confirmar },
         );
-        if (data.canceladas?.length) {
-          alert(data.message);
-        }
         setDrafts((prev) => {
           const next = { ...prev };
           delete next[idOferta];
           return next;
         });
+        if (data.canceladas?.length) {
+          toast.warning(data.message || "Se han cancelado reservas pendientes.");
+        } else {
+          toast.success(data.message || "Número de plazas actualizado.");
+        }
         if (onUpdated) onUpdated();
       } catch (err) {
         if (err.status === 409 && err.body?.requires_confirm) {
-          if (
-            window.confirm(
+          const accepted = await confirm({
+            title: "Reducir plazas",
+            message:
               err.body.error ||
-                warnReducePending(
-                  e.cantidad_alumnos,
-                  cantidad,
-                  err.body.cancelar_pendientes,
-                ),
-            )
-          ) {
-            await send(true);
-          }
+              warnReducePending(
+                e.cantidad_alumnos,
+                cantidad,
+                err.body.cancelar_pendientes,
+              ),
+            confirmLabel: "Reducir plazas",
+          });
+          if (accepted) await send(true);
         } else {
-          alert(err.message || "Error al actualizar las plazas.");
+          toast.error(err.message || "Error al actualizar las plazas.");
         }
       } finally {
         setSavingId(null);
@@ -92,8 +89,12 @@ const EspecialidadList = ({
     await send(false);
   };
 
+  if (!especialidades || especialidades.length === 0)
+    return <p className="text-sm text-gray-500">Sin datos</p>;
+
   return (
     <div className="space-y-1.5">
+      <InlineNotice tone="error">{fieldError}</InlineNotice>
       {especialidades.map((e) => {
         const idOferta = e.id_solicitud_empresa_especialidad;
         const current = drafts[idOferta] ?? String(e.cantidad_alumnos);
@@ -169,7 +170,7 @@ const ReservasList = ({ reservations }) => {
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span
-              className={`${signedBadgeClass} ${estadoCls[r.estado_reserva] || "bg-gray-100 text-gray-600"}`}
+              className={`${signedBadgeClass} ${reservaEstadoClass(r.estado_reserva, { bordered: false })}`}
             >
               {r.estado_reserva}
             </span>

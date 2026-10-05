@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getJSON, patchJSON, postJSON } from "../../utils/api.js";
+import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
 
 const emptyForm = () => ({
   nombre: "",
@@ -10,21 +11,25 @@ const emptyForm = () => ({
 });
 
 const TutoresEmpresa = () => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [tutores, setTutores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
-  const [msg, setMsg] = useState(null);
 
   const load = useCallback(async () => {
     try {
       const data = await getJSON("/tutores/empresa");
       setTutores(Array.isArray(data) ? data : []);
-    } catch {
+      setLoadError("");
+    } catch (err) {
       setTutores([]);
+      setLoadError(err.message || "No se pudieron cargar los tutores.");
     } finally {
       setLoading(false);
     }
@@ -41,15 +46,14 @@ const TutoresEmpresa = () => {
   const handleCreate = async () => {
     if (submitting) return;
     setSubmitting(true);
-    setMsg(null);
     try {
       await postJSON("/tutores/empresa", form);
       setForm(emptyForm());
       setAdding(false);
-      setMsg({ ok: true, text: "Tutor añadido." });
+      toast.success("Tutor añadido.");
       await load();
     } catch (err) {
-      setMsg({ ok: false, text: err.message || "Error al añadir el tutor." });
+      toast.error(err.message || "Error al añadir el tutor.");
     } finally {
       setSubmitting(false);
     }
@@ -64,37 +68,37 @@ const TutoresEmpresa = () => {
       telefono: t.telefono || "",
       cargo: t.cargo || "",
     });
-    setMsg(null);
   };
 
   const handleUpdate = async () => {
     if (!editingId || submitting) return;
     setSubmitting(true);
-    setMsg(null);
     try {
       await patchJSON(`/tutores/${editingId}`, editForm);
       setEditingId(null);
-      setMsg({ ok: true, text: "Tutor actualizado." });
+      toast.success("Tutor actualizado.");
       await load();
     } catch (err) {
-      setMsg({ ok: false, text: err.message || "Error al actualizar el tutor." });
+      toast.error(err.message || "Error al actualizar el tutor.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeactivate = async (t) => {
-    if (!window.confirm(`¿Desactivar a ${t.nombre}? Seguirá visible en reservas históricas.`)) {
-      return;
-    }
+    const accepted = await confirm({
+      title: "Desactivar tutor",
+      message: `¿Desactivar a ${t.nombre}? Seguirá visible en reservas históricas.`,
+      confirmLabel: "Desactivar",
+    });
+    if (!accepted) return;
     setSubmitting(true);
-    setMsg(null);
     try {
       await postJSON(`/tutores/${t.id_empresa_tutor}/desactivar`, {});
-      setMsg({ ok: true, text: "Tutor desactivado." });
+      toast.success("Tutor desactivado.");
       await load();
     } catch (err) {
-      setMsg({ ok: false, text: err.message || "Error al desactivar el tutor." });
+      toast.error(err.message || "Error al desactivar el tutor.");
     } finally {
       setSubmitting(false);
     }
@@ -122,15 +126,9 @@ const TutoresEmpresa = () => {
         )}
       </div>
 
-      {msg && (
-        <p
-          className={`rounded-lg px-4 py-2 text-sm ${
-            msg.ok
-              ? "border border-green-200 bg-green-50 text-green-800"
-              : "border border-red-200 bg-red-50 text-red-700"
-          }`}
-        >
-          {msg.text}
+      {loadError && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+          {loadError}
         </p>
       )}
 
@@ -184,7 +182,7 @@ const TutoresEmpresa = () => {
         </div>
       )}
 
-      {tutores.length === 0 ? (
+      {tutores.length === 0 && !loadError ? (
         <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-10 text-center shadow-card">
           <p className="text-sm text-gray-400">Todavía no hay tutores registrados.</p>
         </div>

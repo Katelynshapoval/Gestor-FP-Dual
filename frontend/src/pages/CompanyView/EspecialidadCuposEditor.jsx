@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { postJSON, putJSON } from "../../utils/api.js";
+import { warnReducePending } from "../../utils/cupos.js";
+import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
+import InlineNotice from "../../components/ui/InlineNotice.jsx";
 
 const n = (value) => Number(value) || 0;
 
@@ -19,9 +22,6 @@ const cicloLabel = (esp) => {
   return `${nombre}${codigo}${turno ? ` · ${turno}` : ""}`;
 };
 
-export const warnReducePending = (desde, hasta, pendientesACancelar) =>
-  `Al reducir de ${desde} a ${hasta} plazas se cancelarán ${pendientesACancelar} reserva${pendientesACancelar !== 1 ? "s" : ""} pendiente${pendientesACancelar !== 1 ? "s" : ""}. Las reservas confirmadas no se modificarán.`;
-
 const countChanged = (raw, saved) => {
   const text = String(raw ?? "").trim();
   if (text === "") return n(saved) !== 0;
@@ -37,12 +37,14 @@ const EspecialidadCuposEditor = ({
   onUpdated,
   canEdit = true,
 }) => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [drafts, setDrafts] = useState({});
   const [adding, setAdding] = useState(false);
   const [newEspId, setNewEspId] = useState("");
   const [newCantidad, setNewCantidad] = useState("");
   const [savingId, setSavingId] = useState(null);
-  const [msg, setMsg] = useState(null);
+  const [fieldError, setFieldError] = useState("");
 
   const valueFor = (esp) =>
     drafts[esp.id_solicitud_empresa_especialidad] ??
@@ -63,13 +65,9 @@ const EspecialidadCuposEditor = ({
         .map((c) => `#${c.id_reserva} ${c.alumno || ""}`.trim())
         .join(", ");
       const text = `${data.message} ${detail ? `(${detail})` : ""}`.trim();
-      window.alert(text);
-      setMsg({ ok: "warn", text });
+      toast.warning(text);
     } else {
-      setMsg({
-        ok: true,
-        text: extraText || data.message || "Número de plazas actualizado.",
-      });
+      toast.success(extraText || data.message || "Número de plazas actualizado.");
     }
     if (onUpdated) await onUpdated();
   };
@@ -78,10 +76,7 @@ const EspecialidadCuposEditor = ({
     const idOferta = esp.id_solicitud_empresa_especialidad;
     const cantidad = Number(valueFor(esp));
     if (!Number.isInteger(cantidad) || cantidad < 0) {
-      setMsg({
-        ok: false,
-        text: "Indica un número entero de plazas mayor o igual que 0.",
-      });
+      setFieldError("Indica un número entero de plazas mayor o igual que 0.");
       return;
     }
 
@@ -90,22 +85,25 @@ const EspecialidadCuposEditor = ({
     const confirmadas = n(esp.plazas_confirmadas);
 
     if (cantidad < confirmadas) {
-      setMsg({
-        ok: false,
-        text: "No se puede reducir el número de plazas por debajo de los alumnos ya confirmados. Cancela o reasigna primero las reservas confirmadas desde administración.",
-      });
+      setFieldError(
+        "No se puede reducir el número de plazas por debajo de los alumnos ya confirmados. Cancela o reasigna primero las reservas confirmadas desde administración.",
+      );
       return;
     }
 
     if (!confirmar && cantidad < ocupadas) {
       const nCancelar = ocupadas - cantidad;
-      if (!window.confirm(warnReducePending(actual, cantidad, nCancelar)))
-        return;
+      const accepted = await confirm({
+        title: "Reducir plazas",
+        message: warnReducePending(actual, cantidad, nCancelar),
+        confirmLabel: "Reducir plazas",
+      });
+      if (!accepted) return;
       confirmar = true;
     }
 
     setSavingId(idOferta);
-    setMsg(null);
+    setFieldError("");
     try {
       const data = await putJSON(
         `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
@@ -121,7 +119,12 @@ const EspecialidadCuposEditor = ({
             err.body.cantidad_nueva,
             err.body.cancelar_pendientes,
           );
-        if (window.confirm(aviso)) {
+        const accepted = await confirm({
+          title: "Reducir plazas",
+          message: aviso,
+          confirmLabel: "Reducir plazas",
+        });
+        if (accepted) {
           try {
             const data = await putJSON(
               `/solicitudes/empresa/${solicitudId}/especialidades/${idOferta}/cantidad`,
@@ -129,17 +132,11 @@ const EspecialidadCuposEditor = ({
             );
             await applyResult(esp, data);
           } catch (retryErr) {
-            setMsg({
-              ok: false,
-              text: retryErr.message || "Error al actualizar las plazas.",
-            });
+            toast.error(retryErr.message || "Error al actualizar las plazas.");
           }
         }
       } else {
-        setMsg({
-          ok: false,
-          text: err.message || "Error al actualizar las plazas.",
-        });
+        toast.error(err.message || "Error al actualizar las plazas.");
       }
     } finally {
       setSavingId(null);
@@ -157,32 +154,26 @@ const EspecialidadCuposEditor = ({
     const raw = String(newCantidad).trim();
     const cantidad = Number(raw);
     if (!missing.some((esp) => espId(esp) === id)) {
-      setMsg({
-        ok: false,
-        text: "Selecciona un ciclo que aún no esté en la solicitud.",
-      });
+      setFieldError("Selecciona un ciclo que aún no esté en la solicitud.");
       return;
     }
     if (raw === "" || !Number.isInteger(cantidad) || cantidad < 1) {
-      setMsg({
-        ok: false,
-        text: "Indica al menos un alumno para añadir el ciclo.",
-      });
+      setFieldError("Indica al menos un alumno para añadir el ciclo.");
       return;
     }
 
     setSavingId("new");
-    setMsg(null);
+    setFieldError("");
     try {
       const data = await postJSON(
         `/solicitudes/empresa/${solicitudId}/especialidades`,
         { id_especialidad: id, cantidad },
       );
       cancelAdd();
-      setMsg({ ok: true, text: data.message || "Ciclo añadido." });
+      toast.success(data.message || "Ciclo añadido.");
       if (onUpdated) await onUpdated();
     } catch (err) {
-      setMsg({ ok: false, text: err.message || "Error al añadir el ciclo." });
+      toast.error(err.message || "Error al añadir el ciclo.");
     } finally {
       setSavingId(null);
     }
@@ -203,19 +194,7 @@ const EspecialidadCuposEditor = ({
           por la revisión de datos de empresa.
         </p>
       )}
-      {msg && (
-        <p
-          className={`text-sm px-4 py-2 rounded-lg ${
-            msg.ok === "warn"
-              ? "bg-amber-50 border border-amber-200 text-amber-900"
-              : msg.ok
-                ? "bg-green-50 border border-green-200 text-green-800"
-                : "bg-red-50 border border-red-200 text-red-700"
-          }`}
-        >
-          {msg.text}
-        </p>
-      )}
+      <InlineNotice tone="error">{fieldError}</InlineNotice>
       {especialidades.map((esp) => {
         const idOferta = esp.id_solicitud_empresa_especialidad;
         const ocupadas = n(esp.plazas_ocupadas);

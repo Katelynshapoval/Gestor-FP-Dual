@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from '../context/UserContext';
+import { useToast } from "../components/feedback/ToastProvider.jsx";
 
 // Redirects the user to their role's home page after a successful login
 function redirectByRole(rol, navigate) {
@@ -12,6 +13,7 @@ function redirectByRole(rol, navigate) {
 const Login = () => {
   const { setUser } = useUser();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -86,6 +88,7 @@ const Login = () => {
       if (meRes.ok) {
         const me = await meRes.json();
         setUser({ ...me, token, must_change_password: false });
+        toast.success("Contraseña actualizada.");
         redirectByRole(me.rol, navigate);
       }
     } catch (err) {
