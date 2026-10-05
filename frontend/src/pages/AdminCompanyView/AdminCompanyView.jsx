@@ -13,6 +13,7 @@ import ConvenioViewer from "./components/ConvenioViewer";
 import CompanyCard from "./components/CompanyCard";
 import ReservasAdmin from "./components/ReservasAdmin";
 import PageHeader from "../../components/ui/PageHeader";
+import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
 
 function getCourseLabel(dateStr) {
   if (!dateStr) return null;
@@ -39,6 +40,8 @@ const AdminCompanyView = () => {
   const [viewingConvenio, setViewingConvenio] = useState(null);
   const [resetResult, setResetResult] = useState({});
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [filterEsp, setFilterEsp] = useState("");
   const [filterConvenio, setFilterConvenio] = useState("");
   const [filterCourse, setFilterCourse] = useState("");
@@ -177,6 +180,13 @@ const AdminCompanyView = () => {
       if (sortBy === "nombre_za") return nb.localeCompare(na);
       return 0;
     });
+
+  const { pageItems: companyPage, pagination: companyPagination } = paginate(filtered, page, pageSize);
+  usePageClamp(page, companyPagination.page, setPage);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterEsp, filterConvenio, filterCourse, filterCambios, sortBy]);
 
   const totalValidado = companies.filter((c) => c.convenio_validado).length;
   const totalPendiente = companies.filter(
@@ -376,19 +386,13 @@ const AdminCompanyView = () => {
             </div>
           </div>
 
-          <p className="text-sm text-gray-500 -mt-2">
-            {filtered.length} empresa{filtered.length !== 1 ? "s" : ""}{" "}
-            mostradas
-          </p>
-
-          {/* Company card list */}
           <div className="space-y-4">
             {filtered.length === 0 && (
               <div className="rounded-xl2 border border-surface-200 bg-white p-12 text-center text-muted shadow-card">
                 No hay empresas que coincidan con los filtros.
               </div>
             )}
-            {filtered.map((empresa) => (
+            {companyPage.map((empresa) => (
               <CompanyCard
                 key={empresa.id_solicitud_empresa}
                 empresa={empresa}
@@ -405,6 +409,16 @@ const AdminCompanyView = () => {
                 resetResult={resetResult}
               />
             ))}
+            <PaginationBar
+              pagination={companyPagination}
+              page={companyPagination.page}
+              onPage={setPage}
+              onPageSize={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              noun="empresa"
+            />
           </div>
         </>
       )}

@@ -4,6 +4,7 @@ import { formatDocumentDate, openDocumento } from "../../utils/documentos.js";
 import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
 import StatusBadge from "../../components/ui/StatusBadge.jsx";
 import { FILTER_LABEL_CLASS, FILTER_SELECT_CLASS } from "../LinkStudents/utils/filters";
+import PaginationBar from "../../components/ui/PaginationBar";
 
 const VARIANT = {
   PENDIENTE_SUBIDA: "warning",
@@ -53,14 +54,6 @@ function toQuery(query) {
     if (value) params.set(key, value);
   });
   return params.toString();
-}
-
-function visiblePages(current, total) {
-  if (total <= 1) return total === 1 ? [1] : [];
-  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
-  if (current <= 3) return [1, 2, 3, 4, "…", total];
-  if (current >= total - 2) return [1, "…", total - 3, total - 2, total - 1, total];
-  return [1, "…", current - 1, current, current + 1, "…", total];
 }
 
 function itemKey(item) {
@@ -321,8 +314,9 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
               pagination={pagination}
               page={query.page}
               disabled={loading}
-              onPage={(page) => setQuery((current) => ({ ...current, page }))}
-              onPageSize={(pageSize) => setQuery((current) => ({ ...current, pageSize, page: 1 }))}
+              noun="documento"
+              onPage={(nextPage) => setQuery((current) => ({ ...current, page: nextPage }))}
+              onPageSize={(nextSize) => setQuery((current) => ({ ...current, pageSize: nextSize, page: 1 }))}
             />
           )}
         </>
@@ -652,70 +646,6 @@ function DocumentActions({ item, busy, onView, onValidate, onReject, onGenerate,
   }
   if (!buttons.length) return null;
   return <div className="mt-3 flex flex-wrap items-center justify-end gap-2">{buttons}</div>;
-}
-
-function PaginationBar({ pagination, page, disabled, onPage, onPageSize }) {
-  const total = pagination.totalItems;
-  const from = total === 0 ? 0 : (page - 1) * pagination.pageSize + 1;
-  const to = Math.min(page * pagination.pageSize, total);
-  const pages = visiblePages(page, pagination.totalPages);
-  const label = total === 1 ? "documento" : "documentos";
-
-  return (
-    <div className="flex flex-col gap-3 rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card lg:flex-row lg:items-center lg:justify-between">
-      <p className="text-sm text-muted">
-        Mostrando {from}–{to} de {total} {label}
-      </p>
-      <nav className="flex flex-wrap items-center gap-1" aria-label="Paginación">
-        <button type="button" className="btn btn-secondary btn-sm" disabled={disabled || page <= 1} onClick={() => onPage(page - 1)}>
-          ‹ Anterior
-        </button>
-        {pages.map((entry, index) =>
-          entry === "…" ? (
-            <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted">
-              …
-            </span>
-          ) : (
-            <button
-              key={entry}
-              type="button"
-              disabled={disabled}
-              aria-current={entry === page ? "page" : undefined}
-              className={`min-h-8 min-w-8 rounded-lg border px-2 text-sm font-semibold transition-colors duration-150 ${
-                entry === page
-                  ? "border-brand-600 bg-brand-600 text-white"
-                  : "border-surface-200 bg-white text-charcoal-800 hover:border-charcoal-300"
-              }`}
-              onClick={() => onPage(entry)}
-            >
-              {entry}
-            </button>
-          ),
-        )}
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          disabled={disabled || page >= pagination.totalPages}
-          onClick={() => onPage(page + 1)}
-        >
-          Siguiente ›
-        </button>
-      </nav>
-      <label className="flex items-center gap-2 text-sm text-muted">
-        Filas por página
-        <select
-          className={`${FILTER_SELECT_CLASS} h-10`}
-          value={pagination.pageSize}
-          disabled={disabled}
-          onChange={(event) => onPageSize(Number(event.target.value))}
-        >
-          <option value={10}>10</option>
-          <option value={20}>20</option>
-          <option value={50}>50</option>
-        </select>
-      </label>
-    </div>
-  );
 }
 
 function SkeletonList() {

@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import DocViewer from "./components/DocViewer";
 import RequestFilters from "./components/RequestFilters";
 import StudentCard from "./components/StudentCard";
 import { useLinkStudents } from "./hooks/useLinkStudents";
 import PageHeader from "../../components/ui/PageHeader";
+import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
 
 const LinkStudents = () => {
   const {
@@ -35,6 +37,14 @@ const LinkStudents = () => {
   } = useLinkStudents();
 
   const refreshStudents = fetchLinkRequests;
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const { pageItems, pagination } = paginate(filtered, page, pageSize);
+  usePageClamp(page, pagination.page, setPage);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedSpeciality, selectedConvocatoria]);
 
   const companyValidated = !isEmpresa || companyStatus === "VALIDADO";
 
@@ -90,7 +100,7 @@ const LinkStudents = () => {
             )
           )}
 
-          {filtered.map((r) => (
+          {pageItems.map((r) => (
             <StudentCard
               key={r.id_solicitud_alumno}
               r={r}
@@ -109,6 +119,16 @@ const LinkStudents = () => {
               user={user}
             />
           ))}
+          <PaginationBar
+            pagination={pagination}
+            page={pagination.page}
+            onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+            noun="alumno"
+          />
         </div>
 
         <DocViewer
