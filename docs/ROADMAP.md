@@ -8,7 +8,7 @@ Five phases. Each ends with the application deployable and usable; later phases 
 
 | Phase | Objective | Complexity | Depends on |
 | --- | --- | --- | --- |
-| 1. Critical security and blocked workflows | Close account-takeover paths and make every core workflow completable | Medium–High | — |
+| 1. Critical security and blocked workflows — **in progress** (see [PHASE_1_REPORT.md](PHASE_1_REPORT.md)) | Close account-takeover paths and make every core workflow completable | Medium–High | — |
 | 2. Database baseline and business-rule integrity | One reproducible schema; state rules enforced in the backend | Very High | 1 |
 | 3. Frontend workflow consolidation | One place per task, shared components, honest states | High | 1, 2 (rules) |
 | 4. UX, navigation, notifications and accessibility | Role-centred navigation, dashboards, emails, WCAG basics | Medium–High | 3 (shared components) |
@@ -26,6 +26,8 @@ flowchart LR
 Phases 1–4 run in sequence; Phase 5 needs the rules from Phase 2 and the screens from Phase 3.
 
 ### Phase 1 — Critical security and blocked workflows
+
+> **Status (2026-10-27, branch `phase-1-security-workflows`):** implemented and tested without a database — SEC-1, SEC-2, SEC-8, login limiter, SEC-3, SEC-4, SEC-5, SEC-6, WF-1, WF-2, WF-3, V-5, WF-10, WF-13, `.env.example`, written test script. **Blocked:** V-1 and V-2 (need the read-only DB checks; draft `011_preferencias_alumno.sql` not applied). **Open acceptance checks on a real DB:** reservation to “Confirmada”, company re-application, student validation (V-1), date switch. Decisions taken: SEC-3 = returning students prove identity with their portal password; activation = automatic by dates. Details, test results and the manual script: [PHASE_1_REPORT.md](PHASE_1_REPORT.md). Phase 1 is **not** complete.
 
 - **Objective:** no forged or stolen session can escalate; a student, a company and a reservation can each go from start to finish through the UI.
 - **Included:** SEC-1 (mandatory `JWT_SECRET`, rotation), SEC-2 (current password, server-side forced change), SEC-8 (check `activo`/`must_change_password` per request), SEC-3 (public form no longer overwrites existing students), SEC-4 (protect the principal coordinator), SEC-5 (one upload guard for all endpoints), SEC-6 (template upload ADMINISTRADOR-only), a simple login attempt limiter (part of SEC-7, no new dependency); WF-1 (contract-type control on reservation rows), WF-2 (re-apply reachable), WF-3 (reliable activation via `sp_activar_convocatoria` or date-derived reads); V-1 and V-2 verified and fixed; V-5 (track `mail/config.js`); quick fixes WF-10 and the WF-13 submit lock.
