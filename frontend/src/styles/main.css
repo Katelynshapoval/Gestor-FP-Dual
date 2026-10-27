@@ -73,6 +73,7 @@ a {
   width: 38px;
   height: 38px;
 }
+.login-card h1,
 .login-card h2 {
   font-family: "Roboto", sans-serif;
   font-size: 1.5rem;
@@ -101,7 +102,7 @@ a {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  @apply border border-surface-200 bg-white text-gray-500;
+  @apply border border-surface-200 bg-white text-muted;
   display: flex;
   align-items: center;
   justify-content: center;

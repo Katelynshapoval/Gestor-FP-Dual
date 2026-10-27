@@ -144,7 +144,12 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
             <Section title="Tipo de contrato">
               {acciones.cambiar_tipo?.permitido ? (
                 <>
-                  <TipoContratoSelect idReserva={r.id_reserva} idTipoContrato={r.id_tipo_contrato} onSaved={changed} />
+                  <TipoContratoSelect
+                    idReserva={r.id_reserva}
+                    idTipoContrato={r.id_tipo_contrato}
+                    onSaved={changed}
+                    familiaFija={r.anexo_clave && acciones.cambio_familia && !acciones.cambio_familia.permitido ? r.anexo_clave : null}
+                  />
                   {r.anexo_clave && !acciones.cambio_familia?.permitido && (
                     <p className="mt-2 text-xs text-amber-800">{acciones.cambio_familia.motivo}</p>
                   )}

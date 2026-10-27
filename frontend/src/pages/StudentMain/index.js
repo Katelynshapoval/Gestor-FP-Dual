@@ -6,7 +6,93 @@ import PageHeader from "../../components/ui/PageHeader.jsx";
 import MisDatos from "./MisDatos.jsx";
 import MisReservas from "./MisReservas.jsx";
 import MisDocumentos from "./MisDocumentos.jsx";
+import Tabs from "../../components/ui/Tabs.jsx";
+import Pendientes from "../../components/portal/Pendientes.jsx";
+import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
+import { anexoNombre, label } from "../../utils/labels.js";
 import "../../styles/forms.css";
+
+const firmaPendienteDe = (resumenDoc, rol) =>
+  (resumenDoc?.firmas_pendientes || []).some((r) => String(r).toUpperCase() === rol);
+
+// What the student must do, or is waiting for, from the data the portal loads.
+export function pendientesAlumno({ solicitud, reservas, documentos, irA, abrirReserva }) {
+  const items = [];
+  if (!solicitud) {
+    items.push({
+      key: "sin-solicitud",
+      tone: "info",
+      title: "No tienes ninguna solicitud de FP Dual.",
+      text: "Si el plazo está abierto, puedes presentarla desde la página de inicio.",
+    });
+    return items;
+  }
+  const estado = solicitud.estado_validacion;
+  if (estado === "RECHAZADO") {
+    items.push({
+      key: "rechazada",
+      tone: "action",
+      title: "Tu solicitud ha sido rechazada.",
+      text: solicitud.motivo ? `Motivo: ${solicitud.motivo}. Ponte en contacto con el centro.` : "Ponte en contacto con el centro.",
+    });
+  }
+  for (const d of documentos) {
+    if ((d.accion_pendiente_de || []).includes("ALUMNO")) {
+      const rechazado = d.estado_operativo === "RECHAZADO";
+      items.push({
+        key: `doc-${d.clave}-${d.id_reserva || 0}`,
+        tone: "action",
+        title: rechazado
+          ? `${d.nombre}: rechazado, sube una versión corregida.`
+          : `${d.nombre}: ${label("documento", d.estado_operativo).toLowerCase()}.`,
+        text: rechazado && d.motivo ? `Motivo: ${d.motivo}` : null,
+        action: { label: "Ir a mis documentos", onClick: () => irA("documentos") },
+      });
+    }
+  }
+  const activas = reservas.filter((r) => r.estado_reserva !== "CANCELADA");
+  for (const r of activas) {
+    const anexo = r.documentos_resumen?.anexo;
+    if (anexo && firmaPendienteDe(anexo, "ALUMNO")) {
+      items.push({
+        key: `firma-${r.id_reserva}`,
+        tone: "action",
+        title: `Firma el ${anexoNombre(anexo.clave)} de ${r.empresa}.`,
+        text: "Ábrelo, revísalo y pulsa Firmar.",
+        action: { label: "Abrir reserva", onClick: () => abrirReserva(r.id_reserva) },
+      });
+    }
+  }
+  const confirmada = activas.find((r) => r.estado_reserva === "CONFIRMADA");
+  if (confirmada) {
+    items.push({ key: "confirmada", tone: "done", title: `Tu plaza en ${confirmada.empresa} está confirmada.` });
+  } else if (estado === "PENDIENTE") {
+    items.push({
+      key: "revision",
+      tone: "waiting",
+      title: "El centro está revisando tu solicitud.",
+      text: "Te avisaremos por email cuando se resuelva.",
+    });
+  } else if (estado === "VALIDADO" && activas.length === 0) {
+    items.push({
+      key: "esperando",
+      tone: "waiting",
+      title: "Tu solicitud está validada.",
+      text: "Las empresas ya pueden reservar tu candidatura. Te avisaremos por email cuando lo hagan.",
+    });
+  } else if (activas.length) {
+    items.push({
+      key: "reservas",
+      tone: "waiting",
+      title:
+        activas.length === 1
+          ? "Tienes una reserva pendiente de confirmación."
+          : `Tienes ${activas.length} reservas pendientes de confirmación.`,
+      text: "El centro confirma la plaza cuando el Anexo II o III está firmado por todos y validado.",
+    });
+  }
+  return items;
+}
 
 function StudentMain() {
   const { user } = useUser();
@@ -17,6 +103,7 @@ function StudentMain() {
   const [documentos, setDocumentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reservaAbierta, setReservaAbierta] = useState(null);
 
   // WF-17: "no application" is recognised by status and code, not by message text.
   const load = useCallback(() => {
@@ -60,38 +147,23 @@ function StudentMain() {
 
   if (!user || user.rol !== "ALUMNO") return null;
 
-  const tabCls = (active) =>
-    `whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
-      active ? "border-brand-500 text-brand-500" : "border-transparent text-gray-500 hover:text-gray-700"
-    }`;
+  const accionesDocs = documentos.filter((d) => (d.accion_pendiente_de || []).includes("ALUMNO")).length;
+  const activas = reservas.filter((r) => r.estado_reserva !== "CANCELADA").length;
 
   return (
     <div className="page-container">
       <PageHeader
-        kicker="Alumno"
-        title="Portal Alumno — Dual"
-        subtitle={`${user.nombre}${user.dni ? ` · ${user.dni}` : ""}`}
+        kicker="Mi proceso Dual"
+        title={user.nombre || "Portal del alumno"}
+        subtitle={
+          solicitud
+            ? [solicitud.especialidad, solicitud.convocatoria && `Convocatoria ${solicitud.convocatoria}`].filter(Boolean).join(" · ")
+            : "Portal del alumno"
+        }
       />
 
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200" role="tablist" aria-label="Secciones del portal">
-        <button type="button" role="tab" aria-selected={view === "datos"} className={tabCls(view === "datos")} onClick={() => setView("datos")}>
-          Mis datos
-        </button>
-        <button type="button" role="tab" aria-selected={view === "reservas"} className={tabCls(view === "reservas")} onClick={() => setView("reservas")}>
-          Mis reservas
-          {reservas.length > 0 && (
-            <span className="ml-1.5 inline-block rounded-full bg-brand-500 px-1.5 py-0.5 text-[0.7rem] leading-none text-white">
-              {reservas.length}
-            </span>
-          )}
-        </button>
-        <button type="button" role="tab" aria-selected={view === "documentos"} className={tabCls(view === "documentos")} onClick={() => setView("documentos")}>
-          Mis documentos
-        </button>
-      </div>
-
       {loading ? (
-        <p role="status" className="py-16 text-center text-muted">Cargando…</p>
+        <p role="status" className="py-16 text-center text-muted">Cargando tu proceso Dual…</p>
       ) : error ? (
         <div role="alert" className="form-card text-center">
           <p className="font-semibold text-charcoal-950">No se pudo cargar tu proceso Dual.</p>
@@ -100,12 +172,36 @@ function StudentMain() {
             Reintentar
           </button>
         </div>
-      ) : view === "datos" ? (
-        <MisDatos solicitud={solicitud} />
-      ) : view === "reservas" ? (
-        <MisReservas reservas={reservas} onChanged={refresh} />
       ) : (
-        <MisDocumentos documentos={documentos} onChange={setDocumentos} />
+        <>
+          <Pendientes
+            items={pendientesAlumno({ solicitud, reservas, documentos, irA: setView, abrirReserva: setReservaAbierta })}
+          />
+          <Tabs
+            label="Secciones del portal"
+            value={view}
+            onChange={setView}
+            tabs={[
+              { id: "datos", label: "Mi solicitud" },
+              { id: "reservas", label: "Mis reservas", badge: activas || null, badgeLabel: "activas" },
+              { id: "documentos", label: "Mis documentos", badge: accionesDocs || null, badgeTone: "action", badgeLabel: "pendientes" },
+            ]}
+          >
+            {view === "datos" ? (
+              <MisDatos solicitud={solicitud} />
+            ) : view === "reservas" ? (
+              <MisReservas reservas={reservas} onChanged={refresh} />
+            ) : (
+              <MisDocumentos documentos={documentos} onChange={setDocumentos} />
+            )}
+          </Tabs>
+          <ReservaDetalle
+            idReserva={reservaAbierta}
+            open={Boolean(reservaAbierta)}
+            onClose={() => setReservaAbierta(null)}
+            onChanged={refresh}
+          />
+        </>
       )}
     </div>
   );

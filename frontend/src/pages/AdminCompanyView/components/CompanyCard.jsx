@@ -138,7 +138,7 @@ const EspecialidadList = ({
             </button>
           )}
         </div>
-        {!adding && <p className="text-sm text-gray-500">Sin datos</p>}
+        {!adding && <p className="text-sm text-muted">Sin datos</p>}
         {adding && (
           <AddRow
             missing={missing}
@@ -218,7 +218,7 @@ const EspecialidadList = ({
                 {changed && (
                   <button
                     type="button"
-                    className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs"
+                    className="rounded border border-surface-300 bg-white px-2 py-0.5 text-xs"
                     disabled={savingId === idOferta}
                     onClick={() => save(e)}
                   >
@@ -251,7 +251,7 @@ const EspecialidadList = ({
 function AddRow({ missing, newEspId, newCantidad, setNewEspId, setNewCantidad, saving, onAdd, onCancel }) {
   return (
     <div className="space-y-2 rounded-lg border border-surface-200 bg-white p-3">
-      <label className="block text-xs font-semibold text-gray-600">
+      <label className="block text-xs font-semibold text-muted">
         Ciclo
         <select className="select-input mt-1" value={newEspId} disabled={saving} onChange={(event) => setNewEspId(event.target.value)}>
           <option value="">Selecciona un ciclo</option>
@@ -260,7 +260,7 @@ function AddRow({ missing, newEspId, newCantidad, setNewEspId, setNewCantidad, s
           ))}
         </select>
       </label>
-      <label className="block text-xs font-semibold text-gray-600">
+      <label className="block text-xs font-semibold text-muted">
         Alumnos
         <input type="number" min="1" step="1" className="input mt-1 w-24" value={newCantidad} disabled={saving} onChange={(event) => setNewCantidad(event.target.value)} />
       </label>
@@ -396,7 +396,7 @@ const CompanyCard = ({
     `px-4 py-1.5 text-xs font-semibold border-b-2 transition ${
       active
         ? "border-red-600 text-red-600"
-        : "border-transparent text-gray-500 hover:text-gray-700"
+        : "border-transparent text-muted hover:text-charcoal-700"
     }`;
 
   return (
@@ -410,12 +410,12 @@ const CompanyCard = ({
           <p className={`${cardNameClass} flex items-center gap-2 min-w-0`}>
             <FaBuilding className="text-brand-500 shrink-0" />
             <span className="truncate">{razonSocial}</span>
-            <span className="hidden sm:inline text-[.8rem] text-gray-500 shrink-0">
+            <span className="hidden sm:inline text-[.8rem] text-muted shrink-0">
               ({empresa.cif})
             </span>
           </p>
           <p
-            className={`${cardEspClass} hidden truncate text-sm text-gray-500 sm:block`}
+            className={`${cardEspClass} hidden truncate text-sm text-muted sm:block`}
           >
             {formatDate(empresa.fechaPeticion)} · {emailCoord}
           </p>
@@ -436,7 +436,7 @@ const CompanyCard = ({
             {label}
           </span>
           {reservations.length > 0 && (
-            <span className="text-[0.7rem] bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 shrink-0">
+            <span className="text-[0.7rem] bg-surface-100 text-muted rounded-full px-2 py-0.5 shrink-0">
               {reservations.length} reserva
               {reservations.length !== 1 ? "s" : ""}
             </span>
@@ -446,7 +446,7 @@ const CompanyCard = ({
               type="button"
               title="Editar datos"
               aria-label="Editar datos"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-brand-600"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-100 hover:text-brand-600"
               onClick={(e) => {
                 e.stopPropagation();
                 setInnerTab("info");
@@ -481,7 +481,7 @@ const CompanyCard = ({
         <div className="overflow-hidden">
           <div className={cardBodyClass}>
             {/* Inner tabs */}
-            <div className="flex gap-1 border-b border-gray-100 mb-5">
+            <div className="flex gap-1 border-b border-surface-200 mb-5">
               <button
                 className={innerTabCls(innerTab === "info")}
                 onClick={() => setInnerTab("info")}
@@ -558,7 +558,7 @@ const CompanyCard = ({
                         <div className="flex items-center gap-2 flex-wrap mt-2">
                           <button
                             onClick={() => onResetPassword(id)}
-                            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors duration-150 hover:border-gray-400 hover:bg-gray-50"
+                            className="flex items-center gap-1.5 rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-sm text-charcoal-700 transition-colors duration-150 hover:border-charcoal-300 hover:bg-surface-50"
                           >
                             <FaKey className="text-xs" />
                             Resetear contraseña
@@ -573,7 +573,7 @@ const CompanyCard = ({
                                 <button
                                   type="button"
                                   onClick={() => onClearResetPassword(id)}
-                                  className="text-xs text-gray-500 underline hover:text-gray-700"
+                                  className="text-xs text-muted underline hover:text-charcoal-700"
                                 >
                                   Ocultar
                                 </button>
@@ -603,7 +603,7 @@ const CompanyCard = ({
                         <p className={sectionLabelClass}>
                           Descripción del puesto
                         </p>
-                        <p className="text-sm text-gray-700">{descripcion}</p>
+                        <p className="text-sm text-charcoal-700">{descripcion}</p>
                       </div>
                     )}
 
@@ -630,7 +630,7 @@ const CompanyCard = ({
                         <div className="flex gap-2 flex-wrap mt-2">
                           <button
                             onClick={() => onViewConvenio(empresa)}
-                            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
+                            className="flex items-center gap-1.5 rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-sm text-charcoal-700 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-surface-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
                           >
                             <MdOutlineFileUpload className="text-brand-600" />
                             Ver convenio

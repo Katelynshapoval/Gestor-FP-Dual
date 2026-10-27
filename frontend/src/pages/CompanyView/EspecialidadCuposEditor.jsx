@@ -134,7 +134,7 @@ const EspecialidadCuposEditor = ({
   const savingNew = savingId === "new";
 
   if (!especialidades.length && !missing.length) {
-    return <p className="text-gray-500 text-sm">Sin datos</p>;
+    return <p className="text-muted text-sm">Sin datos</p>;
   }
 
   return (
@@ -157,12 +157,12 @@ const EspecialidadCuposEditor = ({
         return (
           <div
             key={idOferta || esp.id_especialidad}
-            className="rounded-lg border bg-gray-50 px-4 py-3"
+            className="rounded-lg border bg-surface-50 px-4 py-3"
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-medium">{cicloLabel(esp)}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted">
                   Ocupadas {ocupadas} · Confirmadas {confirmadas} · Disponibles{" "}
                   {disponibles}
                 </p>
@@ -170,7 +170,7 @@ const EspecialidadCuposEditor = ({
               {canEdit ? (
                 <div className="flex items-center gap-2">
                   <label
-                    className="text-xs font-semibold text-gray-600 whitespace-nowrap"
+                    className="text-xs font-semibold text-muted whitespace-nowrap"
                     htmlFor={`cupo-${idOferta}`}
                   >
                     Alumnos
@@ -219,7 +219,7 @@ const EspecialidadCuposEditor = ({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
               <label
-                className="mb-1 block text-xs font-semibold text-gray-600"
+                className="mb-1 block text-xs font-semibold text-muted"
                 htmlFor="nuevo-ciclo"
               >
                 Ciclo
@@ -241,7 +241,7 @@ const EspecialidadCuposEditor = ({
             </div>
             <div>
               <label
-                className="mb-1 block text-xs font-semibold text-gray-600"
+                className="mb-1 block text-xs font-semibold text-muted"
                 htmlFor="nuevo-ciclo-alumnos"
               >
                 Alumnos
@@ -283,7 +283,7 @@ const EspecialidadCuposEditor = ({
       {canEdit && missing.length > 0 && (
         <button
           type="button"
-          className="w-full rounded-lg border border-dashed border-gray-300 bg-white px-4 py-3 text-left text-sm font-medium text-gray-700 hover:border-brand-300 hover:bg-brand-50 disabled:cursor-default disabled:hover:border-gray-300 disabled:hover:bg-white"
+          className="w-full rounded-lg border border-dashed border-surface-300 bg-white px-4 py-3 text-left text-sm font-medium text-charcoal-700 hover:border-brand-300 hover:bg-brand-50 disabled:cursor-default disabled:hover:border-surface-300 disabled:hover:bg-white"
           disabled={adding}
           onClick={() => setAdding(true)}
         >

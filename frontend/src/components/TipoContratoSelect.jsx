@@ -21,7 +21,12 @@ function loadTiposContrato() {
  * Beca → Anexo III; any other type → Anexo II. Saving uses the existing
  * POST /reservas/:id/tipo-contrato endpoint (staff only).
  */
-const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, className = "" }) => {
+// Annex family of a contract type: Beca → Anexo III, any other → Anexo II.
+const familia = (t) => (/beca/i.test(`${t.nombre || ""} ${t.nombre_mostrar || ""}`) ? "ANEXO_III" : "ANEXO_II");
+
+// `familiaFija` (D2): once an annex of one family is under review or validated,
+// types of the other family are shown disabled (the backend refuses them too).
+const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = null, className = "" }) => {
   const toast = useToast();
   const [tipos, setTipos] = useState([]);
   const [value, setValue] = useState(idTipoContrato != null ? String(idTipoContrato) : "");
@@ -85,11 +90,15 @@ const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, className = ""
           <option value="" disabled>
             Sin indicar
           </option>
-          {tipos.map((t) => (
-            <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>
-              {t.nombre_mostrar || t.nombre}
-            </option>
-          ))}
+          {tipos.map((t) => {
+            const bloqueado = Boolean(familiaFija) && familia(t) !== familiaFija;
+            return (
+              <option key={t.id_tipo_contrato} value={t.id_tipo_contrato} disabled={bloqueado}>
+                {t.nombre_mostrar || t.nombre}
+                {bloqueado ? " (no disponible)" : ""}
+              </option>
+            );
+          })}
         </select>
       </div>
       <p className="mt-1.5 text-xs text-muted">

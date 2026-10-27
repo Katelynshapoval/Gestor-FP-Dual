@@ -21,7 +21,12 @@ function DatosReserva({ reserva, onOpen }) {
       {!isCancelledReserva(reserva.estado_reserva) && (
         <ReservaResumenBadges className="mt-3" estado={reserva.estado_reserva} resumen={reserva.documentos_resumen} showEstado={false} />
       )}
-      <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={() => onOpen(reserva.id_reserva)}>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm mt-3"
+        onClick={() => onOpen(reserva.id_reserva)}
+        aria-label={`Ver detalle y documentos de la reserva de ${reserva.empresa}`}
+      >
         Ver detalle y documentos
       </button>
     </>
@@ -37,7 +42,7 @@ export default function MisReservas({ reservas = [], onChanged }) {
 
   return (
     <div className="form-card">
-      <p className="form-section-title">Mis reservas</p>
+      <h2 className="form-section-title">Mis reservas</h2>
       <p className="field-hint">
         Las empresas eligen candidatos. Aquí solo aparecen reservas reales sobre tu solicitud.
       </p>
@@ -84,17 +89,17 @@ export default function MisReservas({ reservas = [], onChanged }) {
 
       {cancelled.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">Historial</p>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-muted">Historial</h3>
           {cancelled.map((r) => (
             <div key={r.id_reserva} className="rounded-lg border border-surface-200 bg-white px-4 py-3">
               <EstadoBadge kind="reserva" value="CANCELADA" labelOverride="Reserva cancelada" />
               <p className="mt-3 text-sm text-charcoal-800">La reserva de {r.empresa} fue cancelada.</p>
               <DatosReserva reserva={r} onOpen={setAbierta} />
-              {r.estado_reserva === "CANCELADA" && (
-                <p className="mt-1 text-xs text-muted">
-                  Esta reserva ya no está activa. Tu solicitud sigue abierta para otras empresas.
-                </p>
-              )}
+              <p className="mt-1 text-xs text-muted">
+                {hasDefinitive
+                  ? "Esta reserva ya no está activa."
+                  : "Esta reserva ya no está activa. Tu solicitud sigue abierta para otras empresas."}
+              </p>
             </div>
           ))}
         </div>

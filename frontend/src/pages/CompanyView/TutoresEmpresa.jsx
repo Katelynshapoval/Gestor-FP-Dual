@@ -107,15 +107,15 @@ const TutoresEmpresa = () => {
   const activos = tutores.filter((t) => Number(t.activo) === 1).length;
 
   if (loading) {
-    return <p className="py-8 text-center text-gray-400">Cargando tutores…</p>;
+    return <p className="py-8 text-center text-muted">Cargando tutores…</p>;
   }
 
   return (
     <div className="space-y-4">
       <div className="form-card flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="form-section-title mb-1">Tutores</p>
-          <p className="text-sm text-gray-500">
+          <h2 className="form-section-title mb-1">Tutores</h2>
+          <p className="text-sm text-muted">
             {activos} en activo, {tutores.length} en total. El acceso al portal sigue siendo el CIF, en Mis datos.
           </p>
         </div>
@@ -134,7 +134,7 @@ const TutoresEmpresa = () => {
 
       {adding && (
         <div className="form-card">
-          <p className="form-section-title">Nuevo tutor</p>
+          <h2 className="form-section-title">Nuevo tutor</h2>
           <div className="grid gap-x-4 md:grid-cols-2">
             <div className="field">
               <label htmlFor="new_tutor_nombre">Nombre</label>
@@ -184,7 +184,7 @@ const TutoresEmpresa = () => {
 
       {tutores.length === 0 && !loadError ? (
         <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-10 text-center shadow-card">
-          <p className="text-sm text-gray-400">Todavía no hay tutores registrados.</p>
+          <p className="text-sm text-muted">Todavía no hay tutores registrados.</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -203,14 +203,14 @@ const TutoresEmpresa = () => {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className={`truncate text-base font-semibold ${activo ? "text-charcoal-950" : "text-gray-500"}`}>
+                    <p className={`truncate text-base font-semibold ${activo ? "text-charcoal-950" : "text-muted"}`}>
                       {t.nombre}
                     </p>
                     <span
                       className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs ${
                         activo
                           ? "border-green-200 bg-green-50 text-green-800"
-                          : "border-gray-200 bg-white text-gray-500"
+                          : "border-surface-200 bg-white text-muted"
                       }`}
                     >
                       {activo ? "Activo" : "Inactivo"}
@@ -247,7 +247,7 @@ const TutoresEmpresa = () => {
                 )}
 
                 {!isEditing && (
-                  <div className="mt-3 grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-2 text-sm text-muted sm:grid-cols-2">
                     <p>{t.email || "Sin email"}</p>
                     <p>{t.telefono || "Sin teléfono"}</p>
                     <p>{t.dni || "Sin DNI"}</p>

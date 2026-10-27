@@ -250,7 +250,7 @@ const StudentCard = ({
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                     innerTab === "info"
                       ? "border-brand-500 text-brand-500"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      : "border-transparent text-muted hover:text-charcoal-700"
                   }`}
                 >
                   Información
@@ -263,12 +263,12 @@ const StudentCard = ({
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                     innerTab === "reservas"
                       ? "border-brand-500 text-brand-500"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      : "border-transparent text-muted hover:text-charcoal-700"
                   }`}
                 >
                   Reservas
                   {r.reservas?.length > 0 && (
-                    <span className="ml-1.5 text-[0.65rem] bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5 leading-none">
+                    <span className="ml-1.5 text-[0.65rem] bg-surface-200 text-muted rounded-full px-1.5 py-0.5 leading-none">
                       {r.reservas.length}
                     </span>
                   )}

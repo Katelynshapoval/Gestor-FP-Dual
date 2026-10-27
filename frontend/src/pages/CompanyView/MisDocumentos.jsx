@@ -10,13 +10,13 @@ const MisDocumentos = ({ documentos, onRefresh }) => {
 
   return (
     <div className="form-card">
-      <p className="form-section-title">Mis documentos</p>
-      <p className="mb-4 text-sm text-gray-500">
+      <h2 className="form-section-title">Mis documentos</h2>
+      <p className="mb-4 text-sm text-muted">
         Convenio, anexos y calendario de tu empresa. El anexo II o III aparece
         cuando el centro indica el tipo de contrato de la reserva.
       </p>
       {items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-gray-400">
+        <p className="py-8 text-center text-sm text-muted">
           Todavía no hay documentos asociados a tu empresa.
         </p>
       ) : (

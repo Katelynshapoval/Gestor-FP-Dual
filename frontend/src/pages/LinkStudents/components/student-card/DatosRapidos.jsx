@@ -33,7 +33,7 @@ const DatosRapidos = ({ r }) => (
   <div>
     <p className={sectionLabelClass}>Datos rápidos</p>
 
-    <div className="flex flex-col gap-5 rounded-lg border border-gray-200 bg-white p-4 text-sm">
+    <div className="flex flex-col gap-5 rounded-lg border border-surface-200 bg-white p-4 text-sm">
       <ContactField icon={MdOutlineEmail} label="Email" value={r.email} breakAll />
       <ContactField icon={MdOutlineLocalPhone} label="Teléfono" value={r.telalumno} />
 

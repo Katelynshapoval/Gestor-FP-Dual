@@ -20,7 +20,7 @@ export const sectionLabelClass =
   "mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-charcoal-700 before:h-3 before:w-1 before:rounded before:bg-brand-600 before:content-['']";
 
 export const toggleBtnClass =
-  "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-surface-200 bg-white text-gray-500 transition-[transform,border-color,color,background-color] duration-200 ease-in-out hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25";
+  "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-surface-200 bg-white text-muted transition-[transform,border-color,color,background-color] duration-200 ease-in-out hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25";
 
 export const empresaSlotClass =
   "flex flex-col gap-4 rounded-lg border border-surface-200 bg-white p-4";

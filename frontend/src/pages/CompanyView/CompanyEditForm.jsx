@@ -121,13 +121,13 @@ const CompanyEditForm = ({
   return (
     <div className="space-y-6">
       <div className="form-card">
-        <p className="form-section-title">Datos de la empresa</p>
+        <h2 className="form-section-title">Datos de la empresa</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <Field id="ed_empresa" label="Razón social">
             <input id="ed_empresa" className="input" value={values.empresa} onChange={(e) => setField("empresa", e.target.value)} maxLength={100} required />
           </Field>
           <Field id="ed_cif" label="CIF" hint={allowCif ? "Identificador de acceso de la empresa." : "El CIF no se puede modificar."}>
-            <input id="ed_cif" className="input bg-gray-50" value={values.cif} readOnly={!allowCif} onChange={(e) => allowCif && setField("cif", e.target.value.toUpperCase())} maxLength={12} />
+            <input id="ed_cif" className="input bg-surface-50" value={values.cif} readOnly={!allowCif} onChange={(e) => allowCif && setField("cif", e.target.value.toUpperCase())} maxLength={12} />
           </Field>
           <Field id="ed_tel" label="Teléfono empresa">
             <input id="ed_tel" className="input" value={values.telefonoEmpresa} onChange={(e) => setField("telefonoEmpresa", e.target.value)} maxLength={20} />
@@ -145,7 +145,7 @@ const CompanyEditForm = ({
       </div>
 
       <div className="form-card">
-        <p className="form-section-title">Domicilio fiscal</p>
+        <h2 className="form-section-title">Domicilio fiscal</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <Field id="ed_dirL" label="Dirección">
             <input id="ed_dirL" className="input" value={values.domicilioLegal} onChange={(e) => setField("domicilioLegal", e.target.value)} maxLength={255} />
@@ -172,7 +172,7 @@ const CompanyEditForm = ({
       </div>
 
       <div className="form-card">
-        <p className="form-section-title">Lugar de trabajo</p>
+        <h2 className="form-section-title">Lugar de trabajo</h2>
         <label className="mb-4 flex items-center gap-2 text-sm">
           <input type="checkbox" className="accent-brand-500" checked={sameWork} onChange={(e) => handleSameWork(e.target.checked)} />
           Coincide con el domicilio fiscal
@@ -205,7 +205,7 @@ const CompanyEditForm = ({
       </div>
 
       <div className="form-card">
-        <p className="form-section-title">Responsable legal</p>
+        <h2 className="form-section-title">Responsable legal</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <Field id="ed_nRep" label="Nombre">
             <input id="ed_nRep" className="input" value={values.nombreRepresentante} onChange={(e) => setField("nombreRepresentante", e.target.value)} maxLength={100} />
@@ -226,7 +226,7 @@ const CompanyEditForm = ({
       </div>
 
       <div className="form-card">
-        <p className="form-section-title">Coordinador principal</p>
+        <h2 className="form-section-title">Coordinador principal</h2>
         <p className="field-hint">
           Contacto principal del acceso al portal (CIF). Los tutores de alumnos se
           gestionan aparte en el portal de empresa.
@@ -251,7 +251,7 @@ const CompanyEditForm = ({
       </div>
 
       <div className="form-card">
-        <p className="form-section-title">Puesto y transporte</p>
+        <h2 className="form-section-title">Puesto y transporte</h2>
         <Field id="ed_desc" label="Descripción del puesto">
           <textarea id="ed_desc" className="textarea" value={values.descripcion_puesto} onChange={(e) => setField("descripcion_puesto", e.target.value)} maxLength={2000} />
         </Field>

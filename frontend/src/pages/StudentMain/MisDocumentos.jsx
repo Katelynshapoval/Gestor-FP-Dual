@@ -4,8 +4,8 @@ import DocumentoItem from "../../components/DocumentoItem.jsx";
 export default function MisDocumentos({ documentos = [], onChange }) {
   return (
     <div className="form-card">
-      <p className="form-section-title">Mis documentos</p>
-      <p className="mb-4 text-sm text-gray-500">
+      <h2 className="form-section-title">Mis documentos</h2>
+      <p className="mb-4 text-sm text-muted">
         Documentos de tu proceso. Si uno está rechazado, puedes sustituir el PDF.
       </p>
       {documentos.length === 0 ? (

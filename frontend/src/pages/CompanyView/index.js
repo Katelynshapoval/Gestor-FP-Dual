@@ -17,7 +17,105 @@ import EspecialidadCuposEditor from "./EspecialidadCuposEditor.jsx";
 import TutoresEmpresa from "./TutoresEmpresa.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../components/ui/InlineNotice.jsx";
+import Tabs from "../../components/ui/Tabs.jsx";
+import Pendientes from "../../components/portal/Pendientes.jsx";
+import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
+import { anexoNombre, label } from "../../utils/labels.js";
 import "../../styles/forms.css";
+
+const pendienteDeEmpresa = (doc) =>
+  doc &&
+  ((doc.firmas_pendientes || []).some((r) => String(r).toUpperCase() === "EMPRESA") ||
+    ["PENDIENTE_SUBIDA", "RECHAZADO"].includes(doc.estado_operativo));
+
+// What the company must do, or is waiting for, from the data the portal loads.
+export function pendientesEmpresa({ solicitud, cambio, reservations, documentos, irA, abrirReserva, irAlumnos }) {
+  const items = [];
+  if (!solicitud) {
+    items.push({
+      key: "sin-solicitud",
+      tone: "info",
+      title: "Vuestra empresa no tiene ninguna solicitud registrada.",
+      text: "Si creéis que es un error, contactad con el centro.",
+    });
+    return items;
+  }
+  if (solicitud.puede_reaplicar) {
+    items.push({
+      key: "reaplicar",
+      tone: "action",
+      title: `Participad en la convocatoria ${solicitud.convocatoria_abierta?.nombre || "abierta"}.`,
+      text: "Vuestra última solicitud es de una convocatoria anterior.",
+      action: { label: "Participar", onClick: () => irA("datos") },
+    });
+  }
+  const activa = Boolean(solicitud.convocatoria_activa);
+  if (activa && solicitud.estado_validacion === "RECHAZADO") {
+    items.push({
+      key: "rechazada",
+      tone: "action",
+      title: "Vuestra solicitud ha sido rechazada.",
+      text: solicitud.motivo ? `Motivo: ${solicitud.motivo}. Contactad con el centro.` : "Contactad con el centro.",
+    });
+  }
+  for (const d of documentos) {
+    if (d.id_reserva) continue; // reservation documents are listed per reservation below
+    if ((d.accion_pendiente_de || []).includes("EMPRESA")) {
+      items.push({
+        key: `doc-${d.clave}-${d.id_solicitud_empresa || 0}`,
+        tone: "action",
+        title: `${d.nombre}: ${label("documento", d.estado_operativo).toLowerCase()}.`,
+        text: d.estado_operativo === "RECHAZADO" && d.motivo ? `Motivo: ${d.motivo}` : null,
+        action: { label: "Ir a documentos", onClick: () => irA("documentos") },
+      });
+    }
+  }
+  for (const r of reservations.filter((x) => x.estado_reserva !== "CANCELADA")) {
+    const resumen = r.documentos_resumen || {};
+    const tareas = [];
+    if (pendienteDeEmpresa(resumen.anexo)) {
+      const firmar = (resumen.anexo.firmas_pendientes || []).some((x) => String(x).toUpperCase() === "EMPRESA") && resumen.anexo.id_documento;
+      tareas.push(`${firmar ? "firmar" : resumen.anexo.estado_operativo === "RECHAZADO" ? "subir de nuevo" : "subir"} el ${anexoNombre(resumen.anexo.clave)}`);
+    }
+    if (pendienteDeEmpresa(resumen.calendario)) tareas.push(resumen.calendario.estado_operativo === "RECHAZADO" ? "subir de nuevo el Calendario" : "subir el Calendario");
+    if (tareas.length) {
+      items.push({
+        key: `reserva-${r.id_reserva}`,
+        tone: "action",
+        title: `Reserva de ${r.alumno}: ${tareas.join(" y ")}.`,
+        action: { label: "Abrir reserva", onClick: () => abrirReserva(r.id_reserva) },
+      });
+    }
+  }
+  if (cambio?.pending) {
+    items.push({
+      key: "cambio",
+      tone: "waiting",
+      title: "Vuestros cambios de datos están pendientes de aprobación por el centro.",
+      text: "Mientras tanto se muestran los datos aprobados.",
+    });
+  }
+  if (activa && solicitud.estado_validacion === "PENDIENTE") {
+    items.push({
+      key: "revision",
+      tone: "waiting",
+      title: "El centro validará vuestra solicitud cuando el convenio esté firmado.",
+      text: "Hasta entonces no podéis reservar alumnos.",
+    });
+  }
+  if (activa && solicitud.estado_validacion === "VALIDADO") {
+    const activas = reservations.filter((x) => x.estado_reserva !== "CANCELADA").length;
+    items.push({
+      key: "reservar",
+      tone: "info",
+      title: activas
+        ? `Tenéis ${activas} ${activas === 1 ? "reserva activa" : "reservas activas"}.`
+        : "Vuestra solicitud está validada: ya podéis reservar alumnos.",
+      action: { label: "Ver alumnos disponibles", onClick: irAlumnos },
+    });
+  }
+  return items;
+}
 
 // Read-only field styled to match the rest of the form layout
 
@@ -110,8 +208,8 @@ const MisDatos = ({
 
       <div className="form-card flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="form-section-title mb-1">Datos vigentes</p>
-          <p className="text-sm text-gray-500">
+          <h2 className="form-section-title mb-1">Datos vigentes</h2>
+          <p className="text-sm text-muted">
             Estos son los datos aprobados actualmente. Las modificaciones se
             envían al centro para revisión.
           </p>
@@ -125,9 +223,9 @@ const MisDatos = ({
 
       {pending && (
         <div className="form-card border-amber-200 bg-amber-50">
-          <p className="form-section-title text-amber-900">
+          <h2 className="form-section-title text-amber-900">
             Cambios enviados para revisión
-          </p>
+          </h2>
           <p className="mb-3 text-sm text-amber-800">
             La solicitud está pendiente de aprobación. Los datos vigentes no
             cambian hasta que el centro la revise.
@@ -138,9 +236,9 @@ const MisDatos = ({
 
       {rejected && (
         <div className="form-card border-red-200 bg-red-50">
-          <p className="form-section-title text-red-900">
+          <h2 className="form-section-title text-red-900">
             Solicitud de cambios rechazada
-          </p>
+          </h2>
           <p className="text-sm text-red-800">
             {rejected.motivo || "Sin motivo indicado."}
           </p>
@@ -164,7 +262,7 @@ const MisDatos = ({
 
       {/* Principal coordinator section */}
       <div className="form-card">
-        <p className="form-section-title">Coordinador principal</p>
+        <h2 className="form-section-title">Coordinador principal</h2>
         <p className="field-hint">
           <strong>Importante:</strong> Esta persona recibe las notificaciones y
           documentos del proyecto DUAL y gestiona el acceso al portal con el CIF.
@@ -190,7 +288,7 @@ const MisDatos = ({
 
       {/* Company info section */}
       <div className="form-card">
-        <p className="form-section-title">Datos de la empresa</p>
+        <h2 className="form-section-title">Datos de la empresa</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <ReadField
             label="Razón Social"
@@ -222,7 +320,7 @@ const MisDatos = ({
 
       {/* Legal representative */}
       <div className="form-card">
-        <p className="form-section-title">Responsable Legal</p>
+        <h2 className="form-section-title">Responsable Legal</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <ReadField
             label="Nombre responsable legal"
@@ -241,11 +339,11 @@ const MisDatos = ({
 
       {/* Job position details */}
       <div className="form-card">
-        <p className="form-section-title">Puesto de trabajo</p>
+        <h2 className="form-section-title">Puesto de trabajo</h2>
         <div className="space-y-4">
           <div className="field">
             <label>Descripción del puesto</label>
-            <p className="input bg-gray-50 cursor-default min-h-[60px] whitespace-pre-wrap">
+            <p className="input bg-surface-50 cursor-default min-h-[60px] whitespace-pre-wrap">
               {solicitud.descripcionPuesto ||
                 solicitud.descripcion_puesto ||
                 "—"}
@@ -262,7 +360,7 @@ const MisDatos = ({
 
       {/* Requested specialities and student counts */}
       <div className="form-card">
-        <p className="form-section-title">Ciclo(s) de Grado solicitados</p>
+        <h2 className="form-section-title">Ciclo(s) de Grado solicitados</h2>
         <EspecialidadCuposEditor
           solicitudId={solicitud.id_solicitud_empresa}
           especialidades={esps}
@@ -274,7 +372,7 @@ const MisDatos = ({
 
       {/* Transport options */}
       <div className="form-card">
-        <p className="form-section-title">Métodos de Transporte posibles</p>
+        <h2 className="form-section-title">Métodos de Transporte posibles</h2>
         <p className="field-hint">
           Medios de transporte con los que el alumno puede acceder al puesto.
         </p>
@@ -295,11 +393,11 @@ const MisDatos = ({
             ))}
           </div>
         ) : solicitud.transportes_conocidos === false ? (
-          <p className="text-gray-500 text-sm">
+          <p className="text-muted text-sm">
             No registrado: los datos de transporte de esta convocatoria no se conservaron.
           </p>
         ) : (
-          <p className="text-gray-500 text-sm">Sin datos</p>
+          <p className="text-muted text-sm">Sin datos</p>
         )}
       </div>
 
@@ -310,11 +408,11 @@ const MisDatos = ({
           className="flex items-center justify-between cursor-pointer"
           onClick={() => setShowReapply((v) => !v)}
         >
-          <p className="form-section-title mb-0">
+          <h2 className="form-section-title mb-0">
             Participar en la nueva convocatoria
-          </p>
+          </h2>
           <span
-            className={`text-gray-400 text-lg transition-transform ${showReapply ? "rotate-180" : ""}`}
+            className={`text-muted text-lg transition-transform ${showReapply ? "rotate-180" : ""}`}
           >
             ▾
           </span>
@@ -349,13 +447,9 @@ const MisDatos = ({
 // Re-apply form — lets the empresa re-submit with updated coordinator data and speciality picks
 const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
   const toast = useToast();
-  const initEsps = () => {
-    const ids = (solicitud?.especialidades || []).map((e) => e.id_especialidad);
-    const amts = (solicitud?.especialidades || []).map(
-      (e) => e.cantidad_alumnos,
-    );
-    return [ids, amts];
-  };
+  // { [id_especialidad]: plazas }, starting from the last application.
+  const initEsps = () =>
+    Object.fromEntries((solicitud?.especialidades || []).map((e) => [e.id_especialidad, Number(e.cantidad_alumnos) || 1]));
   const initTransports = () =>
     (solicitud?.transportes || []).map((t) => t.id_transporte);
 
@@ -377,27 +471,14 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
   const [fieldError, setFieldError] = useState("");
 
   const handleEspToggle = (id) =>
-    setSelectedEsps(([ids, amts]) => {
-      const idx = ids.indexOf(id);
-      if (idx === -1)
-        return [
-          [...ids, id],
-          [...amts, 1],
-        ];
-      return [
-        ids.filter((_, i) => i !== idx),
-        amts.filter((_, i) => i !== idx),
-      ];
+    setSelectedEsps((prev) => {
+      const next = { ...prev };
+      if (id in next) delete next[id];
+      else next[id] = 1;
+      return next;
     });
 
-  const handleAmountChange = (id, val) =>
-    setSelectedEsps(([ids, amts]) => {
-      const idx = ids.indexOf(id);
-      if (idx === -1) return [ids, amts];
-      const next = [...amts];
-      next[idx] = val;
-      return [ids, next];
-    });
+  const handleAmountChange = (id, val) => setSelectedEsps((prev) => ({ ...prev, [id]: val }));
 
   const handleTranspToggle = (id) => {
     const n = Number(id);
@@ -408,11 +489,12 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
 
   const handleSubmit = async () => {
     if (submitting) return;
-    if (selectedEsps[0].length === 0) {
+    const plazas = Object.values(selectedEsps);
+    if (plazas.length === 0) {
       setFieldError("Selecciona al menos un ciclo.");
       return;
     }
-    if (selectedEsps[1].some((a) => a <= 0)) {
+    if (plazas.some((a) => !(a >= 1))) {
       setFieldError("Indica al menos un alumno por ciclo.");
       return;
     }
@@ -424,9 +506,9 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
         emailCoordinador,
         telefonoCoordinador,
         descripcion_puesto: descripcionPuesto,
-        especialidades: selectedEsps[0].map((id, i) => ({
-          idEspecialidad: id,
-          cantidadAlumnos: selectedEsps[1][i],
+        especialidades: Object.entries(selectedEsps).map(([id, n]) => ({
+          idEspecialidad: Number(id),
+          cantidadAlumnos: n,
         })),
         transportes: selectedTransps,
       });
@@ -446,23 +528,25 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-gray-500">
-        Puedes modificar los datos del coordinador principal y las especialidades. Los
-        datos de empresa se mantienen.
+      <p className="text-sm text-muted">
+        Puedes modificar los datos del coordinador principal, el puesto y los ciclos. Los datos de la empresa se mantienen.
+        La nueva solicitud queda pendiente hasta que el centro valide su convenio.
       </p>
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="field">
-          <label>Nombre coordinador principal</label>
+          <label htmlFor="reapply-nombre">Nombre coordinador principal</label>
           <input
+            id="reapply-nombre"
             className="input"
             value={nombreCoordinador}
             onChange={(e) => setNombreCoordinador(e.target.value)}
           />
         </div>
         <div className="field">
-          <label>Email coordinador principal</label>
+          <label htmlFor="reapply-email">Email coordinador principal</label>
           <input
+            id="reapply-email"
             className="input"
             type="email"
             value={emailCoordinador}
@@ -470,8 +554,9 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
           />
         </div>
         <div className="field">
-          <label>Teléfono coordinador principal</label>
+          <label htmlFor="reapply-tel">Teléfono coordinador principal</label>
           <input
+            id="reapply-tel"
             className="input"
             value={telefonoCoordinador}
             onChange={(e) => setTelefonoCoordinador(e.target.value)}
@@ -480,8 +565,9 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
       </div>
 
       <div className="field">
-        <label>Descripción del puesto</label>
+        <label htmlFor="reapply-puesto">Descripción del puesto</label>
         <textarea
+          id="reapply-puesto"
           className="textarea"
           value={descripcionPuesto}
           onChange={(e) => setDescripcionPuesto(e.target.value)}
@@ -491,7 +577,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
 
       <SpecialitySelector
         dataSpecialities={specialities}
-        specialities={selectedEsps}
+        selected={selectedEsps}
         onToggle={handleEspToggle}
         onAmountChange={handleAmountChange}
       />
@@ -520,6 +606,7 @@ const CompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const [view, setView] = useState("datos");
+  const [reservaAbierta, setReservaAbierta] = useState(null);
 
   const [solicitud, setSolicitud] = useState(null);
   const [cambio, setCambio] = useState({ pending: null, ultimo: null });
@@ -608,110 +695,92 @@ const CompanyView = () => {
 
   if (!user || user.rol !== "EMPRESA") return null;
 
-  const tabCls = (active) =>
-    `whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
-      active
-        ? "border-brand-500 text-brand-500"
-        : "border-transparent text-gray-500 hover:text-gray-700"
-    }`;
+  const docItems = documentos.items || [];
+  const accionesDocs = docItems.filter((d) => !d.id_reserva && (d.accion_pendiente_de || []).includes("EMPRESA")).length;
+  const activas = reservations.filter((r) => r.estado_reserva !== "CANCELADA").length;
+  const empresaNombre = solicitud?.empresa || solicitud?.razonSocial || user.nombre;
 
   return (
     <div className="page-container">
       <PageHeader
-        kicker="Empresa"
-        title="Portal Empresa — Dual"
-        subtitle={`${user.nombre}${user.email ? ` · ${user.email}` : user.cif ? ` · ${user.cif}` : ""}`}
+        kicker="Mi empresa"
+        title={empresaNombre}
+        subtitle={[solicitud?.cif || user.cif, solicitud?.convocatoria && `Convocatoria ${solicitud.convocatoria}`].filter(Boolean).join(" · ")}
       />
 
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200" role="tablist" aria-label="Secciones del portal">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "datos"}
-          className={tabCls(view === "datos")}
-          onClick={() => setView("datos")}
-        >
-          Mis datos
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "tutores"}
-          className={tabCls(view === "tutores")}
-          onClick={() => setView("tutores")}
-        >
-          Tutores
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "reservas"}
-          className={tabCls(view === "reservas")}
-          onClick={() => setView("reservas")}
-        >
-          Mis reservas
-          {reservations.length > 0 && (
-            <span className="ml-1.5 inline-block text-[0.7rem] bg-brand-500 text-white rounded-full px-1.5 py-0.5 leading-none">
-              {reservations.length}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "documentos"}
-          className={tabCls(view === "documentos")}
-          onClick={() => setView("documentos")}
-        >
-          Mis documentos
-          {(documentos.items || []).filter((d) => d.id_documento).length > 0 && (
-            <span className="ml-1.5 inline-block text-[0.7rem] bg-brand-500 text-white rounded-full px-1.5 py-0.5 leading-none">
-              {(documentos.items || []).filter((d) => d.id_documento).length}
-            </span>
-          )}
-        </button>
-      </div>
-
       {loading ? (
-        <p role="status" className="py-16 text-center text-muted">Cargando…</p>
-      ) : loadErrors[{ datos: "solicitud", reservas: "reservas", documentos: "documentos" }[view]] ? (
-        <div role="alert" className="form-card text-center">
-          <p className="font-semibold text-charcoal-950">No se pudieron cargar los datos.</p>
-          <p className="mt-2 text-sm text-muted">
-            {loadErrors[{ datos: "solicitud", reservas: "reservas", documentos: "documentos" }[view]]}
-          </p>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm mt-4"
-            onClick={() =>
-              view === "datos" ? fetchSolicitud() : view === "reservas" ? fetchReservations() : fetchDocumentos()
-            }
-          >
-            Reintentar
-          </button>
-        </div>
-      ) : view === "datos" ? (
-        <MisDatos
-          solicitud={solicitud}
-          specialities={specialities}
-          transports={transports}
-          cambio={cambio}
-          onReapplySuccess={fetchSolicitud}
-          onCambioChange={fetchSolicitud}
-          onCupoChange={async () => {
-            await fetchSolicitud();
-            await fetchReservations();
-          }}
-        />
-      ) : view === "tutores" ? (
-        <TutoresEmpresa />
-      ) : view === "reservas" ? (
-        <div className="form-card">
-          <p className="form-section-title">Mis reservas</p>
-          <MisReservas reservations={reservations} onChanged={refreshReservasYDocumentos} />
-        </div>
+        <p role="status" className="py-16 text-center text-muted">Cargando el portal de tu empresa…</p>
       ) : (
-        <MisDocumentos documentos={documentos} onRefresh={refreshReservasYDocumentos} />
+        <>
+          <Pendientes
+            items={pendientesEmpresa({
+              solicitud,
+              cambio,
+              reservations,
+              documentos: docItems,
+              irA: setView,
+              abrirReserva: setReservaAbierta,
+              irAlumnos: () => navigate("/alumnos"),
+            })}
+          />
+          <Tabs
+            label="Secciones del portal"
+            value={view}
+            onChange={setView}
+            tabs={[
+              { id: "datos", label: "Datos de la empresa" },
+              { id: "tutores", label: "Tutores" },
+              { id: "reservas", label: "Reservas", badge: activas || null, badgeLabel: "activas" },
+              { id: "documentos", label: "Documentos", badge: accionesDocs || null, badgeTone: "action", badgeLabel: "pendientes" },
+            ]}
+          >
+            {loadErrors[{ datos: "solicitud", reservas: "reservas", documentos: "documentos" }[view]] ? (
+              <div role="alert" className="form-card text-center">
+                <p className="font-semibold text-charcoal-950">No se pudieron cargar los datos.</p>
+                <p className="mt-2 text-sm text-muted">
+                  {loadErrors[{ datos: "solicitud", reservas: "reservas", documentos: "documentos" }[view]]}
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm mt-4"
+                  onClick={() =>
+                    view === "datos" ? fetchSolicitud() : view === "reservas" ? fetchReservations() : fetchDocumentos()
+                  }
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : view === "datos" ? (
+              <MisDatos
+                solicitud={solicitud}
+                specialities={specialities}
+                transports={transports}
+                cambio={cambio}
+                onReapplySuccess={fetchSolicitud}
+                onCambioChange={fetchSolicitud}
+                onCupoChange={async () => {
+                  await fetchSolicitud();
+                  await fetchReservations();
+                }}
+              />
+            ) : view === "tutores" ? (
+              <TutoresEmpresa />
+            ) : view === "reservas" ? (
+              <div className="form-card">
+                <h2 className="form-section-title">Reservas</h2>
+                <MisReservas reservations={reservations} onChanged={refreshReservasYDocumentos} />
+              </div>
+            ) : (
+              <MisDocumentos documentos={documentos} onRefresh={refreshReservasYDocumentos} />
+            )}
+          </Tabs>
+          <ReservaDetalle
+            idReserva={reservaAbierta}
+            open={Boolean(reservaAbierta)}
+            onClose={() => setReservaAbierta(null)}
+            onChanged={refreshReservasYDocumentos}
+          />
+        </>
       )}
     </div>
   );

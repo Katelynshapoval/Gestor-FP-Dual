@@ -149,9 +149,9 @@ export default function Convocatorias() {
           <div className="form-section-title mb-0">Convocatorias registradas</div>
         </div>
         {loading ? (
-          <p className="px-6 py-8 text-sm text-gray-500">Cargando…</p>
+          <p className="px-6 py-8 text-sm text-muted">Cargando…</p>
         ) : convocatorias.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-gray-500">No hay convocatorias registradas.</p>
+          <p className="px-6 py-8 text-sm text-muted">No hay convocatorias registradas.</p>
         ) : (
           <div className="divide-y divide-surface-200">
             {convocatorias.map((c) => (
@@ -205,8 +205,8 @@ export default function Convocatorias() {
                 ) : (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="font-semibold text-gray-900">{c.nombre}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-semibold text-charcoal-900">{c.nombre}</p>
+                      <p className="text-sm text-muted">
                         {formatDate(c.fecha_inicio)} — {formatDate(c.fecha_fin)}
                       </p>
                     </div>

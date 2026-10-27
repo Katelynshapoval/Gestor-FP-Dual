@@ -158,12 +158,12 @@ const EmpresaDatosActions = ({
               <p className="text-sm font-semibold text-red-800">
                 {conflict.error}
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted">
                 Los datos vigentes han cambiado desde que la empresa envió la
                 solicitud. Si apruebas, se aplicarán los valores solicitados
                 sobre los datos actuales.
               </p>
-              <ul className="text-xs text-gray-700 list-disc pl-4">
+              <ul className="text-xs text-charcoal-700 list-disc pl-4">
                 {(conflict.conflictos || []).map((c) => (
                   <li key={c.field}>
                     {c.label}: original «{c.original || "—"}» → ahora «
@@ -192,7 +192,7 @@ const EmpresaDatosActions = ({
               Aprobar
             </button>
             <div className="flex-1">
-              <label className="text-xs font-semibold text-gray-600">
+              <label className="text-xs font-semibold text-muted">
                 Motivo del rechazo
               </label>
               <input

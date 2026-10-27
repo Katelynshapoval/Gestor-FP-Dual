@@ -108,17 +108,20 @@ const Login = () => {
       <div className="login-page">
         <div className="login-card">
           <div className="logo-mark">
-            <img src="logo.png" alt="Salesianos" />
+            <img src="/logo.png" alt="" />
           </div>
-          <h2>Cambiar contraseña</h2>
+          <h1>Cambiar contraseña</h1>
           <p className="subtitle">Debes establecer una nueva contraseña antes de continuar.</p>
 
           <form onSubmit={handleChangePassword} className="space-y-4 text-left mt-5">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <label htmlFor="nueva-password" className="text-xs font-semibold text-muted uppercase tracking-wide">
                 Nueva contraseña
               </label>
               <input
+                id="nueva-password"
+                autoComplete="new-password"
+                minLength={8}
                 type="password"
                 placeholder="Nueva contraseña"
                 value={newPassword}
@@ -129,10 +132,12 @@ const Login = () => {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <label htmlFor="confirmar-password" className="text-xs font-semibold text-muted uppercase tracking-wide">
                 Confirmar contraseña
               </label>
               <input
+                id="confirmar-password"
+                autoComplete="new-password"
                 type="password"
                 placeholder="Repite la contraseña"
                 value={confirmPassword}
@@ -145,9 +150,8 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-2.5 rounded-lg text-sm font-semibold text-white transition ${
-                loading ? "bg-gray-300 cursor-not-allowed" : "bg-brand-500 hover:bg-brand-700 cursor-pointer"
-              }`}
+              className="btn btn-primary w-full"
+              aria-busy={loading}
             >
               {loading ? "Guardando…" : "Establecer contraseña"}
             </button>
@@ -163,9 +167,9 @@ const Login = () => {
     <div className="login-page">
       <div className="login-card">
         <div className="logo-mark">
-          <img src="logo.png" alt="Salesianos" />
+          <img src="/logo.png" alt="" />
         </div>
-        <h2>Bienvenido</h2>
+        <h1>Acceder al portal</h1>
         <p className="subtitle">FP Dual Intensiva · Salesianos Zaragoza</p>
 
         {sessionNotice && (
@@ -176,7 +180,7 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-left mt-5">
           <div className="space-y-1">
-            <label htmlFor="login-usuario" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <label htmlFor="login-usuario" className="text-xs font-semibold text-muted uppercase tracking-wide">
               Usuario
             </label>
             <input
@@ -187,12 +191,12 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-charcoal-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="login-password" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <label htmlFor="login-password" className="text-xs font-semibold text-muted uppercase tracking-wide">
               Contraseña
             </label>
             <input
@@ -203,23 +207,22 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-charcoal-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2.5 rounded-lg text-sm font-semibold text-white transition ${
-              loading ? "bg-gray-300 cursor-not-allowed" : "bg-brand-500 hover:bg-brand-700 cursor-pointer"
-            }`}
+            className="btn btn-primary w-full"
+            aria-busy={loading}
           >
             {loading ? "Verificando…" : "Entrar"}
           </button>
 
-          {error && <div className="login-error">{error}</div>}
+          {error && <div className="login-error" role="alert">{error}</div>}
 
-          <p className="text-xs text-gray-400 text-center mt-2">
+          <p className="text-xs text-muted text-center mt-2">
             Administración: correo electrónico · Empresas: CIF · Alumnos: DNI/NIE
             <br />
             Si olvidaste tu contraseña, contacta con el administrador.
