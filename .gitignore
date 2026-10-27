@@ -18,3 +18,5 @@ backend/uploads/
 # because it reads credentials from the environment (V-5).
 backend/src/db/config.js
 bbdd_config.sql
+# Generated test-account credentials (scripts/seedPruebas.js)
+backend/.pruebas.local.json
