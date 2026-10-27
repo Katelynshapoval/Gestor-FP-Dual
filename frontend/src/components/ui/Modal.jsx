@@ -8,7 +8,11 @@ import { createPortal } from "react-dom";
 // - Focus moves into the dialog, Tab cycles inside it, and focus returns to
 //   the element that opened it.
 // - The page behind does not scroll while a dialog is open.
+// Open dialogs. The topmost is the one opened last; a dialog rendered inside
+// another gets a higher number because parents render before children.
 const stack = [];
+let counter = 0;
+const isTop = (entry) => entry === stack.reduce((top, e) => (!top || e.order > top.order ? e : top), null);
 
 const SIZE = {
   sm: "max-w-md",
@@ -38,15 +42,19 @@ export default function Modal({
   const titleId = useId();
   const descId = useId();
   const panelRef = useRef(null);
+  const bodyRef = useRef(null);
   const tokenRef = useRef(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const busyRef = useRef(busy);
   busyRef.current = busy;
+  const orderRef = useRef(null);
+  if (open && orderRef.current === null) orderRef.current = ++counter;
+  if (!open) orderRef.current = null;
 
   useEffect(() => {
     if (!open) return undefined;
-    const token = {};
+    const token = { order: orderRef.current };
     tokenRef.current = token;
     stack.push(token);
     const opener = document.activeElement;
@@ -55,14 +63,21 @@ export default function Modal({
 
     const focusFirst = () => {
       const panel = panelRef.current;
-      if (!panel) return;
-      const target = initialFocusRef?.current || panel.querySelector("[data-autofocus]") || panel.querySelector(FOCUSABLE) || panel;
+      if (!panel || !isTop(token)) return;
+      // Content first (an explicit initialFocusRef or data-autofocus field, then
+      // the first control of the body or footer); the close button last.
+      const target =
+        initialFocusRef?.current ||
+        panel.querySelector("[data-autofocus]") ||
+        bodyRef.current?.querySelector(FOCUSABLE) ||
+        panel.querySelector(FOCUSABLE) ||
+        panel;
       target.focus();
     };
     const raf = requestAnimationFrame(focusFirst);
 
     const onKey = (event) => {
-      if (stack[stack.length - 1] !== token) return;
+      if (!isTop(token)) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         if (!busyRef.current) onCloseRef.current?.();
@@ -71,7 +86,7 @@ export default function Modal({
       if (event.key !== "Tab") return;
       const panel = panelRef.current;
       if (!panel) return;
-      const items = Array.from(panel.querySelectorAll(FOCUSABLE)).filter((el) => el.offsetParent !== null || el === document.activeElement);
+      const items = Array.from(panel.querySelectorAll(FOCUSABLE)).filter((el) => !el.closest("[hidden]"));
       if (!items.length) {
         event.preventDefault();
         panel.focus();
@@ -103,13 +118,13 @@ export default function Modal({
 
   if (!open) return null;
 
-  const depth = Math.max(0, stack.indexOf(tokenRef.current));
+  const depth = orderRef.current || 0;
   const full = size === "full";
 
   return createPortal(
     <div
       className="fixed inset-0 flex items-center justify-center bg-black/45 p-3 animate-fade-in sm:p-6"
-      style={{ zIndex: 400 + depth * 10 }}
+      style={{ zIndex: 400 + Math.min(depth, 50) }}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && closeOnOverlay && !busy) onClose?.();
       }}
@@ -147,7 +162,7 @@ export default function Modal({
             </button>
           </div>
         </div>
-        <div className={`min-h-0 flex-1 ${full ? "overflow-hidden" : "overflow-y-auto px-4 py-4 sm:px-5"} ${bodyClassName}`}>
+        <div ref={bodyRef} className={`min-h-0 flex-1 ${full ? "overflow-hidden" : "overflow-y-auto px-4 py-4 sm:px-5"} ${bodyClassName}`}>
           {children}
         </div>
         {footer && (
