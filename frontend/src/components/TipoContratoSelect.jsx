@@ -26,7 +26,7 @@ const familia = (t) => (/beca/i.test(`${t.nombre || ""} ${t.nombre_mostrar || ""
 
 // `familiaFija` (D2): once an annex of one family is under review or validated,
 // types of the other family are shown disabled (the backend refuses them too).
-const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = null, className = "" }) => {
+const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = null, labelOculto = false, className = "" }) => {
   const toast = useToast();
   const [tipos, setTipos] = useState([]);
   const [value, setValue] = useState(idTipoContrato != null ? String(idTipoContrato) : "");
@@ -76,7 +76,7 @@ const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label
           htmlFor={selectId}
-          className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted"
+          className={labelOculto ? "sr-only" : "shrink-0 text-xs font-semibold uppercase tracking-widest text-muted"}
         >
           Tipo de contrato
         </label>

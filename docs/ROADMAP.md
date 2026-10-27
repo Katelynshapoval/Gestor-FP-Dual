@@ -10,8 +10,8 @@ Five phases. Each ends with the application deployable and usable; later phases 
 | --- | --- | --- | --- |
 | 1. Critical security and blocked workflows — **in progress** (see [PHASE_1_REPORT.md](PHASE_1_REPORT.md)) | Close account-takeover paths and make every core workflow completable | Medium–High | — |
 | 2. Database baseline and business-rule integrity — **implemented, migrations applied on dev; verification open** (see [PHASE_2_REPORT.md](PHASE_2_REPORT.md)) | One reproducible schema; state rules enforced in the backend | Very High | 1 |
-| 3. Frontend workflow consolidation — **implemented; authenticated browser checks pending** (see [PHASE_3_REPORT.md](PHASE_3_REPORT.md)) | One place per task, shared components, honest states | High | 1, 2 (rules) |
-| 4. UX, navigation, notifications and accessibility | Role-centred navigation, dashboards, emails, WCAG basics | Medium–High | 3 (shared components) |
+| 3. Frontend workflow consolidation — **complete** (authenticated browser run done in Phase 4; see [PHASE_3_REPORT.md](PHASE_3_REPORT.md)) | One place per task, shared components, honest states | High | 1, 2 (rules) |
+| 4. UX, navigation, notifications and accessibility — **implemented; real email, screen-reader pass and your review pending** (see [PHASE_4_REPORT.md](PHASE_4_REPORT.md)) | Role-centred navigation, dashboards, emails, WCAG basics | Medium–High | 3 (shared components) |
 | 5. Performance, testing and production readiness | Scale to several years of data; automated regression; deployment hygiene | High | 2, 3 |
 
 ```mermaid
@@ -63,6 +63,8 @@ Phases 1–4 run in sequence; Phase 5 needs the rules from Phase 2 and the scree
 - **Done when:** a full reservation can be handled from one panel; every state label comes from `labels.js`; an expired session redirects to login with a message; ESLint stays at 0 warnings.
 
 ### Phase 4 — UX, navigation, notifications and accessibility
+
+> **Status (2026-10-27, branch `phase-4-ux-accessibility`):** implemented and committed (7 commits, not pushed). Done: role menus and new paths with redirects; stable sidebar; accessible mobile drawer; `GET /panel/resumen` and the Panel with links to filtered lists; one filter pattern (URL-backed, active convocatoria by default) on Alumnos, Empresas, Reservas and Seguimiento; both public forms in six steps with inline errors, review and an open/closed banner (`GET /convocatorias/estado`); “Qué tienes pendiente” on both portals; accessible Tabs; event notifications (approved mapping) with `MAIL_MODE=log` by default; SEC-11 (students without the free-text reason, `/usuarios` admin-only; company visibility unchanged by decision); no forced password change after company self-registration. Phase 3's authenticated run done; it found and fixed a Phase 2 HTTP 500 on the contract type. Tests: backend 75/75, frontend 27/27, ESLint 0 (now including `.jsx`), build OK; axe 0 violations on the checked pages; no overflow at 360 px. **Open:** enabling real email, a screen-reader pass, your review. Phase 4 is **not** marked complete.
 
 - **Objective:** each role sees what needs doing, gets told when something changes, and can use the app with a keyboard and screen reader.
 - **Included:** staff menu and labels (D.1); staff dashboard with pending-work counters; search and active-convocatoria defaults; public forms in steps with inline errors and an “abierto / cerrado” banner; portal improvements for companies and students (D.3); email notifications for validation, rejection, reservation, cancellation and confirmation (WF-19); data-minimisation rules (SEC-11); accessibility fixes (D.4); responsive pass and new screenshots at 360/768/1280 px (D.5); sidebar behaviour.

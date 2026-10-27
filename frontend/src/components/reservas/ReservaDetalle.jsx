@@ -148,6 +148,7 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
                     idReserva={r.id_reserva}
                     idTipoContrato={r.id_tipo_contrato}
                     onSaved={changed}
+                    labelOculto
                     familiaFija={r.anexo_clave && acciones.cambio_familia && !acciones.cambio_familia.permitido ? r.anexo_clave : null}
                   />
                   {r.anexo_clave && !acciones.cambio_familia?.permitido && (

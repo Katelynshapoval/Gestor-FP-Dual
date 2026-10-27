@@ -2,7 +2,9 @@
 
 _Branch `phase-3-frontend-consolidation`, created from `main` @ `82f0356` (Phase 2) · 2026-10-27 · companion to [ROADMAP.md](ROADMAP.md), [AUDIT.md](AUDIT.md), [PHASE_2_REPORT.md](PHASE_2_REPORT.md) and [STATE_TRANSITIONS.md](STATE_TRANSITIONS.md)._
 
-**Status: implemented and committed (7 commits, nothing pushed). Phase 3 is NOT complete:** the authenticated browser checks were not run; test accounts and data exist for them (§8).
+**Status update (2026-10-27, start of Phase 4): Phase 3 is complete.** The authenticated browser run was done with the test accounts. The full reservation lifecycle went through the panel by role: reserve, contract type, company upload, student and centre signatures, validation, confirmation, and reassignment without inherited annex. A company gets 403 on another company's reservation. The run found one bug, an HTTP 500 when setting “Contrato de formación en alternancia”, caused by an audit column that is too short (Phase 2). It was fixed in commit `4c351cd`; see [PHASE_4_REPORT.md](PHASE_4_REPORT.md) §1.
+
+_Original status:_ implemented and committed (7 commits, nothing pushed). Phase 3 was NOT complete because the authenticated browser checks had not been run; test accounts and data exist for them (§8).
 
 Automated tests pass, the production build is clean, and several flows were checked against the real development backend and database:
 - the read-only endpoint checks;
