@@ -14,5 +14,7 @@ Thumbs.db
 
 # Ignorar archivos de subida temporales
 backend/uploads/
-config.js
+# Only the unused legacy DB config stays ignored; src/mail/config.js is tracked
+# because it reads credentials from the environment (V-5).
+backend/src/db/config.js
 bbdd_config.sql

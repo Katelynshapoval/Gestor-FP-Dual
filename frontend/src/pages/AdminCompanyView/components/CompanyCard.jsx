@@ -322,6 +322,7 @@ const CompanyCard = ({
   onToggle,
   onViewConvenio,
   onResetPassword,
+  onClearResetPassword,
   onUpdated,
   resetResult,
 }) => {
@@ -535,6 +536,8 @@ const CompanyCard = ({
                           }
                           mono={!!(empresa.username || emailCoord)}
                         />
+                        {/* Only ADMINISTRADOR may reset passwords (route is admin-only) */}
+                        {onResetPassword && (
                         <div className="flex items-center gap-2 flex-wrap mt-2">
                           <button
                             onClick={() => onResetPassword(id)}
@@ -544,12 +547,24 @@ const CompanyCard = ({
                             Resetear contraseña
                           </button>
                           {resetResult?.[id] && (
-                            <span className="text-xs font-mono bg-yellow-50 border border-yellow-200 text-yellow-800 px-2 py-1 rounded">
-                              Nueva contraseña:{" "}
-                              <strong>{resetResult[id]}</strong>
-                            </span>
+                            <>
+                              <span className="text-xs font-mono bg-yellow-50 border border-yellow-200 text-yellow-800 px-2 py-1 rounded">
+                                Nueva contraseña:{" "}
+                                <strong>{resetResult[id]}</strong>
+                              </span>
+                              {onClearResetPassword && (
+                                <button
+                                  type="button"
+                                  onClick={() => onClearResetPassword(id)}
+                                  className="text-xs text-gray-500 underline hover:text-gray-700"
+                                >
+                                  Ocultar
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
+                        )}
                       </div>
                     </div>
                   </div>

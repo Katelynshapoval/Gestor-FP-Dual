@@ -107,6 +107,14 @@ const AdminCompanyView = () => {
     }
   };
 
+  // The temporary password stays on screen for two minutes at most (WF-10)
+  const clearResetResult = (idSolicitudEmpresa) =>
+    setResetResult((prev) => {
+      const next = { ...prev };
+      delete next[idSolicitudEmpresa];
+      return next;
+    });
+
   const handleResetPassword = async (idSolicitudEmpresa) => {
     const empresa = companies.find(
       (c) => c.id_solicitud_empresa === idSolicitudEmpresa,
@@ -125,7 +133,8 @@ const AdminCompanyView = () => {
         ...prev,
         [idSolicitudEmpresa]: newPassword,
       }));
-      toast.success("Contraseña restablecida.");
+      setTimeout(() => clearResetResult(idSolicitudEmpresa), 2 * 60 * 1000);
+      toast.success("Contraseña restablecida. Cópiala ahora: se ocultará en 2 minutos.");
     } catch (err) {
       toast.error(err.message || "Error al resetear la contraseña");
     }
@@ -404,7 +413,10 @@ const AdminCompanyView = () => {
                 isExpanded={expandedCards.has(empresa.id_solicitud_empresa)}
                 onToggle={toggleCard}
                 onViewConvenio={setViewingConvenio}
-                onResetPassword={handleResetPassword}
+                onResetPassword={
+                  user?.rol === "ADMINISTRADOR" ? handleResetPassword : undefined
+                }
+                onClearResetPassword={clearResetResult}
                 onUpdated={refreshCompanyData}
                 resetResult={resetResult}
               />

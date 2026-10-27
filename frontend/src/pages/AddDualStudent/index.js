@@ -66,6 +66,41 @@ function AddDualStudent() {
   const [cv, setCv] = useState(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  // Remounts the file inputs so the browser clears the selected files
+  const [fileInputsKey, setFileInputsKey] = useState(0);
+
+  // Clears every controlled field after a successful submission (WF-13)
+  const resetForm = () => {
+    setEsMenor(false);
+    setName("");
+    setGender("");
+    setDniNie("");
+    setBirthdate("");
+    setPreference1("");
+    setPreference2("");
+    setPreference3("");
+    setStudiesEmail("");
+    setNationality("");
+    setDrivingLicense("");
+    setAvailability("");
+    setSSNumber("");
+    setLegalGuardianName("");
+    setSpeciality("");
+    setDataPreferences([]);
+    setStudentTelephone("");
+    setLegalGuardianDni("");
+    setEmail("");
+    setAdress("");
+    setCP("");
+    setLocation("");
+    setIdioms("");
+    setFile(null);
+    setCv(null);
+    setPassword("");
+    setConfirmPassword("");
+    setFileInputsKey((k) => k + 1);
+  };
 
   useEffect(() => {
     fetch("/especialidades")
@@ -99,6 +134,7 @@ function AddDualStudent() {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     if (!formRef.current.checkValidity()) {
       formRef.current.reportValidity();
       return;
@@ -128,6 +164,7 @@ function AddDualStudent() {
       return;
     }
     setValidation("");
+    setSubmitting(true);
     try {
       const data = new FormData();
       data.append("emailColegio", studiesEmail);
@@ -154,13 +191,17 @@ function AddDualStudent() {
       if (file) data.append("anexoDga", file);
       if (cv) data.append("cv", cv);
       data.append("password", password);
-      await postForm("/solicitudes/alumno", data);
-      toast.success("La candidatura se ha enviado correctamente. Ya puedes iniciar sesión con tu DNI/NIE.");
-      setPassword("");
-      setConfirmPassword("");
-      formRef.current.reset();
+      const result = await postForm("/solicitudes/alumno", data);
+      toast.success(
+        result?.cuenta_existente
+          ? "La candidatura se ha enviado correctamente. Puedes seguirla en el portal con tu DNI/NIE y tu contraseña de siempre."
+          : "La candidatura se ha enviado correctamente. Ya puedes iniciar sesión con tu DNI/NIE.",
+      );
+      resetForm();
     } catch (err) {
       toast.error(err.message || "Ha ocurrido un error. Inténtalo de nuevo.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -456,6 +497,7 @@ function AddDualStudent() {
                 {cv ? cv.name : "Seleccionar archivo…"}
               </span>
               <input
+                key={`cv-${fileInputsKey}`}
                 type="file"
                 accept=".pdf"
                 onChange={(e) => setCv(e.target.files[0])}
@@ -470,6 +512,7 @@ function AddDualStudent() {
                 {file ? file.name : "Seleccionar archivo..."}
               </span>
               <input
+                key={`dga-${fileInputsKey}`}
                 type="file"
                 accept=".pdf"
                 onChange={(e) => setFile(e.target.files[0])}
@@ -483,6 +526,8 @@ function AddDualStudent() {
           <div className="form-section-title">Acceso al portal</div>
           <p className="field-hint">
             El acceso se realiza con tu DNI/NIE, no con el correo electrónico.
+            Si ya tienes cuenta de un curso anterior, escribe aquí tu contraseña
+            actual del portal.
           </p>
           <div className="grid gap-4 md:grid-cols-2">
             <Field id="pwdAlumno" label="Contraseña">
@@ -516,10 +561,12 @@ function AddDualStudent() {
 
         <button
           type="button"
-          className="btn btn-primary mt-2 mx-auto block"
+          className={`btn btn-primary mt-2 mx-auto block ${submitting ? "btn-disabled" : ""}`}
           onClick={handleSubmit}
+          disabled={submitting}
+          aria-busy={submitting}
         >
-          Presentar candidatura
+          {submitting ? "Enviando…" : "Presentar candidatura"}
         </button>
         <FormMessage message={validation} tone="error" />
       </form>
