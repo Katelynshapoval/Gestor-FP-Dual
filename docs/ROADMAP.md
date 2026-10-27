@@ -10,7 +10,7 @@ Five phases. Each ends with the application deployable and usable; later phases 
 | --- | --- | --- | --- |
 | 1. Critical security and blocked workflows — **in progress** (see [PHASE_1_REPORT.md](PHASE_1_REPORT.md)) | Close account-takeover paths and make every core workflow completable | Medium–High | — |
 | 2. Database baseline and business-rule integrity — **implemented, migrations applied on dev; verification open** (see [PHASE_2_REPORT.md](PHASE_2_REPORT.md)) | One reproducible schema; state rules enforced in the backend | Very High | 1 |
-| 3. Frontend workflow consolidation | One place per task, shared components, honest states | High | 1, 2 (rules) |
+| 3. Frontend workflow consolidation — **implemented; authenticated browser checks pending** (see [PHASE_3_REPORT.md](PHASE_3_REPORT.md)) | One place per task, shared components, honest states | High | 1, 2 (rules) |
 | 4. UX, navigation, notifications and accessibility | Role-centred navigation, dashboards, emails, WCAG basics | Medium–High | 3 (shared components) |
 | 5. Performance, testing and production readiness | Scale to several years of data; automated regression; deployment hygiene | High | 2, 3 |
 
@@ -52,6 +52,8 @@ Phases 1–4 run in sequence; Phase 5 needs the rules from Phase 2 and the scree
 - **Done when:** a clean database built from the repo matches a dump of production (`mysqldump --no-data` diff empty); each illegal transition returns 400 through the API; cancel-and-rebook shows no inherited annex.
 
 ### Phase 3 — Frontend workflow consolidation
+
+> **Status (2026-10-27, branch `phase-3-frontend-consolidation`):** implemented and committed. Done: `ReservaDetalle` panel + `GET /reservas/:id/detalle` used from Enlazar, Empresas colaboradoras, Seguimiento and both portals; shared `Modal`, `MotivoDialog`, `PdfViewer`, `utils/labels.js`; API/session handling (WF-16/17); WF-8, WF-9, WF-12, WF-14, WF-15; dead code removed. Tests: backend 63/63, frontend 17/17, ESLint 0, build OK; read-only checks on the dev DB; browser-verified session expiry and the registration form (desktop and 375 px). **Open:** authenticated browser run per role (needs test logins), the two quota editors not merged (PM-7 leftover). Phase 3 is **not** complete.
 
 - **Objective:** each task has one obvious place, built from shared components, showing truthful states.
 - **Included:** one `ReservaDetalle` panel (contract type, annex, signatures, tutor, confirm/cancel/reassign) used from Enlazar, Empresas and Seguimiento; shared `Modal`, `MotivoDialog`, `PdfViewer` (replacing the 12 ad-hoc modals and 3 viewers, PM-7); `utils/labels.js` for every state (D.2, WF-15); `api.js` 401 handling and stable error codes (WF-16, WF-17); WF-8, WF-9, WF-12, WF-14; loading/error/empty states on every list (Seguimiento pattern); remove dead code and unused routes (PM-8); consistent field names on the endpoints touched (PM-9).
