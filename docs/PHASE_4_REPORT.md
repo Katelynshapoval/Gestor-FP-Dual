@@ -2,7 +2,7 @@
 
 _Branch `phase-4-ux-accessibility`, created from `main` @ `e41c08a` (Phase 3) · 2026-10-27 · companion to [ROADMAP.md](ROADMAP.md), [AUDIT.md](AUDIT.md) and [PHASE_3_REPORT.md](PHASE_3_REPORT.md)._
 
-**Status: implemented and committed (7 commits, nothing pushed or merged). Phase 4 is NOT marked complete.** Three acceptance items need you (§9): turning on real email delivery, a manual screen-reader pass, and your review of the new screens.
+**Status: implemented and committed (8 commits, nothing pushed or merged). Phase 4 is NOT marked complete.** Three acceptance items need you (§9): turning on real email delivery, a manual screen-reader pass, and your review of the new screens.
 
 ## 1. Starting point and Phase 3 closure
 
