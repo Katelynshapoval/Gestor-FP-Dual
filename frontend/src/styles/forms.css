@@ -49,7 +49,7 @@
 .input,
 .textarea,
 .select-input {
-  @apply w-full rounded-lg border border-surface-200 bg-white px-3 py-2.5 text-base text-charcoal-950 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out placeholder:text-muted hover:border-surface-300 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20 disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-muted;
+  @apply w-full rounded-lg border border-surface-200 bg-white px-3 py-2.5 text-base font-normal text-charcoal-950 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out placeholder:text-muted hover:border-surface-300 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20 disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-muted;
 }
 
 .select-input {
