@@ -103,7 +103,10 @@ const MisDatos = ({
   return (
     <>
       {esAnterior && (
-        <InlineNotice tone={solicitud.puede_reaplicar ? "warning" : "info"}>
+        <InlineNotice
+          tone={solicitud.puede_reaplicar ? "warning" : "info"}
+          className="mb-5"
+        >
           {solicitud.puede_reaplicar
             ? `Tu empresa todavía no participa en la convocatoria ${solicitud.convocatoria_abierta?.nombre || "abierta"}. Se muestran los datos de tu última solicitud (${solicitud.convocatoria || "convocatoria anterior"}). Usa «Participar en la nueva convocatoria» para presentarte.`
             : `No hay ninguna convocatoria abierta. Se muestran los datos de tu última solicitud (${solicitud.convocatoria || "convocatoria anterior"}).`}
