@@ -17,6 +17,7 @@ import Panel from "./pages/Panel/Panel.jsx";
 import Reservas from "./pages/Reservas/Reservas.jsx";
 import RequireRole from "./components/auth/RequireRole.jsx";
 import CambiarPassword from "./pages/CambiarPassword.jsx";
+import { RecuperarPassword, RestablecerPassword } from "./pages/RecuperarPassword.jsx";
 import { STAFF } from "./navigation.js";
 
 import "./styles/main.css";
@@ -40,6 +41,8 @@ function App() {
               <Route element={<PageLayout />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/recuperar-contrasena" element={<RecuperarPassword />} />
+                <Route path="/restablecer-contrasena" element={<RestablecerPassword />} />
                 <Route path="/addDualStudent" element={<AddDualStudent />} />
                 <Route path="/addCompanyRequest" element={<AddCompanyRequest />} />
 

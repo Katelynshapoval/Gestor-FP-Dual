@@ -81,6 +81,8 @@ async function findUserByIdentifier(identifier) {
   return byDni[0] ?? null;
 }
 
+exports.findUserByIdentifier = findUserByIdentifier;
+
 // POST /auth/login — accepts both 'email' and 'username' fields for compatibility
 exports.loginWithCredentials = async function (req, res) {
   const identifier = (req.body.email || req.body.username || '').trim();

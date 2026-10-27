@@ -282,7 +282,18 @@ const reservaConfirmada = safe('reserva_confirmada', async (idReserva) => {
   return true;
 });
 
+// Password reset link (passwordResetService). Sent to whoever asked, never logged in full.
+const restablecerContrasena = safe('restablecer_contrasena', async (to, nombre, link) =>
+  enviar('restablecer_contrasena', to, 'Restablece tu contraseña del portal FP Dual', [
+    html`<p>Hola ${nombre || ''}:</p>`,
+    '<p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta del portal FP Dual.</p>',
+    html`<p><a href="${link}">Elegir una contraseña nueva</a></p>`,
+    '<p>El enlace caduca en 30 minutos y solo se puede usar una vez. Si no lo has pedido tú, ignora este correo: tu contraseña no cambia.</p>',
+    `<p>${FIRMA}</p>`,
+  ].join('')));
+
 module.exports = {
+  restablecerContrasena,
   solicitudAlumno,
   solicitudEmpresa,
   documentoRechazado,

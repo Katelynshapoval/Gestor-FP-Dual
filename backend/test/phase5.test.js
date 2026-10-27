@@ -9,9 +9,13 @@ const pool = fakePool((sql, params) => handler(sql, params));
 stub('src/db/pool', pool);
 
 const avisos = [];
+const correos = [];
 stub('src/services/notificaciones', {
   reservaCancelada: (id, opts) => avisos.push({ id, ...opts }),
+  restablecerContrasena: (to, nombre, link) => correos.push({ to, nombre, link }),
 });
+stub('bcrypt', { hash: async (pw) => `h:${pw}`, compare: async (pw, h) => h === `h:${pw}` });
+process.env.JWT_SECRET = 'x'.repeat(48);
 
 const { bajaTransicion } = load('src/services/estadoReglas');
 
@@ -134,4 +138,74 @@ test("baja without migration 016: clear error, nothing changed", async () => {
   const out = await darDeBaja("SOLICITUD_ALUMNO", 10, { user: {}, motivo: "x" });
   assert.equal(out.code, "MIGRACION_PENDIENTE");
   assert.ok(!pool.calls.some((c) => c.sql.startsWith("UPDATE")));
+});
+
+// ── Password reset by email ─────────────────────────────────────────────────
+
+const jwt = require("jsonwebtoken");
+const USERS = {
+  "b12345674": { id_usuario: 7, rol: "EMPRESA", activo: 1, id_contacto: 30, password_hash: "h:vieja", nombre_mostrar: "Empresa" },
+  "baja@x.test": { id_usuario: 8, rol: "COORDINADOR", activo: 0, email: "baja@x.test", password_hash: "h:p", nombre_mostrar: "Baja" },
+};
+let hashActual = "h:vieja";
+function resetDb(sql, params) {
+  if (sql.includes("r.nombre IN ('ADMINISTRADOR', 'COORDINADOR')")) return USERS[params[0]] ? [USERS[params[0]]] : [];
+  if (sql.includes("r.nombre = 'EMPRESA'")) return USERS[String(params[0]).toLowerCase()] ? [USERS[String(params[0]).toLowerCase()]] : [];
+  if (sql.includes("r.nombre = 'ALUMNO'")) return [];
+  if (sql.startsWith("SELECT email, nombre FROM ge_contactos")) return [{ email: "coord@empresa.test", nombre: "Coordinadora" }];
+  if (sql.startsWith("SELECT password_hash, activo FROM dual_usuarios")) return [{ password_hash: hashActual, activo: 1 }];
+  if (sql.startsWith("UPDATE dual_usuarios SET password_hash")) {
+    if (params[2] !== hashActual) return { affectedRows: 0 };
+    hashActual = params[0];
+    return { affectedRows: 1 };
+  }
+  return [];
+}
+
+test("forgot password: same answer for every case; link only for active accounts, to the coordinator", async () => {
+  const svc = load("src/services/passwordResetService");
+  handler = resetDb;
+  correos.length = 0;
+  const pedir = async (username, ip) => {
+    const res = mockRes();
+    await svc.solicitar(mockReq({ body: { username }, ip }), res);
+    return res;
+  };
+  const a = await pedir("B12345674", "1.1.1.1");
+  const b = await pedir("nadie@x.test", "1.1.1.2");
+  const c = await pedir("baja@x.test", "1.1.1.3");
+  assert.equal(a.statusCode, 200);
+  assert.equal(new Set([a.body.message, b.body.message, c.body.message]).size, 1, "identical answer");
+  assert.equal(correos.length, 1);
+  assert.equal(correos[0].to, "coord@empresa.test");
+  assert.ok(correos[0].link.startsWith("http://localhost:3000/restablecer-contrasena?token="));
+  // Rate limit: 3 requests per identifier
+  await pedir("B12345674", "1.1.1.1");
+  await pedir("B12345674", "1.1.1.1");
+  assert.equal((await pedir("B12345674", "1.1.1.1")).statusCode, 429);
+  assert.equal((await pedir("", "1.1.1.9")).statusCode, 400);
+});
+
+test("reset link: works once, needs 8 characters, cannot be forged with the session key", async () => {
+  const svc = load("src/services/passwordResetService");
+  handler = resetDb;
+  hashActual = "h:vieja";
+  const token = svc._internals.crearToken({ id_usuario: 7, password_hash: "h:vieja" });
+  const usar = async (t, newPassword = "nuevaSegura1") => {
+    const res = mockRes();
+    await svc.restablecer(mockReq({ body: { token: t, newPassword } }), res);
+    return res;
+  };
+  assert.equal((await usar(token, "corta")).statusCode, 400);
+  const ok = await usar(token);
+  assert.equal(ok.statusCode, 200);
+  assert.equal(hashActual, "h:nuevaSegura1");
+  const otra = await usar(token, "otraSegura22");
+  assert.equal(otra.statusCode, 400, "second use refused: the password hash changed");
+  assert.equal(otra.body.code, "ENLACE_NO_VALIDO");
+  const forjado = jwt.sign({ sub: 7, fp: svc._internals.fingerprint(hashActual), purpose: "reset" }, process.env.JWT_SECRET);
+  assert.equal((await usar(forjado)).statusCode, 400, "a token signed with the session secret is refused");
+  const caducado = jwt.sign({ sub: 7, fp: svc._internals.fingerprint(hashActual), purpose: "reset" }, svc._internals.resetSecret(), { expiresIn: -10 });
+  assert.equal((await usar(caducado)).statusCode, 400);
+  assert.equal((await usar("basura")).statusCode, 400);
 });

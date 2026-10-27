@@ -112,6 +112,7 @@ function requireRole(...roles) {
 }
 
 module.exports = {
+  getJwtSecret,
   signToken,
   requireAuth,
   requireAuthAllowPasswordChange,

@@ -13,7 +13,7 @@ _Versión del manual: 27/10/2026. Describe la aplicación tal y como funciona en
 
 1. [Introducción](#introduccion)
 2. [Acceso a la aplicación](#acceso)
-   - [Iniciar sesión](#iniciar-sesion) · [Cerrar sesión](#cerrar-sesion) · [Cambiar la contraseña](#cambiar-contrasena) · [Contraseña temporal](#contrasena-temporal) · [Sesión caducada](#sesion-caducada) · [Si no puedes entrar](#no-puedes-entrar)
+   - [Iniciar sesión](#iniciar-sesion) · [Cerrar sesión](#cerrar-sesion) · [Cambiar la contraseña](#cambiar-contrasena) · [Contraseña temporal](#contrasena-temporal) · [Sesión caducada](#sesion-caducada) · [Si no puedes entrar](#no-puedes-entrar) · [Recuperar la contraseña](#recuperar)
 3. [Navegación general](#navegacion)
    - [Menú principal](#menu) · [Listas, búsqueda y filtros](#filtros) · [Estados e indicadores](#estados) · [Botones y ventanas habituales](#botones)
 4. [Solicitudes públicas (alumnos y empresas nuevos)](#solicitudes-publicas)
@@ -82,7 +82,7 @@ Los capítulos 2 y 3 sirven para todo el mundo. Después hay un capítulo por pe
 Entrarás directamente en tu página principal: el **Panel** si eres personal del centro, **«Mi empresa»** si eres una empresa y **«Mi proceso Dual»** si eres alumno.
 
 ![Pantalla «Acceder al portal» con los campos Usuario y Contraseña y el botón Entrar](manual/imagenes/inicio-sesion.png)
-_Pantalla de inicio de sesión. Debajo del botón se recuerda qué usuario corresponde a cada perfil._
+_Pantalla de inicio de sesión. Debajo del botón se recuerda qué usuario corresponde a cada perfil y está el enlace «¿Has olvidado tu contraseña?»._
 
 <a id="cerrar-sesion"></a>
 
@@ -138,7 +138,27 @@ También puedes ver estos avisos:
 | «Demasiados intentos fallidos. Vuelve a intentarlo en N minuto(s).» | Tras 5 intentos fallidos seguidos, el acceso se bloquea unos minutos (como máximo 15). Espera y vuelve a probar. |
 | «La cuenta está desactivada. Contacte con el administrador.» | Habla con el centro. |
 
-**¿Has olvidado la contraseña?** La aplicación no tiene un enlace para recuperarla por correo. Ponte en contacto con el centro (la propia pantalla de acceso lo indica: _«Si olvidaste tu contraseña, contacta con el administrador.»_). Ver también [«He olvidado la contraseña»](#faq-contrasena).
+<a id="recuperar"></a>
+
+**¿Has olvidado la contraseña?** Puedes elegir una nueva tú mismo:
+
+1. En la pantalla de acceso pulsa **«¿Has olvidado tu contraseña?»**.
+2. Escribe tu **«Usuario»** (correo, CIF o DNI/NIE) y pulsa **«Enviar enlace»**.
+3. Abre el correo «Restablece tu contraseña del portal FP Dual» y pulsa **«Elegir una contraseña nueva»**.
+4. Escribe la **«Nueva contraseña»** dos veces y pulsa **«Guardar contraseña»**. Ya puedes entrar con ella.
+
+El correo llega a:
+
+| Perfil | Dirección |
+| --- | --- |
+| Personal del centro | Tu correo de usuario |
+| Alumno | El email personal de tu solicitud |
+| Empresa | El email del coordinador principal |
+
+El enlace **caduca en 30 minutos** y **solo sirve una vez**. Si caduca, pide otro. Por seguridad, la pantalla responde lo mismo exista o no la cuenta, y no se envía nada a cuentas desactivadas. Si no te llega el correo (revisa también la carpeta de spam), pide al centro que Administración te restablezca la contraseña.
+
+![Pantalla Recuperar contraseña con el campo Usuario y el botón Enviar enlace](manual/imagenes/recuperar-contrasena.png)
+_Pantalla «Recuperar contraseña»._
 
 ---
 
@@ -419,12 +439,17 @@ En **«Estado de la solicitud»**:
 
 Una vez validado, el alumno aparece en «Alumnos disponibles» para las empresas de su ciclo.
 
-#### Cuenta y participación — 🔒 Solo Administración
+#### Pestaña «Cuenta»
 
-Debajo del estado, Administración ve el bloque **«Cuenta y participación»**: el usuario del portal (el DNI/NIE) y si la cuenta está activa. Desde aquí puede **«Resetear contraseña»** ([cómo funciona](#cuentas)) y **«Dar de baja»** o **«Reactivar»** al alumno ([cómo funciona](#baja)).
+La tercera pestaña de la tarjeta reúne la cuenta del alumno:
 
-![Bloque Cuenta y participación de un alumno con los botones Resetear contraseña y Dar de baja](manual/imagenes/alumno-cuenta-baja.png)
-_Bloque «Cuenta y participación», visible solo para Administración._
+- **«Acceso al portal»**: el usuario (el DNI/NIE) y si la cuenta está **Activa**, **Desactivada** o si el alumno **no tiene cuenta**.
+- **«Participación en el programa»**: el estado de la solicitud.
+
+🔒 Solo Administración ve los botones **«Resetear contraseña»** ([cómo funciona](#cuentas)) y **«Dar de baja»** / **«Reactivar»** ([cómo funciona](#baja)). Coordinación ve la misma información, sin botones.
+
+![Pestaña Cuenta de un alumno con Acceso al portal y Participación en el programa](manual/imagenes/alumno-cuenta.png)
+_Pestaña «Cuenta» de un alumno, vista por Administración._
 
 #### Reabrir una solicitud rechazada
 
@@ -474,10 +499,9 @@ Debajo del convenio está el bloque **«Estado de la solicitud»**, con la etiqu
 - **«Rechazar solicitud»** (solicitudes pendientes): rechaza la participación de la empresa en esta convocatoria, no solo el convenio. Hay que escribir un motivo, que la empresa verá en su portal. Una empresa rechazada no puede reservar alumnos.
 - **«Reabrir solicitud»** (solicitudes rechazadas, solo en la convocatoria activa): vuelve a «Pendiente de revisión». El motivo es opcional.
 - **«Validar solicitud»**: solo aparece si el convenio ya está validado pero la solicitud sigue pendiente.
-- 🔒 **Solo Administración**: **«Dar de baja»** o **«Reactivar»** ([cómo funciona](#baja)).
 
 ![Bloque Estado de la solicitud de una empresa validada, con el botón Dar de baja](manual/imagenes/empresa-estado-solicitud.png)
-_«Estado de la solicitud» de una empresa, visto por Administración._
+_Pestaña «Información» de una empresa pendiente: datos alineados a la izquierda; convenio y estado de la solicitud a la derecha._
 
 #### Editar los datos de una empresa
 
@@ -514,9 +538,12 @@ En la pestaña **«Reservas»** de la tarjeta, pulsa **«Asignar alumno»**:
 
 Para gestionar una reserva ya creada, usa **«Gestionar reserva»**.
 
-#### Restablecer la contraseña de una empresa — 🔒 Solo Administración
+#### Pestaña «Cuenta» de la empresa
 
-En **«Credenciales de acceso»** de la tarjeta, pulsa **«Resetear contraseña»**. Aparece la nueva contraseña temporal: **cópiala en ese momento**, porque se oculta a los 2 minutos (o antes, con «Ocultar»). Comunícasela a la empresa por un medio seguro. Al entrar, la empresa tendrá que [cambiarla](#contrasena-temporal).
+Igual que en los alumnos ([pestaña «Cuenta»](#staff-alumnos)): **«Acceso al portal»** muestra el usuario (el CIF) y el estado de la cuenta, y **«Participación en el programa»** el estado de la solicitud. 🔒 Solo Administración tiene **«Resetear contraseña»** y **«Dar de baja»** / **«Reactivar»**.
+
+![Pestaña Cuenta de una empresa con Resetear contraseña y Dar de baja](manual/imagenes/empresa-cuenta.png)
+_Pestaña «Cuenta» de una empresa, vista por Administración._
 
 <a id="staff-reservas"></a>
 
@@ -646,12 +673,9 @@ _Plantillas vistas por Administración (en este ejemplo todavía no hay ninguna 
 ### 5.8 Cuentas y contraseñas
 
 - Las **cuentas de alumnos y empresas se crean solas** al enviar la solicitud pública. No hay una pantalla para crear cuentas a mano.
-- 🔒 **Solo Administración** puede restablecer contraseñas:
-  - de una **empresa**, en su tarjeta de Empresas, bloque «Credenciales de acceso» ([cómo](#staff-empresas));
-  - de un **alumno**, en su tarjeta de Alumnos, bloque «Cuenta y participación».
-
-  En los dos casos pulsa **«Resetear contraseña»**. La contraseña temporal se muestra **una sola vez y durante 2 minutos**: cópiala y comunícasela a la persona por un medio seguro. Al entrar tendrá que [cambiarla](#contrasena-temporal).
-- La aplicación **no tiene** una pantalla para restablecer la contraseña del personal del centro. Si alguien del centro la olvida, consulta con el responsable técnico de la aplicación.
+- **Cualquier persona** con una cuenta activa puede recuperar su contraseña ella misma con un enlace por correo, desde **«¿Has olvidado tu contraseña?»** en la pantalla de acceso ([cómo](#recuperar)). Es la opción recomendada: nadie más llega a ver la contraseña.
+- 🔒 **Solo Administración** puede, además, restablecer la contraseña de un **alumno** o de una **empresa** desde la pestaña **«Cuenta»** de su tarjeta, con **«Resetear contraseña»**. Sirve cuando el correo no llega. La contraseña temporal se muestra **una sola vez y durante 2 minutos**: cópiala y comunícasela a la persona por un medio seguro. Al entrar tendrá que [cambiarla](#contrasena-temporal).
+- La contraseña del personal del centro solo se recupera con el enlace por correo; no hay botón para restablecerla.
 - Cada persona puede [cambiar su propia contraseña](#cambiar-contrasena).
 
 <a id="baja"></a>
@@ -668,7 +692,7 @@ Sirve para **retirar del programa** a un alumno o a una empresa en una convocato
 
 **Cómo se hace**
 
-1. Despliega la tarjeta del alumno (Alumnos › «Cuenta y participación») o de la empresa (Empresas › «Estado de la solicitud»).
+1. Despliega la tarjeta del alumno (Alumnos) o de la empresa (Empresas) y abre la pestaña **«Cuenta»**.
 2. Pulsa **«Dar de baja»**. La ventana muestra **qué reservas se cancelarán**; las confirmadas se marcan en rojo.
 3. Escribe el **«Motivo de la baja»** (obligatorio) y pulsa **«Dar de baja»**.
 
@@ -685,8 +709,6 @@ En una solicitud dada de baja se ven la fecha, el motivo y el botón **«Reactiv
 - la cuenta del portal se vuelve a activar;
 - las **reservas canceladas no se recuperan**: si hace falta, hay que crearlas de nuevo.
 
-![Alumno dado de baja con la fecha, el motivo y el botón Reactivar](manual/imagenes/reactivar.png)
-_Una solicitud dada de baja: fecha, motivo, cuenta desactivada y botón «Reactivar»._
 
 Las solicitudes dadas de baja se encuentran con el filtro **«Solicitud: Dada de baja»** en Alumnos y en Empresas.
 
@@ -716,8 +738,7 @@ En la práctica, el coordinador:
 
 - En **Convocatorias** solo ve la lista, sin el formulario «Nueva convocatoria» ni el botón «Editar».
 - En **Documentos › Plantillas** no tiene el botón «Subir plantilla».
-- En las tarjetas de **Empresas** no tiene «Resetear contraseña» ni «Dar de baja».
-- En las tarjetas de **Alumnos** no ve el bloque «Cuenta y participación».
+- En la pestaña **«Cuenta»** de alumnos y empresas ve el usuario y el estado de la cuenta, pero no los botones «Resetear contraseña» ni «Dar de baja».
 
 Si necesitas una de estas acciones, pídesela a Administración.
 
@@ -1069,11 +1090,12 @@ Si el centro te ha **dado de baja** del programa, tu cuenta del portal está des
 
 ### He olvidado la contraseña
 
-No hay recuperación automática por correo.
+Pulsa **«¿Has olvidado tu contraseña?»** en la pantalla de acceso y sigue el enlace que te llega por correo ([paso a paso](#recuperar)).
 
-- **Empresas**: pedid al centro que Administración restablezca la contraseña. Os dará una contraseña temporal que tendréis que [cambiar al entrar](#contrasena-temporal).
-- **Alumnos**: pide al centro que Administración te restablezca la contraseña. Te dará una temporal que tendrás que cambiar al entrar.
-- **Personal del centro**: la aplicación no tiene una pantalla para restablecer vuestras contraseñas; consulta con el responsable técnico.
+- **El correo no llega**: espera unos minutos y revisa la carpeta de spam. Comprueba que el correo de tu solicitud (alumnos) o el del coordinador principal (empresas) es correcto; si no lo es, avisa al centro.
+- **«El enlace no es válido, ya se ha usado o ha caducado»**: pide uno nuevo. Cada enlace dura 30 minutos y sirve una sola vez.
+- **Sigue sin funcionar**: alumnos y empresas pueden pedir al centro que Administración les dé una contraseña temporal.
+- **Si te han dado de baja**, la cuenta está desactivada y no se envía ningún enlace.
 
 ### Otras dudas habituales
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useUser } from '../context/UserContext';
 import { useToast } from "../components/feedback/ToastProvider.jsx";
 
@@ -224,8 +224,11 @@ const Login = () => {
 
           <p className="text-xs text-muted text-center mt-2">
             Administración: correo electrónico · Empresas: CIF · Alumnos: DNI/NIE
-            <br />
-            Si olvidaste tu contraseña, contacta con el administrador.
+          </p>
+          <p className="text-center text-xs">
+            <Link to="/recuperar-contrasena" className="font-semibold text-brand-700 underline">
+              ¿Has olvidado tu contraseña?
+            </Link>
           </p>
         </form>
       </div>

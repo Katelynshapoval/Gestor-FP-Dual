@@ -64,6 +64,8 @@ export function isActivePath(pathname, item) {
 const TITLES = {
   "/": "Inicio",
   "/login": "Acceder",
+  "/recuperar-contrasena": "Recuperar contraseña",
+  "/restablecer-contrasena": "Nueva contraseña",
   "/addDualStudent": "Solicitud de alumno",
   "/addCompanyRequest": "Solicitud de empresa",
   "/panel": "Panel",

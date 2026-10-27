@@ -1,6 +1,6 @@
 # Capturas pendientes del manual de usuario
 
-El [manual](../MANUAL_DE_USUARIO.md) ya incluye 35 capturas reales, hechas el 27/10/2026 con las cuentas y los datos de prueba de la base de datos de desarrollo. Las de esta lista no se pudieron hacer **sin modificar datos**: hacen falta reservas, documentos o cuentas en un estado que los datos de prueba no tienen, o un archivo PDF que se pueda mostrar.
+El [manual](../MANUAL_DE_USUARIO.md) ya incluye 36 capturas reales, hechas el 27/10/2026 con las cuentas y los datos de prueba de la base de datos de desarrollo. Las de esta lista no se pudieron hacer **sin modificar datos**: hacen falta reservas, documentos o cuentas en un estado que los datos de prueba no tienen, o un archivo PDF que se pueda mostrar.
 
 El manual ya se entiende sin ellas. Para añadir una:
 
@@ -131,12 +131,22 @@ El manual ya se entiende sin ellas. Para añadir una:
 - **Pie de imagen:** «Al reducir plazas hay que elegir qué reservas pendientes se cancelan.»
 - **Markdown para insertar:** `![Ventana Elegir reservas a cancelar](manual/imagenes/reducir-plazas.png)`
 
-## 13. `resetear-contrasena.png` — Opcional
+## 13. `reactivar.png` — Opcional
 
-- **Apartado:** 5.4 Empresas → «Restablecer la contraseña de una empresa»
+- **Apartado:** 5.9 Dar de baja → «Reactivar»
 - **Rol:** Administración
-- **Dónde:** Empresas → tarjeta de una empresa → «Credenciales de acceso»
-- **Qué mostrar:** el bloque con el usuario (CIF) y el botón «Resetear contraseña». **Haz la captura antes de pulsarlo** y no muestres nunca una contraseña. (El equivalente del alumno ya está en `alumno-cuenta-baja.png`.)
-- **Datos necesarios:** ninguno.
-- **Pie de imagen:** «Solo Administración puede restablecer la contraseña de una empresa.»
-- **Markdown para insertar:** `![Bloque Credenciales de acceso con el botón Resetear contraseña](manual/imagenes/resetear-contrasena.png)`
+- **Dónde:** Alumnos o Empresas → filtro «Solicitud: Dada de baja» → tarjeta → pestaña «Cuenta»
+- **Qué mostrar:** en «Participación en el programa», la etiqueta «Dada de baja», el recuadro con la fecha y el motivo y el botón «Reactivar»; en «Acceso al portal», la cuenta «Desactivada».
+- **Datos necesarios:** una solicitud de prueba dada de baja (por ejemplo, ALUMNO PRUEBA, que no tiene reservas activas). Reactívala después.
+- **Pie de imagen:** «Una solicitud dada de baja, con su motivo y el botón Reactivar.»
+- **Markdown para insertar:** `![Pestaña Cuenta de una solicitud dada de baja con el botón Reactivar](manual/imagenes/reactivar.png)`
+
+## 14. `correo-restablecer.png` — Opcional
+
+- **Apartado:** 2 · «¿Has olvidado la contraseña?»
+- **Rol:** cualquiera con cuenta activa (usa una cuenta de prueba)
+- **Dónde:** el buzón que recibe el correo «Restablece tu contraseña del portal FP Dual»
+- **Qué mostrar:** el correo con el botón-enlace «Elegir una contraseña nueva» y el aviso de que caduca en 30 minutos. **Recorta o tapa la dirección del enlace**: mientras no se use, sirve para cambiar la contraseña.
+- **Datos necesarios:** pedir un enlace para una cuenta de prueba con el envío de correo activado.
+- **Pie de imagen:** «Correo con el enlace para elegir una contraseña nueva.»
+- **Markdown para insertar:** `![Correo Restablece tu contraseña del portal FP Dual](manual/imagenes/correo-restablecer.png)`

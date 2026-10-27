@@ -8,10 +8,12 @@ _27/10/2026 · rama `phase-5-design-polish`. Lista de lo que se encontró al doc
 2. **Casilla «El alumno trabajará en la dirección fiscal de la empresa».** La regla `.field > label` de `forms.css` anulaba su diseño. El `fieldset` ya no usa la clase `field`; la casilla vuelve a tener su espacio y el texto ya no sale en negrita. Captura `solicitud-empresa-puesto.png` rehecha.
 3. **Pestaña «Tutores» del portal de empresa.** Hablaba de «Mis datos»; ahora dice «Datos de la empresa», que es el nombre real de la pestaña.
 4. **No se podía rechazar ni reabrir la solicitud de una empresa.** Nuevo bloque «Estado de la solicitud» en la tarjeta de Empresas, para todo el personal: «Rechazar solicitud» (con motivo), «Reabrir solicitud» y «Validar solicitud» (solo si el convenio ya está validado).
-5. **No había forma de restablecer la contraseña de un alumno.** Nuevo bloque «Cuenta y participación» en la tarjeta del alumno, solo para Administración, con «Resetear contraseña». Sigue sin haber pantalla para las contraseñas del personal del centro.
+5. **No había forma de restablecer la contraseña de un alumno ni del personal.** Ahora cualquier cuenta activa puede recuperarla con un enlace por correo («¿Has olvidado tu contraseña?», válido 30 minutos y de un solo uso). Además, Administración puede dar una contraseña temporal a alumnos y empresas desde la nueva pestaña «Cuenta» de sus tarjetas.
 6. **Convocatorias solapadas.** El inicio de «2027/2028» pasa del 29/08/2027 al 01/09/2027 (con tu aprobación, desde la propia función «Editar» de la aplicación).
 
 ## Nuevo: dar de baja
+
+_Desde el 27/10/2026, «Dar de baja», «Resetear contraseña» y los datos de la cuenta están en una pestaña «Cuenta» de cada tarjeta, junto a «Información» y «Reservas»._
 
 «Dar de baja» y «Reactivar» para alumnos y empresas, solo Administración (manual, §5.9). Usa la migración `db/migrations/016_estado_baja.sql` (estado «BAJA», id 4), **aplicada en la base de datos de desarrollo el 27/10/2026**, con tu aprobación. Probado en vivo solo con ALUMNO PRUEBA (FASE 3), que no tenía reservas activas (no se canceló nada ni se envió ningún correo): la baja exige motivo, desactiva la cuenta (el alumno recibe «La cuenta está desactivada» al entrar), no se puede repetir y Coordinación recibe 403; «Reactivar» devuelve la solicitud a «Validada» y el alumno vuelve a entrar. La cancelación de reservas durante una baja solo está probada con las pruebas automáticas.
 
