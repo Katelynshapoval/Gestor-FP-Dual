@@ -293,7 +293,15 @@ test('WF-5: a rejected Anexo III is retired when the type is corrected; the chan
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body.documentos_retirados, [30]);
   assert.deepEqual(calls('UPDATE dual_documentos SET es_actual = 0')[0].params, [[30]]);
-  assert.deepEqual(events()[0].params.slice(0, 5), ['RESERVA', 3, 'TIPO_CONTRATO', 'BECA', 'CONTRATO_DE_FORMACION_EN_ALTERNANCIA']);
+  // estado_anterior/estado_nuevo are varchar(30): type ids there, names in detalle (Phase 4 fix).
+  const params = events()[0].params;
+  assert.deepEqual(params.slice(0, 5), ['RESERVA', 3, 'TIPO_CONTRATO', '1', '2']);
+  assert.deepEqual(JSON.parse(params[8]), {
+    tipo_anterior: 'BECA',
+    tipo_nuevo: 'CONTRATO_DE_FORMACION_EN_ALTERNANCIA',
+    documentos_retirados: [30],
+  });
+  assert.ok(params.slice(3, 5).every((v) => v == null || v.length <= 30));
 });
 
 test('WF-5: confirmation refuses a different type in the request and an unsigned annex', async () => {

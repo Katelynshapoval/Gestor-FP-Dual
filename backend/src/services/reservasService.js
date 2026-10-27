@@ -856,10 +856,18 @@ exports.setTipoContrato = async function (req, res) {
     if (retirados.length) {
       await conn.query('UPDATE dual_documentos SET es_actual = 0 WHERE id_documento IN (?)', [retirados]);
     }
+    // estado_* columns are varchar(30) and some type names are longer
+    // (CONTRATO_DE_FORMACION_EN_ALTERNANCIA): store ids there, names in detalle.
     await recordEvent(conn, {
       entidad: 'RESERVA', id: idReserva, accion: 'TIPO_CONTRATO',
-      antes: rows[0].tipo_contrato || null, despues: tipos[0].nombre, user: req.user,
-      detalle: retirados.length ? { documentos_retirados: retirados } : null,
+      antes: rows[0].id_tipo_contrato != null ? String(rows[0].id_tipo_contrato) : null,
+      despues: String(idTipo),
+      user: req.user,
+      detalle: {
+        tipo_anterior: rows[0].tipo_contrato || null,
+        tipo_nuevo: tipos[0].nombre,
+        ...(retirados.length ? { documentos_retirados: retirados } : {}),
+      },
     });
     await conn.commit();
     return res.json({ message: 'Tipo de contrato actualizado.', documentos_retirados: retirados });
