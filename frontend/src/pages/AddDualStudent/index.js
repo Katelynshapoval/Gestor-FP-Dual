@@ -323,7 +323,7 @@ function AddDualStudent() {
             {current === "personales" && (
               <>
                 <StepHeading headingRef={headingRef} title="Datos personales" />
-                <div className="grid gap-x-4 md:grid-cols-2">
+                <div className="grid gap-x-6 md:grid-cols-2">
                   <TextField
                     {...field("dni")}
                     required
@@ -333,7 +333,7 @@ function AddDualStudent() {
                     placeholder="12345678Z"
                     onChange={(n, val) => set(n, val.toUpperCase())}
                   />
-                  <TextField {...field("nombre")} required maxLength={100} autoComplete="name" />
+                  <TextField {...field("nombre")} placeholder="Nombre Apellido Apellido" required maxLength={100} autoComplete="name" />
                   <TextField {...field("fechaNacimiento")} type="date" required autoComplete="bday" />
                   <TextField {...field("nacionalidad")} required maxLength={50} placeholder="Española" />
                 </div>
@@ -350,10 +350,10 @@ function AddDualStudent() {
                     <p className="mb-3 text-sm font-semibold text-amber-950">
                       Eres menor de edad: indica los datos de tu tutor o tutora legal.
                     </p>
-                    <div className="grid gap-x-4 md:grid-cols-2">
-                      <TextField {...field("tutorLegal")} required maxLength={45} />
+                    <div className="grid gap-x-6 md:grid-cols-2">
+                      <TextField {...field("tutorLegal")} placeholder="Nombre y apellidos" required maxLength={45} />
                       <TextField
-                        {...field("dniTutorLegal")}
+                        {...field("dniTutorLegal")} placeholder="12345678Z"
                         required
                         maxLength={10}
                         onChange={(n, val) => set(n, val.toUpperCase())}
@@ -371,10 +371,10 @@ function AddDualStudent() {
                   title="Contacto y movilidad"
                   description="Usaremos tu email personal para avisarte de cambios en tu solicitud."
                 />
-                <div className="grid gap-x-4 md:grid-cols-2">
-                  <TextField {...field("email")} type="email" required maxLength={100} autoComplete="email" />
+                <div className="grid gap-x-6 md:grid-cols-2">
+                  <TextField {...field("email")} placeholder="tu.correo@gmail.com" type="email" required maxLength={100} autoComplete="email" />
                   <TextField
-                    {...field("telefono")}
+                    {...field("telefono")} placeholder="600123456"
                     type="tel"
                     required
                     inputMode="numeric"
@@ -384,11 +384,11 @@ function AddDualStudent() {
                   />
                 </div>
                 <TextField {...field("domicilio")} required maxLength={255} autoComplete="street-address" placeholder="Calle, número, piso" />
-                <div className="grid gap-x-4 md:grid-cols-2">
-                  <TextField {...field("cp")} required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
-                  <TextField {...field("localidad")} required maxLength={100} autoComplete="address-level2" />
+                <div className="grid gap-x-6 md:grid-cols-2">
+                  <TextField {...field("cp")} placeholder="50001" required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
+                  <TextField {...field("localidad")} placeholder="Zaragoza" required maxLength={100} autoComplete="address-level2" />
                 </div>
-                <div className="grid gap-x-4 md:grid-cols-2">
+                <div className="grid gap-x-6 md:grid-cols-2">
                   <RadioField
                     {...field("carnet")}
                     label="¿Tienes carnet de conducir?"
@@ -408,10 +408,10 @@ function AddDualStudent() {
                     ]}
                   />
                 </div>
-                <div className="grid gap-x-4 md:grid-cols-2">
+                <div className="grid gap-x-6 md:grid-cols-2">
                   <TextField {...field("idiomas")} label="Idiomas y nivel" required maxLength={255} placeholder="Inglés B2, francés A2" />
                   <TextField
-                    {...field("numeroSS")}
+                    {...field("numeroSS")} placeholder="501234567890"
                     label="Nº de la Seguridad Social (si lo tienes)"
                     inputMode="numeric"
                     maxLength={14}
@@ -448,9 +448,9 @@ function AddDualStudent() {
                   title="Cuenta del portal"
                   description="Entrarás al portal con tu DNI/NIE y esta contraseña. Si ya tienes cuenta de un curso anterior, escribe tu contraseña actual."
                 />
-                <div className="grid gap-x-4 md:grid-cols-2">
+                <div className="grid gap-x-6 md:grid-cols-2">
                   <TextField
-                    {...field("password")}
+                    {...field("password")} placeholder="Escribe una contraseña"
                     type="password"
                     required
                     minLength={8}
@@ -458,7 +458,7 @@ function AddDualStudent() {
                     autoComplete="new-password"
                     hint="Mínimo 8 caracteres."
                   />
-                  <TextField {...field("password2")} type="password" required maxLength={100} autoComplete="new-password" />
+                  <TextField {...field("password2")} placeholder="Repite la contraseña" type="password" required maxLength={100} autoComplete="new-password" />
                 </div>
               </>
             )}

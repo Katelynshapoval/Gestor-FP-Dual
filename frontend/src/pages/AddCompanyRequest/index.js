@@ -271,8 +271,8 @@ const AddCompanyRequest = () => {
             {current === "empresa" && (
               <>
                 <StepHeading headingRef={headingRef} title="Datos de la empresa" />
-                <div className="grid gap-x-4 md:grid-cols-2">
-                  <TextField {...field("razonSocial")} required maxLength={100} autoComplete="organization" />
+                <div className="grid gap-x-6 md:grid-cols-2">
+                  <TextField {...field("razonSocial")} placeholder="Talleres García S.L." required maxLength={100} autoComplete="organization" />
                   <TextField
                     {...field("cif")}
                     required
@@ -281,13 +281,13 @@ const AddCompanyRequest = () => {
                     placeholder="B12345678"
                     onChange={(n, val) => set(n, val.toUpperCase().replace(/\s/g, ""))}
                   />
-                  <TextField {...field("telEmpresa")} type="tel" maxLength={20} autoComplete="tel" />
+                  <TextField {...field("telEmpresa")} placeholder="976 123 456" type="tel" maxLength={20} autoComplete="tel" />
                 </div>
-                <TextField {...field("dirRazSocial")} required maxLength={255} autoComplete="street-address" />
-                <div className="grid gap-x-4 md:grid-cols-3">
-                  <TextField {...field("municipio")} required maxLength={100} autoComplete="address-level2" />
-                  <TextField {...field("provincia")} required maxLength={50} autoComplete="address-level1" />
-                  <TextField {...field("cpRazSoc")} required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
+                <TextField {...field("dirRazSocial")} placeholder="Calle Mayor, 12" required maxLength={255} autoComplete="street-address" />
+                <div className="grid gap-x-6 md:grid-cols-3">
+                  <TextField {...field("municipio")} placeholder="Zaragoza" required maxLength={100} autoComplete="address-level2" />
+                  <TextField {...field("provincia")} placeholder="Zaragoza" required maxLength={50} autoComplete="address-level1" />
+                  <TextField {...field("cpRazSoc")} placeholder="50001" required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
                 </div>
               </>
             )}
@@ -299,12 +299,12 @@ const AddCompanyRequest = () => {
                   title="Responsable legal"
                   description="La persona que firma el convenio en nombre de la empresa."
                 />
-                <div className="grid gap-x-4 md:grid-cols-2">
-                  <TextField {...field("responsableLegal")} required maxLength={100} />
-                  <TextField {...field("dniRl")} required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
+                <div className="grid gap-x-6 md:grid-cols-2">
+                  <TextField {...field("responsableLegal")} placeholder="María López García" required maxLength={100} />
+                  <TextField {...field("dniRl")} placeholder="12345678Z" required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
                   <TextField {...field("cargo")} required maxLength={100} placeholder="Administrador único" />
-                  <TextField {...field("emailRepresentante")} type="email" required maxLength={100} />
-                  <TextField {...field("telefonoRepresentante")} type="tel" required maxLength={20} />
+                  <TextField {...field("emailRepresentante")} placeholder="nombre@empresa.com" type="email" required maxLength={100} />
+                  <TextField {...field("telefonoRepresentante")} placeholder="600 123 456" type="tel" required maxLength={20} />
                 </div>
               </>
             )}
@@ -316,18 +316,18 @@ const AddCompanyRequest = () => {
                   title="Coordinador principal"
                   description="Recibe los avisos y documentos del programa, gestiona el portal y queda como primer tutor de la empresa. Podréis añadir más tutores desde el portal."
                 />
-                <div className="grid gap-x-4 md:grid-cols-2">
-                  <TextField {...field("nombreCoordinador")} required maxLength={100} autoComplete="name" />
-                  <TextField {...field("dniCoordinador")} required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
+                <div className="grid gap-x-6 md:grid-cols-2">
+                  <TextField {...field("nombreCoordinador")} placeholder="Juan Pérez Martín" required maxLength={100} autoComplete="name" />
+                  <TextField {...field("dniCoordinador")} placeholder="12345678Z" required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
                   <TextField
-                    {...field("emailCoordinador")}
+                    {...field("emailCoordinador")} placeholder="coordinacion@empresa.com"
                     type="email"
                     required
                     maxLength={100}
                     autoComplete="email"
                     hint="Aquí recibiréis el convenio y los avisos."
                   />
-                  <TextField {...field("telefonoCoordinador")} type="tel" required maxLength={20} autoComplete="tel" />
+                  <TextField {...field("telefonoCoordinador")} placeholder="600 123 456" type="tel" required maxLength={20} autoComplete="tel" />
                 </div>
               </>
             )}
@@ -341,18 +341,19 @@ const AddCompanyRequest = () => {
                     <span aria-hidden="true" className="ml-0.5 text-brand-700">*</span>
                     <span className="sr-only"> (obligatorio)</span>
                   </label>
-                  <p id="campo-descripcionPuesto-ayuda" className="-mt-1 mb-2 text-xs leading-5 text-muted">
-                    Las tareas que realizará el alumno.
-                  </p>
                   <textarea
                     id="campo-descripcionPuesto"
                     className={`textarea ${errors.descripcionPuesto ? "border-red-400" : ""}`}
                     value={v.descripcionPuesto}
                     onChange={(e) => set("descripcionPuesto", e.target.value)}
                     maxLength={500}
+                    placeholder="Montaje y mantenimiento de equipos, atención al cliente…"
                     aria-invalid={errors.descripcionPuesto ? true : undefined}
                     aria-describedby={`campo-descripcionPuesto-ayuda${errors.descripcionPuesto ? " campo-descripcionPuesto-error" : ""}`}
                   />
+                  <p id="campo-descripcionPuesto-ayuda" className="mb-0 mt-1.5 text-xs leading-5 text-muted">
+                    Las tareas que realizará el alumno.
+                  </p>
                   {errors.descripcionPuesto && (
                     <p id="campo-descripcionPuesto-error" className="mb-0 mt-1.5 text-sm font-medium text-red-700">
                       <span aria-hidden="true">! </span>
@@ -363,21 +364,21 @@ const AddCompanyRequest = () => {
 
                 <fieldset className="field">
                   <legend className="mb-2 block text-sm font-semibold text-charcoal-800">Lugar de trabajo</legend>
-                  <label className="flex items-center gap-2 text-sm text-charcoal-800">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm text-charcoal-800 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/15">
                     <input
                       type="checkbox"
-                      className="accent-brand-500"
+                      className="h-4 w-4 shrink-0 accent-brand-600"
                       checked={v.mismoLugarTrabajo}
                       onChange={(e) => set("mismoLugarTrabajo", e.target.checked)}
                     />
                     El alumno trabajará en la dirección fiscal de la empresa
                   </label>
                   {!v.mismoLugarTrabajo && (
-                    <div className="mt-4 grid gap-x-4 md:grid-cols-2">
-                      <TextField {...field("direccionLugarTrabajo")} required maxLength={255} className="md:col-span-2" />
-                      <TextField {...field("municipioTrabajo")} required maxLength={100} />
-                      <TextField {...field("provinciaTrabajo")} required maxLength={50} />
-                      <TextField {...field("cpTrabajo")} required inputMode="numeric" maxLength={5} />
+                    <div className="mt-4 grid gap-x-6 md:grid-cols-2">
+                      <TextField {...field("direccionLugarTrabajo")} placeholder="Calle, número, nave…" required maxLength={255} className="md:col-span-2" />
+                      <TextField {...field("municipioTrabajo")} placeholder="Zaragoza" required maxLength={100} />
+                      <TextField {...field("provinciaTrabajo")} placeholder="Zaragoza" required maxLength={50} />
+                      <TextField {...field("cpTrabajo")} placeholder="50001" required inputMode="numeric" maxLength={5} />
                     </div>
                   )}
                 </fieldset>
@@ -419,9 +420,9 @@ const AddCompanyRequest = () => {
                   title="Cuenta del portal"
                   description="Entraréis al portal con el CIF de la empresa y esta contraseña."
                 />
-                <div className="grid gap-x-4 md:grid-cols-2">
+                <div className="grid gap-x-6 md:grid-cols-2">
                   <TextField
-                    {...field("password")}
+                    {...field("password")} placeholder="Escribe una contraseña"
                     type="password"
                     required
                     minLength={8}
@@ -429,7 +430,7 @@ const AddCompanyRequest = () => {
                     autoComplete="new-password"
                     hint="Mínimo 8 caracteres."
                   />
-                  <TextField {...field("password2")} type="password" required maxLength={100} autoComplete="new-password" />
+                  <TextField {...field("password2")} placeholder="Repite la contraseña" type="password" required maxLength={100} autoComplete="new-password" />
                 </div>
               </>
             )}

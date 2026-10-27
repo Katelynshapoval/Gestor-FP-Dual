@@ -103,36 +103,49 @@ export function useUnsavedWarning(active) {
   }, [active]);
 }
 
+// Numbered circles joined by a line. On small screens only the circles and
+// the "Paso X de N" line show; from md the step names appear under them.
 export const Stepper = ({ steps, current, onGoTo }) => (
-  <nav aria-label="Pasos del formulario" className="mb-6">
-    <p className="mb-3 text-sm font-semibold text-charcoal-800">
+  <nav aria-label="Pasos del formulario" className="mb-8 border-b border-surface-200 pb-6">
+    <p className="mb-4 text-sm font-semibold text-charcoal-800 md:sr-only">
       Paso {current + 1} de {steps.length}: {steps[current].title}
     </p>
-    <ol className="flex gap-1.5">
+    <ol className="flex">
       {steps.map((s, i) => {
         const done = i < current;
         const active = i === current;
         return (
-          <li key={s.id} className="min-w-0 flex-1">
+          <li key={s.id} className="relative flex min-w-0 flex-1 flex-col items-center">
+            {i < steps.length - 1 && (
+              <span
+                aria-hidden="true"
+                className={`absolute left-1/2 top-4 h-0.5 w-full -translate-y-1/2 ${done ? "bg-brand-600" : "bg-surface-200"}`}
+              />
+            )}
             <button
               type="button"
               onClick={() => onGoTo(i)}
               disabled={!done}
               aria-current={active ? "step" : undefined}
               aria-label={`Paso ${i + 1}: ${s.title}${done ? " (completado, volver a este paso)" : active ? " (actual)" : ""}`}
-              className="group block w-full text-left disabled:cursor-default"
+              className="group relative z-10 flex flex-col items-center rounded-lg px-1 outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 disabled:cursor-default"
             >
               <span
-                className={`block h-1.5 rounded-full ${
-                  done ? "bg-brand-600 group-hover:bg-brand-700" : active ? "bg-brand-600" : "bg-surface-200"
+                className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors duration-150 ${
+                  done
+                    ? "border-brand-600 bg-white text-brand-700 group-hover:bg-brand-50"
+                    : active
+                      ? "border-brand-600 bg-brand-600 text-white ring-4 ring-brand-100"
+                      : "border-surface-300 bg-white text-muted"
                 }`}
-              />
+              >
+                {done ? <FaCheck aria-hidden="true" className="h-3.5 w-3.5" /> : i + 1}
+              </span>
               <span
-                className={`mt-2 hidden items-center gap-1 truncate text-xs md:flex ${
+                className={`mt-2 hidden max-w-[8rem] text-center text-xs leading-4 md:block ${
                   active ? "font-semibold text-charcoal-950" : done ? "text-charcoal-700 group-hover:underline" : "text-muted"
                 }`}
               >
-                {done && <FaCheck aria-hidden="true" className="h-3 w-3 shrink-0 text-brand-700" />}
                 {s.title}
               </span>
             </button>
@@ -190,18 +203,19 @@ function describedBy(id, hint, error) {
   return [hint && `${id}-ayuda`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
 }
 
+// The hint goes under the control, so fields side by side keep their inputs aligned.
 const FieldShell = ({ id, label, required, hint, error, children, className = "" }) => (
   <div className={`field ${className}`}>
     <label htmlFor={id}>
       {label}
       {required && <RequiredMark />}
     </label>
+    {children}
     {hint && (
-      <p id={`${id}-ayuda`} className="-mt-1 mb-2 text-xs leading-5 text-muted">
+      <p id={`${id}-ayuda`} className="mb-0 mt-1.5 text-xs leading-5 text-muted">
         {hint}
       </p>
     )}
-    {children}
     {error && (
       <p id={`${id}-error`} className="mb-0 mt-1.5 flex items-start gap-1.5 text-sm font-medium text-red-700">
         <span aria-hidden="true">!</span>
@@ -319,7 +333,7 @@ export const FileField = ({ name, label, file, onChange, error, hint, required, 
 };
 
 export const StepHeading = ({ headingRef, title, description }) => (
-  <div className="mb-5">
+  <div className="mb-6">
     <h2 ref={headingRef} tabIndex={-1} className="form-section-title mb-1 outline-none">
       {title}
     </h2>
