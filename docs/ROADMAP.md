@@ -1,0 +1,106 @@
+# FP Dual — Development Roadmap
+
+_FP Dual · generated 2026-10-27 from a read-only review of the repository and the MySQL Workbench model. Companion document: [AUDIT.md](AUDIT.md), which defines the finding IDs (SEC, WF, V, PM) used here._
+
+## E. Development roadmap
+
+Five phases. Each ends with the application deployable and usable; later phases assume the earlier ones. Phases 1–2 change behaviour that users rely on, so they need your sign-off on the business rules listed under each.
+
+| Phase | Objective | Complexity | Depends on |
+| --- | --- | --- | --- |
+| 1. Critical security and blocked workflows | Close account-takeover paths and make every core workflow completable | Medium–High | — |
+| 2. Database baseline and business-rule integrity | One reproducible schema; state rules enforced in the backend | Very High | 1 |
+| 3. Frontend workflow consolidation | One place per task, shared components, honest states | High | 1, 2 (rules) |
+| 4. UX, navigation, notifications and accessibility | Role-centred navigation, dashboards, emails, WCAG basics | Medium–High | 3 (shared components) |
+| 5. Performance, testing and production readiness | Scale to several years of data; automated regression; deployment hygiene | High | 2, 3 |
+
+```mermaid
+flowchart LR
+  P1["Phase 1 · start here<br/>Security and blocked workflows<br/>Medium–High"] --> P2["Phase 2<br/>Database baseline and rule integrity<br/>Very High"]
+  P2 --> P3["Phase 3<br/>Frontend workflow consolidation<br/>High"]
+  P3 --> P4["Phase 4<br/>UX, notifications, accessibility<br/>Medium–High"]
+  P2 --> P5["Phase 5<br/>Performance, tests, production readiness<br/>High"]
+  P3 --> P5
+```
+
+Phases 1–4 run in sequence; Phase 5 needs the rules from Phase 2 and the screens from Phase 3.
+
+### Phase 1 — Critical security and blocked workflows
+
+- **Objective:** no forged or stolen session can escalate; a student, a company and a reservation can each go from start to finish through the UI.
+- **Included:** SEC-1 (mandatory `JWT_SECRET`, rotation), SEC-2 (current password, server-side forced change), SEC-8 (check `activo`/`must_change_password` per request), SEC-3 (public form no longer overwrites existing students), SEC-4 (protect the principal coordinator), SEC-5 (one upload guard for all endpoints), SEC-6 (template upload ADMINISTRADOR-only), a simple login attempt limiter (part of SEC-7, no new dependency); WF-1 (contract-type control on reservation rows), WF-2 (re-apply reachable), WF-3 (reliable activation via `sp_activar_convocatoria` or date-derived reads); V-1 and V-2 verified and fixed; V-5 (track `mail/config.js`); quick fixes WF-10 and the WF-13 submit lock.
+- **Areas:** `middleware/auth.js`, `authService`, `solicitudesAlumnoService.create`, `empresaTutoresService`, `documentosService` uploads, `documentosRoute`, `convocatoriasService`, `getMia`; `Login.js`, `ReservasAdmin`, `EmpresaControl`, `CompanyView`, `CompanyCard`, `AddDualStudent`; procedure `sp_validar_solicitud_alumno`.
+- **Why together:** small, local changes with the highest risk reduction; none changes the data model.
+- **Decisions needed:** what a returning student may change on re-application (SEC-3); whether activation is date-driven or manual.
+- **Deliverables:** patched endpoints and screens; `.env.example`; a written test script covering each item.
+- **Done when:** the server refuses to start without a secret; a token signed with the old fallback is rejected; password change without the current one returns 400/401; a deactivated user is rejected within one request; a new reservation reaches “Confirmada” via the UI; a returning company re-applies; a new student is validated; convocatorias switch on the start date without visiting the page.
+
+### Phase 2 — Database baseline and business-rule integrity
+
+- **Objective:** the repository rebuilds your database exactly, and every state rule is enforced by the backend, not by a screen.
+- **Included:** V-4 (schema dump as `000_baseline.sql`, retire `after_schema_patch.sql`, `schema_migrations` table and runner); procedures and triggers resolve types and states by name (PM-4); WF-4 (reactivation retires old documents and tutor); WF-5 (lock contract family once an annex exists; confirm with stored type; backend checks annex validated and signed); WF-6/WF-7 (sign-then-validate rule in `documentosService.validar`; convenio rejection reverts company validation; reject in the convenio viewer); WF-11 (coordinator copy-on-write); PM-6 (transactional `saveByClave`); V-3 (date handling); V-6 (DNI lookup and uniqueness); audit columns for validation, rejection, confirmation and signature (PM-5); WF-18 (reopen application).
+- **Areas:** `db/migrations/`, all `sp_*`/triggers, `reservasService`, `documentosService`, `documentosStore`, `documentCatalogue`, `empresaDatos`, `db/pool.js`.
+- **Why together:** they share one migration effort and the same state machine; doing them separately would mean several risky schema changes.
+- **Decisions needed:** sign before validate?; must confirmation require a validated and signed annex?; may companies raise quotas or add ciclos without staff approval?; are transports per company or per application?; new columns and unique keys (your approval required by the project rules).
+- **Deliverables:** baseline plus numbered migrations; a state-transition table per entity (solicitud, reserva, documento) in the project docs; API smoke tests for the changed rules.
+- **Done when:** a clean database built from the repo matches a dump of production (`mysqldump --no-data` diff empty); each illegal transition returns 400 through the API; cancel-and-rebook shows no inherited annex.
+
+### Phase 3 — Frontend workflow consolidation
+
+- **Objective:** each task has one obvious place, built from shared components, showing truthful states.
+- **Included:** one `ReservaDetalle` panel (contract type, annex, signatures, tutor, confirm/cancel/reassign) used from Enlazar, Empresas and Seguimiento; shared `Modal`, `MotivoDialog`, `PdfViewer` (replacing the 12 ad-hoc modals and 3 viewers, PM-7); `utils/labels.js` for every state (D.2, WF-15); `api.js` 401 handling and stable error codes (WF-16, WF-17); WF-8, WF-9, WF-12, WF-14; loading/error/empty states on every list (Seguimiento pattern); remove dead code and unused routes (PM-8); consistent field names on the endpoints touched (PM-9).
+- **Areas:** `LinkStudents/*`, `AdminCompanyView/*`, `CompanyView/*`, `StudentMain/*`, `components/*`, `utils/*`; small response-shape changes in `reservasService`, `solicitudesEmpresaService`.
+- **Why together:** the shared components only pay off when the screens that use them are migrated at the same time.
+- **Deliverables:** shared components with usage notes; migrated screens; no duplicate modal or viewer left.
+- **Done when:** a full reservation can be handled from one panel; every state label comes from `labels.js`; an expired session redirects to login with a message; ESLint stays at 0 warnings.
+
+### Phase 4 — UX, navigation, notifications and accessibility
+
+- **Objective:** each role sees what needs doing, gets told when something changes, and can use the app with a keyboard and screen reader.
+- **Included:** staff menu and labels (D.1); staff dashboard with pending-work counters; search and active-convocatoria defaults; public forms in steps with inline errors and an “abierto / cerrado” banner; portal improvements for companies and students (D.3); email notifications for validation, rejection, reservation, cancellation and confirmation (WF-19); data-minimisation rules (SEC-11); accessibility fixes (D.4); responsive pass and new screenshots at 360/768/1280 px (D.5); sidebar behaviour.
+- **Areas:** `Header.js`, `Home.js`, new `Panel` page, forms, portals, `styles/*`, a backend notification helper and one dashboard summary endpoint.
+- **Why together:** they all build on the Phase 3 components and labels; doing UI polish earlier would be redone.
+- **Deliverables:** updated navigation, dashboard, notification templates (Spanish), accessibility checklist results, screenshot set.
+- **Done when:** every interactive element is reachable and labelled (axe or Lighthouse accessibility ≥ 90 on the main pages); each listed transition sends one email; staff can reach any pending item from the dashboard in two clicks.
+
+### Phase 5 — Performance, testing and production readiness
+
+- **Objective:** the system stays fast with several years of data and changes can be shipped with confidence.
+- **Included:** server-side filtering, search and pagination for students, companies and reservations (PM-1); tutor N+1 (PM-2); shared Chromium and generation after response (PM-3); rate limits on public forms and anti-automation (rest of SEC-7); PDF signature check and download headers (SEC-9); escaping (SEC-10); automated tests (API tests for auth, reservations, documents; component tests for the shared components); CI running lint and tests; remove unused dependencies; deployment guide, `.env.example`, backups, log levels.
+- **Areas:** list endpoints and their screens, `documentGenerationService`, routes, `package.json` files, CI config.
+- **Why together:** performance work changes contracts that tests must lock down, and tests need the Phase 2 rules to be stable.
+- **Decisions needed:** new dev dependencies for API testing (e.g. `supertest`) and a rate-limit package, or hand-written equivalents.
+- **Deliverables:** paginated endpoints; test suite and CI; deployment documentation.
+- **Done when:** list endpoints respond in under 500 ms with a year's data (measure with your real counts); CI is green on every merge; a fresh environment can be set up from the README alone.
+
+## F. Recommended starting point and strategy
+
+Start Phase 1 with three checks against your database and server (about ten minutes), then the authentication fixes, then the reservation deadlock. The checks decide whether V-1 and V-2 are real emergencies and how SEC-1 must be rolled out.
+
+**Order of work inside Phase 1**
+
+1. **Verify (read-only):** `SHOW CREATE PROCEDURE sp_validar_solicitud_alumno; SELECT * FROM dual_tipos_documento; SHOW TABLES LIKE 'dual_%preferencias';` and confirm whether production sets `JWT_SECRET`.
+2. **Authentication:** SEC-1, SEC-2, SEC-8 and the login limiter together — they touch the same two files and are easy to test.
+3. **Unblock workflows:** WF-1, then V-1/V-2 if confirmed, then WF-2 and WF-3.
+4. **Authorization gaps:** SEC-3, SEC-4, SEC-5, SEC-6.
+5. **Quick fixes:** V-5, WF-10, WF-13.
+
+**What must come before what**
+
+- The Phase 2 business decisions (sign-then-validate, confirmation prerequisites, company quota rights) must be settled before Phase 3 builds the reservation panel, or the panel will encode the wrong rules.
+- The schema baseline (V-4) must exist before any further migration; otherwise each change risks diverging further from production.
+- Shared components (Phase 3) before UI polish (Phase 4), so styling is done once.
+
+**Highest value for effort:** WF-1 (unblocks the core process), SEC-1/SEC-2 (small diffs, large risk removed), the staff dashboard in Phase 4 (uses data Seguimiento already computes), and server-side pagination for *Enlazar* (PM-1).
+
+**Changes that need special care**
+
+- Any edit to `sp_reservar_alumno`, `sp_reasignar_reserva`, `sp_confirmar_reserva` or the `dual_reservas` triggers: test concurrent reservations against the same last place.
+- Rotating the JWT secret logs everyone out; announce it.
+- Changing the student public form (SEC-3) affects returning students mid-convocatoria; decide the rule first.
+- `dateStrings` on the pool (V-3) changes every `DATE` value the API returns; test all screens that show dates.
+- Unique keys on `gf_alumnosfct.dni` or reservation rows require cleaning existing duplicates first.
+
+**Refactor before adding features?** Only where a feature lands: extract the reservation panel and shared modal when doing WF-1/WF-5, and the upload guard when doing SEC-5. A broad rewrite is not justified; the architecture (Express routes → services → SQL/procedures, React pages + `api.js`) is sound.
+
+**Preserve as they are:** the reservation procedures' locking strategy and triggers; quota reduction with explicit selection; company change requests with snapshot conflicts and copy-on-write; the document catalogue and `deriveDocumentState` concept; versioned templates; Seguimiento's query, pagination and state handling; `ToastProvider`/`ConfirmDialog`; `api.js`; parameterised SQL throughout.
