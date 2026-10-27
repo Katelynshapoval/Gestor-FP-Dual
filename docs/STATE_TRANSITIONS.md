@@ -10,7 +10,9 @@ _Enforced by the backend (`backend/src/services/estadoReglas.js`, plus the proce
 | PENDIENTE | Validate 📝 | VALIDADO | Staff | **Student:** current CV and Anexo DGA validated (Node and `sp_validar_solicitud_alumno`). **Company:** current CONVENIO validated and at least one ciclo (`sp_validar_solicitud_empresa`). Validating a signed convenio of a PENDIENTE company also validates the application in the same transaction. |
 | PENDIENTE | Reject 📝 | RECHAZADO | Staff | A reason is required. |
 | RECHAZADO | Reopen 📝 | PENDIENTE | Staff | Active convocatoria only (D7). The rejection reason is cleared from the row; it stays in the audit trail. |
-| VALIDADO | — | — | — | No transition through the API. A rejected convenio does **not** change a validated company (D6 is open). |
+| VALIDADO | — | — | — | No review transition (only Baja below). A rejected convenio does **not** change a validated company (D6 is open). |
+| PENDIENTE / VALIDADO / RECHAZADO | Baja 📝 | BAJA | **ADMINISTRADOR** | Phase 5, migration 016. A reason is required; it is kept in the event (the row keeps `motivo` NULL, as the triggers require). In the same transaction the portal account is deactivated (student: its user; company: every EMPRESA user of the company). Afterwards every PENDIENTE or CONFIRMADA reservation of the application is cancelled with `sp_cancelar_reserva_admin` 📝 and the other side is notified. |
+| BAJA | Reactivar 📝 | the state before the baja | **ADMINISTRADOR** | Read from the last BAJA event; a RECHAZADO one gets back the reason of its last RECHAZAR event. The account(s) are reactivated. Cancelled reservations are **not** restored. |
 
 ## Reservations (`reserva`)
 

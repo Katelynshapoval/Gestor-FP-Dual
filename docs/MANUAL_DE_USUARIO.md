@@ -19,7 +19,7 @@ _Versión del manual: 27/10/2026. Describe la aplicación tal y como funciona en
 4. [Solicitudes públicas (alumnos y empresas nuevos)](#solicitudes-publicas)
    - [Comprobar si el plazo está abierto](#plazo) · [Solicitud de alumno](#solicitud-alumno) · [Solicitud de empresa](#solicitud-empresa) · [Después de enviar](#despues-enviar)
 5. [Manual del administrador](#administrador)
-   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas)
+   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja)
 6. [Manual del coordinador](#coordinador)
 7. [Manual de empresa](#empresa)
    - [Portal de la empresa](#portal-empresa) · [Datos y cambios](#empresa-datos) · [Ciclos y plazas](#empresa-plazas) · [Tutores](#empresa-tutores) · [Alumnos disponibles y reservas](#empresa-reservar) · [Documentos y firmas](#empresa-documentos) · [Nueva convocatoria](#empresa-reaplicar)
@@ -194,6 +194,7 @@ Los estados se muestran con etiquetas de color: **verde** = correcto o terminado
 | Pendiente de revisión | El centro todavía no la ha revisado. |
 | Validada | Aceptada. El alumno ya puede ser reservado o la empresa ya puede reservar. |
 | Rechazada | No aceptada. Se muestra el motivo. |
+| Dada de baja | Administración la ha retirado del programa. Su cuenta del portal está desactivada ([más información](#baja)). |
 
 **Reservas**
 
@@ -418,6 +419,13 @@ En **«Estado de la solicitud»**:
 
 Una vez validado, el alumno aparece en «Alumnos disponibles» para las empresas de su ciclo.
 
+#### Cuenta y participación — 🔒 Solo Administración
+
+Debajo del estado, Administración ve el bloque **«Cuenta y participación»**: el usuario del portal (el DNI/NIE) y si la cuenta está activa. Desde aquí puede **«Resetear contraseña»** ([cómo funciona](#cuentas)) y **«Dar de baja»** o **«Reactivar»** al alumno ([cómo funciona](#baja)).
+
+![Bloque Cuenta y participación de un alumno con los botones Resetear contraseña y Dar de baja](manual/imagenes/alumno-cuenta-baja.png)
+_Bloque «Cuenta y participación», visible solo para Administración._
+
 #### Reabrir una solicitud rechazada
 
 Si una solicitud se rechazó por error o el alumno ha corregido el problema, pulsa **«Reabrir solicitud»**. El motivo es opcional. La solicitud vuelve a **Pendiente de revisión**. Solo se puede reabrir en la **convocatoria activa**.
@@ -450,7 +458,7 @@ _Pestaña «Información» de una empresa._
 
 #### Validar la empresa: el convenio
 
-La solicitud de una empresa **se valida al validar su convenio firmado**. No hay un botón aparte para validar la empresa.
+La solicitud de una empresa **se valida al validar su convenio firmado**: es el camino normal.
 
 1. Despliega la tarjeta. En **«Convenio»** verás su estado: «Convenio pendiente de generar», «Convenio pendiente de validar» o «Convenio validado».
 2. Pulsa **«Ver convenio»** (o **«✓ Validar»**) para abrirlo.
@@ -458,6 +466,18 @@ La solicitud de una empresa **se valida al validar su convenio firmado**. No hay
 4. Si no es correcto, pulsa **«Rechazar convenio»** y escribe el motivo. La empresa tendrá que subir uno nuevo. **La solicitud de la empresa no cambia de estado.**
 
 Si aparece «Convenio pendiente de generar», hay que generarlo desde [Documentos](#staff-documentos) (necesita una [plantilla](#plantillas) activa).
+
+#### Estado de la solicitud: rechazar, reabrir o validar
+
+Debajo del convenio está el bloque **«Estado de la solicitud»**, con la etiqueta del estado:
+
+- **«Rechazar solicitud»** (solicitudes pendientes): rechaza la participación de la empresa en esta convocatoria, no solo el convenio. Hay que escribir un motivo, que la empresa verá en su portal. Una empresa rechazada no puede reservar alumnos.
+- **«Reabrir solicitud»** (solicitudes rechazadas, solo en la convocatoria activa): vuelve a «Pendiente de revisión». El motivo es opcional.
+- **«Validar solicitud»**: solo aparece si el convenio ya está validado pero la solicitud sigue pendiente.
+- 🔒 **Solo Administración**: **«Dar de baja»** o **«Reactivar»** ([cómo funciona](#baja)).
+
+![Bloque Estado de la solicitud de una empresa validada, con el botón Dar de baja](manual/imagenes/empresa-estado-solicitud.png)
+_«Estado de la solicitud» de una empresa, visto por Administración._
 
 #### Editar los datos de una empresa
 
@@ -626,9 +646,46 @@ _Plantillas vistas por Administración (en este ejemplo todavía no hay ninguna 
 ### 5.8 Cuentas y contraseñas
 
 - Las **cuentas de alumnos y empresas se crean solas** al enviar la solicitud pública. No hay una pantalla para crear cuentas a mano.
-- 🔒 **Solo Administración** puede restablecer la contraseña de una **empresa**, desde su tarjeta en Empresas ([cómo](#staff-empresas)).
-- La aplicación **no tiene** una pantalla para restablecer la contraseña de un **alumno** ni del personal del centro. Si un alumno la olvida, consulta con el responsable técnico de la aplicación.
+- 🔒 **Solo Administración** puede restablecer contraseñas:
+  - de una **empresa**, en su tarjeta de Empresas, bloque «Credenciales de acceso» ([cómo](#staff-empresas));
+  - de un **alumno**, en su tarjeta de Alumnos, bloque «Cuenta y participación».
+
+  En los dos casos pulsa **«Resetear contraseña»**. La contraseña temporal se muestra **una sola vez y durante 2 minutos**: cópiala y comunícasela a la persona por un medio seguro. Al entrar tendrá que [cambiarla](#contrasena-temporal).
+- La aplicación **no tiene** una pantalla para restablecer la contraseña del personal del centro. Si alguien del centro la olvida, consulta con el responsable técnico de la aplicación.
 - Cada persona puede [cambiar su propia contraseña](#cambiar-contrasena).
+
+<a id="baja"></a>
+
+### 5.9 Dar de baja a un alumno o a una empresa — 🔒 Solo Administración
+
+Sirve para **retirar del programa** a un alumno o a una empresa en una convocatoria: por ejemplo, un alumno que abandona el ciclo o una empresa que ya no puede acoger alumnos.
+
+**Qué pasa al dar de baja**
+
+1. La solicitud pasa a **«Dada de baja»**.
+2. Su **cuenta del portal se desactiva**: no podrá entrar (si tenía la sesión abierta, se cierra en cuanto haga algo). En una empresa se desactivan todas sus cuentas.
+3. **Todas sus reservas activas, pendientes y confirmadas, se cancelan** con el motivo de la baja. Las plazas quedan libres y se avisa por correo a la otra parte: a las empresas, si se da de baja un alumno; a los alumnos, si se da de baja una empresa.
+
+**Cómo se hace**
+
+1. Despliega la tarjeta del alumno (Alumnos › «Cuenta y participación») o de la empresa (Empresas › «Estado de la solicitud»).
+2. Pulsa **«Dar de baja»**. La ventana muestra **qué reservas se cancelarán**; las confirmadas se marcan en rojo.
+3. Escribe el **«Motivo de la baja»** (obligatorio) y pulsa **«Dar de baja»**.
+
+El aviso final indica cuántas reservas se han cancelado. Si alguna no se ha podido cancelar, el aviso lo dice: cancélala a mano desde su panel ([Cancelar una reserva](#staff-reservas)).
+
+![Ventana Dar de baja al alumno con la reserva confirmada que se cancelará y el campo Motivo de la baja](manual/imagenes/dar-de-baja.png)
+_Antes de confirmar, la ventana muestra las reservas que se van a cancelar._
+
+**Reactivar**
+
+En una solicitud dada de baja se ven la fecha, el motivo y el botón **«Reactivar»**. Al reactivar:
+
+- la solicitud **vuelve al estado que tenía antes de la baja** (pendiente, validada o rechazada);
+- la cuenta del portal se vuelve a activar;
+- las **reservas canceladas no se recuperan**: si hace falta, hay que crearlas de nuevo.
+
+Las solicitudes dadas de baja se encuentran con el filtro **«Solicitud: Dada de baja»** en Alumnos y en Empresas.
 
 ---
 
@@ -644,17 +701,20 @@ El perfil de Coordinación hace **el mismo trabajo diario** que Administración:
 | Validar y rechazar documentos y solicitudes; reabrir solicitudes | ✅ | ✅ |
 | Gestionar reservas: tipo de contrato, firmas, confirmar, cancelar, reasignar | ✅ | ✅ |
 | Editar datos de empresas, aprobar o rechazar cambios, cambiar plazas | ✅ | ✅ |
+| Rechazar y reabrir solicitudes de empresa | ✅ | ✅ |
 | Consultar convocatorias | ✅ | ✅ |
 | **Crear y editar convocatorias** | ✅ | ❌ |
 | Consultar y descargar plantillas | ✅ | ✅ |
 | **Subir o reemplazar plantillas** | ✅ | ❌ |
-| **Restablecer contraseñas de empresas** | ✅ | ❌ |
+| **Restablecer contraseñas de empresas y alumnos** | ✅ | ❌ |
+| **Dar de baja y reactivar alumnos y empresas** | ✅ | ❌ |
 
 En la práctica, el coordinador:
 
 - En **Convocatorias** solo ve la lista, sin el formulario «Nueva convocatoria» ni el botón «Editar».
 - En **Documentos › Plantillas** no tiene el botón «Subir plantilla».
-- En las tarjetas de **Empresas** no tiene el botón «Resetear contraseña».
+- En las tarjetas de **Empresas** no tiene «Resetear contraseña» ni «Dar de baja».
+- En las tarjetas de **Alumnos** no ve el bloque «Cuenta y participación».
 
 Si necesitas una de estas acciones, pídesela a Administración.
 
@@ -994,7 +1054,13 @@ Cada perfil solo ve y cambia lo que le corresponde. Si no ves un botón o te apa
 
 - Las empresas no ven las reservas de otras empresas ni el Anexo DGA de los alumnos.
 - Los alumnos no pueden modificar sus datos personales.
-- Coordinación no puede crear convocatorias, subir plantillas ni restablecer contraseñas.
+- Coordinación no puede crear convocatorias, subir plantillas, restablecer contraseñas ni dar de baja.
+
+### Me han dado de baja / ya no puedo entrar
+
+Si el centro te ha **dado de baja** del programa, tu cuenta del portal está desactivada y al entrar verás «La cuenta está desactivada. Contacte con el administrador.» Tus reservas activas se han cancelado. Si crees que es un error, ponte en contacto con el centro: Administración puede **reactivar** tu solicitud, pero las reservas canceladas no vuelven solas.
+
+**¿Qué pasa con las reservas de una empresa dada de baja?** Se cancelan todas. Si eres un alumno afectado, recibirás un aviso y **tu solicitud sigue abierta** para otras empresas.
 
 <a id="faq-contrasena"></a>
 
@@ -1003,7 +1069,8 @@ Cada perfil solo ve y cambia lo que le corresponde. Si no ves un botón o te apa
 No hay recuperación automática por correo.
 
 - **Empresas**: pedid al centro que Administración restablezca la contraseña. Os dará una contraseña temporal que tendréis que [cambiar al entrar](#contrasena-temporal).
-- **Alumnos y personal del centro**: contacta con el centro. La aplicación no tiene una pantalla para restablecer estas contraseñas, así que la solución depende del responsable técnico.
+- **Alumnos**: pide al centro que Administración te restablezca la contraseña. Te dará una temporal que tendrás que cambiar al entrar.
+- **Personal del centro**: la aplicación no tiene una pantalla para restablecer vuestras contraseñas; consulta con el responsable técnico.
 
 ### Otras dudas habituales
 
@@ -1012,4 +1079,4 @@ No hay recuperación automática por correo.
 - **Mi solicitud de empresa sigue pendiente aunque he subido el convenio.** Se valida cuando el centro **valida** el convenio, no al subirlo. Si el centro lo rechaza, veréis el motivo y tendréis que subir uno nuevo.
 - **El alumno es menor de edad.** El formulario pide los datos del tutor o tutora legal en el paso «Datos personales».
 - **Han regenerado un anexo que ya había firmado.** Al regenerarlo se crea una versión nueva y hay que volver a firmarla.
-- **¿Una solicitud rechazada se puede recuperar?** En los alumnos, el centro puede reabrirla durante la convocatoria activa. Si es tu caso, contacta con el centro.
+- **¿Una solicitud rechazada se puede recuperar?** Sí: el centro puede reabrirla durante la convocatoria activa, tanto la de un alumno como la de una empresa. Si es tu caso, contacta con el centro.

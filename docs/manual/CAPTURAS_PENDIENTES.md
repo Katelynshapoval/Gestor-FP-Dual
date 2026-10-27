@@ -1,6 +1,6 @@
 # Capturas pendientes del manual de usuario
 
-El [manual](../MANUAL_DE_USUARIO.md) ya incluye 31 capturas reales, hechas el 27/10/2026 con las cuentas y los datos de prueba de la base de datos de desarrollo. Las de esta lista no se pudieron hacer **sin modificar datos**: hacen falta reservas, documentos o cuentas en un estado que los datos de prueba no tienen, o un archivo PDF que se pueda mostrar.
+El [manual](../MANUAL_DE_USUARIO.md) ya incluye 34 capturas reales, hechas el 27/10/2026 con las cuentas y los datos de prueba de la base de datos de desarrollo. Las de esta lista no se pudieron hacer **sin modificar datos**: hacen falta reservas, documentos o cuentas en un estado que los datos de prueba no tienen, o un archivo PDF que se pueda mostrar.
 
 El manual ya se entiende sin ellas. Para añadir una:
 
@@ -136,7 +136,17 @@ El manual ya se entiende sin ellas. Para añadir una:
 - **Apartado:** 5.4 Empresas → «Restablecer la contraseña de una empresa»
 - **Rol:** Administración
 - **Dónde:** Empresas → tarjeta de una empresa → «Credenciales de acceso»
-- **Qué mostrar:** el bloque «Credenciales de acceso» con el usuario (CIF) y el botón «Resetear contraseña». **Haz la captura antes de pulsarlo** y no muestres nunca una contraseña.
+- **Qué mostrar:** el bloque con el usuario (CIF) y el botón «Resetear contraseña». **Haz la captura antes de pulsarlo** y no muestres nunca una contraseña. (El equivalente del alumno ya está en `alumno-cuenta-baja.png`.)
 - **Datos necesarios:** ninguno.
 - **Pie de imagen:** «Solo Administración puede restablecer la contraseña de una empresa.»
 - **Markdown para insertar:** `![Bloque Credenciales de acceso con el botón Resetear contraseña](manual/imagenes/resetear-contrasena.png)`
+
+## 14. `reactivar.png` — Opcional
+
+- **Apartado:** 5.9 Dar de baja → «Reactivar»
+- **Rol:** Administración
+- **Dónde:** Alumnos o Empresas → filtro «Solicitud: Dada de baja» → tarjeta desplegada
+- **Qué mostrar:** el recuadro «Dada de baja el … Motivo: …», la etiqueta «Dada de baja» y el botón «Reactivar».
+- **Datos necesarios:** aplicar la migración 016 y dar de baja una solicitud de prueba.
+- **Pie de imagen:** «Una solicitud dada de baja, con su motivo y el botón Reactivar.»
+- **Markdown para insertar:** `![Solicitud dada de baja con el botón Reactivar](manual/imagenes/reactivar.png)`

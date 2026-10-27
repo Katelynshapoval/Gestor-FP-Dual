@@ -1,26 +1,27 @@
 # Incidencias detectadas al redactar el manual
 
-_27/10/2026 · rama `phase-5-design-polish`. Revisión de documentación: **no se ha cambiado nada de la aplicación**. Cada punto indica cómo se detectó._
+_27/10/2026 · rama `phase-5-design-polish`. Lista de lo que se encontró al documentar y en qué ha quedado cada punto._
 
-## Errores de la interfaz
+## Corregidas
 
-1. **Una reserva cancelada sigue ofreciendo subir el Calendario.** En el panel de una reserva **Cancelada**, el texto dice «La reserva está cancelada: sus documentos solo se pueden consultar», pero el Calendario aparece como «Pendiente de la empresa: subir Calendario» con el cuadro «Seleccionar PDF de Calendario» y el botón «Subir». El servidor rechaza esa subida, así que el error está en lo que se muestra. Visto en el portal de la empresa de prueba A. _(Navegador.)_
-2. **Casilla «El alumno trabajará en la dirección fiscal de la empresa» (formulario de empresa, paso 4).** La casilla vuelve a quedar pegada al texto, y el texto sale en negrita. La regla `.field > label` (`display: block`, `font-semibold`) de `styles/forms.css` anula las clases de esa etiqueta, que es hija directa del `fieldset.field`. Afecta al cambio de diseño n.º 1 de esta misma rama. _(Captura `solicitud-empresa-puesto.png`.)_
-3. **Nombre de pestaña equivocado en «Tutores» (portal de empresa).** El texto dice «El acceso al portal sigue siendo el CIF, en Mis datos» y «Para cambiar sus datos usa «Mis datos › Editar datos»», pero la pestaña se llama **«Datos de la empresa»**. _(Código: `pages/CompanyView/TutoresEmpresa.jsx`.)_
+1. **Una reserva cancelada seguía ofreciendo subir el Calendario.** Ahora los documentos de una reserva cancelada solo se pueden consultar: sin «Subir», «Firmar», «Generar» ni acción pendiente (`reservaDocumentos` en `documentosWorkflow.js`). Comprobado en el navegador con la reserva cancelada de la empresa de prueba A.
+2. **Casilla «El alumno trabajará en la dirección fiscal de la empresa».** La regla `.field > label` de `forms.css` anulaba su diseño. El `fieldset` ya no usa la clase `field`; la casilla vuelve a tener su espacio y el texto ya no sale en negrita. Captura `solicitud-empresa-puesto.png` rehecha.
+3. **Pestaña «Tutores» del portal de empresa.** Hablaba de «Mis datos»; ahora dice «Datos de la empresa», que es el nombre real de la pestaña.
+4. **No se podía rechazar ni reabrir la solicitud de una empresa.** Nuevo bloque «Estado de la solicitud» en la tarjeta de Empresas, para todo el personal: «Rechazar solicitud» (con motivo), «Reabrir solicitud» y «Validar solicitud» (solo si el convenio ya está validado).
+5. **No había forma de restablecer la contraseña de un alumno.** Nuevo bloque «Cuenta y participación» en la tarjeta del alumno, solo para Administración, con «Resetear contraseña». Sigue sin haber pantalla para las contraseñas del personal del centro.
+6. **Convocatorias solapadas.** El inicio de «2027/2028» pasa del 29/08/2027 al 01/09/2027 (con tu aprobación, desde la propia función «Editar» de la aplicación).
 
-## Funciones que faltan en la interfaz (el servidor sí las tiene)
+## Nuevo: dar de baja
 
-4. **El personal no puede rechazar ni reabrir la solicitud de una empresa desde la aplicación.** Existen `POST /solicitudes/empresa/:id/rechazar` y `/reabrir`, pero ninguna pantalla los usa. Rechazar el convenio no cambia el estado de la solicitud. Por eso el manual no explica cómo rechazar una empresa. _(Código.)_
-5. **No hay pantalla para restablecer la contraseña de un alumno ni del personal.** «Resetear contraseña» solo aparece en las tarjetas de empresa. La pantalla de acceso dice «Si olvidaste tu contraseña, contacta con el administrador», pero Administración no tiene cómo hacerlo para un alumno. _(Código.)_
+«Dar de baja» y «Reactivar» para alumnos y empresas, solo Administración (manual, §5.9). Necesita la migración `db/migrations/016_estado_baja.sql`, que añade el estado «BAJA»; sin ella, el botón responde «falta aplicar la migración 016». La migración está escrita, con su rollback, pero **todavía no se ha aplicado**.
 
-## Datos de prueba (no son errores de la aplicación)
+## Siguen abiertas (datos de prueba, no errores de la aplicación)
 
-6. **No hay plantillas activas** en la base de datos de desarrollo (Convenio, Anexo II y Anexo III salen «Sin plantilla»), así que no se puede generar ningún documento. Por eso hay convenios en «Pendiente de generar».
-7. **Solicitudes validadas con documentos sin subir.** Varios alumnos de prueba están «Validada» con el CV o el Anexo DGA en «Pendiente de subir», algo que la aplicación normal no permite. Se crearon directamente como datos de prueba (`seedPruebas.js`). Aparecen en las capturas `alumno-detalle.png` y `portal-alumno.png`; el manual avisa al principio de que las capturas usan datos de prueba.
-8. **Convocatorias que se solapan.** «2027/2028» empieza el 29/08/2027 y «2026/2027» termina el 31/08/2027. La aplicación ya no permite crear convocatorias que se solapen; estas vienen de datos anteriores. Conviene corregir las fechas antes de agosto de 2027.
+7. **No hay plantillas activas** en la base de datos de desarrollo (Convenio, Anexo II y Anexo III salen «Sin plantilla»), así que no se puede generar ningún documento. Hacen falta los DOCX oficiales del centro.
+8. **Solicitudes validadas con documentos sin subir.** Varios alumnos de prueba están «Validada» con el CV o el Anexo DGA en «Pendiente de subir». Se crearon directamente como datos de prueba (`seedPruebas.js`); la aplicación normal no lo permite.
 
 ## Qué se comprobó y cómo
 
-- **Navegador** (Chrome sin ventana, con las cuentas de prueba de `backend/.pruebas.local.json`, solo consultando): todas las pantallas de las 31 capturas, los menús de cada perfil, los botones que se ven en ellas y el recorrido del formulario de empresa hasta «Revisión y envío» sin enviarlo. No se envió, validó, firmó ni modificó nada.
-- **Solo en el código** (no probado en el navegador en esta revisión): validar o rechazar documentos y solicitudes, reabrir, generar y regenerar, firmar, confirmar, cancelar y reasignar reservas, cambio obligatorio de contraseña, reaplicación de empresas, cambios de datos y su aprobación, reducción de plazas, el bloqueo tras intentos fallidos, la caducidad de la sesión y el formulario con el plazo cerrado. El ciclo completo de una reserva (tipo de contrato, anexo, firmas, validación, confirmación y reasignación) sí se probó en el navegador en la fase 4 ([PHASE_4_REPORT.md](../PHASE_4_REPORT.md), §1). El resto se describe según el código actual.
-- **Correos:** el manual no promete correos concretos. En desarrollo el envío está desactivado por defecto (`MAIL_MODE=log`).
+- **Navegador** (Chrome sin ventana, con las cuentas de prueba de `backend/.pruebas.local.json`): las capturas del manual, la reserva cancelada sin acciones, los bloques nuevos de Alumnos y Empresas, y la ventana «Dar de baja» abierta (solo consulta qué reservas se cancelarían). No se ha dado de baja, rechazado ni restablecido nada en la base de datos.
+- **Pruebas automáticas**: `backend/test/phase5.test.js` (7 pruebas de baja y reactivación) y el resto de pruebas de backend y frontend.
+- **Solo en el código** (no probado en el navegador en esta revisión): validar o rechazar documentos y solicitudes, reabrir, generar y regenerar, firmar, confirmar, cancelar y reasignar reservas, cambio obligatorio de contraseña, reaplicación de empresas, cambios de datos y su aprobación, reducción de plazas, el bloqueo tras intentos fallidos, la caducidad de la sesión y el formulario con el plazo cerrado. El ciclo completo de una reserva se probó en el navegador en la fase 4 ([PHASE_4_REPORT.md](../PHASE_4_REPORT.md), §1).
