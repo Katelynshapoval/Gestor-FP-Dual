@@ -2,7 +2,7 @@
 
 _Branch `phase-3-frontend-consolidation`, created from `main` @ `82f0356` (Phase 2) · 2026-10-27 · companion to [ROADMAP.md](ROADMAP.md), [AUDIT.md](AUDIT.md), [PHASE_2_REPORT.md](PHASE_2_REPORT.md) and [STATE_TRANSITIONS.md](STATE_TRANSITIONS.md)._
 
-**Status: implemented and committed (5 commits, nothing pushed). Phase 3 is NOT complete.**
+**Status: implemented and committed (7 commits, nothing pushed). Phase 3 is NOT complete:** the authenticated browser checks were not run; test accounts and data exist for them (§8).
 
 Automated tests pass, the production build is clean, and several flows were checked against the real development backend and database:
 - the read-only endpoint checks;
@@ -181,19 +181,42 @@ Automated tests pass, the production build is clean, and several flows were chec
   - D6: rejecting the convenio of a validated company keeps the company validated (the dialog says so);
   - D3: company quota rights.
 
-## 8. What I need to finish Phase 3
+## 8. Test data and the authenticated browser checks
 
-To run the authenticated browser checks against your development database, I need **one** of:
+**Test data created (approved, 2026-10-27)** on `proyecto_dual` with `backend/scripts/seedPruebas.js` (commit `d1aea19`). Everything is named "PRUEBA" and belongs to the active convocatoria 2026/2027, speciality 5 (Joyería):
 
-1. **Test credentials** you type in chat (or put in a git-ignored local file) for one ADMINISTRADOR, one COORDINADOR, one EMPRESA and one ALUMNO account. The EMPRESA and ALUMNO should share a pending reservation.
-2. **Approval to create dedicated test accounts** on `proyecto_dual`:
-   - a test administrator and coordinator;
-   - a test company with its application, convenio and one offer;
-   - a test student with a validated application.
+| Record | Details |
+| --- | --- |
+| `prueba.admin@fpdual.test` | ADMINISTRADOR account |
+| `prueba.coord@fpdual.test` | COORDINADOR account |
+| EMPRESA PRUEBA A (FASE 3) | Company, representative and coordinator contacts, VALIDADO application, one offer with 2 places, tutor, transports, and an EMPRESA portal account (login with its CIF) |
+| EMPRESA PRUEBA B (FASE 3) | Same as A, without a portal account. Destination for the reassignment check |
+| ALUMNO PRUEBA (FASE 3) | Student, VALIDADO application and an ALUMNO portal account (login with its DNI) |
 
-   Passwords would be generated and recorded only in a git-ignored local file. The run creates real rows (a reservation, uploaded test PDFs, signatures and audit events). Audit events cannot be deleted by design; everything else can be cancelled or left marked as test data.
+- The passwords are generated and stored only in `backend/.pruebas.local.json`, which is git-ignored (`.gitignore`). They were never printed.
+- All accounts have `must_change_password = 0`.
+- Both applications were set to VALIDADO directly, so they have no convenio or student documents.
+- No reservation, document, signature or audit event has been created yet.
+- Running the script again only reports what exists. It refuses `NODE_ENV=production`.
 
-The checks would cover the full lifecycle above for each role, plus permission restrictions (e.g. a company cannot see another company's reservation), WF-14 as a company, and the portals at 375 px.
+**Authenticated browser checks: not run.**
+- Reading the credentials file was refused by the session's permission guard. I did not work around it, for example by minting a token.
+- No sign-in reached the in-app browser: its only tab stayed on `/login`, with no session and no `/auth/login` request.
+- At your request I stopped here and documented the work.
+
+To run them later, sign in to the in-app browser with the accounts in `backend/.pruebas.local.json`, or allow the session to read that file. The planned checks per role:
+
+- **EMPRESA:** Enlazar (WF-14 states), reserve the test student, upload the Anexo in the panel (company attestation), cancel rules.
+- **Staff:**
+  - contract type and the family lock;
+  - centre signature, then validate the annex, then confirm with the stored type;
+  - reassign the confirmed student to EMPRESA PRUEBA B (WF-8);
+  - company card and convocatoria filter (WF-9);
+  - Seguimiento › *Gestionar reserva*.
+- **ALUMNO:** portal, reservation panel, sign the annex.
+- **All roles:** a company cannot open another company's reservation (403), plus a 375 px pass.
+
+The run will add real rows: a reservation, test PDFs, signatures and audit events. Audit events cannot be deleted.
 
 ### Completion criteria (Phase 3 prompt / ROADMAP)
 
@@ -208,4 +231,4 @@ The checks would cover the full lifecycle above for each role, plus permission r
 | Loading, empty and error states consistent | ✅ In the screens listed in §2.C; 🟡 authenticated screens not browser-checked |
 | No regression; frontend builds; tests pass | ✅ 63 + 17 tests, lint 0, build OK; 🟡 regressions in authenticated flows not ruled out by a browser run |
 
-**Phase 3 is not marked complete** until §8 is done. Phase 4 has not been started.
+**Phase 3 is not marked complete** until the authenticated browser checks in §8 are run. Phase 4 has not been started.
