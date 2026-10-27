@@ -120,6 +120,23 @@ exports.getActiva = async function (req, res) {
   return res.json(rows[0]);
 };
 
+// GET /convocatorias/estado — public: are applications open, and when do the
+// current or next convocatoria open and close (Phase 4 banner on Home and forms).
+exports.getEstado = async function (req, res) {
+  await safeSync();
+  const [activa] = await pool.query(
+    'SELECT id_convocatoria, nombre, fecha_inicio, fecha_fin FROM dual_convocatorias WHERE activa = 1 LIMIT 1'
+  );
+  const [proxima] = await pool.query(
+    `SELECT id_convocatoria, nombre, fecha_inicio, fecha_fin
+       FROM dual_convocatorias
+      WHERE fecha_inicio > CURDATE()
+      ORDER BY fecha_inicio ASC
+      LIMIT 1`
+  );
+  return res.json({ abierta: Boolean(activa[0]), activa: activa[0] || null, proxima: proxima[0] || null });
+};
+
 // POST /convocatorias — creates a new convocatoria, inactive by default
 exports.create = async function (req, res) {
   const { nombre, fecha_inicio, fecha_fin } = req.body;

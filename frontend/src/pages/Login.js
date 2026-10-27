@@ -7,7 +7,7 @@ import { useToast } from "../components/feedback/ToastProvider.jsx";
 function redirectByRole(rol, navigate) {
   if (rol === "EMPRESA") navigate("/companyMain");
   else if (rol === "ALUMNO") navigate("/studentMain");
-  else navigate("/");
+  else navigate("/panel");
 }
 
 const Login = () => {

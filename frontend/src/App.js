@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { User } from "./context/UserContext";
 import PageLayout from "./components/layout/PageLayout.jsx";
 import { ToastProvider } from "./components/feedback/ToastProvider.jsx";
@@ -13,14 +13,22 @@ import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
 import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
 import StudentMain from "./pages/StudentMain";
 import AdminDocumentsView from "./pages/AdminDocumentsView";
+import Panel from "./pages/Panel/Panel.jsx";
+import Reservas from "./pages/Reservas/Reservas.jsx";
 import RequireRole from "./components/auth/RequireRole.jsx";
 import CambiarPassword from "./pages/CambiarPassword.jsx";
+import { STAFF } from "./navigation.js";
 
 import "./styles/main.css";
 import "./styles/forms.css";
 
-// Wraps a page with the shared Header + Footer layout
-const Page = ({ children }) => <PageLayout>{children}</PageLayout>;
+// Old paths keep working (bookmarks, links in emails); the query string is kept.
+const Legacy = ({ to }) => {
+  const { search } = useLocation();
+  return <Navigate to={`${to}${search}`} replace />;
+};
+
+const guard = (roles, element) => <RequireRole roles={roles}>{element}</RequireRole>;
 
 function App() {
   return (
@@ -28,113 +36,31 @@ function App() {
       <ToastProvider>
         <div className="app">
           <BrowserRouter>
-          <Routes>
-            <Route
-              path="/login"
-              element={
-                <Page>
-                  <Login />
-                </Page>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <Page>
-                  <Home />
-                </Page>
-              }
-            />
-            <Route
-              path="/addDualStudent"
-              element={
-                <Page>
-                  <AddDualStudent />
-                </Page>
-              }
-            />
-            <Route
-              path="/addCompanyRequest"
-              element={
-                <Page>
-                  <AddCompanyRequest />
-                </Page>
-              }
-            />
-            <Route
-              path="/linkStudents"
-              element={
-                <Page>
-                  <RequireRole
-                    roles={["ADMINISTRADOR", "COORDINADOR", "EMPRESA"]}
-                  >
-                    <LinkStudents />
-                  </RequireRole>
-                </Page>
-              }
-            />
-            <Route
-              path="/companyMain"
-              element={
-                <Page>
-                  <RequireRole roles={["EMPRESA"]}>
-                    <CompanyView />
-                  </RequireRole>
-                </Page>
-              }
-            />
-            <Route
-              path="/companiesView"
-              element={
-                <Page>
-                  <RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}>
-                    <AdminCompanyView />
-                  </RequireRole>
-                </Page>
-              }
-            />
-            <Route
-              path="/convocatorias"
-              element={
-                <Page>
-                  <RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}>
-                    <Convocatorias />
-                  </RequireRole>
-                </Page>
-              }
-            />
-            <Route
-              path="/documentsView"
-              element={
-                <Page>
-                  <RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}>
-                    <AdminDocumentsView />
-                  </RequireRole>
-                </Page>
-              }
-            />
-            <Route
-              path="/cambiarPassword"
-              element={
-                <Page>
-                  <RequireRole>
-                    <CambiarPassword />
-                  </RequireRole>
-                </Page>
-              }
-            />
-            <Route
-              path="/studentMain"
-              element={
-                <Page>
-                  <RequireRole roles={["ALUMNO"]}>
-                    <StudentMain />
-                  </RequireRole>
-                </Page>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
+            <Routes>
+              <Route element={<PageLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/addDualStudent" element={<AddDualStudent />} />
+                <Route path="/addCompanyRequest" element={<AddCompanyRequest />} />
+
+                <Route path="/panel" element={guard(STAFF, <Panel />)} />
+                <Route path="/alumnos" element={guard([...STAFF, "EMPRESA"], <LinkStudents />)} />
+                <Route path="/empresas" element={guard(STAFF, <AdminCompanyView />)} />
+                <Route path="/reservas" element={guard(STAFF, <Reservas />)} />
+                <Route path="/documentos" element={guard(STAFF, <AdminDocumentsView />)} />
+                <Route path="/convocatorias" element={guard(STAFF, <Convocatorias />)} />
+
+                <Route path="/companyMain" element={guard(["EMPRESA"], <CompanyView />)} />
+                <Route path="/studentMain" element={guard(["ALUMNO"], <StudentMain />)} />
+                <Route path="/cambiarPassword" element={guard(undefined, <CambiarPassword />)} />
+
+                <Route path="/linkStudents" element={<Legacy to="/alumnos" />} />
+                <Route path="/companiesView" element={<Legacy to="/empresas" />} />
+                <Route path="/documentsView" element={<Legacy to="/documentos" />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
         </div>
       </ToastProvider>
     </User>

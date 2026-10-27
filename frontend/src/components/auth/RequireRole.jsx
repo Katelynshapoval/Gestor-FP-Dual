@@ -1,11 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
-
-function homeForRole(rol) {
-  if (rol === "ALUMNO") return "/studentMain";
-  if (rol === "EMPRESA") return "/companyMain";
-  return "/";
-}
+import { homeForRole } from "../../navigation.js";
 
 // Hiding a menu item is not security: unmatched roles are redirected.
 function RequireRole({ roles, children }) {

@@ -57,13 +57,13 @@ function Home() {
     ...(isAdmin
       ? [
           {
-            to: "/companiesView",
+            to: "/empresas",
             Icon: FaFileSignature,
             title: "Empresas colaboradoras",
             desc: "Administra las empresas registradas en Dual: consulta datos, gestiona anexos.",
           },
           {
-            to: "/documentsView",
+            to: "/documentos",
             Icon: FaFileLines,
             title: "Documentos",
             desc: "Consulta, valida y gestiona los documentos y firmas del proceso Dual.",
@@ -73,7 +73,7 @@ function Home() {
     ...(isAdmin || isEmpresa
       ? [
           {
-            to: "/linkStudents",
+            to: "/alumnos",
             Icon: FaLink,
             title: "Vincular alumnos",
             desc: "Gestiona las asignaciones de alumnos a empresas colaboradoras.",
