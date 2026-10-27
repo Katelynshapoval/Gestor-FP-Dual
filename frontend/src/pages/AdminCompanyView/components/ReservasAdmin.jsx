@@ -8,6 +8,7 @@ import {
   isPendingReserva,
 } from "../../../utils/reservaEstados.js";
 import TutorAssignSelect from "../../../components/TutorAssignSelect.jsx";
+import TipoContratoSelect from "../../../components/TipoContratoSelect.jsx";
 
 function estadoLabel(r) {
   if (isConfirmedReserva(r.estado_reserva)) {
@@ -29,6 +30,20 @@ function estadoLabel(r) {
       text: "Documento validado",
       cls: "bg-green-50 text-green-700 border-green-200",
       Icono: IoIosCheckmarkCircleOutline,
+    };
+  }
+  if (r.id_documento_reserva && r.estado_documento === "RECHAZADO") {
+    return {
+      text: "Documento rechazado",
+      cls: "bg-red-50 text-red-700 border-red-200",
+      Icono: MdOutlineCancel,
+    };
+  }
+  if (isPendingReserva(r.estado_reserva) && !r.id_tipo_contrato) {
+    return {
+      text: "Falta tipo de contrato",
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+      Icono: MdPendingActions,
     };
   }
   return {
@@ -87,7 +102,7 @@ const CancelModal = ({ reserva, onConfirm, onClose }) => {
   );
 };
 
-const FilaReserva = ({ r, onVerDoc, onCancel, onTutorChange }) => {
+const FilaReserva = ({ r, onVerDoc, onCancel, onTutorChange, onReservationUpdate }) => {
   const { text, cls, Icono } = estadoLabel(r);
   const canCancel = isPendingReserva(r.estado_reserva) || isConfirmedReserva(r.estado_reserva);
 
@@ -135,6 +150,14 @@ const FilaReserva = ({ r, onVerDoc, onCancel, onTutorChange }) => {
         </div>
       </div>
 
+      {isPendingReserva(r.estado_reserva) && (
+        <TipoContratoSelect
+          idReserva={r.id_reserva}
+          idTipoContrato={r.id_tipo_contrato}
+          onSaved={onReservationUpdate}
+        />
+      )}
+
       {canCancel && (
         <TutorAssignSelect
           idReserva={r.id_reserva}
@@ -177,10 +200,22 @@ const ReservasAdmin = ({ reservations, onReservationUpdate, onAdminCancel }) => 
   }
 
   const conDocPendiente = reservations.filter(
-    (r) => r.id_documento_reserva && r.estado_documento === "PENDIENTE"
+    (r) =>
+      isPendingReserva(r.estado_reserva) &&
+      r.id_documento_reserva &&
+      r.estado_documento === "PENDIENTE"
   );
+  const listasParaConfirmar = reservations.filter(
+    (r) =>
+      isPendingReserva(r.estado_reserva) &&
+      r.id_documento_reserva &&
+      r.estado_documento === "VALIDADO"
+  );
+  // No annex yet (including no contract type) or the annex was rejected
   const sinDoc = reservations.filter(
-    (r) => !r.id_documento_reserva && isPendingReserva(r.estado_reserva)
+    (r) =>
+      isPendingReserva(r.estado_reserva) &&
+      (!r.id_documento_reserva || r.estado_documento === "RECHAZADO")
   );
   const definitivas = reservations.filter((r) => isConfirmedReserva(r.estado_reserva));
   const canceladas = reservations.filter((r) => isCancelledReserva(r.estado_reserva));
@@ -198,6 +233,7 @@ const ReservasAdmin = ({ reservations, onReservationUpdate, onAdminCancel }) => 
             onVerDoc={setViewingDoc}
             onCancel={setCancelTarget}
             onTutorChange={onReservationUpdate}
+            onReservationUpdate={onReservationUpdate}
           />
         ))}
       </div>
@@ -218,7 +254,8 @@ const ReservasAdmin = ({ reservations, onReservationUpdate, onAdminCancel }) => 
 
       <div className="space-y-6">
         <Grupo titulo="Documentos pendientes de validación" items={conDocPendiente} />
-        <Grupo titulo="Pendientes de documento" items={sinDoc} />
+        <Grupo titulo="Documento validado · pendientes de confirmar" items={listasParaConfirmar} />
+        <Grupo titulo="Pendientes de tipo de contrato o documento" items={sinDoc} />
         <Grupo titulo="Asignaciones definitivas" items={definitivas} />
         <Grupo titulo="Canceladas" items={canceladas} />
       </div>

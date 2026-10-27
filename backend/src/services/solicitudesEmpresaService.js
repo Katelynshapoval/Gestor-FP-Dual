@@ -533,9 +533,12 @@ exports.getAll = async function (req, res) {
   return res.json(rows);
 };
 
-// GET /solicitudes/empresa/mia — EMPRESA user's own application
+// GET /solicitudes/empresa/mia — EMPRESA user's own application in the active convocatoria.
+// With ?incluir_anteriores=1 (company portal, WF-2) it falls back to the latest
+// application of a past convocatoria and says whether the company may re-apply.
 exports.getMia = async function (req, res) {
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
+  const incluirAnteriores = String(req.query?.incluir_anteriores || "") === "1";
 
   if (!idEmpresa) {
     return res
@@ -554,7 +557,8 @@ exports.getMia = async function (req, res) {
        ev.nombre AS estado_validacion,
        emp.empresa,
        emp.cif,
-       c.nombre AS convocatoria
+       c.nombre AS convocatoria,
+       c.activa AS convocatoria_activa
      FROM dual_solicitudes_empresa se
      JOIN ge_empresas emp
        ON emp.idempresa = se.id_empresa
@@ -563,7 +567,8 @@ exports.getMia = async function (req, res) {
      JOIN dual_convocatorias c
        ON c.id_convocatoria = se.id_convocatoria
      WHERE se.id_empresa = ?
-       AND c.activa = 1
+       ${incluirAnteriores ? "" : "AND c.activa = 1"}
+     ORDER BY c.activa DESC, se.fecha_solicitud DESC, se.id_solicitud_empresa DESC
      LIMIT 1`,
     [idEmpresa],
   );
@@ -574,7 +579,18 @@ exports.getMia = async function (req, res) {
       .json({ error: "No hay solicitud para la convocatoria activa." });
   }
 
-  return res.json(rows[0]);
+  const row = { ...rows[0], convocatoria_activa: Number(rows[0].convocatoria_activa) === 1 };
+  if (incluirAnteriores) {
+    const activa = await getActiveConvocatoria();
+    row.convocatoria_abierta = activa
+      ? { id_convocatoria: activa.id_convocatoria, nombre: activa.nombre }
+      : null;
+    // Re-applying is possible only when a convocatoria is open and the
+    // company has no application in it yet (the latest one is from the past).
+    row.puede_reaplicar = !!activa && !row.convocatoria_activa;
+  }
+
+  return res.json(row);
 };
 
 // GET /solicitudes/empresa/:id — detail

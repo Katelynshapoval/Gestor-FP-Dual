@@ -37,7 +37,7 @@ const MisDatos = ({
   onCupoChange,
 }) => {
   const toast = useToast();
-  const [showReapply, setShowReapply] = useState(false);
+  const [showReapply, setShowReapply] = useState(!!solicitud?.puede_reaplicar);
   const [reapplyDone, setReapplyDone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => datosToForm(solicitud));
@@ -47,11 +47,12 @@ const MisDatos = ({
     return (
       <div className="form-card">
         <p className="text-center text-gray-500 py-8">
-          No se encontraron datos de solicitud para la convocatoria activa.
+          No se encontraron datos de solicitud de tu empresa.
         </p>
       </div>
     );
   }
+  const esAnterior = !solicitud.convocatoria_activa;
 
   const esps = solicitud.especialidades || [];
   const transporteNombres = (solicitud.transportes || [])
@@ -101,6 +102,14 @@ const MisDatos = ({
 
   return (
     <>
+      {esAnterior && (
+        <InlineNotice tone={solicitud.puede_reaplicar ? "warning" : "info"}>
+          {solicitud.puede_reaplicar
+            ? `Tu empresa todavía no participa en la convocatoria ${solicitud.convocatoria_abierta?.nombre || "abierta"}. Se muestran los datos de tu última solicitud (${solicitud.convocatoria || "convocatoria anterior"}). Usa «Participar en la nueva convocatoria» para presentarte.`
+            : `No hay ninguna convocatoria abierta. Se muestran los datos de tu última solicitud (${solicitud.convocatoria || "convocatoria anterior"}).`}
+        </InlineNotice>
+      )}
+
       <div className="form-card flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="form-section-title mb-1">Datos vigentes</p>
@@ -261,6 +270,7 @@ const MisDatos = ({
           especialidades={esps}
           catalogo={specialities}
           onUpdated={onCupoChange}
+          canEdit={!!solicitud.convocatoria_activa}
         />
       </div>
 
@@ -291,7 +301,8 @@ const MisDatos = ({
         )}
       </div>
 
-      {/* Re-apply section for the next convocatoria */}
+      {/* Re-apply section: only when a convocatoria is open and the company is not in it yet */}
+      {solicitud.puede_reaplicar && (
       <div className="form-card">
         <div
           className="flex items-center justify-between cursor-pointer"
@@ -320,6 +331,7 @@ const MisDatos = ({
                 transports={transports}
                 onSuccess={() => {
                   setReapplyDone(true);
+                  toast.success("Tu solicitud para la nueva convocatoria se ha enviado. El centro la revisará.");
                   if (onReapplySuccess) onReapplySuccess();
                 }}
               />
@@ -327,6 +339,7 @@ const MisDatos = ({
           </div>
         )}
       </div>
+      )}
     </>
   );
 };
@@ -520,7 +533,7 @@ const CompanyView = () => {
 
   const fetchSolicitud = useCallback(async () => {
     try {
-      const basic = await getJSON("/solicitudes/empresa/mia");
+      const basic = await getJSON("/solicitudes/empresa/mia?incluir_anteriores=1");
       const idSol = basic.id_solicitud_empresa;
       const [full, docs, esps, cambios] = await Promise.all([
         getJSON(`/solicitudes/empresa/${idSol}`),
@@ -531,6 +544,7 @@ const CompanyView = () => {
       setSolicitud({
         ...basic,
         ...full,
+        convocatoria_activa: basic.convocatoria_activa,
         documentos: docs,
         especialidades: esps,
       });

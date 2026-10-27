@@ -8,6 +8,7 @@ import {
   reservaEstadoClass,
 } from "../../../../utils/reservaEstados.js";
 import TutorAssignSelect from "../../../../components/TutorAssignSelect.jsx";
+import TipoContratoSelect from "../../../../components/TipoContratoSelect.jsx";
 import { useConfirm } from "../../../../components/feedback/ToastProvider.jsx";
 
 const MotivoModal = ({ title, description, confirmLabel, onConfirm, onClose }) => {
@@ -240,6 +241,13 @@ const EmpresaControl = ({ r, onAdminReserve, onAdminCancel, onAdminReassign, onT
             </div>
             {canMutate && (
               <div className="mt-3 space-y-3">
+                {isPendingReserva(rv.estado_reserva) && (
+                  <TipoContratoSelect
+                    idReserva={rv.id_reserva}
+                    idTipoContrato={rv.id_tipo_contrato}
+                    onSaved={onTutorChange}
+                  />
+                )}
                 <TutorAssignSelect
                   idReserva={rv.id_reserva}
                   idEmpresa={rv.id_empresa}

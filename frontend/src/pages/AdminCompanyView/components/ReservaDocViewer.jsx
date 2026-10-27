@@ -18,6 +18,8 @@ const ReservaDocViewer = ({ reserva, onClose, onReservationUpdate }) => {
 
   useEffect(() => {
     setEstadoDoc(reserva?.estado_documento || null);
+    // Start from the stored contract type so confirmation does not change it by accident
+    setIdTipoContrato(reserva?.id_tipo_contrato != null ? String(reserva.id_tipo_contrato) : "");
     setFieldError("");
     setShowReject(false);
     setMotivoRechazo("");

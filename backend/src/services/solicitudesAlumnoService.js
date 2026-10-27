@@ -262,6 +262,7 @@ exports.getAll = async function (req, res) {
   const [reservas] = await pool.query(
     `SELECT r.id_reserva, r.id_solicitud_alumno, r.motivo,
             er.nombre AS estado_reserva,
+            r.id_tipo_contrato,
             tc.nombre_mostrar AS tipo_contrato,
             emp.empresa,
             esp.codigo AS codigo_especialidad,

@@ -210,6 +210,7 @@ exports.getAll = async function (req, res) {
         r.id_reserva,
         er.nombre AS estado_reserva,
         r.motivo,
+        r.id_tipo_contrato,
         tc.nombre_mostrar AS tipo_contrato,
         sa.id_solicitud_alumno,
         a.idalumno,
