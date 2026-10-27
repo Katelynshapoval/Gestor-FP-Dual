@@ -70,3 +70,17 @@ export function anexoNombre(clave) {
   if (clave === "ANEXO_II") return "Anexo II";
   return "Anexo II/III";
 }
+
+// Contract types (dual_tipos_contrato.nombre). Lists that return only the key
+// show it through this map instead of the raw enum.
+export const TIPO_CONTRATO = Object.freeze({
+  BECA: "Beca",
+  CONTRATO_DE_FORMACION_EN_ALTERNANCIA: "Contrato de formación en alternancia",
+  CONVENIO: "Convenio",
+  OTRO: "Otro",
+});
+
+export function tipoContratoLabel(value) {
+  if (!value) return "";
+  return TIPO_CONTRATO[value] || String(value);
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import RequestFilters from "./components/RequestFilters";
+import RequestFilters, { countLabel } from "./components/RequestFilters";
 import StudentCard from "./components/StudentCard";
 import { useLinkStudents } from "./hooks/useLinkStudents";
 import PageHeader from "../../components/ui/PageHeader";
@@ -63,10 +63,11 @@ const LinkStudents = () => {
     companyOffers,
     companyState,
     expandedCards,
-    selectedSpeciality,
-    setSelectedSpeciality,
-    selectedConvocatoria,
-    setSelectedConvocatoria,
+    filters,
+    setFilter,
+    resetFilters,
+    filtersActive,
+    activaNombre,
     filtered,
     specialities,
     convocatorias,
@@ -88,40 +89,43 @@ const LinkStudents = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [selectedSpeciality, selectedConvocatoria]);
+  }, [filters.q, filters.convocatoria, filters.especialidad, filters.estado, filters.reserva]);
 
   const blocked = isEmpresa && COMPANY_STATE[companyState];
   const ready = status === "ready" && !blocked;
-  const hasFilters = Boolean(selectedSpeciality || (!isEmpresa && selectedConvocatoria));
+  const hasFilters = filtersActive;
 
-  let subtitle = "Cargando…";
-  if (status === "error") subtitle = "No se pudieron cargar los datos.";
-  else if (blocked) subtitle = blocked.title;
-  else if (ready) {
-    subtitle = `${filtered.length} alumno${filtered.length !== 1 ? "s" : ""}${hasFilters ? " según los filtros actuales" : ""}.`;
-  }
+  const subtitle = isEmpresa
+    ? "Alumnos validados de tus ciclos en la convocatoria activa. Reserva a los que te interesen."
+    : "Revisa solicitudes y documentos, valida alumnos y gestiona sus reservas.";
 
   return (
     <div className="flex-1 bg-surface-100">
       <div className="page-container space-y-6">
         <PageHeader
-          kicker="Asignaciones"
-          title="Peticiones de alumnos"
+          kicker={isEmpresa ? "Mi empresa" : "Gestión"}
+          title={isEmpresa ? "Alumnos disponibles" : "Alumnos"}
           subtitle={subtitle}
-          actions={
-            ready && (
-              <RequestFilters
-                selectedSpeciality={selectedSpeciality}
-                onSpecialityChange={setSelectedSpeciality}
-                selectedConvocatoria={selectedConvocatoria}
-                onConvocatoriaChange={setSelectedConvocatoria}
-                specialities={specialities}
-                convocatorias={convocatorias}
-                isEmpresa={isEmpresa}
-              />
-            )
-          }
+          className="mb-0"
         />
+
+        {ready && (
+          <RequestFilters
+            filters={filters}
+            setFilter={setFilter}
+            onReset={resetFilters}
+            active={filtersActive}
+            specialities={specialities}
+            convocatorias={convocatorias}
+            activaNombre={activaNombre}
+            isEmpresa={isEmpresa}
+            count={
+              hasFilters
+                ? `${countLabel(filtered.length, "alumno", "alumnos")} de ${linkRequests.length}`
+                : countLabel(filtered.length, "alumno", "alumnos")
+            }
+          />
+        )}
 
         <div className="space-y-4" aria-busy={status === "loading" || refreshing}>
           {isEmpresa && ready && (
@@ -158,18 +162,18 @@ const LinkStudents = () => {
                   ? isEmpresa
                     ? "No hay alumnos validados disponibles para tus ciclos en este momento."
                     : "Todavía no hay solicitudes de alumnos."
-                  : "No hay alumnos que coincidan con los filtros actuales."}
+                  : hasFilters
+                    ? "No hay alumnos que coincidan con la búsqueda o los filtros."
+                    : "No hay solicitudes en la convocatoria activa."}
               </p>
               {linkRequests.length > 0 && hasFilters && (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm mt-4"
-                  onClick={() => {
-                    setSelectedSpeciality("");
-                    setSelectedConvocatoria("");
-                  }}
-                >
-                  Limpiar filtros
+                <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={resetFilters}>
+                  Quitar filtros
+                </button>
+              )}
+              {linkRequests.length > 0 && !hasFilters && !isEmpresa && (
+                <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={() => setFilter("convocatoria", "todas")}>
+                  Ver todas las convocatorias
                 </button>
               )}
             </StateCard>

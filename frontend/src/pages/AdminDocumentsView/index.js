@@ -10,24 +10,36 @@ export default function AdminDocumentsView() {
 
   const tabCls = (active) =>
     `whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
-      active ? "border-brand-500 text-brand-500" : "border-transparent text-gray-500 hover:text-gray-700"
+      active ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-charcoal-900"
     }`;
 
   return (
     <div className="flex-1 bg-surface-100">
       <div className="page-container space-y-6">
         <PageHeader
-          kicker="Administración"
-          title="Gestión de documentos"
+          kicker="Gestión"
+          title="Documentos"
           subtitle="Consulta, valida y controla los documentos del proceso Dual."
           meta={tab === "seguimiento" ? <SummaryChips summary={summary} /> : null}
         />
 
-        <div className="flex gap-1 overflow-x-auto border-b border-surface-200">
-          <button type="button" className={tabCls(tab === "seguimiento")} onClick={() => setTab("seguimiento")}>
+        <div className="flex gap-1 overflow-x-auto border-b border-surface-200" role="tablist" aria-label="Vista de documentos">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "seguimiento"}
+            className={tabCls(tab === "seguimiento")}
+            onClick={() => setTab("seguimiento")}
+          >
             Seguimiento
           </button>
-          <button type="button" className={tabCls(tab === "plantillas")} onClick={() => setTab("plantillas")}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "plantillas"}
+            className={tabCls(tab === "plantillas")}
+            onClick={() => setTab("plantillas")}
+          >
             Plantillas
           </button>
         </div>

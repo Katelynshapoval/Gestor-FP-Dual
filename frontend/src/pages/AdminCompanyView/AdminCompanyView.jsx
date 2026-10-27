@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import { useUrlFilters } from "../../hooks/useUrlFilters.js";
+import { useConvocatoriaEstado } from "../../hooks/useConvocatoriaEstado.js";
+import { coincide } from "../../utils/busqueda.js";
+import { SOLICITUD } from "../../utils/labels.js";
+import FilterBar, { FilterSelect, SearchField, countLabel } from "../../components/ui/FilterBar.jsx";
 import { useUser } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
@@ -12,16 +17,15 @@ import { useToast } from "../../components/feedback/ToastProvider.jsx";
 import CompanyCard from "./components/CompanyCard";
 import PdfViewer from "../../components/ui/PdfViewer.jsx";
 import MotivoDialog from "../../components/ui/MotivoDialog.jsx";
-import ReservasAdmin from "./components/ReservasAdmin";
 import PageHeader from "../../components/ui/PageHeader";
 import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
+
+const FILTER_DEFAULTS = { q: "", curso: "activa", estado: "", convenio: "", especialidad: "", cambios: "", orden: "fecha_desc" };
 
 const AdminCompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const toast = useToast();
-
-  const [mainView, setMainView] = useState("empresas");
 
   const [companies, setCompanies] = useState([]);
   const [allReservations, setAllReservations] = useState([]);
@@ -36,11 +40,11 @@ const AdminCompanyView = () => {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [filterEsp, setFilterEsp] = useState("");
-  const [filterConvenio, setFilterConvenio] = useState("");
-  const [filterCourse, setFilterCourse] = useState("");
-  const [filterCambios, setFilterCambios] = useState("");
-  const [sortBy, setSortBy] = useState("fecha_desc");
+  const { filters, setFilter, reset: resetFilters, active: filtersActive } = useUrlFilters(FILTER_DEFAULTS);
+  const { q, especialidad: filterEsp, convenio: filterConvenio, curso, cambios: filterCambios, estado: filterEstado, orden: sortBy } = filters;
+  const activaNombre = useConvocatoriaEstado().data?.activa?.nombre || null;
+  // "activa" resolves to the active convocatoria; with none active, all are shown.
+  const filterCourse = curso === "todas" ? "" : curso === "activa" ? activaNombre || "" : curso;
   const [transports, setTransports] = useState([]);
   const [catalogo, setCatalogo] = useState([]);
 
@@ -185,7 +189,8 @@ const AdminCompanyView = () => {
       if (filterConvenio === "sin_convenio" && c.tieneConvenio) return false;
       if (filterCourse && c.convocatoria !== filterCourse) return false;
       if (filterCambios === "pendiente" && !c.cambio_pendiente) return false;
-      return true;
+      if (filterEstado && c.estado_validacion !== filterEstado) return false;
+      return coincide(q, [c.empresa, c.razonSocial, c.cif, c.nombreCoordinador, c.emailCoordinador, c.municipio]);
     })
     .sort((a, b) => {
       if (sortBy === "fecha_desc")
@@ -204,7 +209,7 @@ const AdminCompanyView = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [filterEsp, filterConvenio, filterCourse, filterCambios, sortBy]);
+  }, [q, filterEsp, filterConvenio, filterCourse, filterCambios, filterEstado, sortBy]);
 
   const totalValidado = companies.filter((c) => c.convenio_validado).length;
   const totalPendiente = companies.filter(
@@ -212,12 +217,6 @@ const AdminCompanyView = () => {
   ).length;
   const totalSin = companies.filter((c) => !c.tieneConvenio).length;
   const totalCambios = companies.filter((c) => c.cambio_pendiente).length;
-  const pendingDocs = allReservations.filter(
-    (r) => r.documentos_resumen?.anexo?.estado_operativo === "PENDIENTE_VALIDACION",
-  ).length;
-
-  const selectCls =
-    "rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20";
 
   if (loading)
     return (
@@ -243,9 +242,9 @@ const AdminCompanyView = () => {
   return (
     <div className="page-container space-y-6">
       <PageHeader
-        kicker="Administración"
-        title="Gestión de empresas"
-        subtitle={`${companies.length} empresa${companies.length !== 1 ? "s" : ""} · ${allReservations.length} reserva${allReservations.length !== 1 ? "s" : ""}`}
+        kicker="Gestión"
+        title="Empresas"
+        subtitle="Solicitudes de empresa, convenios, ciclos y plazas, tutores y cambios de datos."
         actions={
           <div className="flex flex-wrap gap-2 text-xs">
             <span
@@ -276,130 +275,88 @@ const AdminCompanyView = () => {
         }
       />
 
-      <div className="flex gap-1 border-b border-surface-200" role="tablist" aria-label="Vista">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mainView === "empresas"}
-          onClick={() => setMainView("empresas")}
-          className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
-            mainView === "empresas"
-              ? "border-brand-500 text-brand-600"
-              : "border-transparent text-muted hover:text-charcoal-900"
-          }`}
-        >
-          Empresas
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mainView === "reservas"}
-          onClick={() => setMainView("reservas")}
-          className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
-            mainView === "reservas"
-              ? "border-brand-500 text-brand-600"
-              : "border-transparent text-muted hover:text-charcoal-900"
-          }`}
-        >
-          Reservas
-          {pendingDocs > 0 && (
-            <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-              {pendingDocs}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {mainView === "reservas" && (
-        <ReservasAdmin reservations={allReservations} onReservationUpdate={refreshCompanyData} />
-      )}
-
-      {mainView === "empresas" && (
-        <>
-          <div className="flex flex-col flex-wrap gap-3 rounded-xl2 border border-surface-200 bg-white p-3 shadow-card sm:flex-row sm:items-center">
-            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-              <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
-                Especialidad:
-              </label>
-              <select
-                className={`${selectCls} w-full sm:w-auto`}
-                value={filterEsp}
-                onChange={(e) => setFilterEsp(e.target.value)}
-              >
-                <option value="">Todas</option>
-                {allEspecialidades.map((e) => (
-                  <option key={e.id_especialidad} value={e.id_especialidad}>
-                    {e.nombre || e.especialidad}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-              <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
-                Convenio:
-              </label>
-              <select
-                className={`${selectCls} w-full sm:w-auto`}
-                value={filterConvenio}
-                onChange={(e) => setFilterConvenio(e.target.value)}
-              >
-                <option value="">Todos</option>
-                <option value="validado">Validados</option>
-                <option value="pendiente">Pendientes</option>
-                <option value="sin_convenio">Sin convenio</option>
-              </select>
-            </div>
-            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-              <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
-                Curso:
-              </label>
-              <select
-                className={`${selectCls} w-full sm:w-auto`}
-                value={filterCourse}
-                onChange={(e) => setFilterCourse(e.target.value)}
-              >
-                <option value="">Todos los cursos</option>
-                {availableCourses.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-              <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
-                Cambios:
-              </label>
-              <select
-                className={`${selectCls} w-full sm:w-auto`}
-                value={filterCambios}
-                onChange={(e) => setFilterCambios(e.target.value)}
-              >
-                <option value="">Todos</option>
-                <option value="pendiente">Pendientes de revisión</option>
-              </select>
-            </div>
-            <div className="flex w-full flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-              <label className="text-[0.8rem] font-semibold sm:whitespace-nowrap text-muted">
-                Ordenar:
-              </label>
-              <select
-                className={`${selectCls} w-full sm:w-auto`}
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="fecha_desc">Fecha (más reciente)</option>
-                <option value="fecha_asc">Fecha (más antigua)</option>
-                <option value="nombre_az">Nombre A → Z</option>
-                <option value="nombre_za">Nombre Z → A</option>
-              </select>
-            </div>
-          </div>
+      <FilterBar
+        label="Buscar y filtrar empresas"
+        active={filtersActive}
+        onReset={resetFilters}
+        count={filtersActive ? `${countLabel(filtered.length, "empresa", "empresas")} de ${companies.length}` : countLabel(filtered.length, "empresa", "empresas")}
+      >
+        <SearchField
+          value={q}
+          onChange={(v) => setFilter("q", v)}
+          placeholder="Empresa, CIF, coordinador o municipio"
+          className="sm:col-span-2 lg:col-span-1"
+        />
+        <FilterSelect
+          label="Convocatoria"
+          value={curso}
+          onChange={(v) => setFilter("curso", v)}
+          options={[
+            { value: "activa", label: activaNombre ? `Activa (${activaNombre})` : "Activa (ninguna)" },
+            { value: "todas", label: "Todas" },
+            ...availableCourses.map((c) => ({ value: c, label: c })),
+          ]}
+        />
+        <FilterSelect
+          label="Solicitud"
+          value={filterEstado}
+          onChange={(v) => setFilter("estado", v)}
+          allLabel="Todos los estados"
+          options={Object.entries(SOLICITUD).map(([value, { label }]) => ({ value, label }))}
+        />
+        <FilterSelect
+          label="Convenio"
+          value={filterConvenio}
+          onChange={(v) => setFilter("convenio", v)}
+          allLabel="Todos"
+          options={[
+            { value: "validado", label: "Validados" },
+            { value: "pendiente", label: "Pendientes" },
+            { value: "sin_convenio", label: "Sin convenio" },
+          ]}
+        />
+        <FilterSelect
+          label="Especialidad"
+          value={filterEsp}
+          onChange={(v) => setFilter("especialidad", v)}
+          allLabel="Todas"
+          options={allEspecialidades.map((e) => ({ value: String(e.id_especialidad), label: e.nombre || e.especialidad }))}
+        />
+        <FilterSelect
+          label="Cambios de datos"
+          value={filterCambios}
+          onChange={(v) => setFilter("cambios", v)}
+          allLabel="Todos"
+          options={[{ value: "pendiente", label: "Pendientes de revisión" }]}
+        />
+        <FilterSelect
+          label="Ordenar por"
+          value={sortBy}
+          onChange={(v) => setFilter("orden", v)}
+          options={[
+            { value: "fecha_desc", label: "Fecha (más reciente)" },
+            { value: "fecha_asc", label: "Fecha (más antigua)" },
+            { value: "nombre_az", label: "Nombre A → Z" },
+            { value: "nombre_za", label: "Nombre Z → A" },
+          ]}
+        />
+      </FilterBar>
 
           <div className="space-y-4">
             {filtered.length === 0 && (
-              <div className="rounded-xl2 border border-surface-200 bg-white p-12 text-center text-muted shadow-card">
-                No hay empresas que coincidan con los filtros.
+              <div role="status" className="rounded-xl2 border border-surface-200 bg-white p-12 text-center shadow-card">
+                <p className="font-semibold text-charcoal-950">
+                  {filtersActive ? "No hay empresas que coincidan con la búsqueda o los filtros." : "No hay empresas en la convocatoria activa."}
+                </p>
+                {filtersActive ? (
+                  <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={resetFilters}>
+                    Quitar filtros
+                  </button>
+                ) : companies.length > 0 ? (
+                  <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={() => setFilter("curso", "todas")}>
+                    Ver todas las convocatorias
+                  </button>
+                ) : null}
               </div>
             )}
             {companyPage.map((empresa) => (
@@ -433,8 +390,6 @@ const AdminCompanyView = () => {
               noun="empresa"
             />
           </div>
-        </>
-      )}
 
       {/* Convenio viewer: the shared PdfViewer with review actions */}
       <PdfViewer

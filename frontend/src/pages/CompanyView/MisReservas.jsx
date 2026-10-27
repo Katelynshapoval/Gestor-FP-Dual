@@ -3,6 +3,7 @@ import { RxClock } from "react-icons/rx";
 import { isCancelledReserva } from "../../utils/reservaEstados.js";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
 import ReservaResumenBadges from "../../components/reservas/ReservaResumenBadges.jsx";
+import { tipoContratoLabel } from "../../utils/labels.js";
 
 // Company portal › Mis reservas. Each reservation opens the shared ReservaDetalle
 // panel, where the company uploads/signs its Anexo II or III, assigns a tutor and
@@ -35,7 +36,7 @@ const MisReservas = ({ reservations, onChanged }) => {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-charcoal-950">{reserva.alumno || "Alumno"}</p>
                 <p className="mt-1 text-xs leading-5 text-muted">
-                  {[reserva.especialidad, reserva.tipo_contrato, reserva.tutor_nombre && `Tutor: ${reserva.tutor_nombre}`]
+                  {[reserva.especialidad, tipoContratoLabel(reserva.tipo_contrato), reserva.tutor_nombre && `Tutor: ${reserva.tutor_nombre}`]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>

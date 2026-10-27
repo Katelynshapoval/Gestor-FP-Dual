@@ -3,12 +3,13 @@ import EstadoBadge from "../../components/ui/EstadoBadge.jsx";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
 import ReservaResumenBadges from "../../components/reservas/ReservaResumenBadges.jsx";
 import { isCancelledReserva, isConfirmedReserva, isPendingReserva } from "../../utils/reservaEstados.js";
+import { tipoContratoLabel } from "../../utils/labels.js";
 
 function DatosReserva({ reserva, onOpen }) {
   return (
     <>
       {reserva.especialidad && <p className="mt-1 text-xs text-muted">{reserva.especialidad}</p>}
-      {reserva.tipo_contrato && <p className="mt-1 text-xs text-muted">Contrato: {reserva.tipo_contrato}</p>}
+      {reserva.tipo_contrato && <p className="mt-1 text-xs text-muted">Contrato: {tipoContratoLabel(reserva.tipo_contrato)}</p>}
       {reserva.tutor_nombre && (
         <div className="mt-3 rounded-md border border-surface-200 bg-white/70 px-3 py-2">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted">Tutor de empresa</p>

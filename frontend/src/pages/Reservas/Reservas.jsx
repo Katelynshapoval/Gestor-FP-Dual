@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { getJSON } from "../../utils/api.js";
 import PageHeader from "../../components/ui/PageHeader";
-import ReservasAdmin from "../AdminCompanyView/components/ReservasAdmin";
+import ReservasLista from "./ReservasLista";
+import { useConvocatoriaEstado } from "../../hooks/useConvocatoriaEstado.js";
 
 // Staff reservations list, its own menu entry since Phase 4 (D.1). All actions
 // happen in the shared ReservaDetalle panel opened from each row.
@@ -9,6 +10,7 @@ const Reservas = () => {
   const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const activaNombre = useConvocatoriaEstado().data?.activa?.nombre || null;
 
   const load = useCallback(() => {
     setError(null);
@@ -24,7 +26,7 @@ const Reservas = () => {
 
   return (
     <div className="page-container space-y-6">
-      <PageHeader kicker="Administración" title="Reservas" subtitle="Reservas agrupadas por lo que necesitan a continuación." />
+      <PageHeader kicker="Gestión" title="Reservas" subtitle="Agrupadas por lo que necesitan a continuación. Cada reserva se gestiona desde su panel." />
       {loading ? (
         <p role="status" className="rounded-xl2 border border-surface-200 bg-white py-12 text-center text-sm text-muted shadow-card">
           Cargando reservas…
@@ -38,7 +40,7 @@ const Reservas = () => {
           </button>
         </div>
       ) : (
-        <ReservasAdmin reservations={reservas} onReservationUpdate={load} />
+        <ReservasLista reservations={reservas} onReservationUpdate={load} activaNombre={activaNombre} />
       )}
     </div>
   );

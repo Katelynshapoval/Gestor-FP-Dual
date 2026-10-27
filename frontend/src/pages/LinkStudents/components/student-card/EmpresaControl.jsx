@@ -5,6 +5,7 @@ import { isCancelledReserva } from "../../../../utils/reservaEstados.js";
 import { useConfirm } from "../../../../components/feedback/ToastProvider.jsx";
 import ReservaDetalle from "../../../../components/reservas/ReservaDetalle.jsx";
 import ReservaResumenBadges from "../../../../components/reservas/ReservaResumenBadges.jsx";
+import { tipoContratoLabel } from "../../../../utils/labels.js";
 
 // Staff "Reservas" tab of a student card: the student's reservations (each one
 // managed in the shared ReservaDetalle panel) and the form to create a new one.
@@ -73,7 +74,7 @@ const EmpresaControl = ({ r, onAdminReserve, onChanged }) => {
             <div className="min-w-0">
               <p className="text-base font-semibold">{rv.empresa}</p>
               <p className="text-xs text-muted">
-                {[rv.tipo_contrato && `Contrato: ${rv.tipo_contrato}`, rv.tutor_nombre && `Tutor: ${rv.tutor_nombre}`]
+                {[rv.tipo_contrato && `Contrato: ${tipoContratoLabel(rv.tipo_contrato)}`, rv.tutor_nombre && `Tutor: ${rv.tutor_nombre}`]
                   .filter(Boolean)
                   .join(" · ")}
               </p>

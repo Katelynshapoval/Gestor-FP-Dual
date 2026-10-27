@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getJSON, postJSON } from "../../utils/api.js";
 import { formatDocumentDate } from "../../utils/documentos.js";
 import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
@@ -6,9 +7,12 @@ import EstadoBadge from "../../components/ui/EstadoBadge.jsx";
 import PdfViewer from "../../components/ui/PdfViewer.jsx";
 import MotivoDialog from "../../components/ui/MotivoDialog.jsx";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
-import { ACTOR } from "../../utils/labels.js";
-import { FILTER_LABEL_CLASS, FILTER_SELECT_CLASS } from "../LinkStudents/utils/filters";
+import { ACTOR, tipoContratoLabel } from "../../utils/labels.js";
 import PaginationBar from "../../components/ui/PaginationBar";
+
+const FILTER_SELECT_CLASS =
+  "rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20";
+const FILTER_LABEL_CLASS = "text-xs font-semibold whitespace-nowrap text-charcoal-700";
 
 const EMPTY_FILTERS = {
   convocatoria: "",
@@ -58,7 +62,7 @@ function personLines(item) {
     return {
       title: item.alumno || item.empresa || "Sin persona asociada",
       detail: item.alumno ? company : item.especialidad || null,
-      context: [item.contexto_label, item.convocatoria, item.tipo_contrato].filter(Boolean).join(" · "),
+      context: [item.contexto_label, item.convocatoria, tipoContratoLabel(item.tipo_contrato)].filter(Boolean).join(" · "),
     };
   }
   if (item.contexto === "solicitud_empresa") {
@@ -85,17 +89,36 @@ function originText(item) {
   return item.puede_ver ? "No registrado" : null;
 }
 
+// Filters arrive from the URL (dashboard links such as
+// /documentos?accionPendiente=CENTRO&convocatoria=2) and are written back to
+// it, so the back button and bookmarks keep them (Phase 4).
+function queryFromParams(params) {
+  const filters = { ...EMPTY_FILTERS };
+  for (const key of Object.keys(EMPTY_FILTERS)) filters[key] = params.get(key) || "";
+  return { page: 1, pageSize: 10, search: params.get("search") || "", filters };
+}
+
 export default function Seguimiento({ onOpenTemplates, onSummary }) {
   const toast = useToast();
   const confirm = useConfirm();
-  const [searchInput, setSearchInput] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [initialQuery] = useState(() => queryFromParams(params));
+  const [searchInput, setSearchInput] = useState(initialQuery.search);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [query, setQuery] = useState({
-    page: 1,
-    pageSize: 10,
-    search: "",
-    filters: EMPTY_FILTERS,
-  });
+  const [query, setQuery] = useState(initialQuery);
+
+  useEffect(() => {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const key of [...Object.keys(EMPTY_FILTERS), "search"]) next.delete(key);
+        if (query.search) next.set("search", query.search);
+        for (const [key, value] of Object.entries(query.filters)) if (value) next.set(key, value);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [query.search, query.filters, setParams]);
   const [payload, setPayload] = useState(null);
   const [appliedKey, setAppliedKey] = useState("");
   const [loading, setLoading] = useState(true);

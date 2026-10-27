@@ -6,7 +6,7 @@ import InlineNotice from "./ui/InlineNotice.jsx";
 import PdfViewer from "./ui/PdfViewer.jsx";
 import MotivoDialog from "./ui/MotivoDialog.jsx";
 import { useConfirm, useToast } from "./feedback/ToastProvider.jsx";
-import { FIRMA } from "../utils/labels.js";
+import { FIRMA, tipoContratoLabel } from "../utils/labels.js";
 
 // One component for every document a user can act on: view (shared PdfViewer),
 // upload/replace, generate/regenerate, sign, and — for staff — validate or
@@ -27,7 +27,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
 
   const context = compact
     ? null
-    : [doc.alumno, doc.empresa, doc.especialidad, doc.tipo_contrato, doc.convocatoria].filter(Boolean).join(" · ");
+    : [doc.alumno, doc.empresa, doc.especialidad, tipoContratoLabel(doc.tipo_contrato), doc.convocatoria].filter(Boolean).join(" · ");
 
   const noOwnAction =
     !doc.requiere_accion_actual &&
@@ -246,7 +246,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
         onClose={() => setViewing(false)}
         idDocumento={doc.id_documento}
         title={[doc.nombre, doc.alumno || doc.empresa].filter(Boolean).join(" · ")}
-        description={[doc.especialidad, doc.tipo_contrato, doc.convocatoria].filter(Boolean).join(" · ") || undefined}
+        description={[doc.especialidad, tipoContratoLabel(doc.tipo_contrato), doc.convocatoria].filter(Boolean).join(" · ") || undefined}
         estado={showStatus ? { kind: "documento", value: status, labelOverride: doc.estado_operativo_label } : undefined}
         firmas={doc.firmas || []}
         motivo={doc.estado_operativo === "RECHAZADO" ? doc.motivo || "Sin motivo indicado." : null}

@@ -10,7 +10,7 @@ import TipoContratoSelect from "../TipoContratoSelect.jsx";
 import TutorAssignSelect from "../TutorAssignSelect.jsx";
 import { useConfirm, useToast } from "../feedback/ToastProvider.jsx";
 import { getJSON, postJSON } from "../../utils/api.js";
-import { ACTOR } from "../../utils/labels.js";
+import { ACTOR, tipoContratoLabel } from "../../utils/labels.js";
 import { formatDocumentDate } from "../../utils/documentos.js";
 
 // The whole lifecycle of one reservation in one place (Phase 3, D.1):
@@ -151,7 +151,7 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
                 </>
               ) : (
                 <p className="text-sm text-charcoal-800">
-                  {r.tipo_contrato || "Sin indicar"}
+                  {tipoContratoLabel(r.tipo_contrato) || "Sin indicar"}
                   {!r.tipo_contrato && r.estado_reserva === "PENDIENTE" && (
                     <span className="block text-xs text-muted">
                       El centro indicará el tipo de contrato; entonces aparecerá el Anexo II o III.

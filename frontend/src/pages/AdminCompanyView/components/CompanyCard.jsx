@@ -29,6 +29,7 @@ import { postJSON, putJSON } from "../../../utils/api.js";
 import { cicloLabel, countChanged, espId } from "../../../utils/especialidades.js";
 import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../../components/ui/InlineNotice.jsx";
+import { tipoContratoLabel } from "../../../utils/labels.js";
 
 const EspecialidadList = ({
   especialidades,
@@ -298,7 +299,7 @@ const ReservasList = ({ reservations, onAssign, onUpdated }) => {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{r.alumno}</p>
                 <p className="text-xs text-muted">
-                  {[r.especialidad, r.dni_alumno, r.tipo_contrato].filter(Boolean).join(" · ")}
+                  {[r.especialidad, r.dni_alumno, tipoContratoLabel(r.tipo_contrato)].filter(Boolean).join(" · ")}
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:items-end">

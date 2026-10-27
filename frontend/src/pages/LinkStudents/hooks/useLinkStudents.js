@@ -3,6 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 import { getJSON, postJSON } from "../../../utils/api.js";
+import { useUrlFilters } from "../../../hooks/useUrlFilters.js";
+import { useConvocatoriaEstado } from "../../../hooks/useConvocatoriaEstado.js";
+import { coincide } from "../../../utils/busqueda.js";
+import { isCancelledReserva, isConfirmedReserva } from "../../../utils/reservaEstados.js";
+
+export const CONVOCATORIA_ACTIVA = "activa";
+export const CONVOCATORIA_TODAS = "todas";
+const FILTER_DEFAULTS = { q: "", convocatoria: CONVOCATORIA_ACTIVA, especialidad: "", estado: "", reserva: "" };
+
+// Reservation situation of one application, for the "Reserva" filter.
+export function situacionReserva(r) {
+  const activas = (r.reservas || []).filter((x) => !isCancelledReserva(x.estado_reserva));
+  if (activas.some((x) => isConfirmedReserva(x.estado_reserva))) return "CONFIRMADA";
+  if (activas.length) return "PENDIENTE";
+  return "SIN_RESERVA";
+}
 
 // Data, filters and actions for the student-linking module.
 //
@@ -27,8 +43,9 @@ export const useLinkStudents = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const [expandedCards, setExpandedCards] = useState(new Set());
-  const [selectedSpeciality, setSelectedSpeciality] = useState("");
-  const [selectedConvocatoria, setSelectedConvocatoria] = useState("");
+  const { filters, setFilter, reset: resetFilters, active: filtersActive } = useUrlFilters(FILTER_DEFAULTS);
+  const convocatoriaEstado = useConvocatoriaEstado();
+  const activaNombre = convocatoriaEstado.data?.activa?.nombre || null;
 
   const isEmpresa = user?.rol === "EMPRESA";
   const loadedRef = useRef(false);
@@ -36,7 +53,7 @@ export const useLinkStudents = () => {
 
   useEffect(() => {
     setExpandedCards(new Set());
-  }, [selectedSpeciality, selectedConvocatoria]);
+  }, [filters.q, filters.convocatoria, filters.especialidad, filters.estado, filters.reserva]);
 
   // First load shows the loading state; later refreshes keep the list on
   // screen so cards do not collapse after every action.
@@ -168,27 +185,36 @@ export const useLinkStudents = () => {
   };
 
   const specialities = [
-    ...new Set(
-      linkRequests.filter((r) => r.especialidad).map((r) => r.especialidad),
-    ),
-  ];
+    ...new Set(linkRequests.filter((r) => r.especialidad).map((r) => r.especialidad)),
+  ].sort((a, b) => a.localeCompare(b, "es"));
 
   const convocatorias = [
-    ...new Set(
-      linkRequests.filter((r) => r.convocatoria).map((r) => r.convocatoria),
-    ),
-  ];
+    ...new Set(linkRequests.filter((r) => r.convocatoria).map((r) => r.convocatoria)),
+  ].sort((a, b) => b.localeCompare(a));
+
+  // "activa" resolves to the active convocatoria; with none active, all are shown.
+  const convocatoriaFiltro =
+    filters.convocatoria === CONVOCATORIA_TODAS
+      ? ""
+      : filters.convocatoria === CONVOCATORIA_ACTIVA
+        ? activaNombre || ""
+        : filters.convocatoria;
 
   const filtered = linkRequests.filter((r) => {
-    if (selectedSpeciality && r.especialidad !== selectedSpeciality)
-      return false;
-    if (
-      !isEmpresa &&
-      selectedConvocatoria &&
-      r.convocatoria !== selectedConvocatoria
-    )
-      return false;
-    return true;
+    if (filters.especialidad && r.especialidad !== filters.especialidad) return false;
+    if (isEmpresa) {
+      return coincide(filters.q, [r.nombre, r.dni, r.especialidad]);
+    }
+    if (convocatoriaFiltro && r.convocatoria !== convocatoriaFiltro) return false;
+    if (filters.estado && r.estado_validacion !== filters.estado) return false;
+    if (filters.reserva && situacionReserva(r) !== filters.reserva) return false;
+    return coincide(filters.q, [
+      r.nombre,
+      r.dni,
+      r.email,
+      r.especialidad,
+      ...(r.reservas || []).map((x) => x.empresa),
+    ]);
   });
 
   return {
@@ -200,10 +226,11 @@ export const useLinkStudents = () => {
     companyOffers,
     companyState,
     expandedCards,
-    selectedSpeciality,
-    setSelectedSpeciality,
-    selectedConvocatoria,
-    setSelectedConvocatoria,
+    filters,
+    setFilter,
+    resetFilters,
+    filtersActive,
+    activaNombre,
     filtered,
     specialities,
     convocatorias,
