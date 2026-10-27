@@ -140,6 +140,15 @@ export const useLinkStudents = () => {
     [fetchLinkRequests],
   );
 
+  // D7: staff reopen a rejected application (active convocatoria only).
+  const reopenSolicitud = useCallback(
+    async (idSolicitudAlumno) => {
+      await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/reabrir`, {});
+      await fetchLinkRequests();
+    },
+    [fetchLinkRequests],
+  );
+
   const toggleCard = (id) =>
     setExpandedCards((prev) => {
       const next = new Set(prev);
@@ -263,6 +272,7 @@ export const useLinkStudents = () => {
     rejectDoc,
     validateAlumno,
     rejectSolicitud,
+    reopenSolicitud,
     reserveStudent,
     cancelReservation,
     adminReserve,

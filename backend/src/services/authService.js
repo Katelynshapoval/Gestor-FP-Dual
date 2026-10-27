@@ -74,7 +74,7 @@ async function findUserByIdentifier(identifier) {
        JOIN dual_roles r ON r.id_rol = u.id_rol
        JOIN gf_alumnosfct a ON a.idalumno = u.id_alumno
       WHERE r.nombre = 'ALUMNO'
-        AND UPPER(TRIM(a.dni)) = ?
+        AND a.dni = ?
       LIMIT 1`,
     [dniNorm]
   );

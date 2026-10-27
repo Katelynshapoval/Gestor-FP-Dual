@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "db:migrate": "node scripts/migrate.js",
+    "db:schema": "node scripts/schema.js"
   },
   "keywords": [],
   "author": "",

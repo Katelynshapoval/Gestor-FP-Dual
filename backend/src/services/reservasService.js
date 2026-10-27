@@ -2,6 +2,12 @@ const pool = require('../db/pool');
 const { getCompanyIdFromUser, getStudentIdFromUser, sendSqlError, callProcedureWithResult, callProcedure } = require('../helpers/dbHelpers');
 const { attachSolicitudDocumentos } = require('./documentosWorkflow');
 const { ESTADOS_RESERVA } = require('../constants/reservaEstados');
+const { anexoClaveSql, anexoClaveForContrato, defByClave } = require('./documentCatalogue');
+const { recordEvent, recordEventAfterCommit } = require('./auditLog');
+const reglas = require('./estadoReglas');
+
+// Current annex of the stored contract family (Anexo III for beca, II otherwise).
+const ANEXO_SQL = anexoClaveSql('tc');
 
 function parseId(value) {
   const n = parseInt(value, 10);
@@ -231,20 +237,14 @@ exports.getAll = async function (req, res) {
         t.activo AS tutor_activo,
         (SELECT d.id_documento FROM dual_documentos d
            JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-          WHERE d.id_reserva = r.id_reserva AND td.nombre = CASE
-            WHEN LOWER(IFNULL(tc.nombre, '')) LIKE '%beca%' THEN 'ANEXO_III'
-            WHEN tc.id_tipo_contrato IS NULL THEN '__ninguno__'
-            ELSE 'ANEXO_II'
-          END
+          WHERE d.id_reserva = r.id_reserva AND td.nombre = ${ANEXO_SQL}
+            AND d.es_actual = 1
           ORDER BY d.id_documento DESC LIMIT 1) AS id_documento_reserva,
         (SELECT ev.nombre FROM dual_documentos d
            JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
            JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-          WHERE d.id_reserva = r.id_reserva AND td.nombre = CASE
-            WHEN LOWER(IFNULL(tc.nombre, '')) LIKE '%beca%' THEN 'ANEXO_III'
-            WHEN tc.id_tipo_contrato IS NULL THEN '__ninguno__'
-            ELSE 'ANEXO_II'
-          END
+          WHERE d.id_reserva = r.id_reserva AND td.nombre = ${ANEXO_SQL}
+            AND d.es_actual = 1
           ORDER BY d.id_documento DESC LIMIT 1) AS estado_documento
      FROM dual_reservas r
      JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
@@ -294,20 +294,14 @@ exports.getMisReservas = async function (req, res) {
         t.activo AS tutor_activo,
         (SELECT d.id_documento FROM dual_documentos d
            JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-          WHERE d.id_reserva = r.id_reserva AND td.nombre = CASE
-            WHEN LOWER(IFNULL(tc.nombre, '')) LIKE '%beca%' THEN 'ANEXO_III'
-            WHEN tc.id_tipo_contrato IS NULL THEN '__ninguno__'
-            ELSE 'ANEXO_II'
-          END
+          WHERE d.id_reserva = r.id_reserva AND td.nombre = ${ANEXO_SQL}
+            AND d.es_actual = 1
           ORDER BY d.id_documento DESC LIMIT 1) AS id_documento_reserva,
         (SELECT ev.nombre FROM dual_documentos d
            JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
            JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-          WHERE d.id_reserva = r.id_reserva AND td.nombre = CASE
-            WHEN LOWER(IFNULL(tc.nombre, '')) LIKE '%beca%' THEN 'ANEXO_III'
-            WHEN tc.id_tipo_contrato IS NULL THEN '__ninguno__'
-            ELSE 'ANEXO_II'
-          END
+          WHERE d.id_reserva = r.id_reserva AND td.nombre = ${ANEXO_SQL}
+            AND d.es_actual = 1
           ORDER BY d.id_documento DESC LIMIT 1) AS estado_documento
      FROM dual_reservas r
      JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
@@ -527,6 +521,10 @@ exports.reservar = async function (req, res) {
 
   try {
     const idReserva = await executeReservar(idSolicitudAlumno, idOferta);
+    await recordEventAfterCommit({
+      entidad: 'RESERVA', id: idReserva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
+      user: req.user, detalle: { id_solicitud_alumno: idSolicitudAlumno, id_oferta: idOferta },
+    });
     return res.status(201).json({
       message: 'Alumno reservado correctamente.',
       id_reserva: idReserva,
@@ -554,6 +552,10 @@ exports.reservarAdmin = async function (req, res) {
 
   try {
     const idReserva = await executeReservar(idSolicitudAlumno, idOferta);
+    await recordEventAfterCommit({
+      entidad: 'RESERVA', id: idReserva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
+      user: req.user, detalle: { id_solicitud_alumno: idSolicitudAlumno, id_oferta: idOferta },
+    });
     return res.status(201).json({
       message: 'Reserva creada correctamente.',
       id_reserva: idReserva,
@@ -600,6 +602,10 @@ exports.cancelar = async function (req, res) {
 
   try {
     await callProcedure(pool, 'sp_cancelar_reserva', [idReserva, motivo]);
+    await recordEventAfterCommit({
+      entidad: 'RESERVA', id: idReserva, accion: 'CANCELAR',
+      antes: ESTADOS_RESERVA.PENDIENTE, despues: ESTADOS_RESERVA.CANCELADA, user: req.user, motivo,
+    });
     return res.json({ message: 'Reserva cancelada correctamente.', estado_reserva: ESTADOS_RESERVA.CANCELADA });
   } catch (err) {
     return sendSqlError(res, err);
@@ -618,8 +624,20 @@ exports.cancelarAdmin = async function (req, res) {
     return res.status(400).json({ error: 'Debe indicar el motivo de la cancelación.' });
   }
 
+  const [antes] = await pool.query(
+    `SELECT er.nombre AS estado FROM dual_reservas r
+       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+      WHERE r.id_reserva = ?`,
+    [idReserva]
+  );
+
   try {
     await callProcedure(pool, 'sp_cancelar_reserva_admin', [idReserva, motivo]);
+    await recordEventAfterCommit({
+      entidad: 'RESERVA', id: idReserva, accion: 'CANCELAR',
+      antes: antes[0]?.estado || null, despues: ESTADOS_RESERVA.CANCELADA, user: req.user, motivo,
+      detalle: { administrativa: true },
+    });
     return res.json({ message: 'Reserva cancelada correctamente.', estado_reserva: ESTADOS_RESERVA.CANCELADA });
   } catch (err) {
     return sendSqlError(res, err);
@@ -673,6 +691,15 @@ exports.reasignar = async function (req, res) {
     if (!idNueva) {
       return res.status(500).json({ error: 'No se pudo obtener el identificador de la nueva reserva.' });
     }
+    await recordEventAfterCommit({
+      entidad: 'RESERVA', id: idReservaOrigen, accion: 'REASIGNAR',
+      antes: origen[0].estado_reserva, despues: ESTADOS_RESERVA.CANCELADA, user: req.user, motivo,
+      detalle: { id_reserva_destino: idNueva, id_oferta_destino: idOferta },
+    });
+    await recordEventAfterCommit({
+      entidad: 'RESERVA', id: idNueva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
+      user: req.user, motivo, detalle: { reasignada_desde: idReservaOrigen },
+    });
     return res.json({
       message: 'Alumno reasignado correctamente.',
       id_reserva: idNueva,
@@ -684,46 +711,147 @@ exports.reasignar = async function (req, res) {
   }
 };
 
-// POST /reservas/:id/tipo-contrato — staff records the contract family before confirmation
+async function currentAnexos(conn, idReserva, { lock = false } = {}) {
+  const [rows] = await conn.query(
+    `SELECT d.id_documento, td.nombre AS clave, ev.nombre AS estado_validacion,
+            d.firmas_exentas_legacy,
+            CASE WHEN d.archivo IS NULL THEN 0 ELSE 1 END AS tiene_archivo
+       FROM dual_documentos d
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+      WHERE d.id_reserva = ?
+        AND d.es_actual = 1
+        AND td.nombre IN ('ANEXO_II', 'ANEXO_III')
+      ORDER BY d.id_documento DESC${lock ? '\n      FOR UPDATE' : ''}`,
+    [idReserva]
+  );
+  return rows;
+}
+
+// POST /reservas/:id/tipo-contrato — staff records the contract family before confirmation.
+// D2: a mistaken type can be corrected while no file of its annex is under review or
+// validated. A rejected annex of the old family is moved to history.
 exports.setTipoContrato = async function (req, res) {
   const idReserva = parseId(req.params.id);
   const idTipo = parseId(req.body?.id_tipo_contrato);
   if (!idReserva || !idTipo) {
     return res.status(400).json({ error: 'Indica la reserva y el tipo de contrato.' });
   }
+  const conn = await pool.getConnection();
   try {
-    const [rows] = await pool.query(
-      `SELECT r.id_reserva, er.nombre AS estado
+    await conn.beginTransaction();
+    const [rows] = await conn.query(
+      `SELECT r.id_reserva, r.id_tipo_contrato, er.nombre AS estado, tc.nombre AS tipo_contrato
          FROM dual_reservas r
          JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-        WHERE r.id_reserva = ?`,
+         LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+        WHERE r.id_reserva = ?
+        FOR UPDATE`,
       [idReserva],
     );
-    if (!rows[0]) return res.status(404).json({ error: 'Reserva no encontrada.' });
-    if (rows[0].estado === 'CANCELADA') {
-      return res.status(400).json({ error: 'No se puede asignar contrato a una reserva cancelada.' });
-    }
-    await pool.query(
-      'UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?',
-      [idTipo, idReserva],
+    const [tipos] = await conn.query(
+      'SELECT id_tipo_contrato, nombre FROM dual_tipos_contrato WHERE id_tipo_contrato = ?',
+      [idTipo],
     );
-    return res.json({ message: 'Tipo de contrato actualizado.' });
+    if (rows[0] && !tipos[0]) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'Tipo de contrato no válido.' });
+    }
+    const anexos = rows[0] ? await currentAnexos(conn, idReserva, { lock: true }) : [];
+    const denied = reglas.tipoContratoCambiable(rows[0] || null, tipos[0]?.nombre, anexos);
+    if (denied) {
+      await conn.rollback();
+      return res.status(denied.status).json({ error: denied.error, code: denied.code });
+    }
+    if (rows[0].id_tipo_contrato === idTipo) {
+      await conn.rollback();
+      return res.json({ message: 'Tipo de contrato actualizado.' });
+    }
+
+    await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [idTipo, idReserva]);
+
+    const familiaAnterior = anexoClaveForContrato(rows[0].tipo_contrato);
+    const retirados = familiaAnterior && familiaAnterior !== anexoClaveForContrato(tipos[0].nombre)
+      ? anexos.filter((a) => a.clave === familiaAnterior).map((a) => a.id_documento)
+      : [];
+    if (retirados.length) {
+      await conn.query('UPDATE dual_documentos SET es_actual = 0 WHERE id_documento IN (?)', [retirados]);
+    }
+    await recordEvent(conn, {
+      entidad: 'RESERVA', id: idReserva, accion: 'TIPO_CONTRATO',
+      antes: rows[0].tipo_contrato || null, despues: tipos[0].nombre, user: req.user,
+      detalle: retirados.length ? { documentos_retirados: retirados } : null,
+    });
+    await conn.commit();
+    return res.json({ message: 'Tipo de contrato actualizado.', documentos_retirados: retirados });
   } catch (err) {
+    await conn.rollback();
     return sendSqlError(res, err);
+  } finally {
+    conn.release();
   }
 };
 
-// POST /reservas/:id/confirmar — admin/coordinador confirms a reservation
+// POST /reservas/:id/confirmar — admin/coordinador confirms a reservation.
+// D2: uses the stored contract type and needs its annex fully signed and validated.
+// sp_confirmar_reserva re-checks the type and the validated annex under its lock.
 exports.confirmar = async function (req, res) {
   const idReserva = parseId(req.params.id);
-  const { id_tipo_contrato } = req.body;
+  const raw = req.body?.id_tipo_contrato;
+  const idTipoPedido = raw === undefined || raw === null || raw === '' ? null : parseId(raw);
 
   if (!idReserva) {
     return res.status(400).json({ error: 'Reserva no válida.' });
   }
+  if (raw !== undefined && raw !== null && raw !== '' && !idTipoPedido) {
+    return res.status(400).json({ error: 'Tipo de contrato no válido.' });
+  }
 
   try {
-    await callProcedure(pool, 'sp_confirmar_reserva', [idReserva, id_tipo_contrato ?? null]);
+    const [rows] = await pool.query(
+      `SELECT r.id_reserva, r.id_solicitud_alumno, r.id_tipo_contrato,
+              er.nombre AS estado, tc.nombre AS tipo_contrato
+         FROM dual_reservas r
+         JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+         LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+        WHERE r.id_reserva = ?`,
+      [idReserva]
+    );
+    const reserva = rows[0] || null;
+    const clave = reserva ? anexoClaveForContrato(reserva.tipo_contrato) : null;
+    const def = clave ? defByClave(clave) : null;
+    const anexo = clave ? (await currentAnexos(pool, idReserva)).find((a) => a.clave === clave) || null : null;
+    let firmas = [];
+    if (anexo) {
+      [firmas] = await pool.query(
+        'SELECT rol, estado FROM dual_documento_firmas WHERE id_documento = ?',
+        [anexo.id_documento]
+      );
+    }
+    const denied = reglas.reservaConfirmable(reserva, idTipoPedido, def, anexo, firmas);
+    if (denied) return res.status(denied.status).json({ error: denied.error, code: denied.code });
+
+    const [otras] = await pool.query(
+      `SELECT r.id_reserva FROM dual_reservas r
+         JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+        WHERE r.id_solicitud_alumno = ? AND r.id_reserva <> ? AND er.nombre = ?`,
+      [reserva.id_solicitud_alumno, idReserva, ESTADOS_RESERVA.PENDIENTE]
+    );
+
+    await callProcedure(pool, 'sp_confirmar_reserva', [idReserva, reserva.id_tipo_contrato]);
+
+    await recordEventAfterCommit({
+      entidad: 'RESERVA', id: idReserva, accion: 'CONFIRMAR',
+      antes: ESTADOS_RESERVA.PENDIENTE, despues: ESTADOS_RESERVA.CONFIRMADA, user: req.user,
+      detalle: { tipo_contrato: reserva.tipo_contrato, id_documento_anexo: anexo.id_documento },
+    });
+    for (const o of otras) {
+      await recordEventAfterCommit({
+        entidad: 'RESERVA', id: o.id_reserva, accion: 'CANCELAR',
+        antes: ESTADOS_RESERVA.PENDIENTE, despues: ESTADOS_RESERVA.CANCELADA, user: req.user,
+        motivo: 'Alumno asignado a otra empresa.', detalle: { por_confirmacion_de: idReserva },
+      });
+    }
     return res.json({ message: 'Reserva confirmada correctamente.', estado_reserva: ESTADOS_RESERVA.CONFIRMADA });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {

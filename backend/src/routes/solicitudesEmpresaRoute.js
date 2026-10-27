@@ -36,5 +36,6 @@ router.post('/solicitudes/empresa/:id/cambios/:idCambio/rechazar', requireAuth, 
 // Validate / reject application
 router.post('/solicitudes/empresa/:id/validar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.validar));
 router.post('/solicitudes/empresa/:id/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.rechazar));
+router.post('/solicitudes/empresa/:id/reabrir', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.reabrir));
 
 module.exports = router;

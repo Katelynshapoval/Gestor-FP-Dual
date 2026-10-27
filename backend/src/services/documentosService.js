@@ -8,9 +8,11 @@ const { defByClave, anexoClaveForContrato } = require("./documentCatalogue");
 const workflow = require("./documentosWorkflow");
 const { saveByClave } = require("./documentosStore");
 const { generateDocument } = require("./documentGenerationService");
+const { recordEvent } = require("./auditLog");
+const reglas = require("./estadoReglas");
 
 function provenance(req) {
-  return { origen: "SUBIDA", idUsuario: req.user?.id || null };
+  return { origen: "SUBIDA", idUsuario: req.user?.id || null, rol: req.user?.rol || null };
 }
 
 async function assertAlumnoOwnsSolicitud(req, idSolicitud) {
@@ -380,54 +382,86 @@ exports.getEmpresaDocumentos = async function (req, res) {
   return res.json({ items });
 };
 
+// Locks the document (and its parent rows) for a review or signature.
+async function lockDocumento(conn, id) {
+  const [rows] = await conn.query(
+    `SELECT
+        d.id_documento,
+        d.id_solicitud_alumno,
+        d.id_solicitud_empresa,
+        d.id_reserva,
+        d.es_actual,
+        d.firmas_exentas_legacy,
+        CASE WHEN d.archivo IS NULL THEN 0 ELSE 1 END AS tiene_archivo,
+        td.nombre AS tipo,
+        ev.nombre AS estado_validacion,
+        er.nombre AS estado_reserva,
+        ev_se.nombre AS estado_solicitud_empresa
+       FROM dual_documentos d
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+       LEFT JOIN dual_reservas r ON r.id_reserva = d.id_reserva
+       LEFT JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+       LEFT JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = d.id_solicitud_empresa
+       LEFT JOIN dual_estados_validacion ev_se ON ev_se.id_estado_validacion = se.id_estado_validacion
+      WHERE d.id_documento = ?
+      FOR UPDATE`,
+    [id],
+  );
+  return rows[0] || null;
+}
+
+async function firmasDe(conn, idDocumento) {
+  const [rows] = await conn.query(
+    "SELECT rol, estado, metodo FROM dual_documento_firmas WHERE id_documento = ?",
+    [idDocumento],
+  );
+  return rows;
+}
+
 // POST /documentos/:id/validar
+// D1: every applicable signature first; then staff review. A validated
+// CONVENIO also validates a PENDIENTE company application.
 exports.validar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: "Documento no válido." });
   const conn = await pool.getConnection();
 
   try {
     await conn.beginTransaction();
-
-    const [rows] = await conn.query(
-      `SELECT
-         d.id_solicitud_empresa,
-         td.nombre AS tipo_documento
-       FROM dual_documentos d
-       JOIN dual_tipos_documento td
-         ON td.id_tipo_documento = d.id_tipo_documento
-       WHERE d.id_documento = ?
-       FOR UPDATE`,
-      [id],
-    );
-
-    const documento = rows[0];
-
-    if (!documento) {
+    const doc = await lockDocumento(conn, id);
+    const def = doc ? defByClave(doc.tipo) : null;
+    const firmas = doc ? await firmasDe(conn, id) : [];
+    const denied = reglas.documentoValidable(def, doc, firmas);
+    if (denied) {
       await conn.rollback();
-
-      return res.status(404).json({
-        error: "Documento no encontrado.",
-      });
+      return res.status(denied.status).json({ error: denied.error, code: denied.code });
     }
 
     await conn.query("CALL sp_validar_documento(?)", [id]);
+    await recordEvent(conn, {
+      entidad: "DOCUMENTO", id, accion: "VALIDAR",
+      antes: doc.estado_validacion, despues: "VALIDADO", user: req.user,
+      detalle: { clave: doc.tipo, ...(Number(doc.firmas_exentas_legacy) ? { firmas_exentas_legacy: true } : {}) },
+    });
 
-    if (
-      documento.tipo_documento === "CONVENIO" &&
-      documento.id_solicitud_empresa
-    ) {
-      await conn.query("CALL sp_validar_solicitud_empresa(?)", [
-        documento.id_solicitud_empresa,
-      ]);
+    let empresaValidada = false;
+    if (doc.tipo === "CONVENIO" && doc.id_solicitud_empresa && doc.estado_solicitud_empresa === "PENDIENTE") {
+      await conn.query("CALL sp_validar_solicitud_empresa(?)", [doc.id_solicitud_empresa]);
+      await recordEvent(conn, {
+        entidad: "SOLICITUD_EMPRESA", id: doc.id_solicitud_empresa, accion: "VALIDAR",
+        antes: "PENDIENTE", despues: "VALIDADO", user: req.user,
+        detalle: { por_convenio: id },
+      });
+      empresaValidada = true;
     }
 
     await conn.commit();
-
     return res.json({
-      message:
-        documento.tipo_documento === "CONVENIO"
-          ? "Convenio y empresa validados correctamente."
-          : "Documento validado correctamente.",
+      message: empresaValidada
+        ? "Convenio y empresa validados correctamente."
+        : "Documento validado correctamente.",
+      empresa_validada: empresaValidada,
     });
   } catch (err) {
     await conn.rollback();
@@ -438,19 +472,43 @@ exports.validar = async function (req, res) {
 };
 
 // POST /documentos/:id/rechazar
+// The company application is NOT changed when its convenio is rejected: the
+// rule for already-validated companies (decision D6) is still open.
 exports.rechazar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
-  const { motivo } = req.body;
-  if (!motivo || !motivo.trim()) {
-    return res
-      .status(400)
-      .json({ error: "Debe indicar el motivo del rechazo." });
+  const motivo = String(req.body?.motivo || "").trim();
+  if (!id) return res.status(400).json({ error: "Documento no válido." });
+  if (!motivo) {
+    return res.status(400).json({ error: "Debe indicar el motivo del rechazo." });
   }
+  const conn = await pool.getConnection();
   try {
-    await pool.query("CALL sp_rechazar_documento(?, ?)", [id, motivo.trim()]);
+    await conn.beginTransaction();
+    const doc = await lockDocumento(conn, id);
+    const def = doc ? defByClave(doc.tipo) : null;
+    const denied = reglas.documentoRechazable(def, doc);
+    if (denied) {
+      await conn.rollback();
+      return res.status(denied.status).json({ error: denied.error, code: denied.code });
+    }
+    await conn.query("CALL sp_rechazar_documento(?, ?)", [id, motivo]);
+    await recordEvent(conn, {
+      entidad: "DOCUMENTO", id, accion: "RECHAZAR",
+      antes: doc.estado_validacion, despues: "RECHAZADO", user: req.user, motivo,
+      detalle: {
+        clave: doc.tipo,
+        ...(doc.tipo === "CONVENIO" && doc.estado_solicitud_empresa === "VALIDADO"
+          ? { empresa_validada_sin_cambios: doc.id_solicitud_empresa }
+          : {}),
+      },
+    });
+    await conn.commit();
     return res.json({ message: "Documento rechazado." });
   } catch (err) {
+    await conn.rollback();
     return sendSqlError(res, err);
+  } finally {
+    conn.release();
   }
 };
 
@@ -465,28 +523,53 @@ exports.uploadContexto = async function (req, res) {
   return guardedSave(req, res, def, parents, "Documento subido correctamente.");
 };
 
+// Records the caller's signature (method CONFIRMACION_APP) on the current file.
+async function registrarFirma(req, res, idDocumento) {
+  const rolFirma = workflow.actorOf(req.user.rol);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const doc = await lockDocumento(conn, idDocumento);
+    const def = doc ? defByClave(doc.tipo) : null;
+    const denied = reglas.documentoFirmable(def, doc, rolFirma);
+    if (denied) {
+      await conn.rollback();
+      return res.status(denied.status).json({ error: denied.error, code: denied.code });
+    }
+    if (!(await canDownloadDocumento(req.user, { ...doc, tipo: doc.tipo }))) {
+      await conn.rollback();
+      return res.status(403).json({ error: "No puedes firmar este documento." });
+    }
+    const previa = (await firmasDe(conn, idDocumento)).find((f) => f.rol === rolFirma);
+    if (previa?.estado === "FIRMADO") {
+      await conn.rollback();
+      return res.json({ message: "La firma ya estaba registrada.", id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO" });
+    }
+    await conn.query(
+      `INSERT INTO dual_documento_firmas (id_documento, rol, estado, firmado_en, firmado_por, metodo)
+       VALUES (?, ?, 'FIRMADO', NOW(), ?, 'CONFIRMACION_APP')
+       ON DUPLICATE KEY UPDATE estado = 'FIRMADO', firmado_en = NOW(), firmado_por = ?, metodo = 'CONFIRMACION_APP'`,
+      [idDocumento, rolFirma, req.user.id, req.user.id],
+    );
+    await recordEvent(conn, {
+      entidad: "DOCUMENTO", id: idDocumento, accion: "FIRMAR",
+      antes: "SIN_FIRMAR", despues: "FIRMADO", user: req.user,
+      detalle: { clave: doc.tipo, rol_firma: rolFirma, metodo: "CONFIRMACION_APP" },
+    });
+    await conn.commit();
+    return res.json({ message: "Firma registrada.", id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO" });
+  } catch (err) {
+    await conn.rollback();
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+}
+
 exports.firmar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
-  const doc = await loadDocumentoMeta(id);
-  if (!doc || !doc.archivo) return res.status(404).json({ error: "No hay un documento que firmar." });
-  const def = defByClave(doc.tipo);
-  if (!def?.signers?.length) {
-    return res.status(400).json({ error: "Este documento no requiere firma." });
-  }
-  const rolFirma = workflow.actorOf(req.user.rol);
-  if (!def.signers.includes(rolFirma)) {
-    return res.status(403).json({ error: "Tu rol no firma este documento." });
-  }
-  if (!(await canDownloadDocumento(req.user, doc))) {
-    return res.status(403).json({ error: "No puedes firmar este documento." });
-  }
-  await pool.query(
-    `INSERT INTO dual_documento_firmas (id_documento, rol, estado, firmado_en)
-     VALUES (?, ?, 'FIRMADO', NOW())
-     ON DUPLICATE KEY UPDATE estado = 'FIRMADO', firmado_en = NOW()`,
-    [id, rolFirma],
-  );
-  return res.json({ message: "Firma registrada.", rol: rolFirma, estado: "FIRMADO" });
+  if (!id) return res.status(400).json({ error: "Documento no válido." });
+  return registrarFirma(req, res, id);
 };
 
 exports.firmarContexto = async function (req, res) {
@@ -533,27 +616,16 @@ exports.firmarContexto = async function (req, res) {
   }
 
   const [existing] = await pool.query(
-    `SELECT id_documento, CASE WHEN archivo IS NULL THEN 0 ELSE 1 END AS tiene_archivo
+    `SELECT id_documento
        FROM dual_documentos
-      WHERE id_reserva = ? AND id_tipo_documento = ? AND es_actual = 1
+      WHERE id_reserva = ? AND id_tipo_documento = ? AND es_actual = 1 AND archivo IS NOT NULL
       ORDER BY id_documento DESC LIMIT 1`,
     [idReserva, idTipo],
   );
-  if (!existing[0]?.tiene_archivo) {
+  if (!existing[0]) {
     return res.status(400).json({ error: "No hay un documento que firmar." });
   }
-  const idDocumento = existing[0].id_documento;
-  const doc = await loadDocumentoMeta(idDocumento);
-  if (!(await canDownloadDocumento(req.user, doc))) {
-    return res.status(403).json({ error: "No puedes firmar este documento." });
-  }
-  await pool.query(
-    `INSERT INTO dual_documento_firmas (id_documento, rol, estado, firmado_en)
-     VALUES (?, ?, 'FIRMADO', NOW())
-     ON DUPLICATE KEY UPDATE estado = 'FIRMADO', firmado_en = NOW()`,
-    [idDocumento, rolFirma],
-  );
-  return res.json({ message: "Firma registrada.", id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO" });
+  return registrarFirma(req, res, existing[0].id_documento);
 };
 
 exports.seguimiento = async function (req, res) {
@@ -578,11 +650,29 @@ exports.generar = async function (req, res) {
   if (def.ambito === "reserva" && !parents.id_reserva) {
     return res.status(400).json({ error: "Falta la reserva." });
   }
+  if (def.ambito === "reserva") {
+    const [rows] = await pool.query(
+      `SELECT er.nombre AS estado_reserva, tc.nombre AS tipo_contrato
+         FROM dual_reservas r
+         JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+         LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+        WHERE r.id_reserva = ?`,
+      [parents.id_reserva],
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Reserva no encontrada." });
+    if (rows[0].estado_reserva === "CANCELADA") {
+      return res.status(400).json({ error: "No se genera documentación de una reserva cancelada." });
+    }
+    if (def.contractFamily && anexoClaveForContrato(rows[0].tipo_contrato) !== def.clave) {
+      return res.status(400).json({ error: "Este anexo no corresponde al tipo de contrato de la reserva." });
+    }
+  }
   try {
     const result = await generateDocument({
       clave,
       parents,
       userId: req.user.id,
+      userRol: req.user.rol,
       regenerar: Boolean(req.body?.regenerar),
     });
     if (!result.ok) {

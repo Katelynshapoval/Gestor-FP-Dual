@@ -23,7 +23,7 @@ const APP_BADGE = {
   RECHAZADO: { label: "Solicitud rechazada", variant: "danger" },
 };
 
-const EstadoSolicitud = ({ r, onValidar, onRechazar }) => {
+const EstadoSolicitud = ({ r, onValidar, onRechazar, onReabrir }) => {
   const toast = useToast();
   const [showReject, setShowReject] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -64,6 +64,19 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar }) => {
     }
   };
 
+  const handleReabrir = async () => {
+    if (submitting || !onReabrir) return;
+    setSubmitting(true);
+    try {
+      await onReabrir(r.id_solicitud_alumno);
+      toast.success("Solicitud reabierta: vuelve a estar pendiente de revisión.");
+    } catch (err) {
+      toast.error(err.message || "No se pudo reabrir la solicitud.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="border-t border-surface-200 pt-4">
       <p className={sectionLabelClass}>Estado de la solicitud</p>
@@ -75,6 +88,17 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar }) => {
         <p className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
           <span className="font-semibold">Motivo:</span> {r.motivo || "Sin motivo indicado."}
         </p>
+      )}
+
+      {r.estado_validacion === "RECHAZADO" && onReabrir && (
+        <button
+          type="button"
+          onClick={handleReabrir}
+          disabled={submitting}
+          className={`btn btn-secondary btn-sm mb-3 ${submitting ? "btn-disabled" : ""}`}
+        >
+          Reabrir solicitud
+        </button>
       )}
 
       {pending && hint && (

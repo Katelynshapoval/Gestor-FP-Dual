@@ -9,7 +9,7 @@ Five phases. Each ends with the application deployable and usable; later phases 
 | Phase | Objective | Complexity | Depends on |
 | --- | --- | --- | --- |
 | 1. Critical security and blocked workflows — **in progress** (see [PHASE_1_REPORT.md](PHASE_1_REPORT.md)) | Close account-takeover paths and make every core workflow completable | Medium–High | — |
-| 2. Database baseline and business-rule integrity | One reproducible schema; state rules enforced in the backend | Very High | 1 |
+| 2. Database baseline and business-rule integrity — **implemented, migrations applied on dev; verification open** (see [PHASE_2_REPORT.md](PHASE_2_REPORT.md)) | One reproducible schema; state rules enforced in the backend | Very High | 1 |
 | 3. Frontend workflow consolidation | One place per task, shared components, honest states | High | 1, 2 (rules) |
 | 4. UX, navigation, notifications and accessibility | Role-centred navigation, dashboards, emails, WCAG basics | Medium–High | 3 (shared components) |
 | 5. Performance, testing and production readiness | Scale to several years of data; automated regression; deployment hygiene | High | 2, 3 |
@@ -27,6 +27,8 @@ Phases 1–4 run in sequence; Phase 5 needs the rules from Phase 2 and the scree
 
 ### Phase 1 — Critical security and blocked workflows
 
+> **Update (Phase 2 Batch A, read-only DB checks):** V-1 confirmed (fix in migration 012, pending approval); V-2 tables exist on the dev DB. 
+>
 > **Status (2026-10-27, branch `phase-1-security-workflows`):** implemented and tested without a database — SEC-1, SEC-2, SEC-8, login limiter, SEC-3, SEC-4, SEC-5, SEC-6, WF-1, WF-2, WF-3, V-5, WF-10, WF-13, `.env.example`, written test script. **Blocked:** V-1 and V-2 (need the read-only DB checks; draft `011_preferencias_alumno.sql` not applied). **Open acceptance checks on a real DB:** reservation to “Confirmada”, company re-application, student validation (V-1), date switch. Decisions taken: SEC-3 = returning students prove identity with their portal password; activation = automatic by dates. Details, test results and the manual script: [PHASE_1_REPORT.md](PHASE_1_REPORT.md). Phase 1 is **not** complete.
 
 - **Objective:** no forged or stolen session can escalate; a student, a company and a reservation can each go from start to finish through the UI.
@@ -38,6 +40,8 @@ Phases 1–4 run in sequence; Phase 5 needs the rules from Phase 2 and the scree
 - **Done when:** the server refuses to start without a secret; a token signed with the old fallback is rejected; password change without the current one returns 400/401; a deactivated user is rejected within one request; a new reservation reaches “Confirmada” via the UI; a returning company re-applies; a new student is validated; convocatorias switch on the start date without visiting the page.
 
 ### Phase 2 — Database baseline and business-rule integrity
+
+> **Status (2026-10-27, branch `phase-2-db-integrity`):** implemented in code with migrations 012–015 + rollbacks, `000_baseline.sql`, a migration runner and state tables ([STATE_TRANSITIONS.md](STATE_TRANSITIONS.md)); 53/53 mock tests pass, DB integration tests written. **Progress:** baseline recorded and 012–015 applied to the dev DB; 6/6 DB tests pass; read-only backend smoke test OK. **Open:** manual end-to-end checks with real logins, baseline rebuild on an empty schema, decision D6. Decisions: D1, D2, D4, D5, D7, D8 taken; **D3 deferred** (quota rights unchanged); **D6 open** (proposal in the report). Carry-overs from Phase 1: V-1 confirmed, fix in 012 (not applied); V-2 tables already present. Phase 2 is **not** complete.
 
 - **Objective:** the repository rebuilds your database exactly, and every state rule is enforced by the backend, not by a screen.
 - **Included:** V-4 (schema dump as `000_baseline.sql`, retire `after_schema_patch.sql`, `schema_migrations` table and runner); procedures and triggers resolve types and states by name (PM-4); WF-4 (reactivation retires old documents and tutor); WF-5 (lock contract family once an annex exists; confirm with stored type; backend checks annex validated and signed); WF-6/WF-7 (sign-then-validate rule in `documentosService.validar`; convenio rejection reverts company validation; reject in the convenio viewer); WF-11 (coordinator copy-on-write); PM-6 (transactional `saveByClave`); V-3 (date handling); V-6 (DNI lookup and uniqueness); audit columns for validation, rejection, confirmation and signature (PM-5); WF-18 (reopen application).

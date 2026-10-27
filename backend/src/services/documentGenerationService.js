@@ -59,7 +59,7 @@ async function currentDocument(clave, parents) {
   return rows[0] || null;
 }
 
-async function generateDocument({ clave, parents, userId = null, regenerar = false }) {
+async function generateDocument({ clave, parents, userId = null, userRol = null, regenerar = false }) {
   const def = defByClave(clave);
   const config = generationConfig(clave);
   if (!def?.generated || !config) {
@@ -95,6 +95,7 @@ async function generateDocument({ clave, parents, userId = null, regenerar = fal
   const idDocumento = await saveByClave(clave, parents, pdf, {
     origen: "GENERADO",
     idUsuario: userId,
+    rol: userRol,
     idPlantilla: template.id_plantilla,
   });
 

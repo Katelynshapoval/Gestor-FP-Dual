@@ -30,6 +30,7 @@ router.get('/solicitudes/alumno', requireAuth, requireRole('ADMINISTRADOR', 'COO
 router.get('/solicitudes/alumno/:id', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getById));
 router.post('/solicitudes/alumno/:id/validar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.validar));
 router.post('/solicitudes/alumno/:id/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.rechazar));
+router.post('/solicitudes/alumno/:id/reabrir', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.reabrir));
 router.get('/solicitudes/alumno/:id/documentos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getDocumentos));
 
 // Forward multer errors as 400 responses

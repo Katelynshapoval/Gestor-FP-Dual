@@ -28,6 +28,7 @@ const LinkStudents = () => {
     rejectDoc,
     validateAlumno,
     rejectSolicitud,
+    reopenSolicitud,
     reserveStudent,
     cancelReservation,
     adminReserve,
@@ -116,6 +117,7 @@ const LinkStudents = () => {
               onTutorChange={refreshStudents}
               onValidarAlumno={validateAlumno}
               onRechazarSolicitud={rejectSolicitud}
+              onReabrirSolicitud={reopenSolicitud}
               user={user}
             />
           ))}

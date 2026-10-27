@@ -286,25 +286,42 @@ function hasFile(row) {
   return Boolean(row?.tiene_archivo || (row?.id_documento && row?.archivo));
 }
 
-function signatureApplies(def, row, firmas) {
+// D1: every document with a file and signers needs all of them, unless the row
+// was explicitly exempted by migration 013 (validated before signatures existed).
+function signatureApplies(def, row) {
   if (!def.signers?.length || !hasFile(row)) return false;
-  if (def.kind === "signature") return true;
-  if (firmas?.length) return true;
-  return row?.origen_documento === "GENERADO";
+  return !Number(row?.firmas_exentas_legacy);
 }
 
+// Neither method is a cryptographic check: staff still review the file.
+const FIRMA_METODO_LABEL = {
+  CONFIRMACION_APP: "Firma registrada en la aplicación",
+  SUBIDA_FIRMADA: "Declarada al subir el documento firmado",
+};
+
 function firmaListFor(def, row, firmas) {
-  if (!signatureApplies(def, row, firmas)) return [];
+  if (!signatureApplies(def, row)) return [];
   return def.signers.map((signRol) => {
     const found = (firmas || []).find((f) => f.rol === signRol);
     const estado = found?.estado === "FIRMADO" ? "FIRMADO" : "SIN_FIRMAR";
+    const metodo = estado === "FIRMADO" ? found?.metodo || null : null;
     return {
       rol: signRol,
       rol_label: actorLabel(signRol),
       estado,
       estado_label: estado === "FIRMADO" ? "Firmado" : "Sin firmar",
+      metodo,
+      metodo_label: metodo ? FIRMA_METODO_LABEL[metodo] || null : null,
+      firmado_en: estado === "FIRMADO" ? found?.firmado_en || null : null,
     };
   });
+}
+
+// Signer roles (EMPRESA/GESTOR/ALUMNO) still missing for this document.
+function pendingSignatures(def, row, firmas) {
+  return firmaListFor(def, row, firmas)
+    .filter((f) => f.estado !== "FIRMADO")
+    .map((f) => f.rol);
 }
 
 function deriveDocumentState(def, row, firmas = [], { templateAvailable = false } = {}) {
@@ -378,6 +395,16 @@ function anexoClaveForContrato(nombre) {
   return "ANEXO_II";
 }
 
+// SQL form of anexoClaveForContrato for list queries; `tc` is the alias of
+// dual_tipos_contrato. Kept next to the JS rule so both change together.
+function anexoClaveSql(tc = "tc") {
+  return `CASE
+            WHEN ${tc}.id_tipo_contrato IS NULL THEN '__ninguno__'
+            WHEN LOWER(IFNULL(${tc}.nombre, '')) LIKE '%beca%' THEN 'ANEXO_III'
+            ELSE 'ANEXO_II'
+          END`;
+}
+
 function appliesToContrato(def, nombreContrato) {
   if (!def?.contractFamily) return true;
   return anexoClaveForContrato(nombreContrato) === def.clave;
@@ -407,7 +434,10 @@ module.exports = {
   generatedDefs,
   requiredForStudentValidation,
   anexoClaveForContrato,
+  anexoClaveSql,
   appliesToContrato,
+  pendingSignatures,
+  FIRMA_METODO_LABEL,
   workflowLabel,
   reviewLabel,
   deriveDocumentState,

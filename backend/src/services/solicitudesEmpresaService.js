@@ -8,6 +8,7 @@ const {
 } = require("../helpers/dbHelpers");
 const empresaDatos = require("./empresaDatos");
 const { generateDocument } = require("./documentGenerationService");
+const { aplicarTransicion } = require("./solicitudTransiciones");
 
 const EMPRESA_YA_REGISTRADA =
   "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
@@ -408,13 +409,12 @@ exports.create = async function (req, res) {
       );
     }
 
-    // 8. Transports
-    for (const idT of transportes) {
-      await conn.query("CALL sp_asignar_transporte_empresa(?, ?)", [
-        idEmpresa,
-        idT,
-      ]);
-    }
+    // 8. Transports (per application, D4)
+    await empresaDatos.replaceTransportesSolicitud(
+      conn,
+      idSolicitudEmpresa,
+      transportes.map((t) => parseInt(t, 10)).filter(Boolean),
+    );
 
     // 9. Coordinator user account
     const [rolRow] = await conn.query(
@@ -694,10 +694,10 @@ exports.getEspecialidades = async function (req, res) {
 // POST /solicitudes/empresa/:id/validar
 exports.validar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
-
+  if (!id) return res.status(400).json({ error: "Solicitud no válida." });
   try {
-    await pool.query("CALL sp_validar_solicitud_empresa(?)", [id]);
-
+    const out = await aplicarTransicion("SOLICITUD_EMPRESA", id, "VALIDAR", { user: req.user });
+    if (!out.ok) return res.status(out.status).json({ error: out.error, code: out.code });
     return res.json({
       message: "Solicitud de empresa validada correctamente.",
     });
@@ -709,23 +709,33 @@ exports.validar = async function (req, res) {
 // POST /solicitudes/empresa/:id/rechazar
 exports.rechazar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
-  const { motivo } = req.body;
-
-  if (!motivo || !motivo.trim()) {
+  const motivo = String(req.body?.motivo || "").trim();
+  if (!id) return res.status(400).json({ error: "Solicitud no válida." });
+  if (!motivo) {
     return res
       .status(400)
       .json({ error: "Debe indicar el motivo del rechazo." });
   }
-
   try {
-    await pool.query("CALL sp_rechazar_solicitud_empresa(?, ?)", [
-      id,
-      motivo.trim(),
-    ]);
-
+    const out = await aplicarTransicion("SOLICITUD_EMPRESA", id, "RECHAZAR", { user: req.user, motivo });
+    if (!out.ok) return res.status(out.status).json({ error: out.error, code: out.code });
     return res.json({
       message: "Solicitud de empresa rechazada.",
     });
+  } catch (err) {
+    return sendSqlError(res, err);
+  }
+};
+
+// POST /solicitudes/empresa/:id/reabrir — staff, active convocatoria only (D7)
+exports.reabrir = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const motivo = String(req.body?.motivo || "").trim() || null;
+  if (!id) return res.status(400).json({ error: "Solicitud no válida." });
+  try {
+    const out = await aplicarTransicion("SOLICITUD_EMPRESA", id, "REABRIR", { user: req.user, motivo });
+    if (!out.ok) return res.status(out.status).json({ error: out.error, code: out.code });
+    return res.json({ message: "Solicitud reabierta: vuelve a estar pendiente de revisión." });
   } catch (err) {
     return sendSqlError(res, err);
   }
@@ -740,6 +750,7 @@ exports.getTodas = async function (req, res) {
        se.fecha_solicitud,
        se.descripcion_puesto,
        se.motivo,
+       se.transportes_conocidos,
        ev.nombre AS estado_validacion,
        emp.empresa AS razonSocial,
        emp.cif,
@@ -785,7 +796,6 @@ exports.getTodas = async function (req, res) {
 
   // Batch-load specialities, transports, and convenio status
   const ids = rows.map((r) => r.id_solicitud_empresa);
-  const idEmpresas = rows.map((r) => r.id_empresa);
 
   const [esps] = await pool.query(
     `SELECT
@@ -808,15 +818,15 @@ exports.getTodas = async function (req, res) {
 
   const [transp] = await pool.query(
     `SELECT
-     det.id_empresa,
+     det.id_solicitud_empresa,
      dt.id_transporte,
      dt.nombre,
      dt.nombre_mostrar
-   FROM dual_empresa_transportes det
+   FROM dual_solicitud_empresa_transportes det
    JOIN dual_transportes dt
      ON dt.id_transporte = det.id_transporte
-   WHERE det.id_empresa IN (?)`,
-    [idEmpresas],
+   WHERE det.id_solicitud_empresa IN (?)`,
+    [ids],
   );
 
   const [convenios] = await pool.query(
@@ -854,11 +864,11 @@ exports.getTodas = async function (req, res) {
   const transpMap = {};
 
   transp.forEach((t) => {
-    if (!transpMap[t.id_empresa]) {
-      transpMap[t.id_empresa] = [];
+    if (!transpMap[t.id_solicitud_empresa]) {
+      transpMap[t.id_solicitud_empresa] = [];
     }
 
-    transpMap[t.id_empresa].push({
+    transpMap[t.id_solicitud_empresa].push({
       id_transporte: t.id_transporte,
       nombre: t.nombre_mostrar || t.nombre,
     });
@@ -916,7 +926,8 @@ exports.getTodas = async function (req, res) {
       idAuxEmpresa: r.id_solicitud_empresa,
       fechaPeticion: r.fecha_solicitud,
       especialidades: espMap[r.id_solicitud_empresa] || [],
-      transportes: transpMap[r.id_empresa] || [],
+      transportes: transpMap[r.id_solicitud_empresa] || [],
+      transportes_conocidos: Number(r.transportes_conocidos) !== 0,
       tieneConvenio: conv ? 1 : 0,
       convenio_validado: conv?.validado ? 1 : 0,
       id_documento_convenio: conv?.id_documento ?? null,
@@ -1017,8 +1028,19 @@ exports.reapply = async function (req, res) {
 
     const prev = empData[0];
 
-    // Update coordinator fields with new values when provided
-    if (nombreCoordinador || emailCoordinador || telefonoCoordinador) {
+    // Update coordinator fields with new values when provided. WF-11: earlier
+    // applications first move to a frozen copy so they keep the old values.
+    const [coordActual] = await conn.query(
+      "SELECT nombre, email, telefono FROM ge_contactos WHERE idcontacto = ? FOR UPDATE",
+      [prev.id_coordinador_actual],
+    );
+    const cambiaCoordinador = [
+      ["nombre", nombreCoordinador],
+      ["email", emailCoordinador],
+      ["telefono", telefonoCoordinador],
+    ].some(([col, value]) => value && String(value) !== String(coordActual[0]?.[col] ?? ""));
+    if (cambiaCoordinador) {
+      await empresaDatos.freezeCoordinadorForOtherSolicitudes(conn, prev.id_coordinador_actual, null);
       await conn.query(
         `UPDATE ge_contactos
          SET
@@ -1101,18 +1123,12 @@ exports.reapply = async function (req, res) {
       );
     }
 
-    // Replace current transport assignments
-    await conn.query(
-      "DELETE FROM dual_empresa_transportes WHERE id_empresa = ?",
-      [idEmpresa],
+    // Transports of the new application only; earlier years keep theirs (D4).
+    await empresaDatos.replaceTransportesSolicitud(
+      conn,
+      idSolicitudEmpresa,
+      transportes.map((t) => parseInt(t, 10)).filter(Boolean),
     );
-
-    for (const idT of transportes) {
-      await conn.query("CALL sp_asignar_transporte_empresa(?, ?)", [
-        idEmpresa,
-        parseInt(idT, 10),
-      ]);
-    }
 
     await conn.commit();
 

@@ -224,6 +224,7 @@ const StudentCard = ({
   onTutorChange,
   onValidarAlumno,
   onRechazarSolicitud,
+  onReabrirSolicitud,
   user,
 }) => {
   const isEmpresa = user?.rol === "EMPRESA";
@@ -371,6 +372,7 @@ const StudentCard = ({
                       r={r}
                       onValidar={onValidarAlumno}
                       onRechazar={onRechazarSolicitud}
+                      onReabrir={onReabrirSolicitud}
                     />
                   )}
                 </div>

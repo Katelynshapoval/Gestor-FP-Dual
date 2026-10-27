@@ -299,6 +299,10 @@ const MisDatos = ({
               </div>
             ))}
           </div>
+        ) : solicitud.transportes_conocidos === false ? (
+          <p className="text-gray-500 text-sm">
+            No registrado: los datos de transporte de esta convocatoria no se conservaron.
+          </p>
         ) : (
           <p className="text-gray-500 text-sm">Sin datos</p>
         )}

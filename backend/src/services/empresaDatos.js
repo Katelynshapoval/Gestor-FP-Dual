@@ -141,6 +141,7 @@ async function loadEmpresaDatos(conn, idSolicitud) {
         se.id_domicilio_trabajo,
         se.descripcion_puesto,
         se.fecha_solicitud,
+        se.transportes_conocidos,
         ev.nombre AS estado_validacion,
         c.nombre AS convocatoria,
         c.activa AS convocatoria_activa,
@@ -195,11 +196,11 @@ async function loadEmpresaDatos(conn, idSolicitud) {
 
   const [transp] = await conn.query(
     `SELECT dt.id_transporte, dt.nombre, dt.nombre_mostrar
-       FROM dual_empresa_transportes det
+       FROM dual_solicitud_empresa_transportes det
        JOIN dual_transportes dt ON dt.id_transporte = det.id_transporte
-      WHERE det.id_empresa = ?
+      WHERE det.id_solicitud_empresa = ?
       ORDER BY dt.id_transporte`,
-    [rows[0].id_empresa]
+    [rows[0].id_solicitud_empresa]
   );
 
   const row = rows[0];
@@ -207,6 +208,7 @@ async function loadEmpresaDatos(conn, idSolicitud) {
     ...row,
     convocatoria_activa: Number(row.convocatoria_activa) === 1,
     transportes: transp,
+    transportes_conocidos: Number(row.transportes_conocidos) !== 0,
     razonSocial: row.empresa,
     telEmpresa: row.telefonoEmpresa,
     dirRazSocial: row.domicilioLegal,
@@ -247,6 +249,7 @@ async function loadEmpresaDatosRead(conn, idSolicitud) {
         se.id_domicilio_trabajo,
         se.descripcion_puesto,
         se.fecha_solicitud,
+        se.transportes_conocidos,
         ev.nombre AS estado_validacion,
         c.nombre AS convocatoria,
         c.activa AS convocatoria_activa,
@@ -294,17 +297,18 @@ async function loadEmpresaDatosRead(conn, idSolicitud) {
   if (!rows[0]) return null;
   const [transp] = await conn.query(
     `SELECT dt.id_transporte, dt.nombre, dt.nombre_mostrar
-       FROM dual_empresa_transportes det
+       FROM dual_solicitud_empresa_transportes det
        JOIN dual_transportes dt ON dt.id_transporte = det.id_transporte
-      WHERE det.id_empresa = ?
+      WHERE det.id_solicitud_empresa = ?
       ORDER BY dt.id_transporte`,
-    [rows[0].id_empresa]
+    [rows[0].id_solicitud_empresa]
   );
   const row = rows[0];
   return {
     ...row,
     convocatoria_activa: Number(row.convocatoria_activa) === 1,
     transportes: transp,
+    transportes_conocidos: Number(row.transportes_conocidos) !== 0,
     razonSocial: row.empresa,
     telEmpresa: row.telefonoEmpresa,
     dirRazSocial: row.domicilioLegal,
@@ -590,6 +594,7 @@ async function applyEmpresaDatos(conn, ctx, proposed, { allowCif = false } = {})
 
   const coordKeys = ['dniCoordinador', 'nombreCoordinador', 'emailCoordinador', 'telefonoCoordinador', 'cargoCoordinador'];
   if (coordKeys.some((k) => k in fields)) {
+    await freezeCoordinadorForOtherSolicitudes(conn, live.id_coordinador_empresa, live.id_solicitud_empresa);
     const colMap = {
       dniCoordinador: 'dni',
       nombreCoordinador: 'nombre',
@@ -637,11 +642,51 @@ async function applyEmpresaDatos(conn, ctx, proposed, { allowCif = false } = {})
         throw err;
       }
     }
-    await conn.query('DELETE FROM dual_empresa_transportes WHERE id_empresa = ?', [live.id_empresa]);
-    for (const idT of ids) {
-      await conn.query('CALL sp_asignar_transporte_empresa(?, ?)', [live.id_empresa, idT]);
-    }
+    // D4: transports belong to this application only; other years keep theirs.
+    await replaceTransportesSolicitud(conn, live.id_solicitud_empresa, ids);
   }
+}
+
+// WF-11: copy-on-write for the principal coordinator. The contact is edited in
+// place (the company account and its tutor entry stay linked to that id), but
+// first every OTHER application that points at it is moved to a frozen copy
+// holding the old values, so past years and their convenios keep showing what
+// was true then. Edits are only allowed on the active convocatoria, so the
+// other applications are always earlier ones. Returns the copy's id or null.
+async function freezeCoordinadorForOtherSolicitudes(conn, idContacto, keepIdSolicitud = null) {
+  const [others] = await conn.query(
+    `SELECT id_solicitud_empresa FROM dual_solicitudes_empresa
+      WHERE id_coordinador_empresa = ?
+        AND (? IS NULL OR id_solicitud_empresa <> ?)
+      FOR UPDATE`,
+    [idContacto, keepIdSolicitud, keepIdSolicitud]
+  );
+  if (!others.length) return null;
+  const [ins] = await conn.query(
+    `INSERT INTO ge_contactos (iddomicilio, dni, nombre, email, telefono, cargo, observaciones, especialidad)
+     SELECT iddomicilio, dni, nombre, email, telefono, cargo, observaciones, especialidad
+       FROM ge_contactos WHERE idcontacto = ?`,
+    [idContacto]
+  );
+  await conn.query(
+    'UPDATE dual_solicitudes_empresa SET id_coordinador_empresa = ? WHERE id_solicitud_empresa IN (?)',
+    [ins.insertId, others.map((o) => o.id_solicitud_empresa)]
+  );
+  return ins.insertId;
+}
+
+async function replaceTransportesSolicitud(conn, idSolicitud, ids) {
+  await conn.query('DELETE FROM dual_solicitud_empresa_transportes WHERE id_solicitud_empresa = ?', [idSolicitud]);
+  for (const idT of ids) {
+    await conn.query(
+      'INSERT IGNORE INTO dual_solicitud_empresa_transportes (id_solicitud_empresa, id_transporte) VALUES (?, ?)',
+      [idSolicitud, idT]
+    );
+  }
+  await conn.query(
+    'UPDATE dual_solicitudes_empresa SET transportes_conocidos = 1 WHERE id_solicitud_empresa = ? AND transportes_conocidos = 0',
+    [idSolicitud]
+  );
 }
 
 function detectConflicts(snapshot, liveSnap, proposed) {
@@ -691,6 +736,8 @@ module.exports = {
   loadEmpresaDatos,
   loadEmpresaDatosRead,
   applyEmpresaDatos,
+  replaceTransportesSolicitud,
+  freezeCoordinadorForOtherSolicitudes,
   detectConflicts,
   buildDiff,
   normalizeTransportes,

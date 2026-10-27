@@ -107,6 +107,19 @@ const AdminCompanyView = () => {
     }
   };
 
+  // WF-7: the convenio can be rejected from its viewer. The company application
+  // itself is not changed (decision D6 is still open).
+  const handleRejectConvenio = async (idDocumento, motivo) => {
+    try {
+      await postJSON(`/documentos/${idDocumento}/rechazar`, { motivo });
+      toast.success("Convenio rechazado. La empresa debe subir uno nuevo.");
+      setViewingConvenio(null);
+      fetchCompanies();
+    } catch (err) {
+      toast.error(err.message || "No se pudo rechazar el convenio.");
+    }
+  };
+
   // The temporary password stays on screen for two minutes at most (WF-10)
   const clearResetResult = (idSolicitudEmpresa) =>
     setResetResult((prev) => {
@@ -440,6 +453,7 @@ const AdminCompanyView = () => {
         empresa={viewingConvenio}
         onClose={() => setViewingConvenio(null)}
         onValidate={handleValidateConvenio}
+        onReject={handleRejectConvenio}
       />
     </div>
   );

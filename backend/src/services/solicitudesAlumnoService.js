@@ -3,6 +3,7 @@ const pool = require('../db/pool');
 const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni } = require('../helpers/dbHelpers');
 const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation } = require('./documentosWorkflow');
 const { loginRateLimiter } = require('../middleware/loginRateLimit');
+const { aplicarTransicion } = require('./solicitudTransiciones');
 const MIN_PASSWORD_LENGTH = 8;
 
 let transporter = null;
@@ -84,7 +85,9 @@ exports.create = async function (req, res) {
     let idAlumno;
     let cuentaExistente = false;
     const [existing] = await conn.query(
-      'SELECT idalumno FROM gf_alumnosfct WHERE UPPER(TRIM(dni)) = ? FOR UPDATE',
+      // V-6: DNIs are stored normalised, so the index on dni is used and only the
+      // matching row is locked (UPPER(TRIM()) scanned and locked the whole table).
+      'SELECT idalumno FROM gf_alumnosfct WHERE dni = ? FOR UPDATE',
       [dniNorm]
     );
 
@@ -441,6 +444,7 @@ exports.getById = async function (req, res) {
 // POST /solicitudes/alumno/:id/validar
 exports.validar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Solicitud no válida.' });
   const pending = await missingStudentValidation(id);
   if (pending.length) {
     return res.status(400).json({
@@ -448,7 +452,8 @@ exports.validar = async function (req, res) {
     });
   }
   try {
-    await pool.query('CALL sp_validar_solicitud_alumno(?)', [id]);
+    const out = await aplicarTransicion('SOLICITUD_ALUMNO', id, 'VALIDAR', { user: req.user });
+    if (!out.ok) return res.status(out.status).json({ error: out.error, code: out.code });
     return res.json({ message: 'Solicitud de alumno validada correctamente.' });
   } catch (err) {
     return sendSqlError(res, err);
@@ -458,13 +463,29 @@ exports.validar = async function (req, res) {
 // POST /solicitudes/alumno/:id/rechazar
 exports.rechazar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
-  const { motivo } = req.body;
-  if (!motivo || !motivo.trim()) {
+  const motivo = String(req.body?.motivo || '').trim();
+  if (!id) return res.status(400).json({ error: 'Solicitud no válida.' });
+  if (!motivo) {
     return res.status(400).json({ error: 'Debe indicar el motivo del rechazo.' });
   }
   try {
-    await pool.query('CALL sp_rechazar_solicitud_alumno(?, ?)', [id, motivo.trim()]);
+    const out = await aplicarTransicion('SOLICITUD_ALUMNO', id, 'RECHAZAR', { user: req.user, motivo });
+    if (!out.ok) return res.status(out.status).json({ error: out.error, code: out.code });
     return res.json({ message: 'Solicitud de alumno rechazada.' });
+  } catch (err) {
+    return sendSqlError(res, err);
+  }
+};
+
+// POST /solicitudes/alumno/:id/reabrir — staff, active convocatoria only (D7)
+exports.reabrir = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const motivo = String(req.body?.motivo || '').trim() || null;
+  if (!id) return res.status(400).json({ error: 'Solicitud no válida.' });
+  try {
+    const out = await aplicarTransicion('SOLICITUD_ALUMNO', id, 'REABRIR', { user: req.user, motivo });
+    if (!out.ok) return res.status(out.status).json({ error: out.error, code: out.code });
+    return res.json({ message: 'Solicitud reabierta: vuelve a estar pendiente de revisión.' });
   } catch (err) {
     return sendSqlError(res, err);
   }
