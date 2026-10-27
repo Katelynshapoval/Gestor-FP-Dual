@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaKey, FaBuilding } from "react-icons/fa6";
+import { FaBuilding, FaCheck, FaKey, FaPlus, FaXmark } from "react-icons/fa6";
 import { formatDate, InfoRow } from "../helpers";
 import { IoMdArrowDropdown } from "react-icons/io";
 import {
@@ -46,6 +46,7 @@ const EspecialidadList = ({
   const [newEspId, setNewEspId] = useState("");
   const [newCantidad, setNewCantidad] = useState("1");
   const [picker, setPicker] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   const owned = new Set((especialidades || []).map((esp) => espId(esp)));
   const missing = catalogo.filter((esp) => !owned.has(espId(esp)));
@@ -74,6 +75,7 @@ const EspecialidadList = ({
         return next;
       });
       setPicker(null);
+      setEditingId(null);
       if (data.canceladas?.length) {
         toast.warning(data.message || "Se han cancelado las reservas pendientes seleccionadas.");
       } else {
@@ -127,51 +129,110 @@ const EspecialidadList = ({
     }
   };
 
-  if ((!especialidades || especialidades.length === 0) && !adding) {
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className={sectionLabelClass}>Especialidades solicitadas</p>
-          {canEdit && missing.length > 0 && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAdding(true)} aria-label="Añadir ciclo">
-              +
-            </button>
-          )}
-        </div>
-        {!adding && <p className="text-sm text-muted">Sin datos</p>}
-        {adding && (
-          <AddRow
-            missing={missing}
-            newEspId={newEspId}
-            newCantidad={newCantidad}
-            setNewEspId={setNewEspId}
-            setNewCantidad={setNewCantidad}
-            saving={savingId === "new"}
-            onAdd={add}
-            onCancel={() => {
-              setAdding(false);
-              setNewEspId("");
-              setNewCantidad("1");
-              setFieldError("");
-            }}
-          />
-        )}
-        <InlineNotice tone="error">{fieldError}</InlineNotice>
-      </div>
-    );
-  }
+  const closeAdd = () => {
+    setAdding(false);
+    setNewEspId("");
+    setNewCantidad("1");
+    setFieldError("");
+  };
+
+  const stopEditing = (idOferta) => {
+    setEditingId(null);
+    setFieldError("");
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[idOferta];
+      return next;
+    });
+  };
+
+  const list = especialidades || [];
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className={sectionLabelClass}>Especialidades solicitadas</p>
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className={`${sectionLabelClass} !mb-0`}>Especialidades solicitadas</p>
         {canEdit && missing.length > 0 && !adding && (
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAdding(true)} aria-label="Añadir ciclo">
-            +
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAdding(true)}>
+            <FaPlus aria-hidden="true" className="h-3 w-3" />
+            Añadir ciclo
           </button>
         )}
       </div>
       <InlineNotice tone="error">{fieldError}</InlineNotice>
+      {list.length === 0 && !adding && <p className="text-sm text-muted">Sin datos</p>}
+      {list.length > 0 && (
+        <ul className="m-0 list-none divide-y divide-surface-200 rounded-lg border border-surface-200 p-0">
+          {list.map((e) => {
+            const idOferta = e.id_solicitud_empresa_especialidad;
+            const current = drafts[idOferta] ?? String(e.cantidad_alumnos);
+            const changed = countChanged(current, e.cantidad_alumnos);
+            const editing = editingId === idOferta;
+            const saving = savingId === idOferta;
+            return (
+              <li key={idOferta || e.id_especialidad} className="flex min-h-11 items-center justify-between gap-3 px-3 py-1.5">
+                <span className="min-w-0 text-sm text-charcoal-800">{cicloLabel(e)}</span>
+                {editing ? (
+                  <span className="flex shrink-0 items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      aria-label={`Plazas de ${cicloLabel(e)}`}
+                      className="input w-16 px-2 py-1 text-sm"
+                      value={current}
+                      disabled={saving}
+                      autoFocus
+                      onChange={(ev) => setDrafts((prev) => ({ ...prev, [idOferta]: ev.target.value }))}
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter" && changed) save(e);
+                        if (ev.key === "Escape") stopEditing(idOferta);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className={iconBtnClass}
+                      disabled={saving || !changed}
+                      onClick={() => save(e)}
+                      aria-label={`Guardar plazas de ${cicloLabel(e)}`}
+                      title="Guardar"
+                    >
+                      <FaCheck aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      className={iconBtnClass}
+                      disabled={saving}
+                      onClick={() => stopEditing(idOferta)}
+                      aria-label="Cancelar"
+                      title="Cancelar"
+                    >
+                      <FaXmark aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ) : (
+                  <span className="flex shrink-0 items-center gap-1">
+                    <span className="text-sm text-muted">
+                      {e.cantidad_alumnos} {Number(e.cantidad_alumnos) === 1 ? "plaza" : "plazas"}
+                    </span>
+                    {canEdit && idOferta && (
+                      <button
+                        type="button"
+                        className={iconBtnClass}
+                        onClick={() => setEditingId(idOferta)}
+                        aria-label={`Cambiar plazas de ${cicloLabel(e)}`}
+                        title="Cambiar plazas"
+                      >
+                        <MdEdit aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    )}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
       {adding && (
         <AddRow
           missing={missing}
@@ -181,60 +242,9 @@ const EspecialidadList = ({
           setNewCantidad={setNewCantidad}
           saving={savingId === "new"}
           onAdd={add}
-          onCancel={() => {
-            setAdding(false);
-            setNewEspId("");
-            setNewCantidad("1");
-            setFieldError("");
-          }}
+          onCancel={closeAdd}
         />
       )}
-      {(especialidades || []).map((e) => {
-        const idOferta = e.id_solicitud_empresa_especialidad;
-        const current = drafts[idOferta] ?? String(e.cantidad_alumnos);
-        const changed = countChanged(current, e.cantidad_alumnos);
-        return (
-          <div
-            key={idOferta || e.id_especialidad}
-            className="flex items-center justify-between gap-2 rounded-md bg-surface-50/60 px-3 py-1.5"
-          >
-            <span className="text-sm">{cicloLabel(e)}</span>
-            {canEdit && idOferta ? (
-              <span className="flex shrink-0 items-center gap-1">
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  aria-label={`Plazas de ${cicloLabel(e)}`}
-                  className="input w-16 py-0.5 text-xs"
-                  value={current}
-                  disabled={savingId === idOferta}
-                  onChange={(ev) =>
-                    setDrafts((prev) => ({
-                      ...prev,
-                      [idOferta]: ev.target.value,
-                    }))
-                  }
-                />
-                {changed && (
-                  <button
-                    type="button"
-                    className="rounded border border-surface-300 bg-white px-2 py-0.5 text-xs"
-                    disabled={savingId === idOferta}
-                    onClick={() => save(e)}
-                  >
-                    {savingId === idOferta ? "…" : "Guardar"}
-                  </button>
-                )}
-              </span>
-            ) : (
-              <span className="shrink-0 rounded-full bg-black/5 px-2 py-0.5 text-xs">
-                {e.cantidad_alumnos}
-              </span>
-            )}
-          </div>
-        );
-      })}
       <CupoReductionDialog
         open={Boolean(picker)}
         desde={picker?.desde}
@@ -249,30 +259,45 @@ const EspecialidadList = ({
   );
 };
 
+const iconBtnClass =
+  "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-surface-100 hover:text-charcoal-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25 disabled:cursor-not-allowed disabled:opacity-40";
+
+// One line: ciclo, places, confirm, cancel.
 function AddRow({ missing, newEspId, newCantidad, setNewEspId, setNewCantidad, saving, onAdd, onCancel }) {
   return (
-    <div className="space-y-2 rounded-lg border border-surface-200 bg-white p-3">
-      <label className="block text-xs font-semibold text-muted">
-        Ciclo
-        <select className="select-input mt-1" value={newEspId} disabled={saving} onChange={(event) => setNewEspId(event.target.value)}>
-          <option value="">Selecciona un ciclo</option>
-          {missing.map((esp) => (
-            <option key={espId(esp)} value={espId(esp)}>{cicloLabel(esp)}</option>
-          ))}
-        </select>
-      </label>
-      <label className="block text-xs font-semibold text-muted">
-        Alumnos
-        <input type="number" min="1" step="1" className="input mt-1 w-24" value={newCantidad} disabled={saving} onChange={(event) => setNewCantidad(event.target.value)} />
-      </label>
-      <div className="flex gap-2">
-        <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={onAdd}>
-          {saving ? "…" : "Añadir"}
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-surface-300 bg-surface-50 p-2">
+      <select
+        className="select-input min-w-0 flex-1 py-1.5 text-sm"
+        aria-label="Ciclo a añadir"
+        value={newEspId}
+        disabled={saving}
+        autoFocus
+        onChange={(event) => setNewEspId(event.target.value)}
+      >
+        <option value="">Selecciona un ciclo</option>
+        {missing.map((esp) => (
+          <option key={espId(esp)} value={espId(esp)}>{cicloLabel(esp)}</option>
+        ))}
+      </select>
+      <input
+        type="number"
+        min="1"
+        step="1"
+        aria-label="Número de plazas"
+        title="Número de plazas"
+        className="input w-20 py-1.5 text-sm"
+        value={newCantidad}
+        disabled={saving}
+        onChange={(event) => setNewCantidad(event.target.value)}
+      />
+      <span className="flex gap-1">
+        <button type="button" className={iconBtnClass} disabled={saving || !newEspId} onClick={onAdd} aria-label="Añadir ciclo" title="Añadir">
+          <FaCheck aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
-        <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={onCancel}>
-          Cancelar
+        <button type="button" className={iconBtnClass} disabled={saving} onClick={onCancel} aria-label="Cancelar" title="Cancelar">
+          <FaXmark aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
-      </div>
+      </span>
     </div>
   );
 }
