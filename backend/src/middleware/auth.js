@@ -48,7 +48,7 @@ function buildRequireAuth({ allowPendingPasswordChange = false } = {}) {
   return async function requireAuth(req, res, next) {
     const header = req.headers['authorization'];
     if (!header || !header.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No autenticado. Se requiere token de acceso.' });
+      return res.status(401).json({ error: 'No autenticado. Se requiere token de acceso.', code: 'AUTH_REQUIRED' });
     }
     const token = header.slice(7);
 
@@ -56,7 +56,7 @@ function buildRequireAuth({ allowPendingPasswordChange = false } = {}) {
     try {
       payload = jwt.verify(token, getJwtSecret());
     } catch {
-      return res.status(401).json({ error: 'Token inválido o expirado. Inicie sesión de nuevo.' });
+      return res.status(401).json({ error: 'Token inválido o expirado. Inicie sesión de nuevo.', code: 'TOKEN_INVALID' });
     }
 
     let account;
@@ -102,10 +102,10 @@ const requireAuthAllowPasswordChange = buildRequireAuth({ allowPendingPasswordCh
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ error: 'No autenticado.' });
+      return res.status(401).json({ error: 'No autenticado.', code: 'AUTH_REQUIRED' });
     }
     if (!roles.includes(req.user.rol)) {
-      return res.status(403).json({ error: 'No tiene permiso para realizar esta acción.' });
+      return res.status(403).json({ error: 'No tiene permiso para realizar esta acción.', code: 'FORBIDDEN' });
     }
     next();
   };

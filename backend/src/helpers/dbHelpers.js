@@ -114,22 +114,22 @@ async function callProcedureWithResult(conn, name, params) {
 // Maps MySQL errors to HTTP-friendly objects
 function mapSqlError(err) {
   if (err.sqlState === '45000') {
-    return { status: 400, message: err.message };
+    return { status: 400, message: err.message, code: 'REGLA_NEGOCIO' };
   }
   if (err.code === 'ER_DUP_ENTRY') {
-    return { status: 409, message: 'Ya existe un registro con esos datos.' };
+    return { status: 409, message: 'Ya existe un registro con esos datos.', code: 'DUPLICADO' };
   }
   if (err.code === 'ER_CHECK_CONSTRAINT_VIOLATED') {
-    return { status: 400, message: err.message };
+    return { status: 400, message: err.message, code: 'RESTRICCION' };
   }
   console.error('DB error:', err);
-  return { status: 500, message: 'Error interno del servidor.' };
+  return { status: 500, message: 'Error interno del servidor.', code: 'INTERNAL' };
 }
 
 // Sends a standardised error response
 function sendSqlError(res, err) {
   const mapped = mapSqlError(err);
-  return res.status(mapped.status).json({ error: mapped.message });
+  return res.status(mapped.status).json({ error: mapped.message, code: mapped.code });
 }
 
 module.exports = {

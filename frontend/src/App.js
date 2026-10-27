@@ -17,6 +17,7 @@ import RequireRole from "./components/auth/RequireRole.jsx";
 import CambiarPassword from "./pages/CambiarPassword.jsx";
 
 import "./styles/main.css";
+import "./styles/forms.css";
 
 // Wraps a page with the shared Header + Footer layout
 const Page = ({ children }) => <PageLayout>{children}</PageLayout>;

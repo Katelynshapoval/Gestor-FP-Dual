@@ -11,7 +11,7 @@ function redirectByRole(rol, navigate) {
 }
 
 const Login = () => {
-  const { setUser } = useUser();
+  const { setUser, sessionNotice, clearSessionNotice } = useUser();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -29,6 +29,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    clearSessionNotice();
     setLoading(true);
     try {
       const res = await fetch("/auth/login", {
@@ -151,7 +152,7 @@ const Login = () => {
               {loading ? "Guardando…" : "Establecer contraseña"}
             </button>
 
-            {error && <div className="login-error">{error}</div>}
+            {error && <div className="login-error" role="alert">{error}</div>}
           </form>
         </div>
       </div>
@@ -167,12 +168,19 @@ const Login = () => {
         <h2>Bienvenido</h2>
         <p className="subtitle">FP Dual Intensiva · Salesianos Zaragoza</p>
 
+        {sessionNotice && (
+          <p role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left text-sm text-amber-900">
+            {sessionNotice}
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4 text-left mt-5">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <label htmlFor="login-usuario" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Usuario
             </label>
             <input
+              id="login-usuario"
               type="text"
               autoComplete="username"
               placeholder="Correo, CIF o DNI/NIE"
@@ -184,10 +192,11 @@ const Login = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <label htmlFor="login-password" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Contraseña
             </label>
             <input
+              id="login-password"
               type="password"
               autoComplete="current-password"
               placeholder="••••••••"

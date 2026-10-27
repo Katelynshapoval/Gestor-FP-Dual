@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import Modal from "../ui/Modal.jsx";
 
 const FeedbackContext = createContext(null);
 
@@ -47,59 +48,35 @@ function ToastCard({ toast, onDismiss }) {
   );
 }
 
+// Built on the shared Modal: focus trap, Escape, stacking above other dialogs.
 function ConfirmDialog({ dialog, onResolve }) {
-  const titleId = useId();
   const cancelRef = useRef(null);
   const danger = dialog.tone === "danger";
 
-  useEffect(() => {
-    cancelRef.current?.focus();
-    const onKey = (event) => {
-      if (event.key === "Escape") onResolve(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [dialog, onResolve]);
-
   return (
-    <div
-      className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-      onClick={() => onResolve(false)}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="w-full max-w-md space-y-4 rounded-xl2 bg-white p-6 shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h3 id={titleId} className="font-semibold text-gray-900">
-          {dialog.title}
-        </h3>
-        <p className="text-sm leading-6 text-gray-600">{dialog.message}</p>
-        <div className="flex justify-end gap-2">
-          <button
-            ref={cancelRef}
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => onResolve(false)}
-          >
+    <Modal
+      open
+      onClose={() => onResolve(false)}
+      title={dialog.title}
+      size="sm"
+      initialFocusRef={cancelRef}
+      footer={
+        <>
+          <button ref={cancelRef} type="button" className="btn btn-secondary btn-sm" onClick={() => onResolve(false)}>
             {dialog.cancelLabel}
           </button>
           <button
             type="button"
-            className={
-              danger
-                ? "rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
-                : "btn btn-primary btn-sm shadow-none"
-            }
+            className={`btn btn-sm ${danger ? "btn-danger" : "btn-primary"}`}
             onClick={() => onResolve(true)}
           >
             {dialog.confirmLabel}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p className="text-sm leading-6 text-charcoal-800">{dialog.message}</p>
+    </Modal>
   );
 }
 
