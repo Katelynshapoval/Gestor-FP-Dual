@@ -96,7 +96,7 @@ a {
   margin-top: 1rem;
 }
 
-/* Modal (ConvenioViewer y similares) */
+/* Legacy modal classes (still used by .modal-close in the shared Modal) */
 .modal-overlay {
   position: fixed;
   inset: 0;

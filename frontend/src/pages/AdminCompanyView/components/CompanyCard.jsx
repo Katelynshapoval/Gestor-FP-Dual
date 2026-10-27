@@ -20,7 +20,8 @@ import {
   signedBadgeClass,
   toggleBtnClass,
 } from "../../../components/ui/cardStyles";
-import { reservaEstadoClass } from "../../../utils/reservaEstados.js";
+import ReservaDetalle from "../../../components/reservas/ReservaDetalle.jsx";
+import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBadges.jsx";
 import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
 import AsignarAlumnoModal from "./AsignarAlumnoModal.jsx";
 import CupoReductionDialog from "../../../components/CupoReductionDialog.jsx";
@@ -274,8 +275,10 @@ function AddRow({ missing, newEspId, newCantidad, setNewEspId, setNewCantidad, s
   );
 }
 
-// Students reserved by this empresa, shown in the Reservas inner tab
-const ReservasList = ({ reservations, onAssign }) => {
+// Reservations of THIS application (this convocatoria only, WF-9). Each one
+// opens the shared ReservaDetalle panel.
+const ReservasList = ({ reservations, onAssign, onUpdated }) => {
+  const [abierta, setAbierta] = useState(null);
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -284,30 +287,36 @@ const ReservasList = ({ reservations, onAssign }) => {
         </button>
       </div>
       {!reservations || reservations.length === 0 ? (
-        <p className="py-4 text-center text-sm text-gray-500">Sin reservas asociadas.</p>
+        <p className="py-4 text-center text-sm text-muted">Esta solicitud no tiene reservas.</p>
       ) : (
         <div className="space-y-2">
           {reservations.map((r) => (
             <div
               key={r.id_reserva}
-              className="flex items-center justify-between gap-3 rounded-lg border border-surface-200 bg-white px-4 py-2.5"
+              className="flex flex-col gap-2 rounded-lg border border-surface-200 bg-white px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{r.alumno}</p>
-                <p className="text-xs text-gray-500">
-                  {r.especialidad} · {r.dni_alumno}
+                <p className="text-xs text-muted">
+                  {[r.especialidad, r.dni_alumno, r.tipo_contrato].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className={`${signedBadgeClass} ${reservaEstadoClass(r.estado_reserva, { bordered: false })}`}>
-                  {r.estado_reserva}
-                </span>
-                {r.tipo_contrato && <span className="text-[0.7rem] text-gray-400">{r.tipo_contrato}</span>}
+              <div className="flex flex-col gap-2 sm:items-end">
+                <ReservaResumenBadges estado={r.estado_reserva} resumen={r.documentos_resumen} />
+                <button type="button" className="btn btn-secondary btn-sm w-fit" onClick={() => setAbierta(r.id_reserva)}>
+                  Gestionar reserva
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+      <ReservaDetalle
+        idReserva={abierta}
+        open={Boolean(abierta)}
+        onClose={() => setAbierta(null)}
+        onChanged={onUpdated}
+      />
     </div>
   );
 };
@@ -636,7 +645,7 @@ const CompanyCard = ({
 
             {/* Reservations tab */}
             {innerTab === "reservas" && (
-              <ReservasList reservations={reservations} onAssign={() => setAssigning(true)} />
+              <ReservasList reservations={reservations} onAssign={() => setAssigning(true)} onUpdated={onUpdated} />
             )}
             {assigning && (
               <AsignarAlumnoModal

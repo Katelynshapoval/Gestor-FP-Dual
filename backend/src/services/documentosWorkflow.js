@@ -14,6 +14,7 @@ const {
   actorLabel,
   CONTEXTO_LABEL,
   SIGN_ROLES,
+  CATALOGUE,
 } = require("./documentCatalogue");
 
 async function tipoIdByNombre(clave, conn = pool) {
@@ -582,6 +583,111 @@ async function buildStaffList() {
   return items;
 }
 
+// Current documents of ONE reservation (annex of the stored contract family and
+// calendar), projected for `rol` exactly as the lists project them, so every
+// screen shows the same state and the same permitted actions.
+// reserva: { id_reserva, tipo_contrato_clave, alumno, dni, empresa, cif,
+//            especialidad, convocatoria, id_* … }
+async function reservaDocumentos(reserva, rol) {
+  const docMap = await latestDocs("d.id_reserva = ?", [reserva.id_reserva]);
+  const firmaMap = await loadFirmas(Object.values(docMap).map((d) => d.id_documento));
+  const templates = await activeTemplateClaves();
+  const ctx = {
+    id_reserva: reserva.id_reserva,
+    id_solicitud_alumno: reserva.id_solicitud_alumno,
+    id_solicitud_empresa: reserva.id_solicitud_empresa,
+    id_alumno: reserva.id_alumno,
+    id_empresa: reserva.id_empresa,
+    id_especialidad: reserva.id_especialidad,
+    id_convocatoria: reserva.id_convocatoria,
+    alumno: reserva.alumno,
+    dni: reserva.dni,
+    empresa: reserva.empresa,
+    cif: reserva.cif,
+    especialidad: reserva.especialidad,
+    convocatoria: reserva.convocatoria,
+  };
+  const items = [];
+  const anexoClave = anexoClaveForContrato(reserva.tipo_contrato_clave);
+  const claves = anexoClave ? [anexoClave, "CALENDARIO"] : ["CALENDARIO"];
+  for (const clave of claves) {
+    const def = defByClave(clave);
+    const row = pick(docMap, `R:${reserva.id_reserva}`, clave);
+    const item = projectItem(
+      def,
+      rol,
+      { ...ctx, tipo_contrato: clave === anexoClave ? reserva.tipo_contrato || null : null },
+      row,
+      row ? firmaMap[row.id_documento] || [] : [],
+      { templates },
+    );
+    if (item) items.push(item);
+  }
+  return items;
+}
+
+// WF-15: real document state per reservation for list badges.
+// Returns { [id_reserva]: { anexo: {clave, estado_operativo, estado_operativo_label, firmas_pendientes} | null,
+//                           calendario: {…} } }. `anexo` is null while no contract type is set.
+async function reservaDocSummary(reservas) {
+  const out = {};
+  if (!reservas.length) return out;
+  const docMap = await latestDocs("d.id_reserva IN (?)", [reservas.map((r) => r.id_reserva)]);
+  const firmaMap = await loadFirmas(Object.values(docMap).map((d) => d.id_documento));
+  const templates = await activeTemplateClaves();
+  const summarize = (clave, idReserva) => {
+    const def = defByClave(clave);
+    const row = pick(docMap, `R:${idReserva}`, clave);
+    const derived = deriveDocumentState(def, row, row ? firmaMap[row.id_documento] || [] : [], {
+      templateAvailable: templates.has(clave),
+    });
+    return {
+      clave,
+      id_documento: row?.id_documento || null,
+      estado_operativo: derived.estado_operativo,
+      estado_operativo_label: derived.estado_operativo_label,
+      firmas_pendientes: derived.firmas.filter((f) => f.estado !== "FIRMADO").map((f) => f.rol),
+    };
+  };
+  for (const r of reservas) {
+    const anexoClave = anexoClaveForContrato(r.tipo_contrato_clave);
+    out[r.id_reserva] = {
+      anexo: anexoClave ? summarize(anexoClave, r.id_reserva) : null,
+      calendario: summarize("CALENDARIO", r.id_reserva),
+    };
+  }
+  return out;
+}
+
+// Earlier (non-current) document versions of a reservation, e.g. annexes
+// retired by a cancel/re-book or a contract-type correction, plus legacy
+// documents the catalogue no longer lists (e.g. the old Anexo H). Staff only.
+const LEGACY_RESERVA_CLAVES = CATALOGUE.filter((d) => d.legacy && d.ambito === "reserva").map((d) => d.clave);
+
+async function reservaHistorial(idReserva) {
+  const [rows] = await pool.query(
+    `SELECT d.id_documento, td.nombre AS clave, ev.nombre AS estado_validacion,
+            d.registrado_en, d.motivo,
+            CASE WHEN d.archivo IS NULL THEN 0 ELSE 1 END AS tiene_archivo
+       FROM dual_documentos d
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+      WHERE d.id_reserva = ? AND (d.es_actual = 0 OR td.nombre IN (?))
+      ORDER BY d.id_documento DESC`,
+    [idReserva, LEGACY_RESERVA_CLAVES.length ? LEGACY_RESERVA_CLAVES : ["__ninguno__"]],
+  );
+  return rows.map((r) => ({
+    id_documento: r.id_documento,
+    clave: r.clave,
+    nombre: defByClave(r.clave)?.nombre || r.clave,
+    estado_validacion: r.estado_validacion,
+    registrado_en: r.registrado_en,
+    motivo: r.motivo,
+    tiene_archivo: Boolean(r.tiene_archivo),
+    motivo_historial: LEGACY_RESERVA_CLAVES.includes(r.clave) ? "LEGACY" : "VERSION_ANTERIOR",
+  }));
+}
+
 async function queryStaffPage(rawQuery) {
   const items = await buildStaffList();
   return buildStaffPage(items, rawQuery);
@@ -631,6 +737,9 @@ module.exports = {
   queryStaffPage,
   attachSolicitudDocumentos,
   missingStudentValidation,
+  reservaDocumentos,
+  reservaDocSummary,
+  reservaHistorial,
   alumnoMaySee,
   actorOf,
   activeTemplateClaves,

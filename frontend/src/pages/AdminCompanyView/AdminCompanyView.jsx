@@ -9,21 +9,12 @@ import { signedBadgeClass } from "../../components/ui/cardStyles";
 import { getJSON, postJSON } from "../../utils/api.js";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
 
-import ConvenioViewer from "./components/ConvenioViewer";
 import CompanyCard from "./components/CompanyCard";
+import PdfViewer from "../../components/ui/PdfViewer.jsx";
+import MotivoDialog from "../../components/ui/MotivoDialog.jsx";
 import ReservasAdmin from "./components/ReservasAdmin";
 import PageHeader from "../../components/ui/PageHeader";
 import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
-
-function getCourseLabel(dateStr) {
-  if (!dateStr) return null;
-  try {
-    const y = new Date(dateStr).getFullYear();
-    return `${y}/${y + 1}`;
-  } catch {
-    return null;
-  }
-}
 
 const AdminCompanyView = () => {
   const { user } = useUser();
@@ -38,6 +29,9 @@ const AdminCompanyView = () => {
   const [error, setError] = useState(null);
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [viewingConvenio, setViewingConvenio] = useState(null);
+  const [rejectingConvenio, setRejectingConvenio] = useState(false);
+  const [convenioBusy, setConvenioBusy] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
   const [resetResult, setResetResult] = useState({});
 
   const [page, setPage] = useState(1);
@@ -56,6 +50,8 @@ const AdminCompanyView = () => {
       return;
     }
 
+    setLoading(true);
+    setError(null);
     Promise.all([
       getJSON("/solicitudes/empresa/todas"),
       getJSON("/reservas"),
@@ -75,7 +71,7 @@ const AdminCompanyView = () => {
         setError(err.message);
         setLoading(false);
       });
-  }, [user, navigate]);
+  }, [user, navigate, reloadToken]);
 
   const fetchCompanies = () =>
     getJSON("/solicitudes/empresa/todas")
@@ -96,28 +92,30 @@ const AdminCompanyView = () => {
       return n;
     });
 
-  const handleValidateConvenio = async (idDocumento) => {
+  // Validation requires the company's signature (Phase 2, D1): the backend
+  // explains what is missing and the message is shown as it comes.
+  const handleValidateConvenio = async () => {
+    setConvenioBusy(true);
     try {
-      await postJSON(`/documentos/${idDocumento}/validar`, {});
-      toast.success("Convenio validado.");
+      const data = await postJSON(`/documentos/${viewingConvenio.id_documento_convenio}/validar`, {});
+      toast.success(data.message || "Convenio validado.");
       setViewingConvenio(null);
       fetchCompanies();
     } catch (err) {
       toast.error(err.message || "No se pudo validar el convenio.");
+    } finally {
+      setConvenioBusy(false);
     }
   };
 
   // WF-7: the convenio can be rejected from its viewer. The company application
   // itself is not changed (decision D6 is still open).
-  const handleRejectConvenio = async (idDocumento, motivo) => {
-    try {
-      await postJSON(`/documentos/${idDocumento}/rechazar`, { motivo });
-      toast.success("Convenio rechazado. La empresa debe subir uno nuevo.");
-      setViewingConvenio(null);
-      fetchCompanies();
-    } catch (err) {
-      toast.error(err.message || "No se pudo rechazar el convenio.");
-    }
+  const handleRejectConvenio = async (motivo) => {
+    await postJSON(`/documentos/${viewingConvenio.id_documento_convenio}/rechazar`, { motivo });
+    toast.success("Convenio rechazado. La empresa debe subir uno nuevo.");
+    setRejectingConvenio(false);
+    setViewingConvenio(null);
+    fetchCompanies();
   };
 
   // The temporary password stays on screen for two minutes at most (WF-10)
@@ -164,10 +162,9 @@ const AdminCompanyView = () => {
       }
     }
   }
+  // WF-9: the course is the application's convocatoria, not its submission date.
   const availableCourses = [
-    ...new Set(
-      companies.map((c) => getCourseLabel(c.fechaPeticion)).filter(Boolean),
-    ),
+    ...new Set(companies.map((c) => c.convocatoria).filter(Boolean)),
   ].sort((a, b) => b.localeCompare(a));
 
   let filtered = companies
@@ -186,8 +183,7 @@ const AdminCompanyView = () => {
       )
         return false;
       if (filterConvenio === "sin_convenio" && c.tieneConvenio) return false;
-      if (filterCourse && getCourseLabel(c.fechaPeticion) !== filterCourse)
-        return false;
+      if (filterCourse && c.convocatoria !== filterCourse) return false;
       if (filterCambios === "pendiente" && !c.cambio_pendiente) return false;
       return true;
     })
@@ -217,7 +213,7 @@ const AdminCompanyView = () => {
   const totalSin = companies.filter((c) => !c.tieneConvenio).length;
   const totalCambios = companies.filter((c) => c.cambio_pendiente).length;
   const pendingDocs = allReservations.filter(
-    (r) => r.id_documento_reserva && r.estado_documento === "PENDIENTE",
+    (r) => r.documentos_resumen?.anexo?.estado_operativo === "PENDIENTE_VALIDACION",
   ).length;
 
   const selectCls =
@@ -226,17 +222,21 @@ const AdminCompanyView = () => {
   if (loading)
     return (
       <div className="page-container">
-        <p className="rounded-xl2 border border-surface-200 bg-white py-12 text-center text-sm text-muted shadow-card">
-          Cargando…
+        <p role="status" className="rounded-xl2 border border-surface-200 bg-white py-12 text-center text-sm text-muted shadow-card">
+          Cargando empresas y reservas…
         </p>
       </div>
     );
   if (error)
     return (
       <div className="page-container">
-        <p className="rounded-xl2 border border-red-200 bg-red-50 py-12 text-center text-sm text-red-700">
-          Error: {error}
-        </p>
+        <div role="alert" className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
+          <p className="font-semibold text-charcoal-950">No se pudieron cargar las empresas.</p>
+          <p className="mt-2 text-sm text-muted">{error}</p>
+          <button type="button" className="btn btn-primary btn-sm mt-4" onClick={() => setReloadToken((n) => n + 1)}>
+            Reintentar
+          </button>
+        </div>
       </div>
     );
 
@@ -276,23 +276,29 @@ const AdminCompanyView = () => {
         }
       />
 
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-surface-200" role="tablist" aria-label="Vista">
         <button
+          type="button"
+          role="tab"
+          aria-selected={mainView === "empresas"}
           onClick={() => setMainView("empresas")}
           className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
             mainView === "empresas"
-              ? "border-red-600 text-red-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
+              ? "border-brand-500 text-brand-600"
+              : "border-transparent text-muted hover:text-charcoal-900"
           }`}
         >
           Empresas
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={mainView === "reservas"}
           onClick={() => setMainView("reservas")}
           className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
             mainView === "reservas"
-              ? "border-red-600 text-red-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
+              ? "border-brand-500 text-brand-600"
+              : "border-transparent text-muted hover:text-charcoal-900"
           }`}
         >
           Reservas
@@ -305,25 +311,7 @@ const AdminCompanyView = () => {
       </div>
 
       {mainView === "reservas" && (
-        <ReservasAdmin
-          reservations={allReservations}
-          onReservationUpdate={() =>
-            getJSON("/reservas").then(setAllReservations)
-          }
-          onAdminCancel={async (idReserva, motivo) => {
-            try {
-              await postJSON(`/reservas/${idReserva}/cancelar-admin`, {
-                motivo,
-              });
-              const data = await getJSON("/reservas");
-              setAllReservations(Array.isArray(data) ? data : []);
-              toast.success("Reserva cancelada correctamente.");
-            } catch (err) {
-              toast.error(err.message || "Error al cancelar la reserva.");
-              throw err;
-            }
-          }}
-        />
+        <ReservasAdmin reservations={allReservations} onReservationUpdate={refreshCompanyData} />
       )}
 
       {mainView === "empresas" && (
@@ -419,7 +407,7 @@ const AdminCompanyView = () => {
                 key={empresa.id_solicitud_empresa}
                 empresa={empresa}
                 reservations={allReservations.filter(
-                  (r) => String(r.idempresa) === String(empresa.id_empresa),
+                  (r) => String(r.id_solicitud_empresa) === String(empresa.id_solicitud_empresa),
                 )}
                 transports={transports}
                 catalogo={catalogo}
@@ -448,12 +436,41 @@ const AdminCompanyView = () => {
         </>
       )}
 
-      {/* Convenio document viewer modal */}
-      <ConvenioViewer
-        empresa={viewingConvenio}
+      {/* Convenio viewer: the shared PdfViewer with review actions */}
+      <PdfViewer
+        open={Boolean(viewingConvenio)}
         onClose={() => setViewingConvenio(null)}
-        onValidate={handleValidateConvenio}
-        onReject={handleRejectConvenio}
+        idDocumento={viewingConvenio?.id_documento_convenio}
+        title={`Convenio · ${viewingConvenio?.empresa || viewingConvenio?.razonSocial || ""}`}
+        description={viewingConvenio?.convocatoria}
+        estado={
+          viewingConvenio
+            ? { kind: "validacion", value: viewingConvenio.convenio_estado || (viewingConvenio.convenio_validado ? "VALIDADO" : "PENDIENTE") }
+            : undefined
+        }
+        busy={convenioBusy}
+        actions={
+          viewingConvenio && viewingConvenio.convenio_estado === "PENDIENTE" && viewingConvenio.id_documento_convenio ? (
+            <>
+              <button type="button" className="btn btn-danger btn-sm" onClick={() => setRejectingConvenio(true)} disabled={convenioBusy}>
+                Rechazar convenio
+              </button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={handleValidateConvenio} disabled={convenioBusy}>
+                Validar convenio
+              </button>
+            </>
+          ) : null
+        }
+      />
+      <MotivoDialog
+        open={rejectingConvenio}
+        onClose={() => setRejectingConvenio(false)}
+        onConfirm={handleRejectConvenio}
+        title="Rechazar convenio"
+        description="La empresa verá el motivo y tendrá que subir un convenio nuevo. La solicitud de la empresa no cambia de estado."
+        label="Motivo del rechazo"
+        confirmLabel="Rechazar convenio"
+        busyLabel="Rechazando…"
       />
     </div>
   );

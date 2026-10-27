@@ -81,10 +81,14 @@ const TutorAssignSelect = ({
   return (
     <div className={`rounded-lg border border-surface-200 bg-surface-50 px-3 py-2.5 ${className}`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <span className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted">
+        <label
+          htmlFor={`tutor-reserva-${idReserva}`}
+          className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted"
+        >
           Tutor de empresa
-        </span>
+        </label>
         <select
+          id={`tutor-reserva-${idReserva}`}
           className="select-input w-full py-2 text-sm sm:flex-1"
           value={value}
           disabled={saving || !idEmpresa}

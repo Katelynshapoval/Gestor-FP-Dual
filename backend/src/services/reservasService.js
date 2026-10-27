@@ -1,8 +1,8 @@
 const pool = require('../db/pool');
 const { getCompanyIdFromUser, getStudentIdFromUser, sendSqlError, callProcedureWithResult, callProcedure } = require('../helpers/dbHelpers');
-const { attachSolicitudDocumentos } = require('./documentosWorkflow');
+const { attachSolicitudDocumentos, reservaDocumentos, reservaDocSummary, reservaHistorial } = require('./documentosWorkflow');
 const { ESTADOS_RESERVA } = require('../constants/reservaEstados');
-const { anexoClaveSql, anexoClaveForContrato, defByClave } = require('./documentCatalogue');
+const { anexoClaveSql, anexoClaveForContrato, defByClave, pendingSignatures } = require('./documentCatalogue');
 const { recordEvent, recordEventAfterCommit } = require('./auditLog');
 const reglas = require('./estadoReglas');
 
@@ -32,6 +32,13 @@ async function resolveReservaId(callRow, idSolicitudAlumno, idOferta) {
   if (fromCall) return fromCall;
   const pair = await loadReservaPair(idSolicitudAlumno, idOferta);
   return parseId(pair?.id_reserva);
+}
+
+// WF-15: real annex/calendar state for each listed reservation.
+async function withDocResumen(rows) {
+  if (!rows.length) return rows;
+  const resumen = await reservaDocSummary(rows);
+  return rows.map((r) => ({ ...r, documentos_resumen: resumen[r.id_reserva] || null }));
 }
 
 async function validateReservaTargets(idSolicitudAlumno, idOferta, { requireActive = false } = {}) {
@@ -218,6 +225,9 @@ exports.getAll = async function (req, res) {
         r.motivo,
         r.id_tipo_contrato,
         tc.nombre_mostrar AS tipo_contrato,
+        tc.nombre AS tipo_contrato_clave,
+        se.id_solicitud_empresa,
+        se.id_convocatoria AS id_convocatoria_empresa,
         sa.id_solicitud_alumno,
         a.idalumno,
         a.nombre AS alumno,
@@ -230,6 +240,8 @@ exports.getAll = async function (req, res) {
         emp.empresa,
         ee.cantidad_alumnos AS plazas_ofertadas,
         coord.email AS email_coordinador,
+        conv.nombre AS convocatoria,
+        conv.activa AS convocatoria_activa,
         r.id_empresa_tutor,
         tutor_c.nombre AS tutor_nombre,
         tutor_c.email AS tutor_email,
@@ -257,12 +269,13 @@ exports.getAll = async function (req, res) {
      JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
      JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
      JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
+     JOIN dual_convocatorias conv ON conv.id_convocatoria = se.id_convocatoria
      LEFT JOIN dual_empresa_tutores t ON t.id_empresa_tutor = r.id_empresa_tutor
      LEFT JOIN ge_contactos tutor_c ON tutor_c.idcontacto = t.id_contacto
     ORDER BY r.id_reserva DESC`
   );
 
-  return res.json(rows);
+  return res.json(await withDocResumen(rows));
 };
 
 // GET /reservas/empresa — empresa's own reservations
@@ -276,6 +289,9 @@ exports.getMisReservas = async function (req, res) {
         er.nombre AS estado_reserva,
         r.motivo,
         tc.nombre_mostrar AS tipo_contrato,
+        tc.nombre AS tipo_contrato_clave,
+        se.id_solicitud_empresa,
+        se.id_convocatoria AS id_convocatoria_empresa,
         sa.id_solicitud_alumno,
         a.idalumno,
         a.nombre AS alumno,
@@ -319,7 +335,7 @@ exports.getMisReservas = async function (req, res) {
     [idEmpresa]
   );
 
-  return res.json(rows);
+  return res.json(await withDocResumen(rows));
 };
 
 // GET /reservas/alumno — ALUMNO: reservations for own applications only
@@ -333,6 +349,9 @@ exports.getReservasAlumno = async function (req, res) {
         er.nombre AS estado_reserva,
         r.motivo,
         tc.nombre_mostrar AS tipo_contrato,
+        tc.nombre AS tipo_contrato_clave,
+        se.id_solicitud_empresa,
+        se.id_convocatoria AS id_convocatoria_empresa,
         emp.empresa,
         esp.nombre AS especialidad,
         esp.codigo AS codigo_especialidad,
@@ -360,7 +379,7 @@ exports.getReservasAlumno = async function (req, res) {
     [idAlumno]
   );
 
-  return res.json(rows);
+  return res.json(await withDocResumen(rows));
 };
 
 const ACTIVE_PAIR_SQL = `
@@ -386,6 +405,11 @@ exports.getOfertasElegibles = async function (req, res) {
   if (!idSolicitudAlumno) {
     return res.status(400).json({ error: 'Se requiere id_solicitud_alumno.' });
   }
+  // WF-8: ?reasignar_desde=<id_reserva> lists destinations for moving that
+  // reservation, so a confirmed student is not excluded (sp_reasignar_reserva
+  // supports it). The new reservation starts PENDIENTE.
+  const idOrigen = parseId(req.query.reasignar_desde);
+  if (idOrigen) return ofertasParaReasignar(res, idSolicitudAlumno, idOrigen);
 
   const [rows] = await pool.query(
     `SELECT
@@ -425,6 +449,61 @@ exports.getOfertasElegibles = async function (req, res) {
 
   return res.json(rows);
 };
+
+async function ofertasParaReasignar(res, idSolicitudAlumno, idOrigen) {
+  const [origen] = await pool.query(
+    `SELECT r.id_solicitud_empresa_especialidad, er.nombre AS estado
+       FROM dual_reservas r
+       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+      WHERE r.id_reserva = ? AND r.id_solicitud_alumno = ?`,
+    [idOrigen, idSolicitudAlumno]
+  );
+  if (!origen[0]) return res.status(404).json({ error: 'La reserva de origen no existe.', code: 'NOT_FOUND' });
+  if (origen[0].estado === ESTADOS_RESERVA.CANCELADA) {
+    return res.status(400).json({ error: 'No se puede reasignar una reserva cancelada.', code: 'RESERVA_CANCELADA' });
+  }
+  const [rows] = await pool.query(
+    `SELECT
+        ee.id_solicitud_empresa_especialidad,
+        se.id_solicitud_empresa,
+        se.id_empresa,
+        emp.empresa,
+        se.id_convocatoria,
+        c.nombre AS convocatoria,
+        ee.id_especialidad,
+        esp.nombre AS especialidad,
+        esp.codigo AS codigo_especialidad,
+        ee.cantidad_alumnos AS plazas_ofertadas,
+        fn_reservas_activas(ee.id_solicitud_empresa_especialidad) AS plazas_ocupadas,
+        fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) AS plazas_disponibles
+       FROM dual_solicitudes_alumno sa
+       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+       JOIN dual_solicitud_empresa_especialidades ee
+         ON ee.id_especialidad = a.id_especialidad_dual
+       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+        AND se.id_convocatoria = sa.id_convocatoria
+       JOIN dual_estados_validacion ev_e
+         ON ev_e.id_estado_validacion = se.id_estado_validacion
+        AND ev_e.nombre = 'VALIDADO'
+       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
+       JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
+       JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+      WHERE sa.id_solicitud_alumno = ?
+        AND ee.id_solicitud_empresa_especialidad <> ?
+        AND fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) > 0
+        AND NOT EXISTS (
+              SELECT 1
+                FROM dual_reservas r
+                JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+               WHERE r.id_solicitud_alumno = sa.id_solicitud_alumno
+                 AND r.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad
+                 AND er.nombre IN (?, ?)
+            )
+      ORDER BY emp.empresa, esp.nombre`,
+    [idSolicitudAlumno, origen[0].id_solicitud_empresa_especialidad, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA]
+  );
+  return res.json(rows);
+}
 
 // GET /reservas/alumnos-elegibles — staff: validated students matching one company offer
 exports.getAlumnosElegibles = async function (req, res) {
@@ -859,6 +938,158 @@ exports.confirmar = async function (req, res) {
     }
     return sendSqlError(res, err);
   }
+};
+
+const STAFF = ['ADMINISTRADOR', 'COORDINADOR'];
+
+// Reservation row with everything the detail panel and the rules need.
+async function loadReservaCompleta(idReserva) {
+  const [rows] = await pool.query(
+    `SELECT r.id_reserva, er.nombre AS estado_reserva, r.motivo, r.id_tipo_contrato,
+            tc.nombre AS tipo_contrato_clave, tc.nombre_mostrar AS tipo_contrato,
+            r.id_empresa_tutor, tutor_c.nombre AS tutor_nombre, tutor_c.email AS tutor_email,
+            tutor_c.telefono AS tutor_telefono, t.activo AS tutor_activo,
+            sa.id_solicitud_alumno, sa.id_alumno, a.nombre AS alumno, a.dni,
+            se.id_solicitud_empresa, se.id_empresa, emp.empresa, emp.cif,
+            ee.id_solicitud_empresa_especialidad, ee.id_especialidad, esp.nombre AS especialidad,
+            esp.codigo AS codigo_especialidad,
+            se.id_convocatoria, c.nombre AS convocatoria, c.activa AS convocatoria_activa
+       FROM dual_reservas r
+       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+       LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+       JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+       JOIN dual_solicitud_empresa_especialidades ee
+         ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+       JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
+       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+       JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+       JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
+       LEFT JOIN dual_empresa_tutores t ON t.id_empresa_tutor = r.id_empresa_tutor
+       LEFT JOIN ge_contactos tutor_c ON tutor_c.idcontacto = t.id_contacto
+      WHERE r.id_reserva = ?`,
+    [idReserva]
+  );
+  return rows[0] || null;
+}
+
+function permitido(ok, motivo = null) {
+  return ok ? { permitido: true } : { permitido: false, motivo };
+}
+
+// GET /reservas/:id/detalle — one reservation with its documents, the confirmation
+// requirements and the actions the caller may take (staff, the owning company or
+// the student). The actions only guide the screen: every endpoint still applies
+// its own rules (Phase 2, estadoReglas).
+exports.getDetalle = async function (req, res) {
+  const idReserva = parseId(req.params.id);
+  if (!idReserva) return res.status(400).json({ error: 'Reserva no válida.', code: 'VALIDATION' });
+
+  const reserva = await loadReservaCompleta(idReserva);
+  if (!reserva) return res.status(404).json({ error: 'Reserva no encontrada.', code: 'NOT_FOUND' });
+
+  const rol = req.user.rol;
+  const isStaff = STAFF.includes(rol);
+  if (rol === 'EMPRESA') {
+    const idEmpresa = await getCompanyIdFromUser(req.user.id);
+    if (!idEmpresa || idEmpresa !== reserva.id_empresa) {
+      return res.status(403).json({ error: 'No tienes permiso para ver esta reserva.', code: 'FORBIDDEN' });
+    }
+  } else if (rol === 'ALUMNO') {
+    const idAlumno = await getStudentIdFromUser(req.user.id);
+    if (!idAlumno || idAlumno !== reserva.id_alumno) {
+      return res.status(403).json({ error: 'No tienes permiso para ver esta reserva.', code: 'FORBIDDEN' });
+    }
+  } else if (!isStaff) {
+    return res.status(403).json({ error: 'No tienes permiso para ver esta reserva.', code: 'FORBIDDEN' });
+  }
+
+  const estado = reserva.estado_reserva;
+  const activa = estado === ESTADOS_RESERVA.PENDIENTE || estado === ESTADOS_RESERVA.CONFIRMADA;
+  const documentos = await reservaDocumentos(reserva, rol);
+
+  // Confirmation checklist, from the same rule the confirm endpoint applies.
+  const clave = anexoClaveForContrato(reserva.tipo_contrato_clave);
+  const def = clave ? defByClave(clave) : null;
+  const anexos = await currentAnexos(pool, idReserva);
+  const anexoRow = clave ? anexos.find((a) => a.clave === clave) || null : null;
+  let firmas = [];
+  if (anexoRow) {
+    [firmas] = await pool.query('SELECT rol, estado FROM dual_documento_firmas WHERE id_documento = ?', [anexoRow.id_documento]);
+  }
+  const conArchivo = Boolean(anexoRow && Number(anexoRow.tiene_archivo));
+  const pendientes = def && conArchivo ? pendingSignatures(def, anexoRow, firmas) : [];
+  const nombreAnexo = def?.nombre || 'Anexo II/III';
+  const requisitos = [
+    { clave: 'TIPO_CONTRATO', ok: Boolean(reserva.id_tipo_contrato), texto: 'Tipo de contrato indicado' },
+    { clave: 'ANEXO_SUBIDO', ok: conArchivo, texto: `${nombreAnexo} subido o generado` },
+    { clave: 'FIRMAS', ok: conArchivo && pendientes.length === 0, texto: `${nombreAnexo} firmado por empresa, centro y alumno`, pendientes },
+    { clave: 'VALIDADO', ok: anexoRow?.estado_validacion === 'VALIDADO', texto: `${nombreAnexo} validado por el centro` },
+  ];
+  const bloqueoConfirmar = reglas.reservaConfirmable(
+    { estado, id_tipo_contrato: reserva.id_tipo_contrato, tipo_contrato: reserva.tipo_contrato_clave },
+    null, def, anexoRow, firmas,
+  );
+
+  // Would switching to the other annex family be refused right now? (D2)
+  let tipoBloqueo = null;
+  if (clave) {
+    const otra = clave === 'ANEXO_III' ? 'CONTRATO' : 'BECA';
+    tipoBloqueo = reglas.tipoContratoCambiable({ estado, tipo_contrato: reserva.tipo_contrato_clave }, otra, anexos);
+  }
+
+  const acciones = {
+    cambiar_tipo: isStaff
+      ? permitido(estado === ESTADOS_RESERVA.PENDIENTE, estado === ESTADOS_RESERVA.CONFIRMADA
+        ? 'El tipo de contrato de una reserva confirmada no se puede cambiar.'
+        : 'La reserva está cancelada.')
+      : permitido(false, 'Solo el centro indica el tipo de contrato.'),
+    cambio_familia: tipoBloqueo ? permitido(false, tipoBloqueo.error) : permitido(true),
+    confirmar: isStaff
+      ? permitido(!bloqueoConfirmar, bloqueoConfirmar?.error)
+      : permitido(false, 'Solo el centro confirma la reserva.'),
+    cancelar: isStaff
+      ? { ...permitido(activa, 'La reserva ya está cancelada.'), via: 'cancelar-admin' }
+      : rol === 'EMPRESA'
+        ? { ...permitido(estado === ESTADOS_RESERVA.PENDIENTE, estado === ESTADOS_RESERVA.CONFIRMADA
+          ? 'Una reserva confirmada solo la puede cancelar el centro.'
+          : 'La reserva ya está cancelada.'), via: 'cancelar' }
+        : permitido(false, null),
+    reasignar: isStaff ? permitido(activa, 'Una reserva cancelada no se puede reasignar.') : permitido(false, null),
+    asignar_tutor: isStaff || rol === 'EMPRESA' ? permitido(activa, 'La reserva está cancelada.') : permitido(false, null),
+  };
+
+  return res.json({
+    reserva: {
+      id_reserva: reserva.id_reserva,
+      estado_reserva: estado,
+      motivo: estado === ESTADOS_RESERVA.CANCELADA ? reserva.motivo : null,
+      id_tipo_contrato: reserva.id_tipo_contrato,
+      tipo_contrato: reserva.tipo_contrato,
+      tipo_contrato_clave: reserva.tipo_contrato_clave,
+      anexo_clave: clave,
+      id_empresa_tutor: reserva.id_empresa_tutor,
+      tutor_nombre: reserva.tutor_nombre,
+      tutor_email: reserva.tutor_email,
+      tutor_telefono: reserva.tutor_telefono,
+      tutor_activo: reserva.tutor_activo,
+      id_solicitud_alumno: reserva.id_solicitud_alumno,
+      alumno: reserva.alumno,
+      dni: rol === 'ALUMNO' || isStaff || rol === 'EMPRESA' ? reserva.dni : null,
+      id_solicitud_empresa: reserva.id_solicitud_empresa,
+      id_empresa: reserva.id_empresa,
+      empresa: reserva.empresa,
+      id_solicitud_empresa_especialidad: reserva.id_solicitud_empresa_especialidad,
+      especialidad: reserva.especialidad,
+      id_convocatoria: reserva.id_convocatoria,
+      convocatoria: reserva.convocatoria,
+      convocatoria_activa: Number(reserva.convocatoria_activa) === 1,
+    },
+    documentos,
+    historial: isStaff ? await reservaHistorial(idReserva) : [],
+    confirmacion: { lista: !bloqueoConfirmar, motivo: bloqueoConfirmar?.error || null, requisitos },
+    acciones,
+  });
 };
 
 exports.ESTADOS_RESERVA = ESTADOS_RESERVA;

@@ -1,26 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { getJSON, postJSON } from "../../utils/api.js";
-import { formatDocumentDate, openDocumento } from "../../utils/documentos.js";
+import { formatDocumentDate } from "../../utils/documentos.js";
 import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
-import StatusBadge from "../../components/ui/StatusBadge.jsx";
+import EstadoBadge from "../../components/ui/EstadoBadge.jsx";
+import PdfViewer from "../../components/ui/PdfViewer.jsx";
+import MotivoDialog from "../../components/ui/MotivoDialog.jsx";
+import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
+import { ACTOR } from "../../utils/labels.js";
 import { FILTER_LABEL_CLASS, FILTER_SELECT_CLASS } from "../LinkStudents/utils/filters";
 import PaginationBar from "../../components/ui/PaginationBar";
-
-const VARIANT = {
-  PENDIENTE_SUBIDA: "warning",
-  PENDIENTE_GENERACION: "warning",
-  PENDIENTE_VALIDACION: "warning",
-  RECHAZADO: "danger",
-  PENDIENTE_FIRMA: "info",
-  VALIDADO: "success",
-  COMPLETO: "success",
-};
-
-const ACTOR = {
-  CENTRO: "Centro",
-  EMPRESA: "Empresa",
-  ALUMNO: "Alumno",
-};
 
 const EMPTY_FILTERS = {
   convocatoria: "",
@@ -34,8 +22,6 @@ const EMPTY_FILTERS = {
 };
 
 const CONTROL_CLASS = `${FILTER_SELECT_CLASS} h-10 w-full`;
-const DANGER_BTN =
-  "inline-flex min-h-8 items-center justify-center rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors duration-150 hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50";
 
 function filtersKeyOf(query) {
   return JSON.stringify({
@@ -116,7 +102,8 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
   const [error, setError] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
   const [rejecting, setRejecting] = useState(null);
-  const [motivo, setMotivo] = useState("");
+  const [viewing, setViewing] = useState(null);
+  const [reservaAbierta, setReservaAbierta] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const requestRef = useRef(0);
   const skipRef = useRef("");
@@ -285,17 +272,15 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
                   key={itemKey(item)}
                   item={item}
                   busy={busyId === itemKey(item)}
-                  onView={() => openDocumento(item.id_documento).catch((err) => toast.error(err.message))}
+                  onView={() => setViewing(item)}
+                  onOpenReserva={item.id_reserva ? () => setReservaAbierta(item.id_reserva) : null}
                   onValidate={() =>
                     run(itemKey(item), async () => {
                       const data = await postJSON(`/documentos/${item.id_documento}/validar`, {});
                       toast.success(data.message || "Documento validado.");
                     })
                   }
-                  onReject={() => {
-                    setRejecting(item);
-                    setMotivo("");
-                  }}
+                  onReject={() => setRejecting(item)}
                   onGenerate={() => generar(item, false)}
                   onRegenerate={() => generar(item, true)}
                   onSign={() =>
@@ -322,46 +307,82 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
         </>
       )}
 
-      {rejecting && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/40 p-4" onClick={() => setRejecting(null)}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="rechazar-documento-titulo"
-            className="w-full max-w-md space-y-3 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 id="rechazar-documento-titulo" className="font-display text-lg font-semibold text-charcoal-950">
-              Rechazar {rejecting.nombre}
-            </h3>
-            <textarea
-              className="textarea min-h-24 text-sm"
-              value={motivo}
-              onChange={(event) => setMotivo(event.target.value)}
-              placeholder="Motivo del rechazo"
-            />
-            <div className="flex justify-end gap-2">
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRejecting(null)}>
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={DANGER_BTN}
-                disabled={!motivo.trim() || busyId === itemKey(rejecting)}
-                onClick={() =>
-                  run(itemKey(rejecting), async () => {
-                    await postJSON(`/documentos/${rejecting.id_documento}/rechazar`, { motivo: motivo.trim() });
-                    toast.success("Documento rechazado.");
-                    setRejecting(null);
-                  })
-                }
-              >
-                Rechazar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MotivoDialog
+        open={Boolean(rejecting)}
+        onClose={() => setRejecting(null)}
+        onConfirm={async (motivo) => {
+          await postJSON(`/documentos/${rejecting.id_documento}/rechazar`, { motivo });
+          toast.success("Documento rechazado.");
+          setRejecting(null);
+          setViewing(null);
+          reload();
+        }}
+        title={rejecting ? `Rechazar ${rejecting.nombre}` : "Rechazar documento"}
+        description="El motivo se muestra a quien tiene que sustituir el documento."
+        label="Motivo del rechazo"
+        confirmLabel="Rechazar documento"
+        busyLabel="Rechazando…"
+      />
+
+      <PdfViewer
+        open={Boolean(viewing)}
+        onClose={() => setViewing(null)}
+        idDocumento={viewing?.id_documento}
+        title={viewing ? [viewing.nombre, personLines(viewing).title].filter(Boolean).join(" · ") : ""}
+        description={viewing ? personLines(viewing).context : undefined}
+        estado={viewing ? { kind: "documento", value: viewing.estado_operativo, labelOverride: viewing.estado_operativo_label } : undefined}
+        firmas={viewing?.firmas || []}
+        motivo={viewing?.estado_operativo === "RECHAZADO" ? viewing.motivo : null}
+        busy={viewing ? busyId === itemKey(viewing) : false}
+        actions={
+          viewing && (viewing.puede_firmar || viewing.puede_revisar) ? (
+            <>
+              {viewing.puede_firmar && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() =>
+                    run(itemKey(viewing), async () => {
+                      await postJSON(`/documentos/${viewing.id_documento}/firmar`, {});
+                      toast.success("Firma registrada.");
+                      setViewing(null);
+                    })
+                  }
+                >
+                  Firmar
+                </button>
+              )}
+              {viewing.puede_revisar && (
+                <>
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => setRejecting(viewing)}>
+                    Rechazar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() =>
+                      run(itemKey(viewing), async () => {
+                        const data = await postJSON(`/documentos/${viewing.id_documento}/validar`, {});
+                        toast.success(data.message || "Documento validado.");
+                        setViewing(null);
+                      })
+                    }
+                  >
+                    Validar
+                  </button>
+                </>
+              )}
+            </>
+          ) : null
+        }
+      />
+
+      <ReservaDetalle
+        idReserva={reservaAbierta}
+        open={Boolean(reservaAbierta)}
+        onClose={() => setReservaAbierta(null)}
+        onChanged={async () => reload()}
+      />
     </div>
   );
 }
@@ -521,6 +542,7 @@ function DocumentRow({
   item,
   busy,
   onView,
+  onOpenReserva,
   onValidate,
   onReject,
   onGenerate,
@@ -543,9 +565,7 @@ function DocumentRow({
           {lines.detail && <p className="break-words text-sm text-charcoal-800">{lines.detail}</p>}
           {lines.context && <p className="mt-0.5 text-xs text-muted">{lines.context}</p>}
         </div>
-        <StatusBadge variant={VARIANT[item.estado_operativo] || "neutral"} className="shrink-0">
-          {item.estado_operativo_label}
-        </StatusBadge>
+        <EstadoBadge kind="documento" value={item.estado_operativo} labelOverride={item.estado_operativo_label} className="shrink-0" />
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
@@ -573,6 +593,7 @@ function DocumentRow({
         item={item}
         busy={busy}
         onView={onView}
+        onOpenReserva={onOpenReserva}
         onValidate={onValidate}
         onReject={onReject}
         onGenerate={onGenerate}
@@ -593,8 +614,15 @@ function Meta({ label, value, emphasize = false }) {
   );
 }
 
-function DocumentActions({ item, busy, onView, onValidate, onReject, onGenerate, onRegenerate, onSign, onOpenTemplates }) {
+function DocumentActions({ item, busy, onView, onOpenReserva, onValidate, onReject, onGenerate, onRegenerate, onSign, onOpenTemplates }) {
   const buttons = [];
+  if (onOpenReserva) {
+    buttons.push(
+      <button key="reserva" type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={onOpenReserva}>
+        Gestionar reserva
+      </button>,
+    );
+  }
   if (item.puede_ver) {
     buttons.push(
       <button key="ver" type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={onView}>
@@ -618,7 +646,7 @@ function DocumentActions({ item, busy, onView, onValidate, onReject, onGenerate,
   }
   if (item.puede_revisar) {
     buttons.push(
-      <button key="rechazar" type="button" className={DANGER_BTN} disabled={busy} onClick={onReject}>
+      <button key="rechazar" type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={onReject}>
         Rechazar
       </button>,
     );

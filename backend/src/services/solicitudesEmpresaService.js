@@ -576,7 +576,7 @@ exports.getMia = async function (req, res) {
   if (!rows[0]) {
     return res
       .status(404)
-      .json({ error: "No hay solicitud para la convocatoria activa." });
+      .json({ error: "No hay solicitud para la convocatoria activa.", code: "SIN_SOLICITUD" });
   }
 
   const row = { ...rows[0], convocatoria_activa: Number(rows[0].convocatoria_activa) === 1 };
@@ -755,6 +755,7 @@ exports.getTodas = async function (req, res) {
        emp.empresa AS razonSocial,
        emp.cif,
        emp.telefonoEmpresa AS telEmpresa,
+       se.id_convocatoria,
        c.nombre AS convocatoria,
        c.activa AS convocatoria_activa,
        coord.nombre AS nombreCoordinador,
@@ -840,7 +841,9 @@ exports.getTodas = async function (req, res) {
      JOIN dual_tipos_documento td
        ON td.id_tipo_documento = d.id_tipo_documento
      WHERE d.id_solicitud_empresa IN (?)
-       AND td.nombre = 'CONVENIO'`,
+       AND td.nombre = 'CONVENIO'
+       AND d.es_actual = 1
+     ORDER BY d.id_documento DESC`,
     [ids],
   );
 
@@ -910,6 +913,7 @@ exports.getTodas = async function (req, res) {
     if (!convenioMap[d.id_solicitud_empresa]) {
       convenioMap[d.id_solicitud_empresa] = {
         id_documento: d.id_documento,
+        estado: d.estado_validacion,
         validado: d.estado_validacion === "VALIDADO",
       };
     }
@@ -930,6 +934,7 @@ exports.getTodas = async function (req, res) {
       transportes_conocidos: Number(r.transportes_conocidos) !== 0,
       tieneConvenio: conv ? 1 : 0,
       convenio_validado: conv?.validado ? 1 : 0,
+      convenio_estado: conv?.estado ?? null,
       id_documento_convenio: conv?.id_documento ?? null,
       cambio_pendiente: cambioMap[r.id_solicitud_empresa] ? 1 : 0,
       id_cambio_pendiente: cambioMap[r.id_solicitud_empresa]?.id_cambio ?? null,
@@ -956,7 +961,7 @@ exports.reapply = async function (req, res) {
   if (!convocatoria) {
     return res
       .status(409)
-      .json({ error: "No hay ninguna convocatoria activa." });
+      .json({ error: "No hay ninguna convocatoria activa.", code: "SIN_CONVOCATORIA" });
   }
 
   const {
@@ -997,6 +1002,7 @@ exports.reapply = async function (req, res) {
 
       return res.status(409).json({
         error: "Ya existe una solicitud para la convocatoria activa.",
+        code: "SOLICITUD_EXISTENTE",
       });
     }
 

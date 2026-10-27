@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { getJSON } from "../../utils/api.js";
@@ -18,17 +18,13 @@ function StudentMain() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (!user || user.rol !== "ALUMNO") {
-      navigate("/login");
-      return;
-    }
-
-    Promise.all([
+  // WF-17: "no application" is recognised by status and code, not by message text.
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return Promise.all([
       getJSON("/solicitudes/alumno/mia").catch((err) => {
-        if (err.message?.includes("404") || /no hay solicitud/i.test(err.message || "")) {
-          return null;
-        }
+        if (err.status === 404 && err.code === "SIN_SOLICITUD") return null;
         throw err;
       }),
       getJSON("/reservas/alumno"),
@@ -41,7 +37,26 @@ function StudentMain() {
       })
       .catch((err) => setError(err.message || "No se pudo cargar tu proceso Dual."))
       .finally(() => setLoading(false));
-  }, [user, navigate]);
+  }, []);
+
+  // Refresh after an action inside a reservation (e.g. signing), without the loading screen.
+  const refresh = useCallback(async () => {
+    try {
+      const [resv, docs] = await Promise.all([getJSON("/reservas/alumno"), getJSON("/documentos/alumno/mios")]);
+      setReservas(Array.isArray(resv) ? resv : []);
+      setDocumentos(Array.isArray(docs?.items) ? docs.items : []);
+    } catch {
+      /* the panel already reported the error */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.rol !== "ALUMNO") {
+      navigate("/login");
+      return;
+    }
+    load();
+  }, [user, navigate, load]);
 
   if (!user || user.rol !== "ALUMNO") return null;
 
@@ -58,11 +73,11 @@ function StudentMain() {
         subtitle={`${user.nombre}${user.dni ? ` · ${user.dni}` : ""}`}
       />
 
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200">
-        <button type="button" className={tabCls(view === "datos")} onClick={() => setView("datos")}>
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200" role="tablist" aria-label="Secciones del portal">
+        <button type="button" role="tab" aria-selected={view === "datos"} className={tabCls(view === "datos")} onClick={() => setView("datos")}>
           Mis datos
         </button>
-        <button type="button" className={tabCls(view === "reservas")} onClick={() => setView("reservas")}>
+        <button type="button" role="tab" aria-selected={view === "reservas"} className={tabCls(view === "reservas")} onClick={() => setView("reservas")}>
           Mis reservas
           {reservas.length > 0 && (
             <span className="ml-1.5 inline-block rounded-full bg-brand-500 px-1.5 py-0.5 text-[0.7rem] leading-none text-white">
@@ -70,21 +85,25 @@ function StudentMain() {
             </span>
           )}
         </button>
-        <button type="button" className={tabCls(view === "documentos")} onClick={() => setView("documentos")}>
+        <button type="button" role="tab" aria-selected={view === "documentos"} className={tabCls(view === "documentos")} onClick={() => setView("documentos")}>
           Mis documentos
         </button>
       </div>
 
       {loading ? (
-        <p className="py-16 text-center text-gray-400">Cargando…</p>
+        <p role="status" className="py-16 text-center text-muted">Cargando…</p>
       ) : error ? (
-        <div className="form-card">
-          <p className="py-8 text-center text-red-600">{error}</p>
+        <div role="alert" className="form-card text-center">
+          <p className="font-semibold text-charcoal-950">No se pudo cargar tu proceso Dual.</p>
+          <p className="mt-2 text-sm text-muted">{error}</p>
+          <button type="button" className="btn btn-primary btn-sm mt-4" onClick={load}>
+            Reintentar
+          </button>
         </div>
       ) : view === "datos" ? (
         <MisDatos solicitud={solicitud} />
       ) : view === "reservas" ? (
-        <MisReservas reservas={reservas} />
+        <MisReservas reservas={reservas} onChanged={refresh} />
       ) : (
         <MisDocumentos documentos={documentos} onChange={setDocumentos} />
       )}

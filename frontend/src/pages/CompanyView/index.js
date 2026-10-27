@@ -46,8 +46,8 @@ const MisDatos = ({
   if (!solicitud) {
     return (
       <div className="form-card">
-        <p className="text-center text-gray-500 py-8">
-          No se encontraron datos de solicitud de tu empresa.
+        <p className="py-8 text-center text-muted">
+          Tu empresa todavía no tiene ninguna solicitud registrada. Contacta con el centro si crees que es un error.
         </p>
       </div>
     );
@@ -437,12 +437,12 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
       });
       if (onSuccess) onSuccess();
     } catch (err) {
-      const dup =
-        err.message?.includes("ya existe") || err.status === 409;
       toast.error(
-        dup
+        err.code === "SOLICITUD_EXISTENTE"
           ? "Ya existe una solicitud para la convocatoria activa."
-          : err.message || "Error al enviar.",
+          : err.code === "SIN_CONVOCATORIA"
+            ? "No hay ninguna convocatoria abierta en este momento."
+            : err.message || "Error al enviar.",
       );
     } finally {
       setSubmitting(false);
@@ -524,7 +524,6 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
 const CompanyView = () => {
   const { user } = useUser();
   const navigate = useNavigate();
-  const toast = useToast();
   const [view, setView] = useState("datos");
 
   const [solicitud, setSolicitud] = useState(null);
@@ -537,6 +536,10 @@ const CompanyView = () => {
   const [specialities, setSpecialities] = useState([]);
   const [transports, setTransports] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Per-tab load errors: a failed request is never shown as "no data".
+  const [loadErrors, setLoadErrors] = useState({});
+  const setLoadError = (key, err) =>
+    setLoadErrors((prev) => ({ ...prev, [key]: err ? err.message || "Error al cargar." : null }));
 
   const fetchSolicitud = useCallback(async () => {
     try {
@@ -556,8 +559,11 @@ const CompanyView = () => {
         especialidades: esps,
       });
       setCambio(cambios || { pending: null, ultimo: null });
-    } catch {
+      setLoadError("solicitud", null);
+    } catch (err) {
       setSolicitud(null);
+      // 404 SIN_SOLICITUD = the company has no application at all (not an error).
+      setLoadError("solicitud", err.status === 404 && err.code === "SIN_SOLICITUD" ? null : err);
     }
   }, []);
 
@@ -565,8 +571,9 @@ const CompanyView = () => {
     try {
       const data = await getJSON("/reservas/empresa");
       setReservations(Array.isArray(data) ? data : []);
-    } catch {
-      setReservations([]);
+      setLoadError("reservas", null);
+    } catch (err) {
+      setLoadError("reservas", err);
     }
   }, []);
 
@@ -576,20 +583,15 @@ const CompanyView = () => {
       setDocumentos({
         items: Array.isArray(data?.items) ? data.items : [],
       });
-    } catch {
-      setDocumentos({ items: [] });
+      setLoadError("documentos", null);
+    } catch (err) {
+      setLoadError("documentos", err);
     }
   }, []);
 
-  const handleCancelReservation = async (idReserva, motivo) => {
-    try {
-      await postJSON(`/reservas/${idReserva}/cancelar`, { motivo });
-      toast.success("Reserva cancelada correctamente.");
-      fetchReservations();
-    } catch (err) {
-      toast.error(err.message || "Error al cancelar la reserva.");
-    }
-  };
+  const refreshReservasYDocumentos = useCallback(async () => {
+    await Promise.all([fetchReservations(), fetchDocumentos()]);
+  }, [fetchReservations, fetchDocumentos]);
 
   useEffect(() => {
     if (!user || user.rol !== "EMPRESA") {
@@ -626,20 +628,29 @@ const CompanyView = () => {
         subtitle={`${user.nombre}${user.email ? ` · ${user.email}` : user.cif ? ` · ${user.cif}` : ""}`}
       />
 
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200">
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200" role="tablist" aria-label="Secciones del portal">
         <button
+          type="button"
+          role="tab"
+          aria-selected={view === "datos"}
           className={tabCls(view === "datos")}
           onClick={() => setView("datos")}
         >
           Mis datos
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={view === "tutores"}
           className={tabCls(view === "tutores")}
           onClick={() => setView("tutores")}
         >
           Tutores
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={view === "reservas"}
           className={tabCls(view === "reservas")}
           onClick={() => setView("reservas")}
         >
@@ -651,6 +662,9 @@ const CompanyView = () => {
           )}
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={view === "documentos"}
           className={tabCls(view === "documentos")}
           onClick={() => setView("documentos")}
         >
@@ -664,7 +678,23 @@ const CompanyView = () => {
       </div>
 
       {loading ? (
-        <p className="text-center text-gray-400 py-16">Cargando…</p>
+        <p role="status" className="py-16 text-center text-muted">Cargando…</p>
+      ) : loadErrors[{ datos: "solicitud", reservas: "reservas", documentos: "documentos" }[view]] ? (
+        <div role="alert" className="form-card text-center">
+          <p className="font-semibold text-charcoal-950">No se pudieron cargar los datos.</p>
+          <p className="mt-2 text-sm text-muted">
+            {loadErrors[{ datos: "solicitud", reservas: "reservas", documentos: "documentos" }[view]]}
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm mt-4"
+            onClick={() =>
+              view === "datos" ? fetchSolicitud() : view === "reservas" ? fetchReservations() : fetchDocumentos()
+            }
+          >
+            Reintentar
+          </button>
+        </div>
       ) : view === "datos" ? (
         <MisDatos
           solicitud={solicitud}
@@ -683,24 +713,10 @@ const CompanyView = () => {
       ) : view === "reservas" ? (
         <div className="form-card">
           <p className="form-section-title">Mis reservas</p>
-          <MisReservas
-            reservations={reservations}
-            onUpload={async () => {
-              await fetchReservations();
-              await fetchDocumentos();
-            }}
-            onCancel={handleCancelReservation}
-            onTutorChange={fetchReservations}
-          />
+          <MisReservas reservations={reservations} onChanged={refreshReservasYDocumentos} />
         </div>
       ) : (
-        <MisDocumentos
-          documentos={documentos}
-          onRefresh={async () => {
-            await fetchDocumentos();
-            await fetchReservations();
-          }}
-        />
+        <MisDocumentos documentos={documentos} onRefresh={refreshReservasYDocumentos} />
       )}
     </div>
   );

@@ -20,6 +20,10 @@ router.get('/reservas/empresa', requireAuth, requireRole('EMPRESA'), asyncHandle
 // Alumno: own reservations
 router.get('/reservas/alumno', requireAuth, requireRole('ALUMNO'), asyncHandler(svc.getReservasAlumno));
 
+// One reservation with documents, confirmation checklist and permitted actions
+// (staff; the owning company; the student). Ownership is checked in the service.
+router.get('/reservas/:id/detalle', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA', 'ALUMNO'), asyncHandler(svc.getDetalle));
+
 // Admin / Coordinador: eligible company offers for a student
 router.get('/reservas/ofertas-elegibles', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getOfertasElegibles));
 router.get('/reservas/alumnos-elegibles', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getAlumnosElegibles));

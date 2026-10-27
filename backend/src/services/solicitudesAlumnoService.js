@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
 const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni } = require('../helpers/dbHelpers');
-const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation } = require('./documentosWorkflow');
+const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation, reservaDocSummary } = require('./documentosWorkflow');
 const { loginRateLimiter } = require('../middleware/loginRateLimit');
 const { aplicarTransicion } = require('./solicitudTransiciones');
 const MIN_PASSWORD_LENGTH = 8;
@@ -350,6 +350,8 @@ exports.getAll = async function (req, res) {
             er.nombre AS estado_reserva,
             r.id_tipo_contrato,
             tc.nombre_mostrar AS tipo_contrato,
+            tc.nombre AS tipo_contrato_clave,
+            se.id_solicitud_empresa,
             emp.empresa,
             esp.codigo AS codigo_especialidad,
             se.id_empresa,
@@ -358,8 +360,7 @@ exports.getAll = async function (req, res) {
             tutor_c.nombre AS tutor_nombre,
             tutor_c.email AS tutor_email,
             tutor_c.telefono AS tutor_telefono,
-            t.activo AS tutor_activo,
-            (SELECT id_documento FROM dual_documentos d WHERE d.id_reserva = r.id_reserva LIMIT 1) AS id_documento_reserva
+            t.activo AS tutor_activo
        FROM dual_reservas r
        JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
        LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
@@ -374,8 +375,10 @@ exports.getAll = async function (req, res) {
     [ids]
   );
 
+  const resumen = await reservaDocSummary(reservas);
   const reservaMap = {};
   reservas.forEach(r => {
+    r.documentos_resumen = resumen[r.id_reserva] || null;
     if (!reservaMap[r.id_solicitud_alumno]) reservaMap[r.id_solicitud_alumno] = [];
     reservaMap[r.id_solicitud_alumno].push(r);
   });
@@ -411,7 +414,7 @@ exports.getMia = async function (req, res) {
       LIMIT 1`,
     [idAlumno]
   );
-  if (!rows[0]) return res.status(404).json({ error: 'No hay solicitud registrada para este alumno.' });
+  if (!rows[0]) return res.status(404).json({ error: 'No hay solicitud registrada para este alumno.', code: 'SIN_SOLICITUD' });
   return res.json(rows[0]);
 };
 

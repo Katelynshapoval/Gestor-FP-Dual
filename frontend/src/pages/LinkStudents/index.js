@@ -1,17 +1,67 @@
 import { useEffect, useState } from "react";
-import DocViewer from "./components/DocViewer";
+import { Link } from "react-router-dom";
 import RequestFilters from "./components/RequestFilters";
 import StudentCard from "./components/StudentCard";
 import { useLinkStudents } from "./hooks/useLinkStudents";
 import PageHeader from "../../components/ui/PageHeader";
 import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
 
+// What a company sees instead of the list when it cannot reserve yet (WF-14).
+const COMPANY_STATE = {
+  SIN_SOLICITUD: {
+    tone: "warning",
+    title: "Tu empresa no tiene solicitud en la convocatoria activa",
+    text: "Para consultar y reservar alumnos, participa en la convocatoria actual desde tu portal.",
+    link: { to: "/companyMain", label: "Ir a mi portal" },
+  },
+  PENDIENTE: {
+    tone: "warning",
+    title: "Tu solicitud está pendiente de validación",
+    text: "Podrás consultar y reservar alumnos cuando el centro valide el convenio de tu empresa.",
+  },
+  RECHAZADO: {
+    tone: "danger",
+    title: "Tu solicitud ha sido rechazada",
+    text: "Consulta el motivo en tu portal o contacta con el centro.",
+    link: { to: "/companyMain", label: "Ir a mi portal" },
+  },
+};
+
+const TONE = {
+  warning: "border-amber-200 bg-amber-50 text-amber-900",
+  danger: "border-red-200 bg-red-50 text-red-900",
+};
+
+function StateCard({ children, role }) {
+  return (
+    <div role={role} className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
+      {children}
+    </div>
+  );
+}
+
+function SkeletonList() {
+  return (
+    <div className="space-y-3" aria-hidden="true">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div key={i} className="animate-pulse rounded-xl2 border border-surface-200 bg-white px-5 py-4 shadow-card">
+          <div className="h-4 w-48 rounded bg-surface-200" />
+          <div className="mt-2 h-3 w-32 rounded bg-surface-100" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const LinkStudents = () => {
   const {
     user,
+    status,
+    error,
+    refreshing,
+    linkRequests,
     companyOffers,
-    companyStatus,
-    showDoc,
+    companyState,
     expandedCards,
     selectedSpeciality,
     setSelectedSpeciality,
@@ -22,22 +72,15 @@ const LinkStudents = () => {
     convocatorias,
     isEmpresa,
     toggleCard,
-    getDoc,
-    closeDocViewer,
-    validateDoc,
-    rejectDoc,
     validateAlumno,
     rejectSolicitud,
     reopenSolicitud,
     reserveStudent,
     cancelReservation,
     adminReserve,
-    adminCancel,
-    adminReassign,
     fetchLinkRequests,
   } = useLinkStudents();
 
-  const refreshStudents = fetchLinkRequests;
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { pageItems, pagination } = paginate(filtered, page, pageSize);
@@ -47,7 +90,16 @@ const LinkStudents = () => {
     setPage(1);
   }, [selectedSpeciality, selectedConvocatoria]);
 
-  const companyValidated = !isEmpresa || companyStatus === "VALIDADO";
+  const blocked = isEmpresa && COMPANY_STATE[companyState];
+  const ready = status === "ready" && !blocked;
+  const hasFilters = Boolean(selectedSpeciality || (!isEmpresa && selectedConvocatoria));
+
+  let subtitle = "Cargando…";
+  if (status === "error") subtitle = "No se pudieron cargar los datos.";
+  else if (blocked) subtitle = blocked.title;
+  else if (ready) {
+    subtitle = `${filtered.length} alumno${filtered.length !== 1 ? "s" : ""}${hasFilters ? " según los filtros actuales" : ""}.`;
+  }
 
   return (
     <div className="flex-1 bg-surface-100">
@@ -55,90 +107,104 @@ const LinkStudents = () => {
         <PageHeader
           kicker="Asignaciones"
           title="Peticiones de alumnos"
-          subtitle={
-            isEmpresa && !companyValidated
-              ? "Tu empresa debe ser validada antes de poder consultar alumnos."
-              : `${filtered.length} alumno${filtered.length !== 1 ? "s" : ""} disponibles según los filtros actuales.`
-          }
+          subtitle={subtitle}
           actions={
-            <RequestFilters
-              selectedSpeciality={selectedSpeciality}
-              onSpecialityChange={setSelectedSpeciality}
-              selectedConvocatoria={selectedConvocatoria}
-              onConvocatoriaChange={setSelectedConvocatoria}
-              specialities={specialities}
-              convocatorias={convocatorias}
-              isEmpresa={isEmpresa}
-            />
+            ready && (
+              <RequestFilters
+                selectedSpeciality={selectedSpeciality}
+                onSpecialityChange={setSelectedSpeciality}
+                selectedConvocatoria={selectedConvocatoria}
+                onConvocatoriaChange={setSelectedConvocatoria}
+                specialities={specialities}
+                convocatorias={convocatorias}
+                isEmpresa={isEmpresa}
+              />
+            )
           }
         />
 
-        <div className="space-y-4">
-          {isEmpresa && (
+        <div className="space-y-4" aria-busy={status === "loading" || refreshing}>
+          {isEmpresa && ready && (
             <p className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-medium leading-6 text-brand-800">
-              La asignación de un alumno no es definitiva hasta la firma del
-              Anexo 2 o 3. Hasta entonces, el alumno puede ser asignado a otra
-              empresa.
+              Una reserva no es definitiva hasta que el centro la confirma, con el Anexo II o III firmado y validado.
+              Hasta entonces, otras empresas también pueden reservar al alumno.
             </p>
           )}
 
-          {isEmpresa && !companyValidated ? (
-            <div className="rounded-xl2 border border-amber-200 bg-amber-50 p-8 text-center shadow-card">
-              <p className="font-semibold text-amber-900">
-                Tu empresa todavía no está validada
-              </p>
-
-              <p className="mt-2 text-sm text-amber-800">
-                Podrás consultar y reservar alumnos cuando el centro valide el
-                convenio de tu empresa.
-              </p>
+          {status === "loading" ? (
+            <SkeletonList />
+          ) : status === "error" ? (
+            <StateCard role="alert">
+              <p className="font-semibold text-charcoal-950">No se pudieron cargar los datos.</p>
+              <p className="mt-2 text-sm text-muted">{error?.message}</p>
+              <button type="button" className="btn btn-primary btn-sm mt-4" onClick={fetchLinkRequests}>
+                Reintentar
+              </button>
+            </StateCard>
+          ) : blocked ? (
+            <div className={`rounded-xl2 border p-8 text-center shadow-card ${TONE[blocked.tone]}`}>
+              <p className="font-semibold">{blocked.title}</p>
+              <p className="mt-2 text-sm">{blocked.text}</p>
+              {blocked.link && (
+                <Link to={blocked.link.to} className="btn btn-secondary btn-sm mt-4">
+                  {blocked.link.label}
+                </Link>
+              )}
             </div>
+          ) : filtered.length === 0 ? (
+            <StateCard role="status">
+              <p className="font-semibold text-charcoal-950">
+                {linkRequests.length === 0
+                  ? isEmpresa
+                    ? "No hay alumnos validados disponibles para tus ciclos en este momento."
+                    : "Todavía no hay solicitudes de alumnos."
+                  : "No hay alumnos que coincidan con los filtros actuales."}
+              </p>
+              {linkRequests.length > 0 && hasFilters && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm mt-4"
+                  onClick={() => {
+                    setSelectedSpeciality("");
+                    setSelectedConvocatoria("");
+                  }}
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </StateCard>
           ) : (
-            filtered.length === 0 && (
-              <div className="rounded-xl2 border border-surface-200 bg-white p-12 text-center text-muted shadow-card">
-                No hay alumnos que coincidan con los filtros actuales.
-              </div>
-            )
+            <>
+              {pageItems.map((r) => (
+                <StudentCard
+                  key={r.id_solicitud_alumno}
+                  r={r}
+                  isExpanded={expandedCards.has(r.id_solicitud_alumno)}
+                  onToggle={toggleCard}
+                  companyOffers={companyOffers}
+                  onReserve={reserveStudent}
+                  onCancel={cancelReservation}
+                  onAdminReserve={adminReserve}
+                  onChanged={fetchLinkRequests}
+                  onValidarAlumno={validateAlumno}
+                  onRechazarSolicitud={rejectSolicitud}
+                  onReabrirSolicitud={reopenSolicitud}
+                  user={user}
+                />
+              ))}
+              <PaginationBar
+                pagination={pagination}
+                page={pagination.page}
+                onPage={setPage}
+                onPageSize={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+                noun="alumno"
+              />
+            </>
           )}
-
-          {pageItems.map((r) => (
-            <StudentCard
-              key={r.id_solicitud_alumno}
-              r={r}
-              isExpanded={expandedCards.has(r.id_solicitud_alumno)}
-              onToggle={toggleCard}
-              companyOffers={companyOffers}
-              onGetDoc={getDoc}
-              onReserve={reserveStudent}
-              onCancel={cancelReservation}
-              onAdminReserve={adminReserve}
-              onAdminCancel={adminCancel}
-              onAdminReassign={adminReassign}
-              onTutorChange={refreshStudents}
-              onValidarAlumno={validateAlumno}
-              onRechazarSolicitud={rejectSolicitud}
-              onReabrirSolicitud={reopenSolicitud}
-              user={user}
-            />
-          ))}
-          <PaginationBar
-            pagination={pagination}
-            page={pagination.page}
-            onPage={setPage}
-            onPageSize={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
-            noun="alumno"
-          />
         </div>
-
-        <DocViewer
-          showDoc={showDoc}
-          onClose={closeDocViewer}
-          onValidate={validateDoc}
-          onReject={(motivo) => rejectDoc(motivo)}
-        />
       </div>
     </div>
   );

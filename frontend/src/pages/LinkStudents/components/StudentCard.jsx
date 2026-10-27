@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { IoMdArrowDropdown } from "react-icons/io";
-import { FaRegCalendarCheck } from "react-icons/fa6";
 import { MdOutlineCancel } from "react-icons/md";
-import {
-  IoIosCheckmarkCircleOutline,
-  IoIosCloseCircleOutline,
-} from "react-icons/io";
+import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { RxLockClosed, RxClock } from "react-icons/rx";
 
 import {
@@ -16,7 +12,6 @@ import {
   cardHeaderClass,
   cardNameClass,
   empresaChipClass,
-  signedBadgeClass,
   toggleBtnClass,
 } from "../../../components/ui/cardStyles";
 
@@ -25,35 +20,25 @@ import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import EstadoSolicitud from "./student-card/EstadoSolicitud";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import EstadoBadge from "../../../components/ui/EstadoBadge.jsx";
+import MotivoDialog from "../../../components/ui/MotivoDialog.jsx";
+import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBadges.jsx";
+import { label } from "../../../utils/labels.js";
 import {
   isCancelledReserva,
   isConfirmedReserva,
   isPendingReserva,
 } from "../../../utils/reservaEstados.js";
 
-const ESTADO_SOLICITUD = {
-  PENDIENTE: { label: "En revisión", variant: "warning" },
-  VALIDADO: { label: "Aprobada", variant: "success" },
-  RECHAZADO: { label: "No aprobada", variant: "danger" },
-};
-
-// A2/A3 badge: green when the student has at least one confirmed reservation
-const AnexoBadge = ({ reservas }) => {
-  const confirmed = reservas?.some((rv) =>
-    isConfirmedReserva(rv.estado_reserva),
-  );
-  const Icon = confirmed
-    ? IoIosCheckmarkCircleOutline
-    : IoIosCloseCircleOutline;
+// The reservation whose documents the header summarises: the confirmed one,
+// otherwise the most recent pending one (WF-15: badges show real documents).
+function reservaDeReferencia(reservas = []) {
   return (
-    <span
-      className={`${signedBadgeClass} ${confirmed ? "bg-green-500/20 text-green-900" : "bg-red-500/10 text-red-900"}`}
-    >
-      <Icon className="-mt-[1px] text-[13px]" />
-      A2/A3
-    </span>
+    reservas.find((rv) => isConfirmedReserva(rv.estado_reserva)) ||
+    reservas.find((rv) => isPendingReserva(rv.estado_reserva)) ||
+    null
   );
-};
+}
 
 // Compact chips showing which companies have reserved this student (with status icons)
 const ReservasChips = ({ reservas }) => {
@@ -64,7 +49,7 @@ const ReservasChips = ({ reservas }) => {
         <span
           key={rv.id_reserva}
           className={empresaChipClass}
-          title={rv.estado_reserva}
+          title={label("reserva", rv.estado_reserva)}
         >
           {isConfirmedReserva(rv.estado_reserva) && (
             <IoIosCheckmarkCircleOutline className="text-green-600 text-[11px]" />
@@ -82,64 +67,6 @@ const ReservasChips = ({ reservas }) => {
   );
 };
 
-// Cancellation modal shown to the empresa before a reservation is cancelled
-const CancelModal = ({ alumno, onConfirm, onClose }) => {
-  const [motivo, setMotivo] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleConfirm = async () => {
-    if (!motivo.trim()) return;
-    setSubmitting(true);
-    await onConfirm(motivo.trim());
-    setSubmitting(false);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="mx-4 w-full max-w-md space-y-4 rounded-xl2 bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="font-semibold text-gray-900">Cancelar reserva</h3>
-        <p className="text-sm text-gray-500">
-          Indica el motivo de cancelación para <strong>{alumno}</strong>.
-        </p>
-        <textarea
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20"
-          rows={3}
-          placeholder="Motivo de cancelación…"
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          maxLength={255}
-          autoFocus
-        />
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 transition-colors duration-150 hover:bg-gray-50"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!motivo.trim() || submitting}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150 ${
-              !motivo.trim() || submitting
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-red-500 text-white hover:bg-red-600"
-            }`}
-          >
-            {submitting ? "Cancelando…" : "Confirmar cancelación"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Reserve / cancel button for empresa users
 const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -149,9 +76,9 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
 
   if (reservaConfirmada || r.asignado_definitivo) {
     return (
-      <span className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-400">
-        <RxLockClosed className="shrink-0" />
-        Ya asignado
+      <span className="flex items-center gap-1.5 rounded-lg border border-surface-200 bg-surface-50 px-3 py-1.5 text-xs font-medium text-muted">
+        <RxLockClosed className="shrink-0" aria-hidden="true" />
+        Plaza confirmada en otra empresa
       </span>
     );
   }
@@ -160,23 +87,26 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
   if (miReservaId) {
     return (
       <>
-        {showCancelModal && (
-          <CancelModal
-            alumno={r.nombre || "este alumno"}
-            onConfirm={async (motivo) => {
-              await onCancel(miReservaId, motivo);
-              setShowCancelModal(false);
-            }}
-            onClose={() => setShowCancelModal(false)}
-          />
-        )}
+        <MotivoDialog
+          open={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={async (motivo) => {
+            await onCancel(miReservaId, motivo);
+            setShowCancelModal(false);
+          }}
+          title="Cancelar reserva"
+          description={`Indica el motivo de la cancelación para ${r.nombre || "este alumno"}.`}
+          label="Motivo de la cancelación"
+          confirmLabel="Cancelar reserva"
+          busyLabel="Cancelando…"
+        />
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             setShowCancelModal(true);
           }}
-          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 transition-colors duration-150 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+          className="btn btn-danger btn-sm"
         >
           Cancelar reserva
         </button>
@@ -189,7 +119,7 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
   );
   if (!ofertaMatch)
     return (
-      <span className="text-xs text-gray-400">Sin plazas disponibles</span>
+      <span className="text-xs text-muted">Sin plazas disponibles</span>
     );
 
   return (
@@ -202,7 +132,7 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
           ofertaMatch.id_solicitud_empresa_especialidad,
         );
       }}
-      className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition-colors duration-150 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+      className="btn btn-primary btn-sm"
     >
       Reservar alumno
     </button>
@@ -215,13 +145,10 @@ const StudentCard = ({
   isExpanded,
   onToggle,
   companyOffers,
-  onGetDoc,
   onReserve,
   onCancel,
   onAdminReserve,
-  onAdminCancel,
-  onAdminReassign,
-  onTutorChange,
+  onChanged,
   onValidarAlumno,
   onRechazarSolicitud,
   onReabrirSolicitud,
@@ -231,6 +158,7 @@ const StudentCard = ({
   const confirmedReserva = r.reservas?.find((rv) =>
     isConfirmedReserva(rv.estado_reserva),
   );
+  const referencia = reservaDeReferencia(r.reservas);
   // "info" or "reservas" — inner tab state, staff only
   const [innerTab, setInnerTab] = useState("info");
   const handleToggle = () => onToggle(r.id_solicitud_alumno);
@@ -260,40 +188,22 @@ const StudentCard = ({
         <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
           {!isEmpresa ? (
             <div className={cardChipsClass}>
-              {ESTADO_SOLICITUD[r.estado_validacion] && (
-                <StatusBadge
-                  variant={ESTADO_SOLICITUD[r.estado_validacion].variant}
-                >
-                  {ESTADO_SOLICITUD[r.estado_validacion].label}
-                </StatusBadge>
-              )}
+              <EstadoBadge kind="solicitud" value={r.estado_validacion} />
               {Number(r.tiene_cuenta) === 1 && (
                 <StatusBadge variant="info">Cuenta</StatusBadge>
               )}
               {confirmedReserva && (
                 <StatusBadge variant="success">
-                  Confirmado: {confirmedReserva.empresa}
+                  Confirmada: {confirmedReserva.empresa}
                 </StatusBadge>
               )}
-              <AnexoBadge reservas={r.reservas} />
-
-              {/* Calendar badge: green when the student has a confirmed reservation */}
-              {(() => {
-                const calOk = r.reservas?.some((rv) =>
-                  isConfirmedReserva(rv.estado_reserva),
-                );
-                const CalIcon = calOk
-                  ? FaRegCalendarCheck
-                  : IoIosCloseCircleOutline;
-                return (
-                  <span
-                    className={`${signedBadgeClass} ${calOk ? "bg-green-500/20 text-green-900" : "bg-red-500/10 text-red-900"}`}
-                  >
-                    <CalIcon className="-mt-[1px] text-[13px]" />
-                    Cal
-                  </span>
-                );
-              })()}
+              {referencia && (
+                <ReservaResumenBadges
+                  estado={referencia.estado_reserva}
+                  resumen={referencia.documentos_resumen}
+                  showEstado={false}
+                />
+              )}
 
               <ReservasChips reservas={r.reservas} />
             </div>
@@ -309,12 +219,14 @@ const StudentCard = ({
           <button
             type="button"
             className={`${toggleBtnClass} ${isExpanded ? "rotate-180" : ""}`}
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? "Ocultar" : "Ver"} detalle de ${r.nombre}`}
             onClick={(e) => {
               e.stopPropagation();
               handleToggle();
             }}
           >
-            <IoMdArrowDropdown className="text-[1.5rem]" />
+            <IoMdArrowDropdown className="text-[1.5rem]" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -329,9 +241,11 @@ const StudentCard = ({
           <div className={cardBodyClass}>
             {/* Inner tab navigation — staff only */}
             {!isEmpresa && (
-              <div className="flex gap-1 mb-5">
+              <div className="flex gap-1 mb-5" role="tablist" aria-label="Secciones del alumno">
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={innerTab === "info"}
                   onClick={() => setInnerTab("info")}
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                     innerTab === "info"
@@ -343,6 +257,8 @@ const StudentCard = ({
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={innerTab === "reservas"}
                   onClick={() => setInnerTab("reservas")}
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                     innerTab === "reservas"
@@ -377,20 +293,14 @@ const StudentCard = ({
                   )}
                 </div>
                 <div className="space-y-5">
-                  <Documentos r={r} user={user} onGetDoc={onGetDoc} />
+                  <Documentos r={r} user={user} onRefresh={onChanged} />
                 </div>
               </div>
             )}
 
             {/* Reservations tab — staff only */}
             {!isEmpresa && innerTab === "reservas" && (
-              <EmpresaControl
-                r={r}
-                onAdminReserve={onAdminReserve}
-                onAdminCancel={onAdminCancel}
-                onAdminReassign={onAdminReassign}
-                onTutorChange={onTutorChange}
-              />
+              <EmpresaControl r={r} onAdminReserve={onAdminReserve} onChanged={onChanged} />
             )}
           </div>
         </div>

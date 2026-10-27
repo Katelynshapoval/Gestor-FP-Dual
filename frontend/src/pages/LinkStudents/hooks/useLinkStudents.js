@@ -2,10 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 import { useToast } from "../../../components/feedback/ToastProvider.jsx";
-import { getBlob, getJSON, postJSON } from "../../../utils/api.js";
+import { getJSON, postJSON } from "../../../utils/api.js";
 
 // Data, filters and actions for the student-linking module.
-// Replaces the legacy 3-slot model with the dynamic reservations model.
+//
+// WF-14: loading, errors and "empty" are separate states, and for companies
+// the application status is its own request, so a failed call is shown as an
+// error (with retry) and never as "your company is not validated".
+//   status:      "loading" | "ready" | "error"
+//   companyState (EMPRESA): "loading" | "SIN_SOLICITUD" | "PENDIENTE" |
+//                "VALIDADO" | "RECHAZADO" | "error"
 export const useLinkStudents = () => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -15,46 +21,69 @@ export const useLinkStudents = () => {
   const [linkRequests, setLinkRequests] = useState([]);
   // Quota offers for the authenticated empresa (empresa role only)
   const [companyOffers, setCompanyOffers] = useState([]);
-  // To see if the company has been validated
-  const [companyStatus, setCompanyStatus] = useState(null);
+  const [companyState, setCompanyState] = useState("loading");
+  const [status, setStatus] = useState("loading");
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [showDoc, setShowDoc] = useState(null);
-  const [currentDocUrl, setCurrentDocUrl] = useState(null);
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [selectedSpeciality, setSelectedSpeciality] = useState("");
   const [selectedConvocatoria, setSelectedConvocatoria] = useState("");
 
   const isEmpresa = user?.rol === "EMPRESA";
-  const userRef = useRef(user);
-
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
+  const loadedRef = useRef(false);
+  const requestRef = useRef(0);
 
   useEffect(() => {
     setExpandedCards(new Set());
   }, [selectedSpeciality, selectedConvocatoria]);
 
+  // First load shows the loading state; later refreshes keep the list on
+  // screen so cards do not collapse after every action.
   const fetchLinkRequests = useCallback(async () => {
+    const requestId = ++requestRef.current;
+    const first = !loadedRef.current;
+    if (first) setStatus("loading");
+    else setRefreshing(true);
+    setError(null);
     try {
       if (isEmpresa) {
-        const [alumnos, cupos, solicitudEmpresa] = await Promise.all([
-          getJSON("/alumnos/disponibles"),
-          getJSON("/cupos/empresa"),
-          getJSON("/solicitudes/empresa/mia"),
-        ]);
-
-        setLinkRequests(Array.isArray(alumnos) ? alumnos : []);
-        setCompanyOffers(Array.isArray(cupos) ? cupos : []);
-        setCompanyStatus(solicitudEmpresa?.estado_validacion || null);
+        let estado;
+        try {
+          const solicitud = await getJSON("/solicitudes/empresa/mia");
+          estado = solicitud?.estado_validacion || "PENDIENTE";
+        } catch (err) {
+          if (err.status === 404 && err.code === "SIN_SOLICITUD") estado = "SIN_SOLICITUD";
+          else throw err;
+        }
+        if (requestId !== requestRef.current) return;
+        setCompanyState(estado);
+        if (estado === "VALIDADO") {
+          const [alumnos, cupos] = await Promise.all([getJSON("/alumnos/disponibles"), getJSON("/cupos/empresa")]);
+          if (requestId !== requestRef.current) return;
+          setLinkRequests(Array.isArray(alumnos) ? alumnos : []);
+          setCompanyOffers(Array.isArray(cupos) ? cupos : []);
+        } else {
+          setLinkRequests([]);
+          setCompanyOffers([]);
+        }
       } else {
         const data = await getJSON("/solicitudes/alumno?include=full");
+        if (requestId !== requestRef.current) return;
         setLinkRequests(Array.isArray(data) ? data : []);
       }
+      loadedRef.current = true;
+      setStatus("ready");
     } catch (err) {
-      console.error("Error fetching link requests:", err);
+      if (requestId !== requestRef.current) return;
+      if (isEmpresa && !loadedRef.current) setCompanyState("error");
+      setError(err);
+      if (first) setStatus("error");
+      else toast.error(err.message || "No se pudieron actualizar los datos.");
+    } finally {
+      if (requestId === requestRef.current) setRefreshing(false);
     }
-  }, [isEmpresa]);
+  }, [isEmpresa, toast]);
 
   useEffect(() => {
     if (!user) {
@@ -63,64 +92,6 @@ export const useLinkStudents = () => {
     }
     fetchLinkRequests();
   }, [user, navigate, fetchLinkRequests]);
-
-  // Downloads a document blob and opens it in the inline viewer
-  const getDoc = useCallback(
-    (idDocumento, tipo, nombreAlumno, meta = {}) => {
-      if (!idDocumento) {
-        toast.warning("No hay documento disponible.");
-        return;
-      }
-      const extra =
-        meta && typeof meta === "object" ? meta : { idSolicitudAlumno: meta };
-      getBlob(`/documentos/${idDocumento}/descargar`)
-        .then((blob) => {
-          if (currentDocUrl) URL.revokeObjectURL(currentDocUrl);
-          const url = URL.createObjectURL(blob);
-          setCurrentDocUrl(url);
-          const label = meta.nombre || String(tipo || "");
-          setShowDoc({
-            tipo,
-            url,
-            idDocumento,
-            nombre: label,
-            nombreAlumno: nombreAlumno || "",
-            idSolicitudAlumno: extra.idSolicitudAlumno || null,
-            estado: extra.estado || null,
-            motivo: extra.motivo || null,
-            canReview: extra.canReview != null ? extra.canReview : !isEmpresa,
-          });
-        })
-        .catch((err) => toast.error(err.message || "No se pudo abrir el documento."));
-    },
-    [currentDocUrl, isEmpresa, toast],
-  );
-
-  // Closes the document viewer and releases the object URL
-  const closeDocViewer = useCallback(() => {
-    if (currentDocUrl) {
-      URL.revokeObjectURL(currentDocUrl);
-      setCurrentDocUrl(null);
-    }
-    setShowDoc(null);
-  }, [currentDocUrl]);
-
-  const validateDoc = useCallback(async () => {
-    if (!showDoc?.idDocumento) return;
-    await postJSON(`/documentos/${showDoc.idDocumento}/validar`, {});
-    closeDocViewer();
-    await fetchLinkRequests();
-  }, [showDoc, closeDocViewer, fetchLinkRequests]);
-
-  const rejectDoc = useCallback(
-    async (motivo) => {
-      if (!showDoc?.idDocumento) return;
-      await postJSON(`/documentos/${showDoc.idDocumento}/rechazar`, { motivo });
-      closeDocViewer();
-      await fetchLinkRequests();
-    },
-    [showDoc, closeDocViewer, fetchLinkRequests],
-  );
 
   const validateAlumno = useCallback(
     async (idSolicitudAlumno) => {
@@ -142,8 +113,8 @@ export const useLinkStudents = () => {
 
   // D7: staff reopen a rejected application (active convocatoria only).
   const reopenSolicitud = useCallback(
-    async (idSolicitudAlumno) => {
-      await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/reabrir`, {});
+    async (idSolicitudAlumno, motivo) => {
+      await postJSON(`/solicitudes/alumno/${idSolicitudAlumno}/reabrir`, motivo ? { motivo } : {});
       await fetchLinkRequests();
     },
     [fetchLinkRequests],
@@ -167,20 +138,17 @@ export const useLinkStudents = () => {
         id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
       });
       toast.success("Reserva creada.");
-      fetchLinkRequests();
+      await fetchLinkRequests();
     } catch (err) {
       toast.error(err.message || "Error al reservar el alumno.");
     }
   };
 
+  // Company cancels its own pending reservation; errors stay in the dialog.
   const cancelReservation = async (idReserva, motivo) => {
-    try {
-      await postJSON(`/reservas/${idReserva}/cancelar`, { motivo });
-      toast.success("Reserva cancelada correctamente.");
-      fetchLinkRequests();
-    } catch (err) {
-      toast.error(err.message || "Error al cancelar la reserva.");
-    }
+    await postJSON(`/reservas/${idReserva}/cancelar`, { motivo });
+    toast.success("Reserva cancelada correctamente.");
+    await fetchLinkRequests();
   };
 
   const adminReserve = async (
@@ -193,36 +161,9 @@ export const useLinkStudents = () => {
         id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
       });
       toast.success("Reserva creada.");
-      fetchLinkRequests();
+      await fetchLinkRequests();
     } catch (err) {
       toast.error(err.message || "Error al reservar el alumno.");
-    }
-  };
-
-  const adminCancel = async (idReserva, motivo) => {
-    try {
-      await postJSON(`/reservas/${idReserva}/cancelar-admin`, { motivo });
-      toast.success("Reserva cancelada correctamente.");
-      fetchLinkRequests();
-    } catch (err) {
-      toast.error(err.message || "Error al cancelar la reserva.");
-    }
-  };
-
-  const adminReassign = async (
-    idReserva,
-    idSolicitudEmpresaEspecialidad,
-    motivo,
-  ) => {
-    try {
-      await postJSON(`/reservas/${idReserva}/reasignar`, {
-        id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
-        motivo,
-      });
-      toast.success("Alumno reasignado.");
-      fetchLinkRequests();
-    } catch (err) {
-      toast.error(err.message || "Error al reasignar al alumno.");
     }
   };
 
@@ -252,10 +193,12 @@ export const useLinkStudents = () => {
 
   return {
     user,
+    status,
+    error,
+    refreshing,
     linkRequests,
     companyOffers,
-    companyStatus,
-    showDoc,
+    companyState,
     expandedCards,
     selectedSpeciality,
     setSelectedSpeciality,
@@ -266,18 +209,12 @@ export const useLinkStudents = () => {
     convocatorias,
     isEmpresa,
     toggleCard,
-    getDoc,
-    closeDocViewer,
-    validateDoc,
-    rejectDoc,
     validateAlumno,
     rejectSolicitud,
     reopenSolicitud,
     reserveStudent,
     cancelReservation,
     adminReserve,
-    adminCancel,
-    adminReassign,
     fetchLinkRequests,
   };
 };
