@@ -160,16 +160,18 @@ export default function Convocatorias() {
                   <div className="space-y-3">
                     <div className="grid gap-3 sm:grid-cols-3">
                       <div className="field mb-0">
-                        <label className="text-xs">Nombre</label>
+                        <label htmlFor={`conv-${c.id_convocatoria}-nombre`} className="text-xs">Nombre</label>
                         <input
+                          id={`conv-${c.id_convocatoria}-nombre`}
                           className="input py-1.5 text-sm"
                           value={editForm.nombre}
                           onChange={(e) => setEditForm(f => ({ ...f, nombre: e.target.value }))}
                         />
                       </div>
                       <div className="field mb-0">
-                        <label className="text-xs">Fecha inicio</label>
+                        <label htmlFor={`conv-${c.id_convocatoria}-inicio`} className="text-xs">Fecha inicio</label>
                         <input
+                          id={`conv-${c.id_convocatoria}-inicio`}
                           type="date"
                           className="input py-1.5 text-sm"
                           value={editForm.fecha_inicio}
@@ -177,8 +179,9 @@ export default function Convocatorias() {
                         />
                       </div>
                       <div className="field mb-0">
-                        <label className="text-xs">Fecha fin</label>
+                        <label htmlFor={`conv-${c.id_convocatoria}-fin`} className="text-xs">Fecha fin</label>
                         <input
+                          id={`conv-${c.id_convocatoria}-fin`}
                           type="date"
                           className="input py-1.5 text-sm"
                           value={editForm.fecha_fin}

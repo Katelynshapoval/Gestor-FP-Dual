@@ -341,14 +341,10 @@ const MisDatos = ({
       <div className="form-card">
         <h2 className="form-section-title">Puesto de trabajo</h2>
         <div className="space-y-4">
-          <div className="field">
-            <label>Descripción del puesto</label>
-            <p className="input bg-surface-50 cursor-default min-h-[60px] whitespace-pre-wrap">
-              {solicitud.descripcionPuesto ||
-                solicitud.descripcion_puesto ||
-                "—"}
-            </p>
-          </div>
+          <ReadField
+            label="Descripción del puesto"
+            value={<span className="whitespace-pre-wrap">{solicitud.descripcionPuesto || solicitud.descripcion_puesto || "—"}</span>}
+          />
           <ReadField
             label="Dirección del lugar de trabajo"
             value={
@@ -377,21 +373,13 @@ const MisDatos = ({
           Medios de transporte con los que el alumno puede acceder al puesto.
         </p>
         {transporteNombres.length > 0 ? (
-          <div className="checkbox-grid">
+          <ul className="flex flex-wrap gap-2">
             {transporteNombres.map((name, i) => (
-              <div key={i} className="checkbox-item checked">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked
-                    readOnly
-                    className="accent-brand-500"
-                  />
-                  <span className="item-label">{name}</span>
-                </div>
-              </div>
+              <li key={i} className="rounded-md border border-surface-200 bg-surface-50 px-3 py-1.5 text-sm text-charcoal-800">
+                {name}
+              </li>
             ))}
-          </div>
+          </ul>
         ) : solicitud.transportes_conocidos === false ? (
           <p className="text-muted text-sm">
             No registrado: los datos de transporte de esta convocatoria no se conservaron.

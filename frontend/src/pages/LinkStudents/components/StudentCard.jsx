@@ -249,7 +249,7 @@ const StudentCard = ({
                   onClick={() => setInnerTab("info")}
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                     innerTab === "info"
-                      ? "border-brand-500 text-brand-500"
+                      ? "border-brand-600 text-brand-700"
                       : "border-transparent text-muted hover:text-charcoal-700"
                   }`}
                 >
@@ -262,7 +262,7 @@ const StudentCard = ({
                   onClick={() => setInnerTab("reservas")}
                   className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                     innerTab === "reservas"
-                      ? "border-brand-500 text-brand-500"
+                      ? "border-brand-600 text-brand-700"
                       : "border-transparent text-muted hover:text-charcoal-700"
                   }`}
                 >

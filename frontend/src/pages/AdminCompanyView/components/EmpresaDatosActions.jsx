@@ -192,10 +192,11 @@ const EmpresaDatosActions = ({
               Aprobar
             </button>
             <div className="flex-1">
-              <label className="text-xs font-semibold text-muted">
+              <label htmlFor={`motivo-cambio-${empresa.id_solicitud_empresa}`} className="text-xs font-semibold text-muted">
                 Motivo del rechazo
               </label>
               <input
+                id={`motivo-cambio-${empresa.id_solicitud_empresa}`}
                 className="input mt-1"
                 value={motivo}
                 onChange={(e) => {

@@ -286,6 +286,7 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
         </StateCard>
       ) : (
         <>
+          <h2 className="sr-only">Documentos encontrados</h2>
           <div className="space-y-3" aria-busy={loading}>
             {loading ? (
               <SkeletonList />

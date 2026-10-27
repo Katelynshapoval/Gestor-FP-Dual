@@ -205,6 +205,7 @@ const EspecialidadList = ({
                   type="number"
                   min="0"
                   step="1"
+                  aria-label={`Plazas de ${cicloLabel(e)}`}
                   className="input w-16 py-0.5 text-xs"
                   value={current}
                   disabled={savingId === idOferta}
@@ -395,7 +396,7 @@ const CompanyCard = ({
   const innerTabCls = (active) =>
     `px-4 py-1.5 text-xs font-semibold border-b-2 transition ${
       active
-        ? "border-red-600 text-red-600"
+        ? "border-brand-600 text-brand-700"
         : "border-transparent text-muted hover:text-charcoal-700"
     }`;
 
@@ -408,7 +409,7 @@ const CompanyCard = ({
       >
         <div className="flex-1 min-w-0 overflow-hidden">
           <p className={`${cardNameClass} flex items-center gap-2 min-w-0`}>
-            <FaBuilding className="text-brand-500 shrink-0" />
+            <FaBuilding aria-hidden="true" className="text-brand-600 shrink-0" />
             <span className="truncate">{razonSocial}</span>
             <span className="hidden sm:inline text-[.8rem] text-muted shrink-0">
               ({empresa.cif})
@@ -445,7 +446,7 @@ const CompanyCard = ({
             <button
               type="button"
               title="Editar datos"
-              aria-label="Editar datos"
+              aria-label={`Editar los datos de ${razonSocial}`}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-100 hover:text-brand-600"
               onClick={(e) => {
                 e.stopPropagation();
@@ -457,17 +458,20 @@ const CompanyCard = ({
                 }
               }}
             >
-              <MdEdit className="text-lg" />
+              <MdEdit aria-hidden="true" className="text-lg" />
             </button>
           )}
           <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? "Ocultar" : "Mostrar"} el detalle de ${razonSocial}`}
             className={`${toggleBtnClass} ${isExpanded ? "rotate-180" : ""}`}
             onClick={(e) => {
               e.stopPropagation();
               onToggle(id);
             }}
           >
-            <IoMdArrowDropdown className="text-[1.5rem]" />
+            <IoMdArrowDropdown aria-hidden="true" className="text-[1.5rem]" />
           </button>
         </div>
       </div>

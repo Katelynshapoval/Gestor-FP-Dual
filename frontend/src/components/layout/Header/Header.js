@@ -287,8 +287,12 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
         role="dialog"
         aria-modal="true"
         aria-label="Menú"
-        className={`fixed right-0 top-0 z-50 flex h-full w-[min(22rem,88vw)] flex-col bg-charcoal-950 text-white shadow-2xl transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none md:hidden ${
-          open ? "visible translate-x-0" : "invisible translate-x-full"
+        // Visibility switches at once on open (so focus can move in) and only
+        // after the slide on close.
+        className={`fixed right-0 top-0 z-50 flex h-full w-[min(22rem,88vw)] flex-col bg-charcoal-950 text-white shadow-2xl motion-reduce:transition-none md:hidden ${
+          open
+            ? "visible translate-x-0 [transition:transform_200ms_ease-out,visibility_0s]"
+            : "invisible translate-x-full [transition:transform_200ms_ease-out,visibility_0s_linear_200ms]"
         }`}
       >
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">

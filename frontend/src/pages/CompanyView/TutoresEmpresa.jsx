@@ -259,24 +259,24 @@ const TutoresEmpresa = () => {
                   <div className="mt-4 border-t border-surface-200 pt-4">
                     <div className="grid gap-x-4 md:grid-cols-2">
                       <div className="field">
-                        <label>Nombre</label>
-                        <input className="input" value={editForm.nombre} onChange={(e) => setField(setEditForm, "nombre", e.target.value)} maxLength={100} />
+                        <label htmlFor={`tutor-${t.id_empresa_tutor}-nombre`}>Nombre</label>
+                        <input id={`tutor-${t.id_empresa_tutor}-nombre`} className="input" value={editForm.nombre} onChange={(e) => setField(setEditForm, "nombre", e.target.value)} maxLength={100} />
                       </div>
                       <div className="field">
-                        <label>DNI / NIE</label>
-                        <input className="input" value={editForm.dni} onChange={(e) => setField(setEditForm, "dni", e.target.value.toUpperCase())} maxLength={15} />
+                        <label htmlFor={`tutor-${t.id_empresa_tutor}-dni`}>DNI / NIE</label>
+                        <input id={`tutor-${t.id_empresa_tutor}-dni`} className="input" value={editForm.dni} onChange={(e) => setField(setEditForm, "dni", e.target.value.toUpperCase())} maxLength={15} />
                       </div>
                       <div className="field">
-                        <label>Email</label>
-                        <input className="input" type="email" value={editForm.email} onChange={(e) => setField(setEditForm, "email", e.target.value)} maxLength={100} />
+                        <label htmlFor={`tutor-${t.id_empresa_tutor}-email`}>Email</label>
+                        <input id={`tutor-${t.id_empresa_tutor}-email`} className="input" type="email" value={editForm.email} onChange={(e) => setField(setEditForm, "email", e.target.value)} maxLength={100} />
                       </div>
                       <div className="field">
-                        <label>Teléfono</label>
-                        <input className="input" value={editForm.telefono} onChange={(e) => setField(setEditForm, "telefono", e.target.value)} maxLength={20} />
+                        <label htmlFor={`tutor-${t.id_empresa_tutor}-telefono`}>Teléfono</label>
+                        <input id={`tutor-${t.id_empresa_tutor}-telefono`} className="input" value={editForm.telefono} onChange={(e) => setField(setEditForm, "telefono", e.target.value)} maxLength={20} />
                       </div>
                       <div className="field md:col-span-2">
-                        <label>Cargo</label>
-                        <input className="input" value={editForm.cargo} onChange={(e) => setField(setEditForm, "cargo", e.target.value)} maxLength={100} />
+                        <label htmlFor={`tutor-${t.id_empresa_tutor}-cargo`}>Cargo</label>
+                        <input id={`tutor-${t.id_empresa_tutor}-cargo`} className="input" value={editForm.cargo} onChange={(e) => setField(setEditForm, "cargo", e.target.value)} maxLength={100} />
                       </div>
                     </div>
                     <div className="flex justify-end gap-2">
