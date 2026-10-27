@@ -1,575 +1,539 @@
-import { useState, useEffect, useRef } from "react";
-import * as FormatValidation from "../../utils/formatValidation.js";
-import { postForm } from "../../utils/api.js";
-import LegalGuardianFields from "./LegalGuardianFields.jsx";
-import FormMessage from "../../components/ui/FormMessage.jsx";
+import { useEffect, useState } from "react";
+import { dniNieValido, nSSValido } from "../../utils/formatValidation.js";
+import { postForm, publicJSON } from "../../utils/api.js";
 import PageHeader from "../../components/ui/PageHeader.jsx";
-import { MdOutlineFileUpload } from "react-icons/md";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
+import ConvocatoriaGate from "../../components/forms/ConvocatoriaGate.jsx";
+import SubmitSuccess from "../../components/forms/SubmitSuccess.jsx";
+import {
+  ErrorSummary,
+  FileField,
+  RadioField,
+  ReviewSection,
+  SelectField,
+  StepHeading,
+  StepNav,
+  Stepper,
+  SubmitProgress,
+  TextField,
+  useStepForm,
+  useUnsavedWarning,
+} from "../../components/forms/StepForm.jsx";
 
 import "../../styles/forms.css";
 
-function Field({ id, label, children }) {
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      {children}
-    </div>
-  );
+// Student application for the FP Dual programme, in steps (Phase 4, D.3).
+// Same fields, rules and endpoint as before; only the presentation changed.
+
+const STEPS = [
+  { id: "ciclo", title: "Ciclo" },
+  { id: "personales", title: "Datos personales" },
+  { id: "contacto", title: "Contacto y movilidad" },
+  { id: "documentos", title: "Documentos" },
+  { id: "cuenta", title: "Cuenta" },
+  { id: "revision", title: "Revisión y envío" },
+];
+
+const INITIAL = {
+  emailColegio: "",
+  especialidad: "",
+  pref1: "",
+  pref2: "",
+  pref3: "",
+  dni: "",
+  nombre: "",
+  fechaNacimiento: "",
+  nacionalidad: "",
+  sexo: "",
+  tutorLegal: "",
+  dniTutorLegal: "",
+  email: "",
+  telefono: "",
+  domicilio: "",
+  cp: "",
+  localidad: "",
+  carnet: "",
+  vehiculo: "",
+  idiomas: "",
+  numeroSS: "",
+  cv: null,
+  anexoDga: null,
+  password: "",
+  password2: "",
+};
+
+const LABELS = {
+  emailColegio: "Email del centro",
+  especialidad: "Ciclo (especialidad)",
+  dni: "DNI / NIE",
+  nombre: "Nombre y apellidos",
+  fechaNacimiento: "Fecha de nacimiento",
+  nacionalidad: "Nacionalidad",
+  sexo: "Sexo",
+  tutorLegal: "Nombre del tutor legal",
+  dniTutorLegal: "DNI/NIE del tutor legal",
+  email: "Email personal",
+  telefono: "Teléfono",
+  domicilio: "Domicilio",
+  cp: "Código postal",
+  localidad: "Localidad",
+  carnet: "Carnet de conducir",
+  vehiculo: "Vehículo",
+  idiomas: "Idiomas",
+  numeroSS: "Nº de la Seguridad Social",
+  cv: "Currículum",
+  anexoDga: "Anexo DGA",
+  password: "Contraseña",
+  password2: "Repetir contraseña",
+};
+
+const COLEGIO_RE = /^[a-zA-Z0-9._%+-]+@zaragoza\.salesianos\.edu$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function esMenor(fecha) {
+  if (!fecha) return false;
+  const limite = new Date();
+  limite.setFullYear(limite.getFullYear() - 18);
+  return new Date(`${fecha}T12:00:00`) > limite;
 }
 
-function PreferenciaSelect({ label, value, onChange, dataPreferences }) {
-  return (
-    <Field label={label}>
-      <select className="select-input" value={value} onChange={onChange}>
-        <option value="">Seleccione una preferencia</option>
-        {dataPreferences.map((p) => (
-          <option key={p.id_preferencia} value={p.id_preferencia}>
-            {p.descripcion}
-          </option>
-        ))}
-      </select>
-    </Field>
-  );
+const req = (v, msg = "Este campo es obligatorio.") => (String(v ?? "").trim() ? null : msg);
+const isPdf = (f) => f && (f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+
+function validateStep(id, v) {
+  const e = {};
+  if (id === "ciclo") {
+    e.emailColegio = req(v.emailColegio) || (COLEGIO_RE.test(v.emailColegio.trim()) ? null : "Debe terminar en @zaragoza.salesianos.edu.");
+    e.especialidad = req(v.especialidad, "Elige tu ciclo.");
+  }
+  if (id === "personales") {
+    const dni = v.dni.trim().toUpperCase();
+    e.dni = req(dni) || (dniNieValido(dni) ? null : "No es un DNI/NIE válido (8 números y letra, o X/Y/Z, 7 números y letra).");
+    e.nombre = req(v.nombre);
+    e.fechaNacimiento = req(v.fechaNacimiento);
+    e.nacionalidad = req(v.nacionalidad);
+    e.sexo = req(v.sexo, "Elige una opción.");
+    if (esMenor(v.fechaNacimiento)) {
+      e.tutorLegal = req(v.tutorLegal);
+      const dt = v.dniTutorLegal.trim().toUpperCase();
+      e.dniTutorLegal = req(dt) || (dniNieValido(dt) ? null : "No es un DNI/NIE válido.");
+    }
+  }
+  if (id === "contacto") {
+    e.email = req(v.email) || (EMAIL_RE.test(v.email.trim()) ? null : "Escribe un email válido.");
+    e.telefono = req(v.telefono) || (/^[0-9]{9}$/.test(v.telefono.trim()) ? null : "Escribe 9 cifras, sin espacios.");
+    e.domicilio = req(v.domicilio);
+    e.cp = req(v.cp) || (/^[0-9]{5}$/.test(v.cp.trim()) ? null : "Escribe las 5 cifras del código postal.");
+    e.localidad = req(v.localidad);
+    e.carnet = req(v.carnet, "Elige una opción.");
+    e.vehiculo = req(v.vehiculo, "Elige una opción.");
+    e.idiomas = req(v.idiomas);
+    const ss = v.numeroSS.replace(/\s/g, "");
+    e.numeroSS = ss && !(/^[0-9]{12}$/.test(ss) && nSSValido(ss)) ? "Debe tener 12 cifras y ser un número válido." : null;
+  }
+  if (id === "documentos") {
+    e.cv = !v.cv ? "Adjunta tu currículum." : isPdf(v.cv) ? null : "El archivo debe ser un PDF.";
+    e.anexoDga = !v.anexoDga ? "Adjunta el Anexo DGA." : isPdf(v.anexoDga) ? null : "El archivo debe ser un PDF.";
+  }
+  if (id === "cuenta") {
+    e.password = req(v.password) || (v.password.length >= 8 ? null : "Debe tener al menos 8 caracteres.");
+    e.password2 = req(v.password2) || (v.password2 === v.password ? null : "Las contraseñas no coinciden.");
+  }
+  return e;
 }
 
-// Student application page for the FP Dual programme
 function AddDualStudent() {
   const toast = useToast();
-  const [validation, setValidation] = useState("");
-  const formRef = useRef(null);
-  const [dataSpecialities, setDataSpecialities] = useState([]);
-  const [dataPreferences, setDataPreferences] = useState([]);
-  const [esMenor, setEsMenor] = useState(false);
-  const [name, setName] = useState("");
-  const [gender, setGender] = useState("");
-  const [dniNie, setDniNie] = useState("");
-  const [birthdate, setBirthdate] = useState("");
-  const [preference1, setPreference1] = useState("");
-  const [preference2, setPreference2] = useState("");
-  const [preference3, setPreference3] = useState("");
-  const [studiesEmail, setStudiesEmail] = useState("");
-  const [nationality, setNationality] = useState("");
-  const [drivingLicense, setDrivingLicense] = useState("");
-  const [availability, setAvailability] = useState("");
-  const [SSnumber, setSSNumber] = useState("");
-  const [legalGuardianName, setLegalGuardianName] = useState("");
-  const [speciality, setSpeciality] = useState("");
-  const [studentTelephone, setStudentTelephone] = useState("");
-  const [legalGuardianDni, setLegalGuardianDni] = useState("");
-  const [email, setEmail] = useState("");
-  const [adress, setAdress] = useState("");
-  const [cp, setCP] = useState("");
-  const [location, setLocation] = useState("");
-  const [idioms, setIdioms] = useState("");
-  const [file, setFile] = useState(null);
-  const [cv, setCv] = useState(null);
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const form = useStepForm({ steps: STEPS, initialValues: INITIAL, validateStep });
+  const { values: v, set, errors, step, headingRef } = form;
+  const [especialidades, setEspecialidades] = useState({ status: "loading", items: [] });
+  const [preferencias, setPreferencias] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  // Remounts the file inputs so the browser clears the selected files
-  const [fileInputsKey, setFileInputsKey] = useState(0);
+  const [enviado, setEnviado] = useState(null);
 
-  // Clears every controlled field after a successful submission (WF-13)
-  const resetForm = () => {
-    setEsMenor(false);
-    setName("");
-    setGender("");
-    setDniNie("");
-    setBirthdate("");
-    setPreference1("");
-    setPreference2("");
-    setPreference3("");
-    setStudiesEmail("");
-    setNationality("");
-    setDrivingLicense("");
-    setAvailability("");
-    setSSNumber("");
-    setLegalGuardianName("");
-    setSpeciality("");
-    setDataPreferences([]);
-    setStudentTelephone("");
-    setLegalGuardianDni("");
-    setEmail("");
-    setAdress("");
-    setCP("");
-    setLocation("");
-    setIdioms("");
-    setFile(null);
-    setCv(null);
-    setPassword("");
-    setConfirmPassword("");
-    setFileInputsKey((k) => k + 1);
+  useUnsavedWarning(form.dirty && !enviado);
+
+  const cargarEspecialidades = () => {
+    setEspecialidades({ status: "loading", items: [] });
+    publicJSON("/especialidades")
+      .then((rows) => setEspecialidades({ status: "ready", items: Array.isArray(rows) ? rows : [] }))
+      .catch(() => setEspecialidades({ status: "error", items: [] }));
   };
+  useEffect(cargarEspecialidades, []);
 
+  // Preferences depend on the chosen ciclo; changing ciclo clears them.
   useEffect(() => {
-    fetch("/especialidades")
-      .then((r) => r.json())
-      .then(setDataSpecialities)
-      .catch((err) => console.error("Error al cargar especialidades:", err));
-  }, []);
+    setPreferencias([]);
+    if (!v.especialidad) return;
+    publicJSON(`/preferencias?id_especialidad=${encodeURIComponent(v.especialidad)}`)
+      .then((rows) => setPreferencias(Array.isArray(rows) ? rows : []))
+      .catch(() => setPreferencias([]));
+  }, [v.especialidad]);
 
-  const handleSpecialityChange = (e) => {
-    const id = e.target.value;
-    setSpeciality(id);
-    setDataPreferences([]);
-    setPreference1("");
-    setPreference2("");
-    setPreference3("");
-    if (id) {
-      fetch(`/preferencias?id_especialidad=${id}`)
-        .then((r) => r.json())
-        .then(setDataPreferences)
-        .catch((err) => console.error("Error al cargar preferencias:", err));
-    }
-  };
-
-  const handleBirthdateChange = (e) => {
-    const birthDate = new Date(e.target.value);
-    setEsMenor(
-      birthDate >
-        new Date(new Date().setFullYear(new Date().getFullYear() - 18)),
-    );
-    setBirthdate(e.target.value);
+  const onEspecialidad = (name, value) => {
+    set(name, value);
+    set("pref1", "");
+    set("pref2", "");
+    set("pref3", "");
   };
 
   const handleSubmit = async () => {
-    if (submitting) return;
-    if (!formRef.current.checkValidity()) {
-      formRef.current.reportValidity();
-      return;
-    }
-    if (!FormatValidation.dniNieValido(dniNie)) {
-      setValidation("Formato de DNI/NIE del alumno no válido.");
-      return;
-    }
-    if (SSnumber && !FormatValidation.nSSValido(SSnumber)) {
-      setValidation("Formato del número de Seguridad Social no válido.");
-      return;
-    }
-    if (
-      esMenor &&
-      legalGuardianDni &&
-      !FormatValidation.dniNieValido(legalGuardianDni)
-    ) {
-      setValidation("Formato de DNI/NIE del tutor legal no válido.");
-      return;
-    }
-    if (!password || password.length < 8) {
-      setValidation("La contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setValidation("Las contraseñas no coinciden.");
-      return;
-    }
-    setValidation("");
+    if (submitting || !form.validateAll()) return;
     setSubmitting(true);
     try {
       const data = new FormData();
-      data.append("emailColegio", studiesEmail);
-      data.append("dni", dniNie.trim().toUpperCase());
-      data.append("nombre", name);
-      data.append("sexo", gender);
-      data.append("fechaNacimiento", birthdate);
-      data.append("nacionalidad", nationality);
-      data.append("email", email);
-      data.append("telalumno", studentTelephone);
-      data.append("carnetDeConducir", drivingLicense === "true" ? 1 : 0);
-      data.append("tieneCoche", availability === "true" ? 1 : 0);
-      data.append("idiomasConocidos", idioms);
-      data.append("numeroSS", SSnumber);
-      data.append("domicilio", adress);
-      data.append("cp", cp);
-      data.append("localidad", location);
-      data.append("id_especialidad_dual", speciality);
-      if (preference1) data.append("idPreferencia1", preference1);
-      if (preference2) data.append("idPreferencia2", preference2);
-      if (preference3) data.append("idPreferencia3", preference3);
-      data.append("tutorLegal", legalGuardianName);
-      data.append("dniTutorLegal", legalGuardianDni);
-      if (file) data.append("anexoDga", file);
-      if (cv) data.append("cv", cv);
-      data.append("password", password);
+      data.append("emailColegio", v.emailColegio.trim());
+      data.append("dni", v.dni.trim().toUpperCase());
+      data.append("nombre", v.nombre.trim());
+      data.append("sexo", v.sexo);
+      data.append("fechaNacimiento", v.fechaNacimiento);
+      data.append("nacionalidad", v.nacionalidad.trim());
+      data.append("email", v.email.trim());
+      data.append("telalumno", v.telefono.trim());
+      data.append("carnetDeConducir", v.carnet === "true" ? 1 : 0);
+      data.append("tieneCoche", v.vehiculo === "true" ? 1 : 0);
+      data.append("idiomasConocidos", v.idiomas.trim());
+      data.append("numeroSS", v.numeroSS.replace(/\s/g, ""));
+      data.append("domicilio", v.domicilio.trim());
+      data.append("cp", v.cp.trim());
+      data.append("localidad", v.localidad.trim());
+      data.append("id_especialidad_dual", v.especialidad);
+      if (v.pref1) data.append("idPreferencia1", v.pref1);
+      if (v.pref2) data.append("idPreferencia2", v.pref2);
+      if (v.pref3) data.append("idPreferencia3", v.pref3);
+      const menor = esMenor(v.fechaNacimiento);
+      data.append("tutorLegal", menor ? v.tutorLegal.trim() : "");
+      data.append("dniTutorLegal", menor ? v.dniTutorLegal.trim().toUpperCase() : "");
+      data.append("anexoDga", v.anexoDga);
+      data.append("cv", v.cv);
+      data.append("password", v.password);
       const result = await postForm("/solicitudes/alumno", data);
-      toast.success(
-        result?.cuenta_existente
-          ? "La candidatura se ha enviado correctamente. Puedes seguirla en el portal con tu DNI/NIE y tu contraseña de siempre."
-          : "La candidatura se ha enviado correctamente. Ya puedes iniciar sesión con tu DNI/NIE.",
-      );
-      resetForm();
+      setEnviado({ cuentaExistente: Boolean(result?.cuenta_existente) });
+      form.setDirty(false);
     } catch (err) {
-      toast.error(err.message || "Ha ocurrido un error. Inténtalo de nuevo.");
+      toast.error(err.message || "No se pudo enviar la solicitud. Inténtalo de nuevo.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const espOptions = especialidades.items.map((e) => ({
+    value: String(e.id_especialidad),
+    label: `${e.nombre}${e.turno ? ` (${String(e.turno).toLowerCase()})` : ""}`,
+  }));
+  const prefOptions = preferencias.map((p) => ({ value: String(p.id_preferencia), label: p.descripcion }));
+  const nombreDe = (opts, value) => opts.find((o) => o.value === String(value))?.label || "";
+  const siNo = (x) => (x === "true" ? "Sí" : x === "false" ? "No" : "");
+  const menor = esMenor(v.fechaNacimiento);
+  const field = (name) => ({ name, label: LABELS[name], value: v[name], onChange: set, error: errors[name] });
+
+  const current = STEPS[step].id;
+
   return (
-    <div className="page-container">
+    <div className="page-container max-w-4xl">
       <PageHeader
         kicker="Alumnado"
         title="Presentar candidatura"
-        subtitle="Rellena todos los campos para inscribirte en el programa de FP Dual."
+        subtitle="Inscríbete en el programa de FP Dual. Te llevará unos 10 minutos; ten a mano tu CV y el Anexo DGA en PDF."
       />
-      <form ref={formRef} className="space-y-6">
-        <div className="form-card">
-          <div className="form-section-title">Datos del centro</div>
-          <Field id="studiesEmail" label="Email del instituto">
-            <input
-              id="studiesEmail"
-              className="input"
-              type="email"
-              value={studiesEmail}
-              onChange={(e) => setStudiesEmail(e.target.value)}
-              pattern="^[a-zA-Z0-9._%+-]+@zaragoza\.salesianos\.edu$"
-              placeholder="Introduce el email del instituto"
-              maxLength={60}
-              required
-            />
-          </Field>
-          <Field label="Especialidad">
-            <select
-              className="select-input"
-              value={speciality}
-              onChange={handleSpecialityChange}
-              required
-            >
-              <option value="">Seleccione una especialidad</option>
-              {dataSpecialities.map((esp) => (
-                <option key={esp.id_especialidad} value={esp.id_especialidad}>
-                  {esp.nombre} {esp.turno ? `(${esp.turno})` : ""}
-                </option>
-              ))}
-            </select>
-          </Field>
-          {dataPreferences.length > 0 && (
-            <div className="grid gap-4 md:grid-cols-3">
-              <PreferenciaSelect
-                label="Preferencia 1"
-                value={preference1}
-                onChange={(e) => setPreference1(e.target.value)}
-                dataPreferences={dataPreferences}
-              />
-              <PreferenciaSelect
-                label="Preferencia 2"
-                value={preference2}
-                onChange={(e) => setPreference2(e.target.value)}
-                dataPreferences={dataPreferences}
-              />
-              <PreferenciaSelect
-                label="Preferencia 3"
-                value={preference3}
-                onChange={(e) => setPreference3(e.target.value)}
-                dataPreferences={dataPreferences}
-              />
-            </div>
-          )}
-        </div>
+      <ConvocatoriaGate quien="alumnos">
+        {enviado ? (
+          <SubmitSuccess
+            title="Solicitud enviada"
+            onAnother={() => {
+              form.reset();
+              setEnviado(null);
+            }}
+            anotherLabel="Presentar otra solicitud"
+          >
+            <p className="m-0">
+              El centro revisará tu documentación y te avisará por email del resultado.{" "}
+              {enviado.cuentaExistente
+                ? "Puedes seguir tu solicitud en el portal con tu DNI/NIE y la contraseña que ya tenías."
+                : "Ya puedes seguir tu solicitud en el portal con tu DNI/NIE y la contraseña que has elegido."}
+            </p>
+          </SubmitSuccess>
+        ) : (
+          <form
+            className="form-card"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (step < STEPS.length - 1) form.next();
+              else handleSubmit();
+            }}
+          >
+            <Stepper steps={STEPS} current={step} onGoTo={form.goTo} />
+            <ErrorSummary errors={errors} labels={LABELS} />
+            <p className="mb-5 text-xs text-muted">
+              Los campos marcados con <span aria-hidden="true" className="text-brand-700">*</span> son obligatorios.
+            </p>
 
-        <div className="form-card">
-          <div className="form-section-title">Datos personales</div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field id="dniNie" label="DNI / NIE">
-              <input
-                id="dniNie"
-                className="input"
-                value={dniNie}
-                onChange={(e) => setDniNie(e.target.value)}
-                pattern="[A-Z0-9]{9,10}"
-                maxLength={10}
-                placeholder="12345678A"
-                required
-              />
-            </Field>
-            <Field id="nameF" label="Nombre completo">
-              <input
-                id="nameF"
-                className="input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={100}
-                placeholder="Introduce tu nombre y apellidos"
-                required
-              />
-            </Field>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field id="birthdate" label="Fecha de nacimiento">
-              <input
-                id="birthdate"
-                className="input"
-                type="date"
-                value={birthdate}
-                onChange={handleBirthdateChange}
-                required
-              />
-            </Field>
-            <Field id="nationality" label="Nacionalidad">
-              <input
-                id="nationality"
-                className="input"
-                value={nationality}
-                onChange={(e) => setNationality(e.target.value)}
-                maxLength={50}
-                placeholder="Tu nacionalidad"
-                required
-              />
-            </Field>
-          </div>
-
-          <div className="field">
-            <label>Sexo</label>
-            <div className="radio-group">
-              {["Hombre", "Mujer"].map((op) => (
-                <label key={op} className="radio-option">
-                  <input
-                    type="radio"
-                    name="gender"
-                    value={op}
-                    checked={gender === op}
-                    onChange={(e) => setGender(e.target.value)}
-                    required={op === "Hombre"}
-                  />
-                  <span>{op}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          {esMenor && (
-            <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mb-4">
-              <p className="mb-3 text-[0.8rem] font-semibold text-brand">
-                ⚠ El alumno es menor de edad — datos del tutor legal
-              </p>
-              <LegalGuardianFields
-                legalGuardianName={legalGuardianName}
-                legalGuardianDni={legalGuardianDni}
-                onNameChange={(e) => setLegalGuardianName(e.target.value)}
-                onDniChange={(e) => setLegalGuardianDni(e.target.value)}
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="form-card">
-          <div className="form-section-title">Contacto y domicilio</div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field id="email" label="Email personal">
-              <input
-                id="email"
-                className="input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ejemplo@gmail.com"
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="tel" label="Teléfono">
-              <input
-                id="tel"
-                className="input"
-                value={studentTelephone}
-                onChange={(e) => setStudentTelephone(e.target.value)}
-                placeholder="Número de teléfono"
-                pattern="[0-9]{9}"
-                required
-              />
-            </Field>
-          </div>
-          <Field id="adress" label="Domicilio">
-            <input
-              id="adress"
-              className="input"
-              value={adress}
-              onChange={(e) => setAdress(e.target.value)}
-              placeholder="Calle, número, piso..."
-              maxLength={255}
-              required
-            />
-          </Field>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field id="cp" label="Código postal">
-              <input
-                id="cp"
-                className="input"
-                value={cp}
-                onChange={(e) => setCP(e.target.value)}
-                maxLength={10}
-                placeholder="50001"
-                required
-              />
-            </Field>
-            <Field id="location" label="Localidad">
-              <input
-                id="location"
-                className="input"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Zaragoza"
-                maxLength={100}
-                required
-              />
-            </Field>
-          </div>
-        </div>
-
-        <div className="form-card">
-          <div className="form-section-title">Movilidad y aptitudes</div>
-          <Field label="Carnet de conducir">
-            <div className="radio-group">
-              {[
-                { v: "true", l: "Sí" },
-                { v: "false", l: "No" },
-              ].map(({ v, l }) => (
-                <label key={v} className="radio-option">
-                  <input
-                    type="radio"
-                    name="dl"
-                    value={v}
-                    checked={drivingLicense === v}
-                    onChange={(e) => setDrivingLicense(e.target.value)}
-                    required={!drivingLicense}
-                  />
-                  <span>{l}</span>
-                </label>
-              ))}
-            </div>
-          </Field>
-          <Field label="Disponibilidad de vehículo">
-            <div className="radio-group">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="avail"
-                  value="true"
-                  checked={availability === "true"}
-                  onChange={(e) => setAvailability(e.target.value)}
-                  required={!availability}
+            {current === "ciclo" && (
+              <>
+                <StepHeading headingRef={headingRef} title="Ciclo" description="Elige el ciclo en el que estás matriculado." />
+                <TextField
+                  {...field("emailColegio")}
+                  type="email"
+                  required
+                  autoComplete="email"
+                  maxLength={60}
+                  hint="El correo que te da el centro: termina en @zaragoza.salesianos.edu."
+                  placeholder="nombre.apellido@zaragoza.salesianos.edu"
                 />
-                <span>Tengo vehículo disponible para ir a trabajar</span>
-              </label>
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="avail"
-                  value="false"
-                  checked={availability === "false"}
-                  onChange={(e) => setAvailability(e.target.value)}
+                {especialidades.status === "error" ? (
+                  <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    No se pudieron cargar los ciclos.{" "}
+                    <button type="button" className="font-semibold underline" onClick={cargarEspecialidades}>
+                      Reintentar
+                    </button>
+                  </p>
+                ) : (
+                  <SelectField
+                    {...field("especialidad")}
+                    onChange={onEspecialidad}
+                    required
+                    options={espOptions}
+                    disabled={especialidades.status === "loading"}
+                    placeholder={especialidades.status === "loading" ? "Cargando ciclos…" : "Selecciona tu ciclo"}
+                  />
+                )}
+                {prefOptions.length > 0 && (
+                  <fieldset className="mt-2">
+                    <legend className="mb-1 text-sm font-semibold text-charcoal-800">Preferencias (opcional)</legend>
+                    <p className="mb-3 text-xs text-muted">Indica, por orden, los tipos de puesto que más te interesan.</p>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {["pref1", "pref2", "pref3"].map((p, i) => (
+                        <SelectField
+                          key={p}
+                          name={p}
+                          label={`Preferencia ${i + 1}`}
+                          value={v[p]}
+                          onChange={set}
+                          options={prefOptions}
+                          placeholder="Sin preferencia"
+                        />
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
+              </>
+            )}
+
+            {current === "personales" && (
+              <>
+                <StepHeading headingRef={headingRef} title="Datos personales" />
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField
+                    {...field("dni")}
+                    required
+                    maxLength={10}
+                    autoComplete="off"
+                    hint="Con letra, sin espacios ni guiones. Es tu usuario para entrar al portal."
+                    placeholder="12345678Z"
+                    onChange={(n, val) => set(n, val.toUpperCase())}
+                  />
+                  <TextField {...field("nombre")} required maxLength={100} autoComplete="name" />
+                  <TextField {...field("fechaNacimiento")} type="date" required autoComplete="bday" />
+                  <TextField {...field("nacionalidad")} required maxLength={50} placeholder="Española" />
+                </div>
+                <RadioField
+                  {...field("sexo")}
+                  required
+                  options={[
+                    { value: "Hombre", label: "Hombre" },
+                    { value: "Mujer", label: "Mujer" },
+                  ]}
                 />
-                <span>No dispongo de vehículo</span>
-              </label>
-            </div>
-          </Field>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field id="idioms" label="Idiomas (con nivel)">
-              <input
-                id="idioms"
-                className="input"
-                value={idioms}
-                onChange={(e) => setIdioms(e.target.value)}
-                placeholder="Inglés B2, Francés A2"
-                required
-                maxLength={255}
-              />
-            </Field>
-            <Field id="ss" label="Nº Seguridad Social (si lo tienes)">
-              <input
-                id="ss"
-                className="input"
-                value={SSnumber}
-                onChange={(e) => setSSNumber(e.target.value)}
-                placeholder="28 00012345 63"
-                pattern="[0-9]{12}"
-                maxLength={12}
-              />
-            </Field>
-          </div>
-        </div>
+                {menor && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <p className="mb-3 text-sm font-semibold text-amber-950">
+                      Eres menor de edad: indica los datos de tu tutor o tutora legal.
+                    </p>
+                    <div className="grid gap-x-4 md:grid-cols-2">
+                      <TextField {...field("tutorLegal")} required maxLength={45} />
+                      <TextField
+                        {...field("dniTutorLegal")}
+                        required
+                        maxLength={10}
+                        onChange={(n, val) => set(n, val.toUpperCase())}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
-        <div className="form-card">
-          <div className="form-section-title">Documentación</div>
-          <Field label="Curriculum Vitae (PDF)">
-            <label className="file-upload">
-              <MdOutlineFileUpload className="file-upload-icon" />
-              <span className="file-upload-text">
-                {cv ? cv.name : "Seleccionar archivo…"}
-              </span>
-              <input
-                key={`cv-${fileInputsKey}`}
-                type="file"
-                accept=".pdf"
-                onChange={(e) => setCv(e.target.files[0])}
-                required
-              />
-            </label>
-          </Field>
-          <Field label="Anexo DGA (PDF)">
-            <label className="file-upload">
-              <MdOutlineFileUpload className="file-upload-icon" />
-              <span className="file-upload-text">
-                {file ? file.name : "Seleccionar archivo..."}
-              </span>
-              <input
-                key={`dga-${fileInputsKey}`}
-                type="file"
-                accept=".pdf"
-                onChange={(e) => setFile(e.target.files[0])}
-                required
-              />
-            </label>
-          </Field>
-        </div>
+            {current === "contacto" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Contacto y movilidad"
+                  description="Usaremos tu email personal para avisarte de cambios en tu solicitud."
+                />
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField {...field("email")} type="email" required maxLength={100} autoComplete="email" />
+                  <TextField
+                    {...field("telefono")}
+                    type="tel"
+                    required
+                    inputMode="numeric"
+                    maxLength={9}
+                    autoComplete="tel-national"
+                    hint="9 cifras."
+                  />
+                </div>
+                <TextField {...field("domicilio")} required maxLength={255} autoComplete="street-address" placeholder="Calle, número, piso" />
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField {...field("cp")} required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
+                  <TextField {...field("localidad")} required maxLength={100} autoComplete="address-level2" />
+                </div>
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <RadioField
+                    {...field("carnet")}
+                    label="¿Tienes carnet de conducir?"
+                    required
+                    options={[
+                      { value: "true", label: "Sí" },
+                      { value: "false", label: "No" },
+                    ]}
+                  />
+                  <RadioField
+                    {...field("vehiculo")}
+                    label="¿Tienes vehículo para ir a trabajar?"
+                    required
+                    options={[
+                      { value: "true", label: "Sí, tengo vehículo" },
+                      { value: "false", label: "No" },
+                    ]}
+                  />
+                </div>
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField {...field("idiomas")} label="Idiomas y nivel" required maxLength={255} placeholder="Inglés B2, francés A2" />
+                  <TextField
+                    {...field("numeroSS")}
+                    label="Nº de la Seguridad Social (si lo tienes)"
+                    inputMode="numeric"
+                    maxLength={14}
+                    hint="12 cifras. Déjalo en blanco si todavía no lo tienes."
+                  />
+                </div>
+              </>
+            )}
 
-        <div className="form-card">
-          <div className="form-section-title">Acceso al portal</div>
-          <p className="field-hint">
-            El acceso se realiza con tu DNI/NIE, no con el correo electrónico.
-            Si ya tienes cuenta de un curso anterior, escribe aquí tu contraseña
-            actual del portal.
-          </p>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field id="pwdAlumno" label="Contraseña">
-              <input
-                id="pwdAlumno"
-                className="input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo 8 caracteres"
-                minLength={8}
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="pwdAlumno2" label="Confirmar contraseña">
-              <input
-                id="pwdAlumno2"
-                className="input"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repite la contraseña"
-                minLength={8}
-                maxLength={100}
-                required
-              />
-            </Field>
-          </div>
-        </div>
+            {current === "documentos" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Documentos"
+                  description="Ambos en PDF. El centro los revisará antes de validar tu solicitud."
+                />
+                <FileField name="cv" label="Currículum (PDF)" file={v.cv} onChange={set} error={errors.cv} required />
+                <FileField
+                  name="anexoDga"
+                  label="Anexo DGA (PDF)"
+                  file={v.anexoDga}
+                  onChange={set}
+                  error={errors.anexoDga}
+                  required
+                  hint="El documento de la DGA firmado. Si no lo tienes, pídelo en secretaría."
+                />
+              </>
+            )}
 
-        <button
-          type="button"
-          className={`btn btn-primary mt-2 mx-auto block ${submitting ? "btn-disabled" : ""}`}
-          onClick={handleSubmit}
-          disabled={submitting}
-          aria-busy={submitting}
-        >
-          {submitting ? "Enviando…" : "Presentar candidatura"}
-        </button>
-        <FormMessage message={validation} tone="error" />
-      </form>
+            {current === "cuenta" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Cuenta del portal"
+                  description="Entrarás al portal con tu DNI/NIE y esta contraseña. Si ya tienes cuenta de un curso anterior, escribe tu contraseña actual."
+                />
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField
+                    {...field("password")}
+                    type="password"
+                    required
+                    minLength={8}
+                    maxLength={100}
+                    autoComplete="new-password"
+                    hint="Mínimo 8 caracteres."
+                  />
+                  <TextField {...field("password2")} type="password" required maxLength={100} autoComplete="new-password" />
+                </div>
+              </>
+            )}
+
+            {current === "revision" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Revisión y envío"
+                  description="Comprueba los datos. Puedes modificar cualquier apartado antes de enviar."
+                />
+                <div className="space-y-3">
+                  <ReviewSection
+                    title="Ciclo"
+                    onEdit={() => form.goTo(0)}
+                    rows={[
+                      [LABELS.emailColegio, v.emailColegio],
+                      [LABELS.especialidad, nombreDe(espOptions, v.especialidad)],
+                      ["Preferencias", [v.pref1, v.pref2, v.pref3].filter(Boolean).map((p) => nombreDe(prefOptions, p)).join(" · ")],
+                    ]}
+                  />
+                  <ReviewSection
+                    title="Datos personales"
+                    onEdit={() => form.goTo(1)}
+                    rows={[
+                      [LABELS.dni, v.dni],
+                      [LABELS.nombre, v.nombre],
+                      [LABELS.fechaNacimiento, v.fechaNacimiento && new Date(`${v.fechaNacimiento}T12:00:00`).toLocaleDateString("es-ES")],
+                      [LABELS.nacionalidad, v.nacionalidad],
+                      [LABELS.sexo, v.sexo],
+                      ...(menor ? [[LABELS.tutorLegal, v.tutorLegal], [LABELS.dniTutorLegal, v.dniTutorLegal]] : []),
+                    ]}
+                  />
+                  <ReviewSection
+                    title="Contacto y movilidad"
+                    onEdit={() => form.goTo(2)}
+                    rows={[
+                      [LABELS.email, v.email],
+                      [LABELS.telefono, v.telefono],
+                      [LABELS.domicilio, [v.domicilio, v.cp, v.localidad].filter(Boolean).join(", ")],
+                      [LABELS.carnet, siNo(v.carnet)],
+                      [LABELS.vehiculo, siNo(v.vehiculo)],
+                      [LABELS.idiomas, v.idiomas],
+                      [LABELS.numeroSS, v.numeroSS],
+                    ]}
+                  />
+                  <ReviewSection
+                    title="Documentos"
+                    onEdit={() => form.goTo(3)}
+                    rows={[
+                      [LABELS.cv, v.cv?.name],
+                      [LABELS.anexoDga, v.anexoDga?.name],
+                    ]}
+                  />
+                </div>
+                <p className="mb-0 mt-4 text-xs leading-5 text-muted">
+                  Al enviar, declaras que los datos son correctos y que los documentos son tuyos. El centro tratará tus datos
+                  solo para gestionar tu participación en el programa de FP Dual.
+                </p>
+                <SubmitProgress submitting={submitting} />
+              </>
+            )}
+
+            <StepNav
+              step={step}
+              total={STEPS.length}
+              onBack={form.back}
+              onNext={form.next}
+              onSubmit={handleSubmit}
+              submitting={submitting}
+              submitLabel="Enviar solicitud"
+            />
+          </form>
+        )}
+      </ConvocatoriaGate>
     </div>
   );
 }

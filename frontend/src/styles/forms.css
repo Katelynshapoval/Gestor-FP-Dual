@@ -168,6 +168,20 @@
   @apply min-w-0 truncate align-middle text-base font-medium;
 }
 
+/* Visually hidden but still focusable: keyboard users reach the file picker
+   and the label shows the focus ring (focus-within). */
 .file-upload input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.file-upload {
+  position: relative;
 }

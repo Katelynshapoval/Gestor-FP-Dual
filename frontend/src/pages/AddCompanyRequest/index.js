@@ -1,540 +1,515 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import * as FormatValidation from "../../utils/formatValidation.js";
+import { useEffect, useState } from "react";
+import { cifValido, dniNieValido } from "../../utils/formatValidation.js";
 import { getJSON, postJSON } from "../../utils/api.js";
 import SpecialitySelector from "./SpecialitySelector.jsx";
 import TransportSelector from "./TransportSelector.jsx";
-import FormMessage from "../../components/ui/FormMessage.jsx";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
+import ConvocatoriaGate from "../../components/forms/ConvocatoriaGate.jsx";
+import SubmitSuccess from "../../components/forms/SubmitSuccess.jsx";
+import {
+  ErrorSummary,
+  ReviewSection,
+  StepHeading,
+  StepNav,
+  Stepper,
+  SubmitProgress,
+  TextField,
+  useStepForm,
+  useUnsavedWarning,
+} from "../../components/forms/StepForm.jsx";
 import "../../styles/forms.css";
 
-const Field = ({ id, label, hint, children }) => (
-  <div className="field">
-    <label htmlFor={id}>{label}</label>
-    {hint && (
-      <p className="field-hint" dangerouslySetInnerHTML={{ __html: hint }} />
-    )}
-    {children}
-  </div>
-);
+// Company application to join the FP Dual programme, in steps (Phase 4, D.3).
+// Same fields and endpoint as before (WF-12: nothing is invented or copied).
 
-// Company application page for joining the Dual programme
+const STEPS = [
+  { id: "empresa", title: "Empresa" },
+  { id: "representante", title: "Responsable legal" },
+  { id: "coordinador", title: "Coordinador" },
+  { id: "puesto", title: "Puesto y ciclos" },
+  { id: "cuenta", title: "Cuenta" },
+  { id: "revision", title: "Revisión y envío" },
+];
+
+const INITIAL = {
+  razonSocial: "",
+  cif: "",
+  telEmpresa: "",
+  dirRazSocial: "",
+  municipio: "",
+  provincia: "",
+  cpRazSoc: "",
+  responsableLegal: "",
+  dniRl: "",
+  cargo: "",
+  emailRepresentante: "",
+  telefonoRepresentante: "",
+  dniCoordinador: "",
+  nombreCoordinador: "",
+  emailCoordinador: "",
+  telefonoCoordinador: "",
+  descripcionPuesto: "",
+  mismoLugarTrabajo: true,
+  direccionLugarTrabajo: "",
+  municipioTrabajo: "",
+  provinciaTrabajo: "",
+  cpTrabajo: "",
+  especialidades: {}, // { [id_especialidad]: plazas }
+  transportes: [],
+  password: "",
+  password2: "",
+};
+
+const LABELS = {
+  razonSocial: "Razón social",
+  cif: "CIF",
+  telEmpresa: "Teléfono de la empresa",
+  dirRazSocial: "Dirección fiscal",
+  municipio: "Municipio",
+  provincia: "Provincia",
+  cpRazSoc: "Código postal",
+  responsableLegal: "Nombre y apellidos",
+  dniRl: "DNI/NIE",
+  cargo: "Cargo",
+  emailRepresentante: "Email",
+  telefonoRepresentante: "Teléfono",
+  dniCoordinador: "DNI/NIE",
+  nombreCoordinador: "Nombre y apellidos",
+  emailCoordinador: "Email",
+  telefonoCoordinador: "Teléfono",
+  descripcionPuesto: "Descripción del puesto",
+  direccionLugarTrabajo: "Dirección del lugar de trabajo",
+  municipioTrabajo: "Municipio del lugar de trabajo",
+  provinciaTrabajo: "Provincia del lugar de trabajo",
+  cpTrabajo: "Código postal del lugar de trabajo",
+  especialidades: "Ciclos y plazas",
+  password: "Contraseña",
+  password2: "Repetir contraseña",
+};
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TEL_RE = /^[0-9+\s]{9,15}$/;
+const req = (v, msg = "Este campo es obligatorio.") => (String(v ?? "").trim() ? null : msg);
+const email = (v) => req(v) || (EMAIL_RE.test(v.trim()) ? null : "Escribe un email válido.");
+const tel = (v) => req(v) || (TEL_RE.test(v.trim()) ? null : "Escribe un teléfono válido (al menos 9 cifras).");
+const dni = (v) => req(v) || (dniNieValido(v.trim().toUpperCase()) ? null : "No es un DNI/NIE válido.");
+const cp = (v) => req(v) || (/^[0-9]{5}$/.test(v.trim()) ? null : "Escribe las 5 cifras del código postal.");
+
+function validateStep(id, v) {
+  const e = {};
+  if (id === "empresa") {
+    e.razonSocial = req(v.razonSocial);
+    const c = v.cif.trim().toUpperCase();
+    e.cif = req(c) || (/^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(c) && cifValido(c) ? null : "No es un CIF válido (letra, 7 cifras y control).");
+    e.telEmpresa = v.telEmpresa.trim() && !TEL_RE.test(v.telEmpresa.trim()) ? "Escribe un teléfono válido." : null;
+    e.dirRazSocial = req(v.dirRazSocial);
+    e.municipio = req(v.municipio);
+    e.provincia = req(v.provincia);
+    e.cpRazSoc = cp(v.cpRazSoc);
+  }
+  if (id === "representante") {
+    e.responsableLegal = req(v.responsableLegal);
+    e.dniRl = dni(v.dniRl);
+    e.cargo = req(v.cargo);
+    e.emailRepresentante = email(v.emailRepresentante);
+    e.telefonoRepresentante = tel(v.telefonoRepresentante);
+  }
+  if (id === "coordinador") {
+    e.dniCoordinador = dni(v.dniCoordinador);
+    e.nombreCoordinador = req(v.nombreCoordinador);
+    e.emailCoordinador = email(v.emailCoordinador);
+    e.telefonoCoordinador = tel(v.telefonoCoordinador);
+  }
+  if (id === "puesto") {
+    e.descripcionPuesto = req(v.descripcionPuesto);
+    if (!v.mismoLugarTrabajo) {
+      e.direccionLugarTrabajo = req(v.direccionLugarTrabajo);
+      e.municipioTrabajo = req(v.municipioTrabajo);
+      e.provinciaTrabajo = req(v.provinciaTrabajo);
+      e.cpTrabajo = cp(v.cpTrabajo);
+    }
+    const plazas = Object.values(v.especialidades);
+    e.especialidades = !plazas.length
+      ? "Marca al menos un ciclo."
+      : plazas.some((n) => !(n >= 1))
+        ? "Indica al menos un alumno en cada ciclo marcado."
+        : null;
+  }
+  if (id === "cuenta") {
+    e.password = req(v.password) || (v.password.length >= 8 ? null : "Debe tener al menos 8 caracteres.");
+    e.password2 = req(v.password2) || (v.password2 === v.password ? null : "Las contraseñas no coinciden.");
+  }
+  return e;
+}
+
 const AddCompanyRequest = () => {
-  const navigate = useNavigate();
   const toast = useToast();
-  const [validation, setValidation] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const formRef = useRef(null);
-
-  const [dataSpecialities, setDataSpecialities] = useState([]);
-  const [dataTransports, setDataTransports] = useState([]);
-
-  const [emailCoordinador, setEmailCoordinador] = useState("");
-  const [nombreCoordinador, setNombreCoordinador] = useState("");
-  const [telefonoCoordinador, setTelefonoCoordinador] = useState("");
-  const [dniCoordinador, setDniCoordinador] = useState("");
-
-  const [razonSocial, setRazonSocial] = useState("");
-  const [cif, setCif] = useState("");
-  const [telEmpresa, setTelEmpresa] = useState("");
-
-  const [dirRazSocial, setDirRazSocial] = useState("");
-  const [provincia, setProvincia] = useState("");
-  const [municipio, setMunicipio] = useState("");
-  const [cpRazSoc, setCpRazSoc] = useState("");
-
-  const [responsableLegal, setResponsableLegal] = useState("");
-  const [cargo, setCargo] = useState("");
-  const [dniRl, setDniRl] = useState("");
-  const [emailRepresentante, setEmailRepresentante] = useState("");
-  const [telefonoRepresentante, setTelefonoRepresentante] = useState("");
-
-  const [specialities, setSpecialities] = useState([[], []]);
-  const [descripcionPuesto, setDescripcionPuesto] = useState("");
-  // WF-12: the work address is either the legal address or its own full address.
-  const [mismoLugarTrabajo, setMismoLugarTrabajo] = useState(true);
-  const [direccionLugarTrabajo, setDireccionLugarTrabajo] = useState("");
-  const [cpTrabajo, setCpTrabajo] = useState("");
-  const [municipioTrabajo, setMunicipioTrabajo] = useState("");
-  const [provinciaTrabajo, setProvinciaTrabajo] = useState("");
-  const [metodosTransporte, setMetodosTransporte] = useState([]);
-
-  const [passwordCoordinador, setPasswordCoordinador] = useState("");
-
-  const [catalogError, setCatalogError] = useState("");
+  const form = useStepForm({ steps: STEPS, initialValues: INITIAL, validateStep });
+  const { values: v, set, errors, step, headingRef } = form;
+  const [catalogo, setCatalogo] = useState({ status: "loading", especialidades: [], transportes: [] });
   const [catalogToken, setCatalogToken] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+
+  useUnsavedWarning(form.dirty && !enviado);
 
   useEffect(() => {
-    setCatalogError("");
+    setCatalogo((c) => ({ ...c, status: "loading" }));
     Promise.all([getJSON("/especialidades"), getJSON("/transportes")])
-      .then(([esp, tra]) => {
-        setDataSpecialities(Array.isArray(esp) ? esp : []);
-        setDataTransports(Array.isArray(tra) ? tra : []);
-      })
-      .catch((err) => setCatalogError(err.message || "No se pudieron cargar los ciclos y transportes."));
+      .then(([esp, tra]) =>
+        setCatalogo({
+          status: "ready",
+          especialidades: Array.isArray(esp) ? esp : [],
+          transportes: Array.isArray(tra) ? tra : [],
+        }),
+      )
+      .catch(() => setCatalogo({ status: "error", especialidades: [], transportes: [] }));
   }, [catalogToken]);
 
-  const handleTransportToggle = (id) => {
-    setMetodosTransporte((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
-    );
+  const toggleEspecialidad = (id) => {
+    const next = { ...v.especialidades };
+    if (id in next) delete next[id];
+    else next[id] = 1;
+    set("especialidades", next);
   };
-
-  const handleSpecialityToggle = (id) => {
-    setSpecialities(([ids, amounts]) => {
-      const idx = ids.indexOf(id);
-      if (idx === -1) return [[...ids, id], [...amounts, 0]];
-      return [ids.filter((_, i) => i !== idx), amounts.filter((_, i) => i !== idx)];
-    });
-  };
-
-  const handleAmountChange = (id, newCount) => {
-    setSpecialities(([ids, amounts]) => {
-      const idx = ids.indexOf(id);
-      if (idx === -1) return [ids, amounts];
-      const newAmounts = [...amounts];
-      newAmounts[idx] = newCount;
-      return [ids, newAmounts];
-    });
-  };
+  const setPlazas = (id, n) => set("especialidades", { ...v.especialidades, [id]: n });
+  const toggleTransporte = (id) =>
+    set("transportes", v.transportes.includes(id) ? v.transportes.filter((t) => t !== id) : [...v.transportes, id]);
 
   const handleSubmit = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    if (!formRef.current.checkValidity()) {
-      formRef.current.reportValidity();
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!FormatValidation.dniNieValido(dniRl.trim().toUpperCase())) {
-      setValidation("DNI/NIE del responsable legal no válido.");
-      setIsSubmitting(false);
-      return;
-    }
-    if (!FormatValidation.dniNieValido(dniCoordinador.trim().toUpperCase())) {
-      setValidation("DNI/NIE del coordinador principal no válido.");
-      setIsSubmitting(false);
-      return;
-    }
-    if (!FormatValidation.cifValido(cif)) {
-      setValidation("CIF de la empresa no válido.");
-      setIsSubmitting(false);
-      return;
-    }
-    if (specialities[0].length === 0) {
-      setValidation("Selecciona al menos un ciclo de grado.");
-      setIsSubmitting(false);
-      return;
-    }
-    if (specialities[1].some((c) => c <= 0)) {
-      setValidation("Indica al menos un alumno por grado.");
-      setIsSubmitting(false);
-      return;
-    }
-    if (!passwordCoordinador || passwordCoordinador.length < 8) {
-      setValidation("La contraseña del coordinador debe tener al menos 8 caracteres.");
-      setIsSubmitting(false);
-      return;
-    }
-    setValidation("");
-
+    if (submitting || !form.validateAll()) return;
+    setSubmitting(true);
     try {
-      const especialidades = specialities[0].map((id, i) => ({
-        idEspecialidad: id,
-        cantidadAlumnos: specialities[1][i],
-      }));
-
       await postJSON("/solicitudes/empresa", {
-        cif: cif.trim().toUpperCase(),
-        empresa: razonSocial,
-        telefonoEmpresa: telEmpresa,
-        domicilioLegal: dirRazSocial,
-        cpLegal: cpRazSoc,
-        provinciaLegal: provincia,
-        localidadLegal: municipio,
-        municipioLegal: municipio,
+        cif: v.cif.trim().toUpperCase(),
+        empresa: v.razonSocial.trim(),
+        telefonoEmpresa: v.telEmpresa.trim(),
+        domicilioLegal: v.dirRazSocial.trim(),
+        cpLegal: v.cpRazSoc.trim(),
+        provinciaLegal: v.provincia.trim(),
+        localidadLegal: v.municipio.trim(),
+        municipioLegal: v.municipio.trim(),
         // WF-12: only what the company entered is stored. With
         // mismoLugarTrabajo the backend reuses the legal address record.
-        mismoLugarTrabajo,
-        ...(mismoLugarTrabajo
+        mismoLugarTrabajo: v.mismoLugarTrabajo,
+        ...(v.mismoLugarTrabajo
           ? {}
           : {
-              domicilioTrabajo: direccionLugarTrabajo,
-              cpTrabajo,
-              provinciaTrabajo,
-              localidadTrabajo: municipioTrabajo,
-              municipioTrabajo,
+              domicilioTrabajo: v.direccionLugarTrabajo.trim(),
+              cpTrabajo: v.cpTrabajo.trim(),
+              provinciaTrabajo: v.provinciaTrabajo.trim(),
+              localidadTrabajo: v.municipioTrabajo.trim(),
+              municipioTrabajo: v.municipioTrabajo.trim(),
             }),
-        dniRepresentante: dniRl.trim().toUpperCase(),
-        nombreRepresentante: responsableLegal,
-        emailRepresentante,
-        telefonoRepresentante,
-        cargoRepresentante: cargo,
-        dniCoordinador: dniCoordinador.trim().toUpperCase(),
-        nombreCoordinador,
-        emailCoordinador,
-        telefonoCoordinador,
+        dniRepresentante: v.dniRl.trim().toUpperCase(),
+        nombreRepresentante: v.responsableLegal.trim(),
+        emailRepresentante: v.emailRepresentante.trim(),
+        telefonoRepresentante: v.telefonoRepresentante.trim(),
+        cargoRepresentante: v.cargo.trim(),
+        dniCoordinador: v.dniCoordinador.trim().toUpperCase(),
+        nombreCoordinador: v.nombreCoordinador.trim(),
+        emailCoordinador: v.emailCoordinador.trim(),
+        telefonoCoordinador: v.telefonoCoordinador.trim(),
         cargoCoordinador: "COORDINADOR DUAL",
-        descripcion_puesto: descripcionPuesto,
-        especialidades,
-        transportes: metodosTransporte,
-        passwordCoordinador,
+        descripcion_puesto: v.descripcionPuesto.trim(),
+        especialidades: Object.entries(v.especialidades).map(([id, n]) => ({
+          idEspecialidad: Number(id),
+          cantidadAlumnos: n,
+        })),
+        transportes: v.transportes,
+        passwordCoordinador: v.password,
       });
-
-      toast.success("La solicitud se ha enviado correctamente.");
-      navigate("/");
+      setEnviado(true);
+      form.setDirty(false);
     } catch (err) {
-      toast.error(err.message || "Error al procesar la solicitud. Inténtalo de nuevo.");
+      toast.error(err.message || "No se pudo enviar la solicitud. Inténtalo de nuevo.");
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
+  const field = (name) => ({ name, label: LABELS[name], value: v[name], onChange: set, error: errors[name] });
+  const nombreEsp = (id) => catalogo.especialidades.find((e) => String(e.id_especialidad) === String(id))?.nombre || id;
+  const nombreTra = (id) => {
+    const t = catalogo.transportes.find((x) => String(x.id_transporte ?? x.idTransporte) === String(id));
+    return t?.nombre_mostrar ?? t?.nombre ?? id;
+  };
+  const current = STEPS[step].id;
+
   return (
-    <div className="page-container">
+    <div className="page-container max-w-4xl">
       <PageHeader
         kicker="Empresas"
         title="Solicitud de empresa colaboradora"
-        subtitle="Esta petición no tiene vinculación legal. Es el primer paso para formalizar la documentación del programa dual."
+        subtitle="Primer paso para participar en el programa de FP Dual. No tiene vinculación legal: el compromiso se formaliza con el convenio."
       />
-
-      <form ref={formRef} className="space-y-6">
-        {/* Coordinator section */}
-        <div className="form-card">
-          <div className="form-section-title">Coordinador principal</div>
-          <p className="field-hint">
-            <strong>Importante:</strong> Esta persona recibirá las notificaciones
-            y documentos del proyecto DUAL y será el contacto de acceso al portal
-            (CIF). También se registrará como primer tutor de la empresa; podréis
-            añadir más tutores después desde el portal.
-          </p>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Field id="dniCoord" label="DNI/NIE coordinador principal">
-              <input
-                id="dniCoord"
-                className="input"
-                value={dniCoordinador}
-                placeholder="ej. 12345678Z"
-                onChange={(e) => setDniCoordinador(e.target.value)}
-                maxLength={15}
-                autoComplete="off"
-                required
-              />
-            </Field>
-            <Field id="eCoord" label="Email coordinador principal">
-              <input
-                id="eCoord"
-                className="input"
-                type="email"
-                value={emailCoordinador}
-                placeholder="ej. coordinador@empresa.com"
-                onChange={(e) => setEmailCoordinador(e.target.value)}
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="nCoord" label="Nombre coordinador principal">
-              <input
-                id="nCoord"
-                className="input"
-                value={nombreCoordinador}
-                placeholder="Nombre completo"
-                onChange={(e) => setNombreCoordinador(e.target.value)}
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="tCoord" label="Teléfono coordinador principal">
-              <input
-                id="tCoord"
-                className="input"
-                value={telefonoCoordinador}
-                placeholder="ej. 600123456"
-                onChange={(e) => setTelefonoCoordinador(e.target.value)}
-                maxLength={50}
-                required
-              />
-            </Field>
-          </div>
-          <Field id="pwdCoord" label="Contraseña inicial (acceso con el CIF de la empresa)">
-            <p className="field-hint">
-              El coordinador principal accede al panel con el CIF de la empresa, no con su correo electrónico.
+      <ConvocatoriaGate quien="empresas">
+        {enviado ? (
+          <SubmitSuccess title="Solicitud enviada">
+            <p className="m-0">
+              El convenio se envía al email del coordinador y queda en el portal. Entrad con el <strong>CIF</strong> de la empresa y la
+              contraseña elegida para firmarlo; el centro validará la solicitud cuando el convenio esté firmado.
             </p>
-            <input
-              id="pwdCoord"
-              className="input"
-              type="password"
-              value={passwordCoordinador}
-              onChange={(e) => setPasswordCoordinador(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              minLength={8}
-              maxLength={100}
-              required
-            />
-          </Field>
-        </div>
+          </SubmitSuccess>
+        ) : (
+          <form
+            className="form-card"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (step < STEPS.length - 1) form.next();
+              else handleSubmit();
+            }}
+          >
+            <Stepper steps={STEPS} current={step} onGoTo={form.goTo} />
+            <ErrorSummary errors={errors} labels={LABELS} />
+            <p className="mb-5 text-xs text-muted">
+              Los campos marcados con <span aria-hidden="true" className="text-brand-700">*</span> son obligatorios.
+            </p>
 
-        {/* Company info section */}
-        <div className="form-card">
-          <div className="form-section-title">Datos de la empresa</div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field id="rs" label="Razón Social">
-              <input
-                id="rs"
-                className="input"
-                placeholder="Nombre legal de la empresa"
-                value={razonSocial}
-                onChange={(e) => setRazonSocial(e.target.value)}
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="cifF" label="CIF">
-              <input
-                id="cifF"
-                className="input"
-                placeholder="ej. B12345678"
-                value={cif}
-                onChange={(e) => setCif(e.target.value)}
-                maxLength={12}
-                pattern="^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$"
-                required
-              />
-            </Field>
-            <Field id="telEmp" label="Teléfono empresa">
-              <input
-                id="telEmp"
-                placeholder="ej. 976123456"
-                className="input"
-                value={telEmpresa}
-                onChange={(e) => setTelEmpresa(e.target.value)}
-                maxLength={20}
-              />
-            </Field>
-            <Field id="dirRS" label="Dirección Razón Social">
-              <input
-                id="dirRS"
-                className="input"
-                value={dirRazSocial}
-                onChange={(e) => setDirRazSocial(e.target.value)}
-                maxLength={255}
-                placeholder="Dirección fiscal de la empresa"
-                required
-              />
-            </Field>
-            <Field id="mun" label="Municipio">
-              <input
-                id="mun"
-                className="input"
-                value={municipio}
-                onChange={(e) => setMunicipio(e.target.value)}
-                placeholder="Municipio"
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="prov" label="Provincia">
-              <input
-                id="prov"
-                className="input"
-                value={provincia}
-                onChange={(e) => setProvincia(e.target.value)}
-                placeholder="Provincia"
-                maxLength={50}
-                required
-              />
-            </Field>
-            <Field id="cp" label="Código Postal">
-              <input
-                id="cp"
-                className="input"
-                value={cpRazSoc}
-                placeholder="ej. 50010"
-                onChange={(e) => setCpRazSoc(e.target.value)}
-                maxLength={10}
-                required
-              />
-            </Field>
-          </div>
-        </div>
-
-        <div className="form-card">
-          <div className="form-section-title">Responsable Legal</div>
-          <p className="field-hint">Persona que firma el convenio en nombre de la empresa.</p>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Field id="rl" label="Nombre responsable legal">
-              <input
-                id="rl"
-                className="input"
-                value={responsableLegal}
-                placeholder="Nombre completo"
-                onChange={(e) => setResponsableLegal(e.target.value)}
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="dniRlF" label="DNI responsable">
-              <input
-                id="dniRlF"
-                className="input"
-                value={dniRl}
-                onChange={(e) => setDniRl(e.target.value)}
-                maxLength={15}
-                placeholder="ej. 12345678Z"
-                autoComplete="off"
-                required
-              />
-            </Field>
-            <Field id="cargo" label="Cargo">
-              <input
-                id="cargo"
-                className="input"
-                value={cargo}
-                placeholder="ej. Administrador único"
-                onChange={(e) => setCargo(e.target.value)}
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="emailRl" label="Email responsable legal">
-              <input
-                id="emailRl"
-                type="email"
-                className="input"
-                value={emailRepresentante}
-                placeholder="ej. direccion@empresa.com"
-                onChange={(e) => setEmailRepresentante(e.target.value)}
-                maxLength={100}
-                required
-              />
-            </Field>
-            <Field id="telRl" label="Teléfono responsable legal">
-              <input
-                id="telRl"
-                className="input"
-                value={telefonoRepresentante}
-                placeholder="ej. 976123456"
-                onChange={(e) => setTelefonoRepresentante(e.target.value)}
-                maxLength={50}
-                required
-              />
-            </Field>
-          </div>
-        </div>
-
-        <div className="form-card">
-          <div className="form-section-title">Puesto de trabajo</div>
-          <div className="space-y-10">
-            <Field id="descP" label="Descripción del puesto">
-              <p className="field-hint">
-                Indica las tareas que se le asignarán al estudiante.
-              </p>
-              <textarea
-                id="descP"
-                className="textarea"
-                placeholder="Describe brevemente las tareas que realizará el alumno"
-                value={descripcionPuesto}
-                onChange={(e) => setDescripcionPuesto(e.target.value)}
-                maxLength={500}
-                required
-              />
-            </Field>
-            <fieldset className="space-y-3">
-              <legend className="text-sm font-semibold text-charcoal-900">Lugar de trabajo</legend>
-              <label className="flex items-center gap-2 text-sm text-charcoal-800">
-                <input
-                  type="checkbox"
-                  className="accent-brand-500"
-                  checked={mismoLugarTrabajo}
-                  onChange={(e) => setMismoLugarTrabajo(e.target.checked)}
-                />
-                El alumno trabajará en la dirección fiscal de la empresa
-              </label>
-              {!mismoLugarTrabajo && (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field id="dirTrab" label="Dirección del lugar de trabajo">
-                    <input
-                      id="dirTrab"
-                      className="input"
-                      value={direccionLugarTrabajo}
-                      placeholder="Calle, número…"
-                      onChange={(e) => setDireccionLugarTrabajo(e.target.value)}
-                      maxLength={255}
-                      required
-                    />
-                  </Field>
-                  <Field id="munTrab" label="Municipio del lugar de trabajo">
-                    <input
-                      id="munTrab"
-                      className="input"
-                      value={municipioTrabajo}
-                      onChange={(e) => setMunicipioTrabajo(e.target.value)}
-                      maxLength={100}
-                      required
-                    />
-                  </Field>
-                  <Field id="provTrab" label="Provincia del lugar de trabajo">
-                    <input
-                      id="provTrab"
-                      className="input"
-                      value={provinciaTrabajo}
-                      onChange={(e) => setProvinciaTrabajo(e.target.value)}
-                      maxLength={50}
-                      required
-                    />
-                  </Field>
-                  <Field id="cpTrab" label="Código postal del lugar de trabajo">
-                    <input
-                      id="cpTrab"
-                      className="input"
-                      value={cpTrabajo}
-                      placeholder="ej. 50010"
-                      onChange={(e) => setCpTrabajo(e.target.value)}
-                      maxLength={10}
-                      required
-                    />
-                  </Field>
+            {current === "empresa" && (
+              <>
+                <StepHeading headingRef={headingRef} title="Datos de la empresa" />
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField {...field("razonSocial")} required maxLength={100} autoComplete="organization" />
+                  <TextField
+                    {...field("cif")}
+                    required
+                    maxLength={9}
+                    hint="Será el usuario para entrar al portal."
+                    placeholder="B12345678"
+                    onChange={(n, val) => set(n, val.toUpperCase().replace(/\s/g, ""))}
+                  />
+                  <TextField {...field("telEmpresa")} type="tel" maxLength={20} autoComplete="tel" />
                 </div>
-              )}
-            </fieldset>
-            {catalogError && (
-              <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                {catalogError}{" "}
-                <button type="button" className="font-semibold underline" onClick={() => setCatalogToken((n) => n + 1)}>
-                  Reintentar
-                </button>
-              </div>
+                <TextField {...field("dirRazSocial")} required maxLength={255} autoComplete="street-address" />
+                <div className="grid gap-x-4 md:grid-cols-3">
+                  <TextField {...field("municipio")} required maxLength={100} autoComplete="address-level2" />
+                  <TextField {...field("provincia")} required maxLength={50} autoComplete="address-level1" />
+                  <TextField {...field("cpRazSoc")} required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
+                </div>
+              </>
             )}
-            <SpecialitySelector
-              dataSpecialities={dataSpecialities}
-              specialities={specialities}
-              onToggle={handleSpecialityToggle}
-              onAmountChange={handleAmountChange}
-            />
-            <TransportSelector
-              dataTransports={dataTransports}
-              metodosTransporte={metodosTransporte}
-              onToggle={handleTransportToggle}
-            />
-          </div>
-        </div>
 
-        <button
-          type="button"
-          className={`btn btn-primary mt-2 mx-auto block ${
-            isSubmitting ? "btn-disabled" : ""
-          }`}
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Enviando..." : "Enviar solicitud"}
-        </button>
+            {current === "representante" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Responsable legal"
+                  description="La persona que firma el convenio en nombre de la empresa."
+                />
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField {...field("responsableLegal")} required maxLength={100} />
+                  <TextField {...field("dniRl")} required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
+                  <TextField {...field("cargo")} required maxLength={100} placeholder="Administrador único" />
+                  <TextField {...field("emailRepresentante")} type="email" required maxLength={100} />
+                  <TextField {...field("telefonoRepresentante")} type="tel" required maxLength={20} />
+                </div>
+              </>
+            )}
 
-        <FormMessage message={validation} tone="error" />
-      </form>
+            {current === "coordinador" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Coordinador principal"
+                  description="Recibe los avisos y documentos del programa, gestiona el portal y queda como primer tutor de la empresa. Podréis añadir más tutores desde el portal."
+                />
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField {...field("nombreCoordinador")} required maxLength={100} autoComplete="name" />
+                  <TextField {...field("dniCoordinador")} required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
+                  <TextField
+                    {...field("emailCoordinador")}
+                    type="email"
+                    required
+                    maxLength={100}
+                    autoComplete="email"
+                    hint="Aquí recibiréis el convenio y los avisos."
+                  />
+                  <TextField {...field("telefonoCoordinador")} type="tel" required maxLength={20} autoComplete="tel" />
+                </div>
+              </>
+            )}
+
+            {current === "puesto" && (
+              <>
+                <StepHeading headingRef={headingRef} title="Puesto y ciclos" />
+                <div className="field">
+                  <label htmlFor="campo-descripcionPuesto">
+                    {LABELS.descripcionPuesto}
+                    <span aria-hidden="true" className="ml-0.5 text-brand-700">*</span>
+                    <span className="sr-only"> (obligatorio)</span>
+                  </label>
+                  <p id="campo-descripcionPuesto-ayuda" className="-mt-1 mb-2 text-xs leading-5 text-muted">
+                    Las tareas que realizará el alumno.
+                  </p>
+                  <textarea
+                    id="campo-descripcionPuesto"
+                    className={`textarea ${errors.descripcionPuesto ? "border-red-400" : ""}`}
+                    value={v.descripcionPuesto}
+                    onChange={(e) => set("descripcionPuesto", e.target.value)}
+                    maxLength={500}
+                    aria-invalid={errors.descripcionPuesto ? true : undefined}
+                    aria-describedby={`campo-descripcionPuesto-ayuda${errors.descripcionPuesto ? " campo-descripcionPuesto-error" : ""}`}
+                  />
+                  {errors.descripcionPuesto && (
+                    <p id="campo-descripcionPuesto-error" className="mb-0 mt-1.5 text-sm font-medium text-red-700">
+                      <span aria-hidden="true">! </span>
+                      {errors.descripcionPuesto}
+                    </p>
+                  )}
+                </div>
+
+                <fieldset className="field">
+                  <legend className="mb-2 block text-sm font-semibold text-charcoal-800">Lugar de trabajo</legend>
+                  <label className="flex items-center gap-2 text-sm text-charcoal-800">
+                    <input
+                      type="checkbox"
+                      className="accent-brand-500"
+                      checked={v.mismoLugarTrabajo}
+                      onChange={(e) => set("mismoLugarTrabajo", e.target.checked)}
+                    />
+                    El alumno trabajará en la dirección fiscal de la empresa
+                  </label>
+                  {!v.mismoLugarTrabajo && (
+                    <div className="mt-4 grid gap-x-4 md:grid-cols-2">
+                      <TextField {...field("direccionLugarTrabajo")} required maxLength={255} className="md:col-span-2" />
+                      <TextField {...field("municipioTrabajo")} required maxLength={100} />
+                      <TextField {...field("provinciaTrabajo")} required maxLength={50} />
+                      <TextField {...field("cpTrabajo")} required inputMode="numeric" maxLength={5} />
+                    </div>
+                  )}
+                </fieldset>
+
+                {catalogo.status === "error" ? (
+                  <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    No se pudieron cargar los ciclos y los transportes.{" "}
+                    <button type="button" className="font-semibold underline" onClick={() => setCatalogToken((n) => n + 1)}>
+                      Reintentar
+                    </button>
+                  </p>
+                ) : catalogo.status === "loading" ? (
+                  <p role="status" className="text-sm text-muted">
+                    Cargando ciclos…
+                  </p>
+                ) : (
+                  <>
+                    <SpecialitySelector
+                      dataSpecialities={catalogo.especialidades}
+                      selected={v.especialidades}
+                      onToggle={toggleEspecialidad}
+                      onAmountChange={setPlazas}
+                      error={errors.especialidades}
+                    />
+                    <TransportSelector
+                      dataTransports={catalogo.transportes}
+                      metodosTransporte={v.transportes}
+                      onToggle={toggleTransporte}
+                    />
+                  </>
+                )}
+              </>
+            )}
+
+            {current === "cuenta" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Cuenta del portal"
+                  description="Entraréis al portal con el CIF de la empresa y esta contraseña."
+                />
+                <div className="grid gap-x-4 md:grid-cols-2">
+                  <TextField
+                    {...field("password")}
+                    type="password"
+                    required
+                    minLength={8}
+                    maxLength={100}
+                    autoComplete="new-password"
+                    hint="Mínimo 8 caracteres."
+                  />
+                  <TextField {...field("password2")} type="password" required maxLength={100} autoComplete="new-password" />
+                </div>
+              </>
+            )}
+
+            {current === "revision" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Revisión y envío"
+                  description="Comprobad los datos. Podéis modificar cualquier apartado antes de enviar."
+                />
+                <div className="space-y-3">
+                  <ReviewSection
+                    title="Empresa"
+                    onEdit={() => form.goTo(0)}
+                    rows={[
+                      [LABELS.razonSocial, v.razonSocial],
+                      [LABELS.cif, v.cif],
+                      [LABELS.telEmpresa, v.telEmpresa],
+                      [LABELS.dirRazSocial, [v.dirRazSocial, v.cpRazSoc, v.municipio, v.provincia].filter(Boolean).join(", ")],
+                    ]}
+                  />
+                  <ReviewSection
+                    title="Responsable legal"
+                    onEdit={() => form.goTo(1)}
+                    rows={[
+                      ["Nombre", v.responsableLegal],
+                      ["DNI/NIE", v.dniRl],
+                      ["Cargo", v.cargo],
+                      ["Email", v.emailRepresentante],
+                      ["Teléfono", v.telefonoRepresentante],
+                    ]}
+                  />
+                  <ReviewSection
+                    title="Coordinador principal"
+                    onEdit={() => form.goTo(2)}
+                    rows={[
+                      ["Nombre", v.nombreCoordinador],
+                      ["DNI/NIE", v.dniCoordinador],
+                      ["Email", v.emailCoordinador],
+                      ["Teléfono", v.telefonoCoordinador],
+                    ]}
+                  />
+                  <ReviewSection
+                    title="Puesto y ciclos"
+                    onEdit={() => form.goTo(3)}
+                    rows={[
+                      [LABELS.descripcionPuesto, v.descripcionPuesto],
+                      [
+                        "Lugar de trabajo",
+                        v.mismoLugarTrabajo
+                          ? "La dirección fiscal"
+                          : [v.direccionLugarTrabajo, v.cpTrabajo, v.municipioTrabajo, v.provinciaTrabajo].filter(Boolean).join(", "),
+                      ],
+                      [
+                        "Ciclos",
+                        Object.entries(v.especialidades)
+                          .map(([id, n]) => `${nombreEsp(id)}: ${n} ${n === 1 ? "alumno" : "alumnos"}`)
+                          .join(" · "),
+                      ],
+                      ["Transporte", v.transportes.map(nombreTra).join(", ")],
+                    ]}
+                  />
+                </div>
+                <SubmitProgress submitting={submitting} text="Enviando la solicitud y generando el convenio. Puede tardar unos segundos; no cierres esta página." />
+              </>
+            )}
+
+            <StepNav
+              step={step}
+              total={STEPS.length}
+              onBack={form.back}
+              onNext={form.next}
+              onSubmit={handleSubmit}
+              submitting={submitting}
+              submitLabel="Enviar solicitud"
+            />
+          </form>
+        )}
+      </ConvocatoriaGate>
     </div>
   );
 };

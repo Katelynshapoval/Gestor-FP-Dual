@@ -1,61 +1,55 @@
-// Speciality selector with per-speciality student count input
-const SpecialitySelector = ({
-  dataSpecialities,
-  specialities,
-  onToggle,
-  onAmountChange,
-}) => (
-  <div className="field">
-    <label>Ciclo(s) de Grado solicitados</label>
+// Ciclos requested by the company and places per ciclo. Real checkboxes and a
+// labelled number input, so the whole selector works with a keyboard.
+function turnoLabel(turno) {
+  if (turno === 1 || turno === "1" || turno === "VESPERTINO") return "Vespertino";
+  return null;
+}
 
+const SpecialitySelector = ({ dataSpecialities, selected, onToggle, onAmountChange, error }) => (
+  <fieldset className="field" aria-describedby={error ? "campo-especialidades-error" : undefined}>
+    <legend className="mb-1 block text-sm font-semibold text-charcoal-800">
+      Ciclos y plazas<span aria-hidden="true" className="ml-0.5 text-brand-700">*</span>
+      <span className="sr-only"> (obligatorio)</span>
+    </legend>
+    <p className="mb-3 text-xs leading-5 text-muted">Marca los ciclos que os interesan e indica cuántos alumnos podéis acoger en cada uno.</p>
     <div className="checkbox-grid">
-      {dataSpecialities.map((esp) => {
+      {dataSpecialities.map((esp, index) => {
         const id = esp.id_especialidad ?? esp.idEspecialidad;
         const nombre = esp.nombre ?? esp.nombreEsp ?? `ID ${id}`;
-        const codigo = esp.codigo;
-        const turnoRaw = esp.turno;
-        const turnoLabel =
-          turnoRaw === 0 || turnoRaw === '0' ? 'Diurno'
-          : turnoRaw === 1 || turnoRaw === '1' ? 'Vespertino'
-          : turnoRaw === 'VESPERTINO' ? 'Vespertino'
-          : null;
-        const isSelected = specialities[0]?.includes(id);
-
+        const turno = turnoLabel(esp.turno);
+        const plazas = selected[id];
+        const isSelected = plazas !== undefined;
+        // The first checkbox carries the field id the error summary links to.
+        const checkId = index === 0 ? "campo-especialidades" : `esp-${id}`;
         return (
-          <div
-            key={id}
-            className={`checkbox-item ${isSelected ? "checked items-start flex-col gap-2" : ""}`}
-            onClick={() => onToggle(id)}
-          >
-            <div className="checkbox-left">
+          <div key={id} className={`checkbox-item flex-col !items-stretch gap-2 ${isSelected ? "checked" : ""}`}>
+            <label htmlFor={checkId} className="flex cursor-pointer items-center gap-2">
               <input
+                id={checkId}
                 type="checkbox"
                 checked={isSelected}
-                onChange={(e) => e.stopPropagation()}
+                onChange={() => onToggle(id)}
               />
               <span className="item-label">
                 {nombre}
-                {codigo && (
-                  <span className="ml-1 text-xs text-gray-400">({codigo})</span>
-                )}
-                {turnoLabel && turnoLabel !== 'Diurno' && (
-                  <span className="ml-1 text-xs text-gray-400">· {turnoLabel}</span>
-                )}
+                {esp.codigo && <span className="ml-1 text-xs text-muted">({esp.codigo})</span>}
+                {turno && <span className="ml-1 text-xs text-muted">· {turno}</span>}
               </span>
-            </div>
-
+            </label>
             {isSelected && (
-              <div
-                className="flex items-center gap-2 pl-5"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="text-sm text-gray-500">Alumnos</span>
+              <div className="flex items-center gap-2 pl-6">
+                <label htmlFor={`plazas-${id}`} className="text-sm text-charcoal-700">
+                  Alumnos
+                </label>
                 <input
+                  id={`plazas-${id}`}
                   type="number"
                   min="1"
-                  className="w-14 text-center text-sm border border-surface-200 rounded px-1 py-[2px]"
-                  value={specialities[1][specialities[0].indexOf(id)] || ""}
-                  onChange={(e) => onAmountChange(id, parseInt(e.target.value) || 1)}
+                  max="99"
+                  inputMode="numeric"
+                  className="h-9 w-20 rounded-lg border border-surface-200 px-2 text-center text-sm focus-visible:border-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/20"
+                  value={plazas || ""}
+                  onChange={(e) => onAmountChange(id, Math.max(0, parseInt(e.target.value, 10) || 0))}
                 />
               </div>
             )}
@@ -63,7 +57,13 @@ const SpecialitySelector = ({
         );
       })}
     </div>
-  </div>
+    {error && (
+      <p id="campo-especialidades-error" className="mb-0 mt-1.5 text-sm font-medium text-red-700">
+        <span aria-hidden="true">! </span>
+        {error}
+      </p>
+    )}
+  </fieldset>
 );
 
 export default SpecialitySelector;
