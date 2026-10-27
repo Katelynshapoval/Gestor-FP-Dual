@@ -685,6 +685,9 @@ En una solicitud dada de baja se ven la fecha, el motivo y el botón **«Reactiv
 - la cuenta del portal se vuelve a activar;
 - las **reservas canceladas no se recuperan**: si hace falta, hay que crearlas de nuevo.
 
+![Alumno dado de baja con la fecha, el motivo y el botón Reactivar](manual/imagenes/reactivar.png)
+_Una solicitud dada de baja: fecha, motivo, cuenta desactivada y botón «Reactivar»._
+
 Las solicitudes dadas de baja se encuentran con el filtro **«Solicitud: Dada de baja»** en Alumnos y en Empresas.
 
 ---

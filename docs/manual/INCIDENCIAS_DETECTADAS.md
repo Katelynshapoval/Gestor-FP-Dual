@@ -13,7 +13,7 @@ _27/10/2026 · rama `phase-5-design-polish`. Lista de lo que se encontró al doc
 
 ## Nuevo: dar de baja
 
-«Dar de baja» y «Reactivar» para alumnos y empresas, solo Administración (manual, §5.9). Necesita la migración `db/migrations/016_estado_baja.sql`, que añade el estado «BAJA»; sin ella, el botón responde «falta aplicar la migración 016». La migración está escrita, con su rollback, pero **todavía no se ha aplicado**.
+«Dar de baja» y «Reactivar» para alumnos y empresas, solo Administración (manual, §5.9). Usa la migración `db/migrations/016_estado_baja.sql` (estado «BAJA», id 4), **aplicada en la base de datos de desarrollo el 27/10/2026**, con tu aprobación. Probado en vivo solo con ALUMNO PRUEBA (FASE 3), que no tenía reservas activas (no se canceló nada ni se envió ningún correo): la baja exige motivo, desactiva la cuenta (el alumno recibe «La cuenta está desactivada» al entrar), no se puede repetir y Coordinación recibe 403; «Reactivar» devuelve la solicitud a «Validada» y el alumno vuelve a entrar. La cancelación de reservas durante una baja solo está probada con las pruebas automáticas.
 
 ## Siguen abiertas (datos de prueba, no errores de la aplicación)
 
@@ -22,6 +22,6 @@ _27/10/2026 · rama `phase-5-design-polish`. Lista de lo que se encontró al doc
 
 ## Qué se comprobó y cómo
 
-- **Navegador** (Chrome sin ventana, con las cuentas de prueba de `backend/.pruebas.local.json`): las capturas del manual, la reserva cancelada sin acciones, los bloques nuevos de Alumnos y Empresas, y la ventana «Dar de baja» abierta (solo consulta qué reservas se cancelarían). No se ha dado de baja, rechazado ni restablecido nada en la base de datos.
+- **Navegador** (Chrome sin ventana, con las cuentas de prueba de `backend/.pruebas.local.json`): las capturas del manual, la reserva cancelada sin acciones, los bloques nuevos de Alumnos y Empresas, y la ventana «Dar de baja» abierta (solo consulta qué reservas se cancelarían). Aparte de la prueba de baja y reactivación de ALUMNO PRUEBA, no se ha rechazado ni restablecido nada en la base de datos.
 - **Pruebas automáticas**: `backend/test/phase5.test.js` (7 pruebas de baja y reactivación) y el resto de pruebas de backend y frontend.
 - **Solo en el código** (no probado en el navegador en esta revisión): validar o rechazar documentos y solicitudes, reabrir, generar y regenerar, firmar, confirmar, cancelar y reasignar reservas, cambio obligatorio de contraseña, reaplicación de empresas, cambios de datos y su aprobación, reducción de plazas, el bloqueo tras intentos fallidos, la caducidad de la sesión y el formulario con el plazo cerrado. El ciclo completo de una reserva se probó en el navegador en la fase 4 ([PHASE_4_REPORT.md](../PHASE_4_REPORT.md), §1).
