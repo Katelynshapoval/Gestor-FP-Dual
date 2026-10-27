@@ -119,7 +119,7 @@
 }
 
 .btn-primary {
-  @apply border-brand-600 bg-brand-600 text-white shadow-none hover:border-brand-700 hover:bg-brand-700;
+  @apply border-brand-700 bg-brand-700 text-white shadow-none hover:border-brand-800 hover:bg-brand-800;
 }
 
 .btn-secondary {

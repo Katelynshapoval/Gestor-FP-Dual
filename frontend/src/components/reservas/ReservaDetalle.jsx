@@ -132,7 +132,7 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
             </p>
             <p className="mt-1 text-sm text-muted">{error.message}</p>
             {error.status !== 403 && error.status !== 404 && (
-              <button type="button" className="btn btn-primary btn-sm mt-4" onClick={load}>
+              <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={load}>
                 Reintentar
               </button>
             )}

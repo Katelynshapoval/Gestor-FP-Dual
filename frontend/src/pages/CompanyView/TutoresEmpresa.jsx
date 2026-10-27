@@ -170,7 +170,7 @@ const TutoresEmpresa = () => {
             </button>
             <button
               type="button"
-              className={`btn btn-primary btn-sm ${
+              className={`btn btn-outline-brand btn-sm ${
                 submitting || !form.nombre || !form.email || !form.telefono ? "btn-disabled" : ""
               }`}
               onClick={handleCreate}

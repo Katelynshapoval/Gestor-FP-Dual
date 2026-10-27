@@ -122,7 +122,7 @@ const EmpresaControl = ({ r, onAdminReserve, onChanged }) => {
               type="button"
               onClick={handleNewReserve}
               disabled={!idOfertaNueva || busy}
-              className="btn btn-primary btn-sm shrink-0"
+              className="btn btn-outline-brand btn-sm shrink-0"
             >
               {busy ? "Reservando…" : "Reservar"}
             </button>

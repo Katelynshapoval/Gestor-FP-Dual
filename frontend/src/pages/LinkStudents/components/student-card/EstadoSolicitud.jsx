@@ -74,7 +74,7 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar, onReabrir }) => {
             type="button"
             onClick={handleValidar}
             disabled={!canValidar || submitting}
-            className={`btn btn-primary btn-sm ${!canValidar || submitting ? "btn-disabled" : ""}`}
+            className={`btn btn-outline-brand btn-sm ${!canValidar || submitting ? "btn-disabled" : ""}`}
           >
             {submitting ? "Validando…" : "Validar alumno"}
           </button>

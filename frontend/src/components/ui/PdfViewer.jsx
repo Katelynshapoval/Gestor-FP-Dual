@@ -127,14 +127,14 @@ export default function PdfViewer({
             <Centered>
               <p className="font-semibold text-charcoal-950">No se pudo cargar el documento.</p>
               <p className="mt-1 text-sm text-muted">{error}</p>
-              <button type="button" className="btn btn-primary btn-sm mt-4" onClick={() => setAttempt((n) => n + 1)}>
+              <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={() => setAttempt((n) => n + 1)}>
                 Reintentar
               </button>
             </Centered>
           ) : url && narrow ? (
             <Centered>
               <p className="text-sm text-charcoal-800">En el móvil el PDF se lee mejor en una pestaña nueva.</p>
-              <button type="button" className="btn btn-primary btn-sm mt-4" onClick={openTab}>
+              <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={openTab}>
                 Abrir PDF
               </button>
             </Centered>

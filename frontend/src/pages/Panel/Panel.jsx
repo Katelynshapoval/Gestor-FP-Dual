@@ -205,7 +205,7 @@ const Panel = () => {
         <div role="alert" className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
           <p className="font-semibold text-charcoal-950">No se pudo cargar el panel.</p>
           <p className="mt-2 text-sm text-muted">{error?.message}</p>
-          <button type="button" className="btn btn-primary btn-sm mt-4" onClick={load}>
+          <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={load}>
             Reintentar
           </button>
         </div>

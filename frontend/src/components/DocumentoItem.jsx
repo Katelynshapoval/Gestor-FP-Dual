@@ -122,7 +122,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
   const reviewActions = (
     <>
       {doc.puede_firmar && (
-        <button type="button" className="btn btn-primary btn-sm" onClick={handleFirmar} disabled={busy}>
+        <button type="button" className="btn btn-outline-brand btn-sm" onClick={handleFirmar} disabled={busy}>
           Firmar
         </button>
       )}
@@ -131,7 +131,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
           <button type="button" className="btn btn-danger btn-sm" onClick={() => setRejecting(true)} disabled={busy}>
             Rechazar
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleValidar} disabled={busy}>
+          <button type="button" className="btn btn-outline-brand btn-sm" onClick={handleValidar} disabled={busy}>
             Validar
           </button>
         </>
@@ -188,7 +188,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
           </button>
         )}
         {doc.puede_generar && (
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => handleGenerar(false)} disabled={busy}>
+          <button type="button" className="btn btn-outline-brand btn-sm" onClick={() => handleGenerar(false)} disabled={busy}>
             Generar
           </button>
         )}
@@ -224,7 +224,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
             </label>
             <button
               type="button"
-              className={`btn btn-primary btn-sm ${!file || busy ? "btn-disabled" : ""}`}
+              className={`btn btn-outline-brand btn-sm ${!file || busy ? "btn-disabled" : ""}`}
               disabled={!file || busy}
               onClick={handleUpload}
             >

@@ -195,7 +195,7 @@ const EspecialidadCuposEditor = ({
                   {changed && (
                     <button
                       type="button"
-                      className={`btn btn-primary btn-sm shadow-none ${
+                      className={`btn btn-outline-brand btn-sm shadow-none ${
                         saving ? "btn-disabled" : ""
                       }`}
                       disabled={saving}
@@ -261,7 +261,7 @@ const EspecialidadCuposEditor = ({
               {String(newCantidad).trim() !== "" && (
                 <button
                   type="button"
-                  className={`btn btn-primary btn-sm shadow-none ${savingNew ? "btn-disabled" : ""}`}
+                  className={`btn btn-outline-brand btn-sm shadow-none ${savingNew ? "btn-disabled" : ""}`}
                   disabled={savingNew}
                   onClick={add}
                 >

@@ -101,7 +101,7 @@ export default function Plantillas() {
     return (
       <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
         <p className="font-semibold text-charcoal-950">No se pudieron cargar las plantillas.</p>
-        <button type="button" className="btn btn-primary btn-sm mt-4" onClick={() => setReloadToken((value) => value + 1)}>
+        <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={() => setReloadToken((value) => value + 1)}>
           Reintentar
         </button>
       </div>
@@ -152,7 +152,7 @@ export default function Plantillas() {
                 />
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-outline-brand btn-sm"
                   disabled={busy === tipo.clave}
                   onClick={() => upload(tipo.clave, tipo.nombre)}
                 >

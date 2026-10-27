@@ -191,7 +191,7 @@ export default function Convocatorias() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        className="btn btn-primary btn-sm shadow-none"
+                        className="btn btn-outline-brand btn-sm shadow-none"
                         disabled={editSaving}
                         onClick={() => guardarEdicion(c.id_convocatoria)}
                       >

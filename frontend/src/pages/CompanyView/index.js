@@ -730,7 +730,7 @@ const CompanyView = () => {
                 </p>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm mt-4"
+                  className="btn btn-secondary btn-sm mt-4"
                   onClick={() =>
                     view === "datos" ? fetchSolicitud() : view === "reservas" ? fetchReservations() : fetchDocumentos()
                   }

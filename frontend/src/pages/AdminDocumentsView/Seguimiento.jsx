@@ -267,7 +267,7 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
         <StateCard>
           <p className="font-semibold text-charcoal-950">No se pudieron cargar los documentos.</p>
           <p className="mt-2 text-sm text-muted">{error}</p>
-          <button type="button" className="btn btn-primary btn-sm mt-4" onClick={reload}>
+          <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={reload}>
             Reintentar
           </button>
         </StateCard>
@@ -677,21 +677,21 @@ function DocumentActions({ item, busy, onView, onOpenReserva, onValidate, onReje
   }
   if (item.puede_generar) {
     buttons.push(
-      <button key="generar" type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={onGenerate}>
+      <button key="generar" type="button" className="btn btn-outline-brand btn-sm" disabled={busy} onClick={onGenerate}>
         Generar
       </button>,
     );
   }
   if (item.puede_firmar) {
     buttons.push(
-      <button key="firmar" type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={onSign}>
+      <button key="firmar" type="button" className="btn btn-outline-brand btn-sm" disabled={busy} onClick={onSign}>
         Firmar
       </button>,
     );
   }
   if (item.puede_revisar) {
     buttons.push(
-      <button key="validar" type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={onValidate}>
+      <button key="validar" type="button" className="btn btn-outline-brand btn-sm" disabled={busy} onClick={onValidate}>
         Validar
       </button>,
     );

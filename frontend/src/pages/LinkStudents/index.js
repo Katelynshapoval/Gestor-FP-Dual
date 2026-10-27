@@ -141,7 +141,7 @@ const LinkStudents = () => {
             <StateCard role="alert">
               <p className="font-semibold text-charcoal-950">No se pudieron cargar los datos.</p>
               <p className="mt-2 text-sm text-muted">{error?.message}</p>
-              <button type="button" className="btn btn-primary btn-sm mt-4" onClick={fetchLinkRequests}>
+              <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={fetchLinkRequests}>
                 Reintentar
               </button>
             </StateCard>

@@ -284,7 +284,7 @@ const ReservasList = ({ reservations, onAssign, onUpdated }) => {
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <button type="button" className="btn btn-primary btn-sm" onClick={onAssign}>
+        <button type="button" className="btn btn-outline-brand btn-sm" onClick={onAssign}>
           Asignar alumno
         </button>
       </div>

@@ -168,7 +168,7 @@ function StudentMain() {
         <div role="alert" className="form-card text-center">
           <p className="font-semibold text-charcoal-950">No se pudo cargar tu proceso Dual.</p>
           <p className="mt-2 text-sm text-muted">{error}</p>
-          <button type="button" className="btn btn-primary btn-sm mt-4" onClick={load}>
+          <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={load}>
             Reintentar
           </button>
         </div>

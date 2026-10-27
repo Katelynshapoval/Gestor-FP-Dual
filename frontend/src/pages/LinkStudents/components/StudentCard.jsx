@@ -132,7 +132,7 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
           ofertaMatch.id_solicitud_empresa_especialidad,
         );
       }}
-      className="btn btn-primary btn-sm"
+      className="btn btn-outline-brand btn-sm"
     >
       Reservar alumno
     </button>

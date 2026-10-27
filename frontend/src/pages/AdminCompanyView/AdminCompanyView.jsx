@@ -232,7 +232,7 @@ const AdminCompanyView = () => {
         <div role="alert" className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
           <p className="font-semibold text-charcoal-950">No se pudieron cargar las empresas.</p>
           <p className="mt-2 text-sm text-muted">{error}</p>
-          <button type="button" className="btn btn-primary btn-sm mt-4" onClick={() => setReloadToken((n) => n + 1)}>
+          <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={() => setReloadToken((n) => n + 1)}>
             Reintentar
           </button>
         </div>
@@ -410,7 +410,7 @@ const AdminCompanyView = () => {
               <button type="button" className="btn btn-danger btn-sm" onClick={() => setRejectingConvenio(true)} disabled={convenioBusy}>
                 Rechazar convenio
               </button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={handleValidateConvenio} disabled={convenioBusy}>
+              <button type="button" className="btn btn-outline-brand btn-sm" onClick={handleValidateConvenio} disabled={convenioBusy}>
                 Validar convenio
               </button>
             </>
