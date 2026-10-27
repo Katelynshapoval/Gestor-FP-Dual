@@ -189,9 +189,6 @@ const StudentCard = ({
           {!isEmpresa ? (
             <div className={cardChipsClass}>
               <EstadoBadge kind="solicitud" value={r.estado_validacion} />
-              {Number(r.tiene_cuenta) === 1 && (
-                <StatusBadge variant="info">Cuenta</StatusBadge>
-              )}
               {confirmedReserva && (
                 <StatusBadge variant="success">
                   Confirmada: {confirmedReserva.empresa}
