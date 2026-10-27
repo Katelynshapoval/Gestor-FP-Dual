@@ -14,6 +14,7 @@ import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
 import StudentMain from "./pages/StudentMain";
 import AdminDocumentsView from "./pages/AdminDocumentsView";
 import RequireRole from "./components/auth/RequireRole.jsx";
+import CambiarPassword from "./pages/CambiarPassword.jsx";
 
 import "./styles/main.css";
 
@@ -107,6 +108,16 @@ function App() {
                 <Page>
                   <RequireRole roles={["ADMINISTRADOR", "COORDINADOR"]}>
                     <AdminDocumentsView />
+                  </RequireRole>
+                </Page>
+              }
+            />
+            <Route
+              path="/cambiarPassword"
+              element={
+                <Page>
+                  <RequireRole>
+                    <CambiarPassword />
                   </RequireRole>
                 </Page>
               }

@@ -2,6 +2,9 @@ const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
 const { signToken } = require('../middleware/auth');
 const { normalizeCif, normalizeDni } = require('../helpers/dbHelpers');
+const { loginRateLimiter } = require('../middleware/loginRateLimit');
+
+const MIN_PASSWORD_LENGTH = 8;
 
 const USER_COLUMNS = `u.id_usuario, u.nombre_mostrar, u.email, u.password_hash,
             u.activo, u.must_change_password,
@@ -87,43 +90,69 @@ exports.loginWithCredentials = async function (req, res) {
     return res.status(400).json({ error: 'Usuario y contraseña son obligatorios.' });
   }
 
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  const wait = loginRateLimiter.retryAfter(ip, identifier);
+  if (wait > 0) {
+    res.set('Retry-After', String(wait));
+    return res.status(429).json({
+      error: `Demasiados intentos fallidos. Vuelve a intentarlo en ${Math.ceil(wait / 60)} minuto(s).`,
+      code: 'TOO_MANY_ATTEMPTS',
+    });
+  }
+
   const user = await findUserByIdentifier(identifier);
 
   if (!user) {
+    loginRateLimiter.recordFailure(ip, identifier);
+    return res.status(401).json({ error: 'Credenciales incorrectas.' });
+  }
+
+  // The password is checked before the account state so that the response
+  // does not reveal whether a deactivated account exists.
+  const match = await bcrypt.compare(password, user.password_hash);
+  if (!match) {
+    loginRateLimiter.recordFailure(ip, identifier);
     return res.status(401).json({ error: 'Credenciales incorrectas.' });
   }
   if (!user.activo) {
     return res.status(403).json({ error: 'La cuenta está desactivada. Contacte con el administrador.' });
   }
 
-  const match = await bcrypt.compare(password, user.password_hash);
-  if (!match) {
-    return res.status(401).json({ error: 'Credenciales incorrectas.' });
-  }
-
+  loginRateLimiter.recordSuccess(ip, identifier);
   return res.json(buildResponse(user));
 };
 
-// POST /auth/changePassword — skips currentPassword check when in must_change_password flow
+// POST /auth/changePassword
+// The current password is mandatory, except during the forced change that
+// follows a login with a temporary password (must_change_password = 1, read
+// from the database, never from the request).
 exports.changePassword = async function (req, res) {
   const idUsuario = req.user.id;
-  const { currentPassword, newPassword } = req.body;
+  const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+  const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
 
-  if (!newPassword || newPassword.length < 8) {
+  if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres.' });
   }
 
   const [rows] = await pool.query(
-    'SELECT password_hash FROM dual_usuarios WHERE id_usuario = ?',
+    'SELECT password_hash, must_change_password FROM dual_usuarios WHERE id_usuario = ?',
     [idUsuario]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Usuario no encontrado.' });
 
+  const forcedChange = !!rows[0].must_change_password;
+  if (!forcedChange && !currentPassword) {
+    return res.status(400).json({ error: 'Debes indicar la contraseña actual.' });
+  }
   if (currentPassword) {
     const match = await bcrypt.compare(currentPassword, rows[0].password_hash);
     if (!match) {
       return res.status(401).json({ error: 'La contraseña actual no es correcta.' });
     }
+  }
+  if (await bcrypt.compare(newPassword, rows[0].password_hash)) {
+    return res.status(400).json({ error: 'La nueva contraseña debe ser distinta de la actual.' });
   }
 
   const hash = await bcrypt.hash(newPassword, 10);

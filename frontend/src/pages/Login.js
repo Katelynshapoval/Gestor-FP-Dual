@@ -40,8 +40,9 @@ const Login = () => {
       if (!res.ok) throw new Error(data.error || "Credenciales incorrectas");
 
       if (data.user.must_change_password) {
+        // The session is stored only after the new password is set; the
+        // backend also blocks every other route until then.
         setTempToken(data.token);
-        setUser({ ...data.user, token: data.token });
         setMustChangePassword(true);
         return;
       }
@@ -70,14 +71,14 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const token = tempToken || JSON.parse(localStorage.getItem("user") || "{}")?.data?.token;
+      const token = tempToken;
       const res = await fetch("/auth/changePassword", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({ currentPassword: password, newPassword }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al cambiar contraseña");
@@ -87,9 +88,12 @@ const Login = () => {
       });
       if (meRes.ok) {
         const me = await meRes.json();
+        setPassword("");
         setUser({ ...me, token, must_change_password: false });
         toast.success("Contraseña actualizada.");
         redirectByRole(me.rol, navigate);
+      } else {
+        throw new Error("Contraseña actualizada. Inicia sesión de nuevo.");
       }
     } catch (err) {
       setError(err.message);

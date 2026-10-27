@@ -9,6 +9,7 @@ import {
   FaFileLines,
   FaFileSignature,
   FaHouse,
+  FaKey,
   FaLink,
   FaRightFromBracket,
   FaRightToBracket,
@@ -101,6 +102,12 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
       label: "Enlazar",
       Icon: FaLink,
       show: isAdmin || user?.rol === "EMPRESA",
+    },
+    {
+      to: "/cambiarPassword",
+      label: "Cambiar contraseña",
+      Icon: FaKey,
+      show: !!user,
     },
   ].filter((item) => item.show);
 
