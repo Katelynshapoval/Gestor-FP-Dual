@@ -1,31 +1,8 @@
-import StatusBadge from "../../components/ui/StatusBadge.jsx";
-
-const ReadField = ({ label, value }) => (
-  <div className="field">
-    <label>{label}</label>
-    <p className="input bg-gray-50 cursor-default">{value || "—"}</p>
-  </div>
-);
-
-const ESTADO_SOLICITUD = {
-  PENDIENTE: { label: "Solicitud en revisión", variant: "warning" },
-  VALIDADO: { label: "Solicitud aprobada para Dual", variant: "success" },
-  RECHAZADO: { label: "Solicitud no aprobada", variant: "danger" },
-};
-
-function formatDate(value) {
-  if (!value) return "—";
-  const dateStr = typeof value === "string" ? value.split("T")[0] : value;
-  const date = new Date(`${dateStr}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("es-ES");
-}
+import EstadoBadge from "../../components/ui/EstadoBadge.jsx";
+import ReadField from "../../components/ui/ReadField.jsx";
+import { formatFecha as formatDate } from "../../utils/fechas.js";
 
 export default function MisDatos({ solicitud }) {
-  const estado = ESTADO_SOLICITUD[solicitud?.estado_validacion] || {
-    label: solicitud?.estado_validacion || "Sin estado",
-    variant: "neutral",
-  };
 
   return (
     <div className="form-card">
@@ -35,7 +12,7 @@ export default function MisDatos({ solicitud }) {
       ) : (
         <>
           <div className="mb-5">
-            <StatusBadge variant={estado.variant}>{estado.label}</StatusBadge>
+            <EstadoBadge kind="solicitud" value={solicitud?.estado_validacion} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ReadField label="Nombre" value={solicitud.nombre} />

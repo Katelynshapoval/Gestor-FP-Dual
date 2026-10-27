@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import ReadField from "../../components/ui/ReadField.jsx";
 import { useUser } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
 import { getJSON, postJSON } from "../../utils/api.js";
@@ -19,12 +20,6 @@ import InlineNotice from "../../components/ui/InlineNotice.jsx";
 import "../../styles/forms.css";
 
 // Read-only field styled to match the rest of the form layout
-const ReadField = ({ label, value }) => (
-  <div className="field">
-    <label>{label}</label>
-    <p className="input bg-gray-50 cursor-default">{value || "—"}</p>
-  </div>
-);
 
 // Company data panel with optional re-apply form
 const MisDatos = ({

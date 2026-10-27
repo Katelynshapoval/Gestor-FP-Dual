@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { label } from "../../../utils/labels.js";
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "../../../context/UserContext";
 import { IoMdClose, IoMdMenu } from "react-icons/io";
@@ -304,7 +305,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
 
                   {user.rol && (
                     <span className="truncate text-[0.68rem] font-semibold uppercase tracking-wider text-white/55">
-                      {user.rol}
+                      {label("rol", user.rol)}
                     </span>
                   )}
                 </div>
@@ -380,7 +381,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
 
               {user.rol && (
                 <span className="mt-1 block truncate text-[0.72rem] text-white/45">
-                  {user.rol}
+                  {label("rol", user.rol)}
                 </span>
               )}
             </div>

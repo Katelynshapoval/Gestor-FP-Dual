@@ -10,16 +10,5 @@ export const InfoRow = ({ label, value, mono = false }) => {
   );
 };
 
-// Formats a date string for Spanish locale display
-export function formatDate(dateStr) {
-  if (!dateStr) return "—";
-  try {
-    return new Date(dateStr).toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  } catch {
-    return dateStr;
-  }
-}
+// Formats a date for Spanish locale display (shared helper, PM-7)
+export { formatFecha as formatDate } from "../../utils/fechas.js";

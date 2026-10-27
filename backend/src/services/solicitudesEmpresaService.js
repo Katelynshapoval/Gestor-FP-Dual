@@ -4,6 +4,8 @@ const {
   getActiveConvocatoria,
   sendSqlError,
   normalizeCif,
+  cifValido,
+  dniNieValido,
   getCompanyIdFromUser,
 } = require("../helpers/dbHelpers");
 const empresaDatos = require("./empresaDatos");
@@ -155,6 +157,23 @@ exports.create = async function (req, res) {
   if (!passwordCoordinador) {
     return res.status(400).json({
       error: "Se requiere contraseña para la cuenta del coordinador.",
+    });
+  }
+
+  // WF-12: the same checks as the form, enforced here as well.
+  if (!cifValido(cif)) {
+    return res.status(400).json({ error: "CIF de la empresa no válido.", code: "CIF_INVALIDO" });
+  }
+  if (!dniNieValido(dniRepresentante)) {
+    return res.status(400).json({ error: "DNI/NIE del responsable legal no válido.", code: "DNI_INVALIDO" });
+  }
+  if (!dniNieValido(dniCoordinador)) {
+    return res.status(400).json({ error: "DNI/NIE del coordinador principal no válido.", code: "DNI_INVALIDO" });
+  }
+  if (String(passwordCoordinador).length < 8) {
+    return res.status(400).json({
+      error: "La contraseña del coordinador debe tener al menos 8 caracteres.",
+      code: "PASSWORD_CORTA",
     });
   }
 

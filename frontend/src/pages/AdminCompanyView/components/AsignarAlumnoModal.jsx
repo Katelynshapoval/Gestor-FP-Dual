@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Modal from "../../../components/ui/Modal.jsx";
 import { getJSON, postJSON } from "../../../utils/api.js";
 import { cicloLabel } from "../../../utils/especialidades.js";
 import { useConfirm, useToast } from "../../../components/feedback/ToastProvider.jsx";
@@ -80,16 +81,32 @@ export default function AsignarAlumnoModal({ solicitudId, onClose, onAssigned })
   };
 
   return (
-    <div className="fixed inset-0 z-[350] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-xl2 bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
-        <h3 className="font-semibold text-gray-900">Asignar alumno</h3>
+    <Modal
+      open
+      onClose={onClose}
+      title="Asignar alumno"
+      description="Crea una reserva pendiente para un alumno validado de este ciclo."
+      size="md"
+      busy={busy}
+      footer={
+        <>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose} disabled={busy}>
+            Volver
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!alumnoId || busy} onClick={assign}>
+            {busy ? "Asignando…" : "Asignar alumno"}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
         {loading ? (
           <p className="text-sm text-muted">Cargando ciclos…</p>
         ) : (
           <>
-            <label className="block text-xs font-semibold text-gray-600">
+            <label className="block text-xs font-semibold text-muted">
               Ciclo
-              <select className="select-input mt-1" value={ofertaId} onChange={(event) => setOfertaId(event.target.value)}>
+              <select className="select-input mt-1 w-full" value={ofertaId} onChange={(event) => setOfertaId(event.target.value)}>
                 <option value="">Selecciona un ciclo</option>
                 {ofertas.map((oferta) => (
                   <option key={oferta.id_solicitud_empresa_especialidad} value={oferta.id_solicitud_empresa_especialidad} disabled={Number(oferta.plazas_disponibles) <= 0}>
@@ -100,7 +117,7 @@ export default function AsignarAlumnoModal({ solicitudId, onClose, onAssigned })
             </label>
             {ofertaId && (
               <>
-                <input className="input" placeholder="Buscar por nombre o DNI" value={query} onChange={(event) => setQuery(event.target.value)} />
+                <input className="input" aria-label="Buscar alumno por nombre o DNI" placeholder="Buscar por nombre o DNI" value={query} onChange={(event) => setQuery(event.target.value)} />
                 {loadingAlumnos ? (
                   <p className="text-sm text-muted">Cargando alumnos elegibles…</p>
                 ) : visibles.length === 0 ? (
@@ -130,16 +147,10 @@ export default function AsignarAlumnoModal({ solicitudId, onClose, onAssigned })
                 )}
               </>
             )}
-            {error && <p className="text-sm text-red-700">{error}</p>}
+            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           </>
         )}
-        <div className="flex justify-end gap-2">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>Cancelar</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!alumnoId || busy} onClick={assign}>
-            {busy ? "Asignando…" : "Asignar alumno"}
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

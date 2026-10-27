@@ -4,15 +4,9 @@ import { getJSON, postJSON, putJSON } from '../../utils/api';
 import PageHeader from '../../components/ui/PageHeader';
 import StatusBadge from '../../components/ui/StatusBadge';
 import '../../styles/forms.css';
+import { formatFecha as formatDate } from '../../utils/fechas.js';
 
 // Anchors to noon to avoid timezone-related day shifts when displaying MySQL date strings
-function formatDate(value) {
-  if (!value) return '—';
-  const dateStr = typeof value === 'string' ? value.split('T')[0] : value;
-  const d = new Date(`${dateStr}T12:00:00`);
-  if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('es-ES');
-}
 
 // Returns true if the convocatoria has not started yet (edit is only allowed for future ones)
 function esFutura(fechaInicio) {

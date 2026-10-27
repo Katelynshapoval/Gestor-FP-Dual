@@ -37,6 +37,17 @@ function cifValido(cif) {
   return valorControl === String(valorCalculado) || valorControl === letras[valorCalculado];
 }
 
+// Spanish DNI (8 digits + check letter) or NIE (X/Y/Z + 7 digits + letter).
+function dniNieValido(value) {
+  const v = normalizeDni(value);
+  const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+  let numero;
+  if (/^[0-9]{8}[A-Z]$/.test(v)) numero = parseInt(v.slice(0, 8), 10);
+  else if (/^[XYZ][0-9]{7}[A-Z]$/.test(v)) numero = parseInt('XYZ'.indexOf(v[0]) + v.slice(1, 8), 10);
+  else return false;
+  return v[8] === letras[numero % 23];
+}
+
 // Returns the single active convocatoria or null
 async function getActiveConvocatoria() {
   const [rows] = await pool.query(
@@ -136,6 +147,7 @@ module.exports = {
   normalizeCif,
   normalizeDni,
   cifValido,
+  dniNieValido,
   getActiveConvocatoria,
   getStudentIdFromUser,
   getCompanyIdFromUser,

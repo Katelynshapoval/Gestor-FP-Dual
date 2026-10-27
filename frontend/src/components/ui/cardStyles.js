@@ -28,4 +28,3 @@ export const empresaSlotClass =
 export const empresaChipClass =
   "inline-flex cursor-help items-center gap-1 whitespace-nowrap rounded-md border border-surface-200 bg-surface-50 px-2.5 py-1 text-[0.72rem] font-medium text-charcoal-700";
 
-export const statusIconClass = "w-[18px] h-[18px] -mt-[1px]";

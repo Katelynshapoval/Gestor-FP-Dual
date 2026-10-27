@@ -341,11 +341,13 @@ const CompanyCard = ({
   const [editingCompany, setEditingCompany] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
-  const convenioStatus = empresa.convenio_validado
-    ? "validado"
-    : empresa.tieneConvenio
-      ? "pendiente"
-      : "sin_convenio";
+  const convenioStatus = !empresa.tieneConvenio
+    ? "sin_convenio"
+    : empresa.convenio_estado === "RECHAZADO"
+      ? "rechazado"
+      : empresa.convenio_validado
+        ? "validado"
+        : "pendiente";
 
   const statusConfig = {
     validado: {
@@ -353,8 +355,13 @@ const CompanyCard = ({
       cls: "bg-green-500/10 text-green-800",
       Icon: IoIosCheckmarkCircleOutline,
     },
+    rechazado: {
+      label: "Convenio rechazado",
+      cls: "bg-red-500/10 text-red-800",
+      Icon: MdOutlineCancel,
+    },
     pendiente: {
-      label: "Pendiente validar",
+      label: "Convenio pendiente de validar",
       cls: "bg-yellow-400/15 text-yellow-800",
       Icon: MdPendingActions,
     },
