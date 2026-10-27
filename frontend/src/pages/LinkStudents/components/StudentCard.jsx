@@ -23,6 +23,7 @@ import StatusBadge from "../../../components/ui/StatusBadge";
 import EstadoBadge from "../../../components/ui/EstadoBadge.jsx";
 import MotivoDialog from "../../../components/ui/MotivoDialog.jsx";
 import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBadges.jsx";
+import CuentaPanel from "../../../components/CuentaPanel.jsx";
 import { label } from "../../../utils/labels.js";
 import {
   isCancelledReserva,
@@ -271,7 +272,35 @@ const StudentCard = ({
                     </span>
                   )}
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={innerTab === "cuenta"}
+                  onClick={() => setInnerTab("cuenta")}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                    innerTab === "cuenta"
+                      ? "border-brand-600 text-brand-700"
+                      : "border-transparent text-muted hover:text-charcoal-700"
+                  }`}
+                >
+                  Cuenta
+                </button>
               </div>
+            )}
+
+            {/* Account tab — staff only: portal access, password reset and baja */}
+            {!isEmpresa && innerTab === "cuenta" && (
+              <CuentaPanel
+                tipo="alumno"
+                idSolicitud={r.id_solicitud_alumno}
+                s={r}
+                usuario={r.dni}
+                idUsuario={r.id_usuario}
+                cuentaActiva={r.cuenta_activa}
+                nombre={r.nombre}
+                isAdmin={user?.rol === "ADMINISTRADOR"}
+                onChanged={onChanged}
+              />
             )}
 
             {/* Information tab */}
@@ -287,8 +316,6 @@ const StudentCard = ({
                       onValidar={onValidarAlumno}
                       onRechazar={onRechazarSolicitud}
                       onReabrir={onReabrirSolicitud}
-                      isAdmin={user?.rol === "ADMINISTRADOR"}
-                      onChanged={onChanged}
                     />
                   )}
                 </div>

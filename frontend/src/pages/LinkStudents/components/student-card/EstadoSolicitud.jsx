@@ -4,8 +4,6 @@ import StatusBadge from "../../../../components/ui/StatusBadge";
 import EstadoBadge from "../../../../components/ui/EstadoBadge.jsx";
 import MotivoDialog from "../../../../components/ui/MotivoDialog.jsx";
 import { useToast } from "../../../../components/feedback/ToastProvider.jsx";
-import BajaControls from "../../../../components/BajaControls.jsx";
-import ResetPasswordButton from "../../../../components/ResetPasswordButton.jsx";
 
 function validateHint(r) {
   const required = (r.documentos || []).filter((d) => d.requerido_para_validar);
@@ -22,9 +20,9 @@ function validateHint(r) {
 }
 
 // Review of the student's application: validate, reject (reason required) and,
-// for rejected ones, reopen (D7, reason optional and audited). Administración
-// also sees the portal account (password reset) and «Dar de baja» / «Reactivar».
-const EstadoSolicitud = ({ r, onValidar, onRechazar, onReabrir, isAdmin = false, onChanged }) => {
+// for rejected ones, reopen (D7, reason optional and audited). The portal
+// account and «Dar de baja» are in the card's «Cuenta» tab (CuentaPanel).
+const EstadoSolicitud = ({ r, onValidar, onRechazar, onReabrir }) => {
   const toast = useToast();
   const [dialog, setDialog] = useState(null); // "rechazar" | "reabrir"
   const [submitting, setSubmitting] = useState(false);
@@ -87,18 +85,6 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar, onReabrir, isAdmin = false,
         </div>
       )}
 
-      {isAdmin && (
-        <div className="mt-5 space-y-3 border-t border-surface-200 pt-4">
-          <p className={sectionLabelClass}>Cuenta y participación</p>
-          <p className="text-xs text-muted">
-            {!r.id_usuario
-              ? "Sin cuenta en el portal."
-              : `Usuario del portal: ${r.dni}. Cuenta ${Number(r.cuenta_activa) === 1 ? "activa" : "desactivada"}.`}
-          </p>
-          {r.id_usuario && Number(r.cuenta_activa) === 1 && <ResetPasswordButton idUsuario={r.id_usuario} nombre={r.nombre} />}
-          <BajaControls tipo="alumno" id={r.id_solicitud_alumno} s={r} nombre={r.nombre} onChanged={onChanged} />
-        </div>
-      )}
       <MotivoDialog
         open={dialog === "rechazar"}
         onClose={() => setDialog(null)}

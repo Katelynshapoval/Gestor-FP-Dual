@@ -36,7 +36,6 @@ const AdminCompanyView = () => {
   const [rejectingConvenio, setRejectingConvenio] = useState(false);
   const [convenioBusy, setConvenioBusy] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
-  const [resetResult, setResetResult] = useState({});
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -120,39 +119,6 @@ const AdminCompanyView = () => {
     setRejectingConvenio(false);
     setViewingConvenio(null);
     fetchCompanies();
-  };
-
-  // The temporary password stays on screen for two minutes at most (WF-10)
-  const clearResetResult = (idSolicitudEmpresa) =>
-    setResetResult((prev) => {
-      const next = { ...prev };
-      delete next[idSolicitudEmpresa];
-      return next;
-    });
-
-  const handleResetPassword = async (idSolicitudEmpresa) => {
-    const empresa = companies.find(
-      (c) => c.id_solicitud_empresa === idSolicitudEmpresa,
-    );
-    const idUsuario = empresa?.id_usuario;
-    if (!idUsuario) {
-      toast.error("No se encontró usuario para esta empresa");
-      return;
-    }
-    try {
-      const { newPassword } = await postJSON(
-        `/usuarios/${idUsuario}/resetPassword`,
-        {},
-      );
-      setResetResult((prev) => ({
-        ...prev,
-        [idSolicitudEmpresa]: newPassword,
-      }));
-      setTimeout(() => clearResetResult(idSolicitudEmpresa), 2 * 60 * 1000);
-      toast.success("Contraseña restablecida. Cópiala ahora: se ocultará en 2 minutos.");
-    } catch (err) {
-      toast.error(err.message || "Error al resetear la contraseña");
-    }
   };
 
   // Build unique speciality and course options for filter dropdowns
@@ -371,13 +337,8 @@ const AdminCompanyView = () => {
                 isExpanded={expandedCards.has(empresa.id_solicitud_empresa)}
                 onToggle={toggleCard}
                 onViewConvenio={setViewingConvenio}
-                onResetPassword={
-                  user?.rol === "ADMINISTRADOR" ? handleResetPassword : undefined
-                }
                 isAdmin={user?.rol === "ADMINISTRADOR"}
-                onClearResetPassword={clearResetResult}
                 onUpdated={refreshCompanyData}
-                resetResult={resetResult}
               />
             ))}
             <PaginationBar

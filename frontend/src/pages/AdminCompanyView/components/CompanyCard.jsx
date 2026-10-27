@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaBuilding, FaCheck, FaKey, FaPlus, FaXmark } from "react-icons/fa6";
+import { FaBuilding, FaCheck, FaPlus, FaXmark } from "react-icons/fa6";
 import { formatDate, InfoRow } from "../helpers";
 import { IoMdArrowDropdown } from "react-icons/io";
 import {
@@ -25,6 +25,7 @@ import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBad
 import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
 import AsignarAlumnoModal from "./AsignarAlumnoModal.jsx";
 import EstadoSolicitudEmpresa from "./EstadoSolicitudEmpresa.jsx";
+import CuentaPanel from "../../../components/CuentaPanel.jsx";
 import CupoReductionDialog from "../../../components/CupoReductionDialog.jsx";
 import { postJSON, putJSON } from "../../../utils/api.js";
 import { cicloLabel, countChanged, espId } from "../../../utils/especialidades.js";
@@ -358,10 +359,7 @@ const CompanyCard = ({
   isExpanded,
   onToggle,
   onViewConvenio,
-  onResetPassword,
-  onClearResetPassword,
   onUpdated,
-  resetResult,
   isAdmin = false,
 }) => {
   const id = empresa.id_solicitud_empresa;
@@ -530,6 +528,12 @@ const CompanyCard = ({
                   </span>
                 )}
               </button>
+              <button
+                className={innerTabCls(innerTab === "cuenta")}
+                onClick={() => setInnerTab("cuenta")}
+              >
+                Cuenta
+              </button>
             </div>
 
             {/* Information tab */}
@@ -551,7 +555,7 @@ const CompanyCard = ({
                   <div className="space-y-5">
                     <div>
                       <p className={sectionLabelClass}>Datos de la empresa</p>
-                      <div className="space-y-1">
+                      <dl className="m-0 divide-y divide-surface-100">
                         <InfoRow label="Razón social" value={razonSocial} />
                         <InfoRow label="CIF" value={empresa.cif} />
                         <InfoRow label="Email" value={emailCoord} />
@@ -568,52 +572,7 @@ const CompanyCard = ({
                           label="Registro"
                           value={formatDate(empresa.fechaPeticion)}
                         />
-                      </div>
-                    </div>
-
-                    {/* Login credentials and password reset */}
-                    <div>
-                      <p className={sectionLabelClass}>
-                        Credenciales de acceso
-                      </p>
-                      <div className="p-3 rounded-lg border border-surface-200 bg-white space-y-2">
-                        <InfoRow
-                          label="Usuario"
-                          value={
-                            empresa.username || emailCoord || "Sin usuario"
-                          }
-                          mono={!!(empresa.username || emailCoord)}
-                        />
-                        {/* Only ADMINISTRADOR may reset passwords (route is admin-only) */}
-                        {onResetPassword && (
-                        <div className="flex items-center gap-2 flex-wrap mt-2">
-                          <button
-                            onClick={() => onResetPassword(id)}
-                            className="flex items-center gap-1.5 rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-sm text-charcoal-700 transition-colors duration-150 hover:border-charcoal-300 hover:bg-surface-50"
-                          >
-                            <FaKey className="text-xs" />
-                            Resetear contraseña
-                          </button>
-                          {resetResult?.[id] && (
-                            <>
-                              <span className="text-xs font-mono bg-yellow-50 border border-yellow-200 text-yellow-800 px-2 py-1 rounded">
-                                Nueva contraseña:{" "}
-                                <strong>{resetResult[id]}</strong>
-                              </span>
-                              {onClearResetPassword && (
-                                <button
-                                  type="button"
-                                  onClick={() => onClearResetPassword(id)}
-                                  className="text-xs text-muted underline hover:text-charcoal-700"
-                                >
-                                  Ocultar
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        )}
-                      </div>
+                      </dl>
                     </div>
                   </div>
 
@@ -677,10 +636,25 @@ const CompanyCard = ({
                         </div>
                       )}
                     </div>
-                    <EstadoSolicitudEmpresa empresa={empresa} isAdmin={isAdmin} onUpdated={onUpdated} />
+                    <EstadoSolicitudEmpresa empresa={empresa} onUpdated={onUpdated} />
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Account tab: portal access, password reset and baja */}
+            {innerTab === "cuenta" && (
+              <CuentaPanel
+                tipo="empresa"
+                idSolicitud={id}
+                s={empresa}
+                usuario={empresa.username || empresa.cif}
+                idUsuario={empresa.id_usuario}
+                cuentaActiva={empresa.cuenta_activa}
+                nombre={razonSocial}
+                isAdmin={isAdmin}
+                onChanged={onUpdated}
+              />
             )}
 
             {/* Reservations tab */}

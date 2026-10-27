@@ -3,15 +3,14 @@ import { postJSON } from "../../../utils/api.js";
 import { sectionLabelClass } from "../../../components/ui/cardStyles";
 import EstadoBadge from "../../../components/ui/EstadoBadge.jsx";
 import MotivoDialog from "../../../components/ui/MotivoDialog.jsx";
-import BajaControls from "../../../components/BajaControls.jsx";
 import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 
 // State of a company application for the staff: reject a pending one (reason
 // required, the company sees it), validate it when its convenio is already
 // validated, reopen a rejected one (active convocatoria only). Normally a
-// company is validated by validating its signed convenio. Administración also
-// gets «Dar de baja» / «Reactivar».
-export default function EstadoSolicitudEmpresa({ empresa, isAdmin, onUpdated }) {
+// company is validated by validating its signed convenio. «Dar de baja» lives
+// in the card's «Cuenta» tab.
+export default function EstadoSolicitudEmpresa({ empresa, onUpdated }) {
   const toast = useToast();
   const [dialog, setDialog] = useState(null); // "rechazar" | "reabrir"
   const [busy, setBusy] = useState(false);
@@ -55,7 +54,7 @@ export default function EstadoSolicitudEmpresa({ empresa, isAdmin, onUpdated }) 
       )}
       {(estado === "PENDIENTE" || (estado === "RECHAZADO" && activa)) && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {estado === "PENDIENTE" && empresa.convenio_validado && (
+          {estado === "PENDIENTE" && Boolean(empresa.convenio_validado) && (
             <button type="button" className="btn btn-outline-brand btn-sm" onClick={validar} disabled={busy}>
               {busy ? "Validando…" : "Validar solicitud"}
             </button>
@@ -71,9 +70,6 @@ export default function EstadoSolicitudEmpresa({ empresa, isAdmin, onUpdated }) 
             </button>
           )}
         </div>
-      )}
-      {isAdmin && (
-        <BajaControls tipo="empresa" id={id} s={empresa} nombre={nombre} onChanged={refresh} className="mt-3" />
       )}
 
       <MotivoDialog
