@@ -136,6 +136,7 @@ Every finding of the axe and keyboard runs was fixed (§6).
 
   `.env.example` documents the settings.
 - **⚠ Deployment:** production must run with `MAIL_MODE=smtp` or `NODE_ENV=production`. Otherwise no email leaves the server.
+- **Template check (2026-10-27):** `node scripts/probarCorreos.js` sends every template once from the test records. It refuses to run unless `MAIL_MODE=smtp` and `MAIL_REDIRECT_TO` are set, and it changes no data. It was run with the redirect to the owner's address: 12 emails, all accepted by Gmail. The only variant not sent is "document rejected" for a student document, because the test student has none uploaded.
 
 ## 5. API changes
 

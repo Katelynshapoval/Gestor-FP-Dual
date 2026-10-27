@@ -54,4 +54,4 @@ const transporter = {
 
 console.log(`[correo] modo de envío: ${MODE}${MODE === 'smtp' && REDIRECT ? ` (redirigido a ${maskEmail(REDIRECT)})` : ''}`);
 
-module.exports = { transporter, maskEmail, MAIL_MODE: MODE };
+module.exports = { transporter, maskEmail, MAIL_MODE: MODE, MAIL_REDIRECT_TO: REDIRECT };
