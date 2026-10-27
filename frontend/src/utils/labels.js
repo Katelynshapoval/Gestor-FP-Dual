@@ -6,6 +6,7 @@ export const SOLICITUD = Object.freeze({
   PENDIENTE: { label: "Pendiente de revisión", variant: "warning" },
   VALIDADO: { label: "Validada", variant: "success" },
   RECHAZADO: { label: "Rechazada", variant: "danger" },
+  BAJA: { label: "Dada de baja", variant: "neutral" },
 });
 
 export const RESERVA = Object.freeze({

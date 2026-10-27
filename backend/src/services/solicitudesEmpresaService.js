@@ -793,7 +793,14 @@ exports.getTodas = async function (req, res) {
        dl.cp AS cpRazSoc,
        dt.domicilio AS direccionLugarTrabajo,
        u.id_usuario,
-       emp.cif AS username
+       u.activo AS cuenta_activa,
+       emp.cif AS username,
+       (SELECT e.motivo FROM dual_eventos e
+         WHERE e.entidad = 'SOLICITUD_EMPRESA' AND e.id_entidad = se.id_solicitud_empresa AND e.accion = 'BAJA'
+         ORDER BY e.id_evento DESC LIMIT 1) AS motivo_baja,
+       (SELECT e.creado_en FROM dual_eventos e
+         WHERE e.entidad = 'SOLICITUD_EMPRESA' AND e.id_entidad = se.id_solicitud_empresa AND e.accion = 'BAJA'
+         ORDER BY e.id_evento DESC LIMIT 1) AS fecha_baja
      FROM dual_solicitudes_empresa se
      JOIN ge_empresas emp
        ON emp.idempresa = se.id_empresa

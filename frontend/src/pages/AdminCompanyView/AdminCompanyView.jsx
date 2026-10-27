@@ -374,6 +374,7 @@ const AdminCompanyView = () => {
                 onResetPassword={
                   user?.rol === "ADMINISTRADOR" ? handleResetPassword : undefined
                 }
+                isAdmin={user?.rol === "ADMINISTRADOR"}
                 onClearResetPassword={clearResetResult}
                 onUpdated={refreshCompanyData}
                 resetResult={resetResult}

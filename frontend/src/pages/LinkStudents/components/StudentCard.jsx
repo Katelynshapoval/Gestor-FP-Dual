@@ -287,6 +287,8 @@ const StudentCard = ({
                       onValidar={onValidarAlumno}
                       onRechazar={onRechazarSolicitud}
                       onReabrir={onReabrirSolicitud}
+                      isAdmin={user?.rol === "ADMINISTRADOR"}
+                      onChanged={onChanged}
                     />
                   )}
                 </div>

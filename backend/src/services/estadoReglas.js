@@ -135,7 +135,24 @@ function solicitudTransicion(estadoActual, accion, { convocatoriaActiva = true }
   return deny(400, "ACCION_DESCONOCIDA", "Acción no válida.");
 }
 
+// «Dar de baja» (Administración only, checked by the route): any state except
+// BAJA → BAJA, with a reason. «Reactivar»: BAJA → the state it had before.
+function bajaTransicion(estadoActual, accion, { motivo = "" } = {}) {
+  if (!estadoActual) return deny(404, "NO_ENCONTRADA", "Solicitud no encontrada.");
+  if (accion === "BAJA") {
+    if (estadoActual === "BAJA") return deny(409, "YA_DE_BAJA", "La solicitud ya está dada de baja.");
+    if (!String(motivo || "").trim()) return deny(400, "MOTIVO_OBLIGATORIO", "Indica el motivo de la baja.");
+    return null;
+  }
+  if (accion === "REACTIVAR") {
+    if (estadoActual !== "BAJA") return deny(400, "ESTADO_NO_PERMITE", "Solo se puede reactivar una solicitud dada de baja.");
+    return null;
+  }
+  return deny(400, "ACCION_DESCONOCIDA", "Acción no válida.");
+}
+
 module.exports = {
+  bajaTransicion,
   documentoValidable,
   documentoRechazable,
   documentoFirmable,

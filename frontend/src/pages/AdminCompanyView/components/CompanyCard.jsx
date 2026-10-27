@@ -24,6 +24,7 @@ import ReservaDetalle from "../../../components/reservas/ReservaDetalle.jsx";
 import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBadges.jsx";
 import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
 import AsignarAlumnoModal from "./AsignarAlumnoModal.jsx";
+import EstadoSolicitudEmpresa from "./EstadoSolicitudEmpresa.jsx";
 import CupoReductionDialog from "../../../components/CupoReductionDialog.jsx";
 import { postJSON, putJSON } from "../../../utils/api.js";
 import { cicloLabel, countChanged, espId } from "../../../utils/especialidades.js";
@@ -361,6 +362,7 @@ const CompanyCard = ({
   onClearResetPassword,
   onUpdated,
   resetResult,
+  isAdmin = false,
 }) => {
   const id = empresa.id_solicitud_empresa;
   const [innerTab, setInnerTab] = useState("info");
@@ -675,6 +677,7 @@ const CompanyCard = ({
                         </div>
                       )}
                     </div>
+                    <EstadoSolicitudEmpresa empresa={empresa} isAdmin={isAdmin} onUpdated={onUpdated} />
                   </div>
                 </div>
               </div>

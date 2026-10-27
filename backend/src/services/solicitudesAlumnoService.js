@@ -316,7 +316,14 @@ exports.getAll = async function (req, res) {
            esp.id_especialidad, esp.codigo AS codigo_especialidad, esp.nombre AS especialidad,
            CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
            c.nombre AS convocatoria,
-           CASE WHEN u.id_usuario IS NOT NULL THEN 1 ELSE 0 END AS tiene_cuenta
+           CASE WHEN u.id_usuario IS NOT NULL THEN 1 ELSE 0 END AS tiene_cuenta,
+           u.id_usuario, u.activo AS cuenta_activa,
+           (SELECT e.motivo FROM dual_eventos e
+             WHERE e.entidad = 'SOLICITUD_ALUMNO' AND e.id_entidad = sa.id_solicitud_alumno AND e.accion = 'BAJA'
+             ORDER BY e.id_evento DESC LIMIT 1) AS motivo_baja,
+           (SELECT e.creado_en FROM dual_eventos e
+             WHERE e.entidad = 'SOLICITUD_ALUMNO' AND e.id_entidad = sa.id_solicitud_alumno AND e.accion = 'BAJA'
+             ORDER BY e.id_evento DESC LIMIT 1) AS fecha_baja
       FROM dual_solicitudes_alumno sa
       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
       LEFT JOIN dual_usuarios u ON u.id_alumno = a.idalumno

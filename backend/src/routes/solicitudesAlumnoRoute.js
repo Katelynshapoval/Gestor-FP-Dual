@@ -3,6 +3,7 @@ const multer = require('multer');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const svc = require('../services/solicitudesAlumnoService');
+const baja = require('../services/bajaService').handlers('SOLICITUD_ALUMNO');
 
 const router = Router();
 
@@ -31,6 +32,11 @@ router.get('/solicitudes/alumno/:id', requireAuth, requireRole('ADMINISTRADOR', 
 router.post('/solicitudes/alumno/:id/validar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.validar));
 router.post('/solicitudes/alumno/:id/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.rechazar));
 router.post('/solicitudes/alumno/:id/reabrir', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.reabrir));
+
+// Dar de baja / reactivar (Administración only, Phase 5)
+router.get('/solicitudes/alumno/:id/baja', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(baja.preview));
+router.post('/solicitudes/alumno/:id/baja', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(baja.baja));
+router.post('/solicitudes/alumno/:id/reactivar', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(baja.reactivar));
 router.get('/solicitudes/alumno/:id/documentos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getDocumentos));
 
 // Forward multer errors as 400 responses

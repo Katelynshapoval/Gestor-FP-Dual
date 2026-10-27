@@ -2,6 +2,7 @@ const { Router } = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const svc = require('../services/solicitudesEmpresaService');
+const baja = require('../services/bajaService').handlers('SOLICITUD_EMPRESA');
 
 const router = Router();
 
@@ -37,5 +38,10 @@ router.post('/solicitudes/empresa/:id/cambios/:idCambio/rechazar', requireAuth, 
 router.post('/solicitudes/empresa/:id/validar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.validar));
 router.post('/solicitudes/empresa/:id/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.rechazar));
 router.post('/solicitudes/empresa/:id/reabrir', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.reabrir));
+
+// Dar de baja / reactivar (Administración only, Phase 5)
+router.get('/solicitudes/empresa/:id/baja', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(baja.preview));
+router.post('/solicitudes/empresa/:id/baja', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(baja.baja));
+router.post('/solicitudes/empresa/:id/reactivar', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(baja.reactivar));
 
 module.exports = router;
