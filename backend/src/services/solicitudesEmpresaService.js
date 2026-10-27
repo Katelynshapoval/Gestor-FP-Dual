@@ -11,6 +11,8 @@ const {
 const empresaDatos = require("./empresaDatos");
 const { generateDocument } = require("./documentGenerationService");
 const { aplicarTransicion } = require("./solicitudTransiciones");
+const notificar = require("./notificaciones");
+const { escapeHtml } = notificar;
 
 const EMPRESA_YA_REGISTRADA =
   "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
@@ -35,8 +37,8 @@ async function sendCompanyConfirmationEmail(email, empresa, convocatoria, pdfBuf
       to: email,
       subject: "Solicitud Dual Empresa recibida",
       html: `
-        <p>Estimado coordinador de <strong>${empresa}</strong>,</p>
-        <p>Hemos recibido vuestra solicitud de participación en la convocatoria <strong>${convocatoria}</strong>.</p>
+        <p>Estimado coordinador de <strong>${escapeHtml(empresa)}</strong>,</p>
+        <p>Hemos recibido vuestra solicitud de participación en la convocatoria <strong>${escapeHtml(convocatoria)}</strong>.</p>
         <p>Adjuntamos el convenio generado. La firma y la validación se registran en el portal.</p>
         <p>Salesianos Zaragoza — Departamento Dual</p>
       `,
@@ -450,6 +452,8 @@ exports.create = async function (req, res) {
     const hash = await bcrypt.hash(passwordCoordinador, 10);
 
     // Login identifier is the company CIF. Coordinator email stays in ge_contactos.
+    // The company chose this password itself, so no forced change at first
+    // login (Phase 4 decision); passwords reset by an administrator still force one.
     await conn.query(
       `INSERT INTO dual_usuarios (
          nombre_mostrar,
@@ -460,7 +464,7 @@ exports.create = async function (req, res) {
          activo,
          must_change_password
        )
-       VALUES (?, NULL, ?, ?, ?, 1, 1)`,
+       VALUES (?, NULL, ?, ?, ?, 1, 0)`,
       [nombreCoordinador, hash, idRol, idCoordinador],
     );
 
@@ -1695,7 +1699,7 @@ async function sendCupoReductionEmail({
   const list = canceladas
     .map(
       (c) =>
-        `<li>Reserva #${c.id_reserva} — ${c.alumno || "alumno"} (${c.dni_alumno || "sin DNI"}) · ${c.especialidad || especialidad}</li>`,
+        `<li>Reserva #${c.id_reserva} — ${escapeHtml(c.alumno || "alumno")} (${escapeHtml(c.dni_alumno || "sin DNI")}) · ${escapeHtml(c.especialidad || especialidad)}</li>`,
     )
     .join("");
 
@@ -1705,8 +1709,8 @@ async function sendCupoReductionEmail({
       to: email,
       subject: "Reservas pendientes canceladas por reducción de plazas",
       html: `
-        <p>Estimado coordinador de <strong>${empresa}</strong>,</p>
-        <p>Se ha reducido el número de plazas de <strong>${especialidad}</strong> de ${cantidadAnterior} a ${cantidadNueva}.</p>
+        <p>Estimado coordinador de <strong>${escapeHtml(empresa)}</strong>,</p>
+        <p>Se ha reducido el número de plazas de <strong>${escapeHtml(especialidad)}</strong> de ${Number(cantidadAnterior)} a ${Number(cantidadNueva)}.</p>
         <p>Se han cancelado las siguientes reservas pendientes:</p>
         <ul>${list}</ul>
         <p>Las reservas confirmadas no se han modificado.</p>
@@ -2084,6 +2088,8 @@ exports.updateCupoEspecialidad = async function (req, res) {
       cantidadNueva: cantidad,
       canceladas,
     });
+    // The company gets the summary above; each affected student is told too.
+    for (const c of canceladas) notificar.reservaCancelada(c.id_reserva);
   }
 
   const [ocup] = await pool.query(

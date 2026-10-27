@@ -10,6 +10,7 @@ const { saveByClave } = require("./documentosStore");
 const { generateDocument } = require("./documentGenerationService");
 const { recordEvent } = require("./auditLog");
 const reglas = require("./estadoReglas");
+const notificar = require("./notificaciones");
 
 function provenance(req) {
   return { origen: "SUBIDA", idUsuario: req.user?.id || null, rol: req.user?.rol || null };
@@ -457,6 +458,7 @@ exports.validar = async function (req, res) {
     }
 
     await conn.commit();
+    if (empresaValidada) notificar.solicitudEmpresa(doc.id_solicitud_empresa, "VALIDADO");
     return res.json({
       message: empresaValidada
         ? "Convenio y empresa validados correctamente."
@@ -503,6 +505,7 @@ exports.rechazar = async function (req, res) {
       },
     });
     await conn.commit();
+    notificar.documentoRechazado(id, motivo);
     return res.json({ message: "Documento rechazado." });
   } catch (err) {
     await conn.rollback();

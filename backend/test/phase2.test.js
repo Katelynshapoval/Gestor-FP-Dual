@@ -205,7 +205,10 @@ test('WF-6/WF-7: a signed convenio validates the PENDIENTE company in the same t
   assert.equal(ev.length, 2);
   assert.deepEqual(ev[0].params.slice(0, 6), ['DOCUMENTO', 7, 'VALIDAR', 'PENDIENTE', 'VALIDADO', 1]);
   assert.deepEqual(ev[1].params.slice(0, 5), ['SOLICITUD_EMPRESA', 4, 'VALIDAR', 'PENDIENTE', 'VALIDADO']);
-  assert.ok(pool.calls.at(-1).sql === 'COMMIT');
+  // Everything is written before COMMIT; afterwards only the notification reads (Phase 4).
+  const commit = pool.calls.findIndex((c) => c.sql === 'COMMIT');
+  assert.ok(commit > 0);
+  assert.ok(pool.calls.slice(commit + 1).every((c) => /^SELECT/i.test(c.sql)));
 });
 
 test('D6 open: rejecting the convenio of a validated company leaves the company as it is', async () => {

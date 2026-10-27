@@ -11,7 +11,8 @@ router.get('/auth/me', requireAuthAllowPasswordChange, asyncHandler(svc.getMe));
 router.post('/auth/changePassword', requireAuthAllowPasswordChange, asyncHandler(svc.changePassword));
 
 // Admin: user management
-router.get('/usuarios', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getAll));
+// SEC-11: the full user list is for administrators only (no screen uses it).
+router.get('/usuarios', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(svc.getAll));
 router.post('/usuarios/:id/resetPassword', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(svc.resetPassword));
 
 module.exports = router;

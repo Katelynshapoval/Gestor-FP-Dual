@@ -4,6 +4,7 @@ const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni 
 const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation, reservaDocSummary } = require('./documentosWorkflow');
 const { loginRateLimiter } = require('../middleware/loginRateLimit');
 const { aplicarTransicion } = require('./solicitudTransiciones');
+const { escapeHtml } = require('./notificaciones');
 const MIN_PASSWORD_LENGTH = 8;
 
 let transporter = null;
@@ -20,8 +21,8 @@ async function sendConfirmationEmail(email, nombre, convocatoria) {
       to: email,
       subject: 'Solicitud Dual recibida',
       html: `
-        <p>Hola <strong>${nombre}</strong>,</p>
-        <p>Hemos recibido tu solicitud para la convocatoria <strong>${convocatoria}</strong>.</p>
+        <p>Hola <strong>${escapeHtml(nombre)}</strong>,</p>
+        <p>Hemos recibido tu solicitud para la convocatoria <strong>${escapeHtml(convocatoria)}</strong>.</p>
         <p>En los próximos días revisaremos tu documentación y te informaremos del resultado.</p>
         <p>Puedes consultar el estado de tu solicitud iniciando sesión con tu DNI/NIE.</p>
         <p>Salesianos Zaragoza — Departamento Dual</p>

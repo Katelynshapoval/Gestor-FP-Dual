@@ -5,6 +5,7 @@ const { ESTADOS_RESERVA } = require('../constants/reservaEstados');
 const { anexoClaveSql, anexoClaveForContrato, defByClave, pendingSignatures } = require('./documentCatalogue');
 const { recordEvent, recordEventAfterCommit } = require('./auditLog');
 const reglas = require('./estadoReglas');
+const notificar = require('./notificaciones');
 
 // Current annex of the stored contract family (Anexo III for beca, II otherwise).
 const ANEXO_SQL = anexoClaveSql('tc');
@@ -347,7 +348,8 @@ exports.getReservasAlumno = async function (req, res) {
     `SELECT
         r.id_reserva,
         er.nombre AS estado_reserva,
-        r.motivo,
+        -- SEC-11: students get a standard text, not the free-text reason
+        NULL AS motivo,
         tc.nombre_mostrar AS tipo_contrato,
         tc.nombre AS tipo_contrato_clave,
         se.id_solicitud_empresa,
@@ -604,6 +606,7 @@ exports.reservar = async function (req, res) {
       entidad: 'RESERVA', id: idReserva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
       user: req.user, detalle: { id_solicitud_alumno: idSolicitudAlumno, id_oferta: idOferta },
     });
+    notificar.reservaCreada(idReserva);
     return res.status(201).json({
       message: 'Alumno reservado correctamente.',
       id_reserva: idReserva,
@@ -635,6 +638,7 @@ exports.reservarAdmin = async function (req, res) {
       entidad: 'RESERVA', id: idReserva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
       user: req.user, detalle: { id_solicitud_alumno: idSolicitudAlumno, id_oferta: idOferta },
     });
+    notificar.reservaCreada(idReserva, { porCentro: true });
     return res.status(201).json({
       message: 'Reserva creada correctamente.',
       id_reserva: idReserva,
@@ -685,6 +689,7 @@ exports.cancelar = async function (req, res) {
       entidad: 'RESERVA', id: idReserva, accion: 'CANCELAR',
       antes: ESTADOS_RESERVA.PENDIENTE, despues: ESTADOS_RESERVA.CANCELADA, user: req.user, motivo,
     });
+    notificar.reservaCancelada(idReserva);
     return res.json({ message: 'Reserva cancelada correctamente.', estado_reserva: ESTADOS_RESERVA.CANCELADA });
   } catch (err) {
     return sendSqlError(res, err);
@@ -717,6 +722,7 @@ exports.cancelarAdmin = async function (req, res) {
       antes: antes[0]?.estado || null, despues: ESTADOS_RESERVA.CANCELADA, user: req.user, motivo,
       detalle: { administrativa: true },
     });
+    notificar.reservaCancelada(idReserva, { avisarEmpresa: true });
     return res.json({ message: 'Reserva cancelada correctamente.', estado_reserva: ESTADOS_RESERVA.CANCELADA });
   } catch (err) {
     return sendSqlError(res, err);
@@ -779,6 +785,8 @@ exports.reasignar = async function (req, res) {
       entidad: 'RESERVA', id: idNueva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
       user: req.user, motivo, detalle: { reasignada_desde: idReservaOrigen },
     });
+    notificar.reservaCancelada(idReservaOrigen, { avisarEmpresa: true });
+    notificar.reservaCreada(idNueva, { porCentro: true });
     return res.json({
       message: 'Alumno reasignado correctamente.',
       id_reserva: idNueva,
@@ -939,6 +947,9 @@ exports.confirmar = async function (req, res) {
         motivo: 'Alumno asignado a otra empresa.', detalle: { por_confirmacion_de: idReserva },
       });
     }
+    notificar.reservaConfirmada(idReserva);
+    // The student hears about the confirmation; each company that lost the student is told.
+    for (const o of otras) notificar.reservaCancelada(o.id_reserva, { avisarEmpresa: true, avisarAlumno: false });
     return res.json({ message: 'Reserva confirmada correctamente.', estado_reserva: ESTADOS_RESERVA.CONFIRMADA });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -1071,7 +1082,8 @@ exports.getDetalle = async function (req, res) {
     reserva: {
       id_reserva: reserva.id_reserva,
       estado_reserva: estado,
-      motivo: estado === ESTADOS_RESERVA.CANCELADA ? reserva.motivo : null,
+      // SEC-11: the free-text reason is for staff and the company, not the student.
+      motivo: estado === ESTADOS_RESERVA.CANCELADA && rol !== 'ALUMNO' ? reserva.motivo : null,
       id_tipo_contrato: reserva.id_tipo_contrato,
       tipo_contrato: reserva.tipo_contrato,
       tipo_contrato_clave: reserva.tipo_contrato_clave,

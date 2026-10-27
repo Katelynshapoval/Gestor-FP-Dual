@@ -90,7 +90,11 @@ export default function MisReservas({ reservas = [], onChanged }) {
               <EstadoBadge kind="reserva" value="CANCELADA" labelOverride="Reserva cancelada" />
               <p className="mt-3 text-sm text-charcoal-800">La reserva de {r.empresa} fue cancelada.</p>
               <DatosReserva reserva={r} onOpen={setAbierta} />
-              {r.motivo && <p className="mt-1 text-xs italic text-muted">Motivo: {r.motivo}</p>}
+              {r.estado_reserva === "CANCELADA" && (
+                <p className="mt-1 text-xs text-muted">
+                  Esta reserva ya no está activa. Tu solicitud sigue abierta para otras empresas.
+                </p>
+              )}
             </div>
           ))}
         </div>

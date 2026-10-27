@@ -5,6 +5,7 @@
 const pool = require("../db/pool");
 const { recordEvent } = require("./auditLog");
 const { solicitudTransicion } = require("./estadoReglas");
+const notificar = require("./notificaciones");
 
 const ENTIDADES = {
   SOLICITUD_ALUMNO: {
@@ -66,6 +67,11 @@ async function aplicarTransicion(entidad, id, accion, { user = null, motivo = nu
       antes: rows[0].estado, despues: ESTADO_NUEVO[accion], user, motivo,
     });
     await conn.commit();
+    // After commit only; reopening is internal and sends nothing.
+    if (accion !== "REABRIR") {
+      const enviar = entidad === "SOLICITUD_ALUMNO" ? notificar.solicitudAlumno : notificar.solicitudEmpresa;
+      enviar(id, ESTADO_NUEVO[accion], motivo);
+    }
     return { ok: true };
   } catch (err) {
     await conn.rollback();
