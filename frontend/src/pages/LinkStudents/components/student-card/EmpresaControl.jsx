@@ -82,7 +82,7 @@ const EmpresaControl = ({ r, onAdminReserve, onChanged }) => {
                 <p className="text-xs italic text-muted">Motivo: {rv.motivo}</p>
               )}
             </div>
-            <ReservaResumenBadges estado={rv.estado_reserva} resumen={rv.documentos_resumen} />
+            <ReservaResumenBadges compact estado={rv.estado_reserva} resumen={rv.documentos_resumen} />
           </div>
           <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={() => setAbierta(rv.id_reserva)}>
             Gestionar reserva

@@ -329,7 +329,7 @@ const ReservasList = ({ reservations, onAssign, onUpdated }) => {
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:items-end">
-                <ReservaResumenBadges estado={r.estado_reserva} resumen={r.documentos_resumen} />
+                <ReservaResumenBadges compact estado={r.estado_reserva} resumen={r.documentos_resumen} />
                 <button type="button" className="btn btn-secondary btn-sm w-fit" onClick={() => setAbierta(r.id_reserva)}>
                   Gestionar reserva
                 </button>

@@ -22,3 +22,21 @@ test("without a contract type the annex is reported as missing the type", () => 
   render(<ReservaResumenBadges estado="PENDIENTE" resumen={{ anexo: null, calendario: null }} />);
   expect(screen.getByText("Anexo: falta tipo de contrato")).toBeInTheDocument();
 });
+
+test("compact mode shows one icon per item with the full text as its name", () => {
+  render(
+    <ReservaResumenBadges
+      compact
+      estado="PENDIENTE"
+      resumen={{
+        anexo: null,
+        calendario: { clave: "CALENDARIO", estado_operativo: "PENDIENTE_SUBIDA", estado_operativo_label: "Pendiente de subir" },
+      }}
+    />,
+  );
+  const icons = screen.getAllByRole("img");
+  expect(icons).toHaveLength(3);
+  expect(screen.getByRole("img", { name: "Reserva pendiente" })).toBeInTheDocument();
+  expect(screen.getByRole("img", { name: "Anexo: falta tipo de contrato" })).toBeInTheDocument();
+  expect(screen.getByRole("img", { name: "Calendario: pendiente de subir" })).toBeInTheDocument();
+});

@@ -196,6 +196,7 @@ const StudentCard = ({
               )}
               {referencia && (
                 <ReservaResumenBadges
+                  compact
                   estado={referencia.estado_reserva}
                   resumen={referencia.documentos_resumen}
                   showEstado={false}

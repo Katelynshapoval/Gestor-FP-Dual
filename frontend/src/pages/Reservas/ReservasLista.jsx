@@ -51,8 +51,8 @@ const FilaReserva = ({ r, onOpen }) => (
         </p>
       </div>
     </div>
-    <div className="flex flex-col gap-2 md:items-end">
-      <ReservaResumenBadges estado={r.estado_reserva} resumen={r.documentos_resumen} />
+    <div className="flex shrink-0 items-center gap-3">
+      <ReservaResumenBadges compact estado={r.estado_reserva} resumen={r.documentos_resumen} />
       <button
         type="button"
         className="btn btn-secondary btn-sm w-fit"
