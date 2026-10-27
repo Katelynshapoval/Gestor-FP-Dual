@@ -75,4 +75,7 @@ function mockRes() {
   return res;
 }
 
+// Tests must never send real email: the mailer is always stubbed.
+stub('src/mail/config', { transporter: null });
+
 module.exports = { stub, load, fakePool, fakeBcrypt, mockReq, mockRes };

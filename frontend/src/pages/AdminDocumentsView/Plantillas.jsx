@@ -4,9 +4,13 @@ import { formatDocumentDate } from "../../utils/documentos.js";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../components/ui/InlineNotice.jsx";
 import StatusBadge from "../../components/ui/StatusBadge.jsx";
+import { useUser } from "../../context/UserContext";
 
 export default function Plantillas() {
   const toast = useToast();
+  const { user } = useUser();
+  // Template upload is ADMINISTRADOR-only on the server (SEC-6)
+  const canUpload = user?.rol === "ADMINISTRADOR";
   const [tipos, setTipos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -107,6 +111,11 @@ export default function Plantillas() {
   return (
     <div className="space-y-3">
       <InlineNotice tone="error">{notice}</InlineNotice>
+      {!canUpload && (
+        <InlineNotice tone="info">
+          Solo un administrador puede subir o reemplazar plantillas.
+        </InlineNotice>
+      )}
       {tipos.map((tipo) => (
         <article key={tipo.clave} className="rounded-xl2 border border-surface-200 bg-white p-4 shadow-card">
           <div className="flex items-start justify-between gap-3">
@@ -130,22 +139,27 @@ export default function Plantillas() {
             </StatusBadge>
           </div>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-            <input
-              ref={(node) => {
-                inputs.current[tipo.clave] = node;
-              }}
-              type="file"
-              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="text-sm sm:mr-auto"
-            />
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={busy === tipo.clave}
-              onClick={() => upload(tipo.clave, tipo.nombre)}
-            >
-              {busy === tipo.clave ? "Subiendo…" : tipo.activa ? "Reemplazar" : "Subir plantilla"}
-            </button>
+            {canUpload && (
+              <>
+                <input
+                  ref={(node) => {
+                    inputs.current[tipo.clave] = node;
+                  }}
+                  type="file"
+                  aria-label={`Plantilla DOCX para ${tipo.nombre}`}
+                  accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="text-sm sm:mr-auto"
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={busy === tipo.clave}
+                  onClick={() => upload(tipo.clave, tipo.nombre)}
+                >
+                  {busy === tipo.clave ? "Subiendo…" : tipo.activa ? "Reemplazar" : "Subir plantilla"}
+                </button>
+              </>
+            )}
             {tipo.activa && (
               <button
                 type="button"

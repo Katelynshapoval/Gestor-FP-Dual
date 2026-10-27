@@ -27,49 +27,136 @@ async function assertAlumnoOwnsSolicitud(req, idSolicitud) {
   return null;
 }
 
-// Upload a document for a student application
-// POST /documentos/alumno/:idSolicitud/:tipo
-exports.uploadAlumno = async function (req, res) {
-  const idSolicitudAlumno = parseInt(req.params.idSolicitud, 10);
-  const clave = String(req.params.tipo || "").toUpperCase().replace(/-/g, "_");
-  const file = req.file;
-  const def = defByClave(clave);
-
-  if (!file) return res.status(400).json({ error: "No se ha subido ningún archivo." });
-  if (!def || def.legacy || def.ambito !== "solicitud_alumno" || def.kind === "event") {
-    return res.status(400).json({ error: "Tipo de documento no válido para el alumno." });
+// SEC-5: single upload guard used by every upload endpoint.
+// Checks, in order: document type, catalogue permission for the role,
+// parent exists and belongs to the caller, reservation state and contract
+// family, and the "validated documents cannot be replaced" rule.
+async function assertCanUpload(req, def, parents = {}) {
+  const rol = req.user?.rol;
+  if (!def || def.legacy || def.kind === "event") {
+    return { status: 400, error: "Tipo de documento no válido." };
   }
-  if (!workflow.canUpload(def, req.user.rol)) {
-    return res.status(403).json({ error: "No puedes subir este tipo de documento." });
+  if (!workflow.canUpload(def, rol)) {
+    return { status: 403, error: "No puedes subir este tipo de documento." };
   }
 
-  const denied = await assertAlumnoOwnsSolicitud(req, idSolicitudAlumno);
-  if (denied) return res.status(denied.status).json({ error: denied.error });
+  let parentSql;
+  let parentId;
+
+  if (def.ambito === "solicitud_alumno") {
+    parentId = parents.idSolicitudAlumno;
+    if (!parentId) return { status: 400, error: "Falta la solicitud del alumno." };
+    const [rows] = await pool.query(
+      "SELECT id_alumno FROM dual_solicitudes_alumno WHERE id_solicitud_alumno = ?",
+      [parentId],
+    );
+    if (!rows[0]) return { status: 404, error: "Solicitud no encontrada." };
+    const denied = await assertAlumnoOwnsSolicitud(req, parentId);
+    if (denied) return denied;
+    parentSql = "d.id_solicitud_alumno = ?";
+  } else if (def.ambito === "solicitud_empresa") {
+    parentId = parents.idSolicitudEmpresa;
+    if (!parentId) return { status: 400, error: "Falta la solicitud de empresa." };
+    const [rows] = await pool.query(
+      "SELECT id_empresa FROM dual_solicitudes_empresa WHERE id_solicitud_empresa = ?",
+      [parentId],
+    );
+    if (!rows[0]) return { status: 404, error: "Solicitud de empresa no encontrada." };
+    if (rol === "EMPRESA") {
+      const idEmpresa = await getCompanyIdFromUser(req.user.id);
+      if (!idEmpresa || rows[0].id_empresa !== idEmpresa) {
+        return { status: 403, error: "No puedes subir documentos de otra empresa." };
+      }
+    }
+    parentSql = "d.id_solicitud_empresa = ?";
+  } else if (def.ambito === "reserva") {
+    parentId = parents.idReserva;
+    if (!parentId) return { status: 400, error: "Falta la reserva." };
+    const [rows] = await pool.query(
+      `SELECT se.id_empresa, tc.nombre AS tipo_contrato, er.nombre AS estado_reserva
+         FROM dual_reservas r
+         JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+         LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+         JOIN dual_solicitud_empresa_especialidades see
+           ON see.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+         JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = see.id_solicitud_empresa
+        WHERE r.id_reserva = ?`,
+      [parentId],
+    );
+    if (!rows[0]) return { status: 404, error: "Reserva no encontrada." };
+    if (rol === "EMPRESA") {
+      const idEmpresa = await getCompanyIdFromUser(req.user.id);
+      if (!idEmpresa || rows[0].id_empresa !== idEmpresa) {
+        return { status: 403, error: "No tiene permiso para subir documentos a esta reserva." };
+      }
+    }
+    if (rows[0].estado_reserva === "CANCELADA") {
+      return { status: 400, error: "No se puede subir documentación de una reserva cancelada." };
+    }
+    if (def.contractFamily) {
+      const clave = anexoClaveForContrato(rows[0].tipo_contrato);
+      if (!clave) {
+        return { status: 400, error: "El anexo II o III aparece cuando el centro indica el tipo de contrato." };
+      }
+      if (clave !== def.clave) {
+        return { status: 400, error: `Para el tipo de contrato de esta reserva corresponde el ${clave === "ANEXO_III" ? "Anexo III" : "Anexo II"}.` };
+      }
+    }
+    parentSql = "d.id_reserva = ?";
+  } else {
+    return { status: 400, error: "Tipo de documento no válido." };
+  }
 
   const [current] = await pool.query(
     `SELECT ev.nombre AS estado
        FROM dual_documentos d
        JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
        JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-      WHERE d.id_solicitud_alumno = ? AND td.nombre = ? AND d.es_actual = 1
+      WHERE ${parentSql} AND td.nombre = ? AND d.es_actual = 1
       ORDER BY d.id_documento DESC LIMIT 1`,
-    [idSolicitudAlumno, clave],
+    [parentId, def.clave],
   );
-  if (
-    req.user.rol === "ALUMNO" &&
-    current[0]?.estado === "VALIDADO" &&
-    !def.replaceIfValidated
-  ) {
-    return res.status(400).json({ error: "Un documento validado no se puede reemplazar." });
+  if (current[0]?.estado === "VALIDADO" && !def.replaceIfValidated) {
+    return { status: 400, error: "Un documento validado no se puede reemplazar." };
   }
+  return null;
+}
 
+// Saves after the guard; shared by every upload endpoint.
+async function guardedSave(req, res, def, parents, successMessage) {
+  if (!req.file) return res.status(400).json({ error: "No se ha subido ningún archivo." });
+  const denied = await assertCanUpload(req, def, parents);
+  if (denied) return res.status(denied.status).json({ error: denied.error });
   try {
-    const idDocumento = await saveByClave(clave, { id_solicitud_alumno: idSolicitudAlumno }, file.buffer, provenance(req));
-    return res.json({ message: "Documento subido correctamente.", id_documento: idDocumento, clave });
+    const idDocumento = await saveByClave(
+      def.clave,
+      {
+        id_solicitud_alumno: def.ambito === "solicitud_alumno" ? parents.idSolicitudAlumno : null,
+        id_solicitud_empresa: def.ambito === "solicitud_empresa" ? parents.idSolicitudEmpresa : null,
+        id_reserva: def.ambito === "reserva" ? parents.idReserva : null,
+      },
+      req.file.buffer,
+      provenance(req),
+    );
+    return res.json({ message: successMessage, id_documento: idDocumento, clave: def.clave });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     return sendSqlError(res, err);
   }
+}
+
+exports.assertCanUpload = assertCanUpload;
+
+// Upload a document for a student application
+// POST /documentos/alumno/:idSolicitud/:tipo
+exports.uploadAlumno = async function (req, res) {
+  const idSolicitudAlumno = parseInt(req.params.idSolicitud, 10) || null;
+  const clave = String(req.params.tipo || "").toUpperCase().replace(/-/g, "_");
+  const def = defByClave(clave);
+  if (def && def.ambito !== "solicitud_alumno") {
+    return res.status(400).json({ error: "Tipo de documento no válido para el alumno." });
+  }
+  return guardedSave(req, res, def, { idSolicitudAlumno }, "Documento subido correctamente.");
 };
 
 exports.getMios = async function (req, res) {
@@ -82,89 +169,29 @@ exports.getMios = async function (req, res) {
 // Upload a convenio for a company application
 // POST /documentos/empresa/:idSolicitud/convenio
 exports.uploadEmpresa = async function (req, res) {
-  const idSolicitudEmpresa = parseInt(req.params.idSolicitud, 10);
-  const file = req.file;
-
-  if (!file)
-    return res.status(400).json({ error: "No se ha subido ningún archivo." });
-
-  // Verify the company user owns this solicitud
-  if (req.user.rol === "EMPRESA") {
-    const idEmpresa = await getCompanyIdFromUser(req.user.id);
-    const [rows] = await pool.query(
-      "SELECT id_empresa FROM dual_solicitudes_empresa WHERE id_solicitud_empresa = ?",
-      [idSolicitudEmpresa],
-    );
-    if (!rows[0] || rows[0].id_empresa !== idEmpresa) {
-      return res.status(403).json({
-        error: "No tiene permiso para subir documentos a esta solicitud.",
-      });
-    }
-  }
-
-  try {
-    const idDocumento = await saveByClave(
-      "CONVENIO",
-      { id_solicitud_empresa: idSolicitudEmpresa },
-      file.buffer,
-      provenance(req),
-    );
-    return res.json({
-      message: "Convenio subido correctamente.",
-      id_documento: idDocumento,
-    });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message });
-    return sendSqlError(res, err);
-  }
+  const idSolicitudEmpresa = parseInt(req.params.idSolicitud, 10) || null;
+  return guardedSave(req, res, defByClave("CONVENIO"), { idSolicitudEmpresa }, "Convenio subido correctamente.");
 };
 
 // Upload the contract annex (Anexo II or Anexo III) for a reservation.
 // POST /documentos/reserva/:idReserva/anexo
+// The annex is chosen from the stored contract type; the guard re-checks it.
 exports.uploadReserva = async function (req, res) {
-  const idReserva = parseInt(req.params.idReserva, 10);
-  const file = req.file;
-
-  if (!file)
-    return res.status(400).json({ error: "No se ha subido ningún archivo." });
-
+  const idReserva = parseInt(req.params.idReserva, 10) || null;
+  if (!idReserva) return res.status(400).json({ error: "Falta la reserva." });
   const [rows] = await pool.query(
-    `SELECT se.id_empresa, tc.nombre AS tipo_contrato, er.nombre AS estado_reserva
+    `SELECT tc.nombre AS tipo_contrato
        FROM dual_reservas r
-       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
        LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
-       JOIN dual_solicitud_empresa_especialidades see
-         ON see.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
-       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = see.id_solicitud_empresa
       WHERE r.id_reserva = ?`,
     [idReserva],
   );
   if (!rows[0]) return res.status(404).json({ error: "Reserva no encontrada." });
-  if (req.user.rol === "EMPRESA") {
-    const idEmpresa = await getCompanyIdFromUser(req.user.id);
-    if (rows[0].id_empresa !== idEmpresa) {
-      return res.status(403).json({ error: "No tiene permiso para subir documentos a esta reserva." });
-    }
-  }
   const clave = anexoClaveForContrato(rows[0].tipo_contrato);
   if (!clave) {
     return res.status(400).json({ error: "El anexo II o III aparece cuando el centro indica el tipo de contrato." });
   }
-  if (rows[0].estado_reserva === "CANCELADA") {
-    return res.status(400).json({ error: "No se puede subir documentación de una reserva cancelada." });
-  }
-
-  try {
-    const idDocumento = await saveByClave(clave, { id_reserva: idReserva }, file.buffer, provenance(req));
-    return res.json({
-      message: "Documento subido correctamente.",
-      id_documento: idDocumento,
-      clave,
-    });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message });
-    return sendSqlError(res, err);
-  }
+  return guardedSave(req, res, defByClave(clave), { idReserva }, "Documento subido correctamente.");
 };
 
 async function loadDocumentoMeta(idDocumento) {
@@ -430,97 +457,12 @@ exports.rechazar = async function (req, res) {
 exports.uploadContexto = async function (req, res) {
   const clave = String(req.body?.clave || "").toUpperCase();
   const def = defByClave(clave);
-  const file = req.file;
-  if (!def || def.legacy || def.kind === "event") {
-    return res.status(400).json({ error: "Tipo de documento no válido." });
-  }
-  if (!file) return res.status(400).json({ error: "No se ha subido ningún archivo." });
-  if (!workflow.canUpload(def, req.user.rol)) {
-    return res.status(403).json({ error: "No puedes subir este documento." });
-  }
-
-  const idSolicitudAlumno = parseInt(req.body.id_solicitud_alumno, 10) || null;
-  const idSolicitudEmpresa = parseInt(req.body.id_solicitud_empresa, 10) || null;
-  const idReserva = parseInt(req.body.id_reserva, 10) || null;
-
-  if (def.ambito === "solicitud_alumno") {
-    if (!idSolicitudAlumno) return res.status(400).json({ error: "Falta la solicitud del alumno." });
-    const denied = await assertAlumnoOwnsSolicitud(req, idSolicitudAlumno);
-    if (denied) return res.status(denied.status).json({ error: denied.error });
-  }
-  if (def.ambito === "solicitud_empresa") {
-    if (!idSolicitudEmpresa) return res.status(400).json({ error: "Falta la solicitud de empresa." });
-    if (req.user.rol === "EMPRESA") {
-      const idEmpresa = await getCompanyIdFromUser(req.user.id);
-      const [rows] = await pool.query(
-        "SELECT id_empresa FROM dual_solicitudes_empresa WHERE id_solicitud_empresa = ?",
-        [idSolicitudEmpresa],
-      );
-      if (!rows[0] || rows[0].id_empresa !== idEmpresa) {
-        return res.status(403).json({ error: "No puedes subir documentos de otra empresa." });
-      }
-    }
-  }
-  if (def.ambito === "reserva") {
-    if (!idReserva) return res.status(400).json({ error: "Falta la reserva." });
-    if (req.user.rol === "EMPRESA") {
-      const idEmpresa = await getCompanyIdFromUser(req.user.id);
-      const [rows] = await pool.query(
-        `SELECT se.id_empresa
-           FROM dual_reservas r
-           JOIN dual_solicitud_empresa_especialidades ee
-             ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
-           JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
-          WHERE r.id_reserva = ?`,
-        [idReserva],
-      );
-      if (!rows[0] || rows[0].id_empresa !== idEmpresa) {
-        return res.status(403).json({ error: "No puedes subir documentos de otra empresa." });
-      }
-    }
-  }
-
-  const parentSql =
-    def.ambito === "solicitud_alumno"
-      ? "d.id_solicitud_alumno = ?"
-      : def.ambito === "solicitud_empresa"
-        ? "d.id_solicitud_empresa = ?"
-        : "d.id_reserva = ?";
-  const parentId =
-    def.ambito === "solicitud_alumno"
-      ? idSolicitudAlumno
-      : def.ambito === "solicitud_empresa"
-        ? idSolicitudEmpresa
-        : idReserva;
-  const [current] = await pool.query(
-    `SELECT ev.nombre AS estado
-       FROM dual_documentos d
-       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
-       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
-      WHERE ${parentSql} AND td.nombre = ? AND d.es_actual = 1
-      ORDER BY d.id_documento DESC LIMIT 1`,
-    [parentId, clave],
-  );
-  if (current[0]?.estado === "VALIDADO" && !def.replaceIfValidated && req.user.rol !== "ADMINISTRADOR" && req.user.rol !== "COORDINADOR") {
-    return res.status(400).json({ error: "Un documento validado no se puede reemplazar." });
-  }
-
-  try {
-    const idDocumento = await saveByClave(
-      clave,
-      {
-        id_solicitud_alumno: def.ambito === "solicitud_alumno" ? idSolicitudAlumno : null,
-        id_solicitud_empresa: def.ambito === "solicitud_empresa" ? idSolicitudEmpresa : null,
-        id_reserva: def.ambito === "reserva" ? idReserva : null,
-      },
-      file.buffer,
-      provenance(req),
-    );
-    return res.json({ message: "Documento subido correctamente.", id_documento: idDocumento, clave });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message });
-    return sendSqlError(res, err);
-  }
+  const parents = {
+    idSolicitudAlumno: parseInt(req.body?.id_solicitud_alumno, 10) || null,
+    idSolicitudEmpresa: parseInt(req.body?.id_solicitud_empresa, 10) || null,
+    idReserva: parseInt(req.body?.id_reserva, 10) || null,
+  };
+  return guardedSave(req, res, def, parents, "Documento subido correctamente.");
 };
 
 exports.firmar = async function (req, res) {

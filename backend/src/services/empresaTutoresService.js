@@ -28,7 +28,12 @@ function tutorSelectSql(whereSql) {
       c.dni,
       c.email,
       c.telefono,
-      c.cargo
+      c.cargo,
+      EXISTS (
+        SELECT 1 FROM dual_solicitudes_empresa se_coord
+         WHERE se_coord.id_empresa = t.id_empresa
+           AND se_coord.id_coordinador_empresa = t.id_contacto
+      ) AS es_coordinador
     FROM dual_empresa_tutores t
     JOIN ge_contactos c ON c.idcontacto = t.id_contacto
     ${whereSql}
@@ -72,6 +77,22 @@ async function getWorkDomicilioId(conn, idEmpresa) {
     [idEmpresa]
   );
   return fromDom[0]?.iddomicilio ?? null;
+}
+
+// SEC-4: the principal coordinator is also a tutor row, but companies may only
+// change it through the reviewed "Editar datos" workflow, not from Tutores.
+const COORDINADOR_PROTEGIDO =
+  'El coordinador principal no se modifica desde Tutores. Usa «Mis datos › Editar datos»; el cambio lo revisa el centro.';
+
+async function isCoordinadorDeEmpresa(conn, idContacto, idEmpresa) {
+  const [rows] = await conn.query(
+    `SELECT 1 AS es
+       FROM dual_solicitudes_empresa
+      WHERE id_empresa = ? AND id_coordinador_empresa = ?
+      LIMIT 1`,
+    [idEmpresa, idContacto]
+  );
+  return !!rows[0];
 }
 
 async function loadTutorForEmpresa(conn, idEmpresaTutor, idEmpresa) {
@@ -198,6 +219,11 @@ exports.update = async function (req, res) {
       return res.status(error.status).json({ error: error.message });
     }
 
+    if (req.user.rol === 'EMPRESA' && await isCoordinadorDeEmpresa(conn, tutor.id_contacto, tutor.id_empresa)) {
+      await conn.rollback();
+      return res.status(403).json({ error: COORDINADOR_PROTEGIDO, code: 'COORDINADOR_PRINCIPAL' });
+    }
+
     const fields = {
       nombre: trimOrNull(req.body?.nombre),
       email: trimOrNull(req.body?.email),
@@ -265,7 +291,7 @@ exports.deactivate = async function (req, res) {
     await conn.beginTransaction();
 
     const [rows] = await conn.query(
-      `SELECT t.id_empresa_tutor, t.id_empresa, t.activo
+      `SELECT t.id_empresa_tutor, t.id_empresa, t.id_contacto, t.activo
          FROM dual_empresa_tutores t
         WHERE t.id_empresa_tutor = ?
         FOR UPDATE`,
@@ -281,6 +307,11 @@ exports.deactivate = async function (req, res) {
     if (error) {
       await conn.rollback();
       return res.status(error.status).json({ error: error.message });
+    }
+
+    if (req.user.rol === 'EMPRESA' && await isCoordinadorDeEmpresa(conn, tutor.id_contacto, tutor.id_empresa)) {
+      await conn.rollback();
+      return res.status(403).json({ error: COORDINADOR_PROTEGIDO, code: 'COORDINADOR_PRINCIPAL' });
     }
 
     if (!tutor.activo) {

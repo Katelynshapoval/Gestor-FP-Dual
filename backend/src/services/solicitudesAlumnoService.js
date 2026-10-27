@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
 const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni } = require('../helpers/dbHelpers');
 const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation } = require('./documentosWorkflow');
+const { loginRateLimiter } = require('../middleware/loginRateLimit');
 const MIN_PASSWORD_LENGTH = 8;
 
 let transporter = null;
@@ -79,8 +80,9 @@ exports.create = async function (req, res) {
   try {
     await conn.beginTransaction();
 
-    // Upsert student by DNI (canonicalized)
+    // Find the student by DNI (canonicalized)
     let idAlumno;
+    let cuentaExistente = false;
     const [existing] = await conn.query(
       'SELECT idalumno FROM gf_alumnosfct WHERE UPPER(TRIM(dni)) = ? FOR UPDATE',
       [dniNorm]
@@ -88,21 +90,101 @@ exports.create = async function (req, res) {
 
     if (existing[0]) {
       idAlumno = existing[0].idalumno;
-      await conn.query(
-        `UPDATE gf_alumnosfct
-            SET nombre = ?, domicilio = ?, cp = ?, localidad = ?, telalumno = ?,
-                telfamilia = ?, email = ?, especialidad = ?, id_especialidad_dual = ?,
-                observaciones = ?, nacionalidad = ?, fechaNacimiento = ?,
-                emailColegio = ?, sexo = ?, carnetDeConducir = ?, tieneCoche = ?,
-                numeroSS = ?, situacionLaboral = ?, idiomasConocidos = ?,
-                tutorLegal = ?, dniTutorLegal = ?
-          WHERE idalumno = ?`,
-        [nombre, domicilio, cp, localidad, telalumno, telfamilia, email,
-          codigoEsp, id_especialidad_dual, observaciones, nacionalidad, fechaNacimiento,
-          emailColegio, sexo, carnetDeConducir ? 1 : 0, tieneCoche ? 1 : 0,
-          numeroSS, situacionLaboral, idiomasConocidos, tutorLegal, dniTutorLegal,
-          idAlumno]
+
+      // Duplicate check first, so a rejected submission changes nothing
+      const [dup] = await conn.query(
+        'SELECT id_solicitud_alumno FROM dual_solicitudes_alumno WHERE id_alumno = ? AND id_convocatoria = ?',
+        [idAlumno, convocatoria.id_convocatoria]
       );
+      if (dup[0]) {
+        await conn.rollback();
+        return res.status(409).json({
+          error: 'Ya tienes una solicitud registrada para la convocatoria activa. Si necesitas corregir documentación, contacta con el centro.',
+        });
+      }
+
+      // SEC-3: a public, unauthenticated form must not overwrite someone's data.
+      const [cuenta] = await conn.query(
+        'SELECT id_usuario, password_hash, activo FROM dual_usuarios WHERE id_alumno = ? FOR UPDATE',
+        [idAlumno]
+      );
+
+      if (cuenta[0]) {
+        // Returning student with an account: the form password must be the
+        // current portal password. Failures count towards the login limiter.
+        const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+        const wait = loginRateLimiter.retryAfter(ip, dniNorm);
+        if (wait > 0) {
+          await conn.rollback();
+          res.set('Retry-After', String(wait));
+          return res.status(429).json({
+            error: `Demasiados intentos fallidos. Vuelve a intentarlo en ${Math.ceil(wait / 60)} minuto(s).`,
+            code: 'TOO_MANY_ATTEMPTS',
+          });
+        }
+        const ok = await bcrypt.compare(String(password), cuenta[0].password_hash);
+        if (!ok) {
+          loginRateLimiter.recordFailure(ip, dniNorm);
+          await conn.rollback();
+          return res.status(401).json({
+            error: 'Ya existe una cuenta con este DNI/NIE. Para volver a presentar la candidatura, escribe en «Contraseña» tu contraseña actual del portal. Si no la recuerdas, contacta con el centro.',
+            code: 'CUENTA_EXISTENTE',
+          });
+        }
+        if (!cuenta[0].activo) {
+          await conn.rollback();
+          return res.status(403).json({ error: 'La cuenta está desactivada. Contacta con el centro.' });
+        }
+        loginRateLimiter.recordSuccess(ip, dniNorm);
+        cuentaExistente = true;
+
+        // Identity proven: the student may update their own data.
+        await conn.query(
+          `UPDATE gf_alumnosfct
+              SET nombre = ?, domicilio = ?, cp = ?, localidad = ?, telalumno = ?,
+                  telfamilia = ?, email = ?, especialidad = ?, id_especialidad_dual = ?,
+                  observaciones = ?, nacionalidad = ?, fechaNacimiento = ?,
+                  emailColegio = ?, sexo = ?, carnetDeConducir = ?, tieneCoche = ?,
+                  numeroSS = ?, situacionLaboral = ?, idiomasConocidos = ?,
+                  tutorLegal = ?, dniTutorLegal = ?
+            WHERE idalumno = ?`,
+          [nombre, domicilio, cp, localidad, telalumno, telfamilia, email,
+            codigoEsp, id_especialidad_dual, observaciones, nacionalidad, fechaNacimiento,
+            emailColegio, sexo, carnetDeConducir ? 1 : 0, tieneCoche ? 1 : 0,
+            numeroSS, situacionLaboral, idiomasConocidos, tutorLegal, dniTutorLegal,
+            idAlumno]
+        );
+      } else {
+        // Known student without an account (e.g. imported record): identity
+        // cannot be proven, so stored values are kept and only empty fields
+        // are completed from the form. Staff can correct the rest.
+        await conn.query(
+          `UPDATE gf_alumnosfct
+              SET nombre = COALESCE(NULLIF(nombre, ''), ?),
+                  domicilio = COALESCE(NULLIF(domicilio, ''), ?),
+                  cp = COALESCE(NULLIF(cp, ''), ?),
+                  localidad = COALESCE(NULLIF(localidad, ''), ?),
+                  telalumno = COALESCE(NULLIF(telalumno, ''), ?),
+                  telfamilia = COALESCE(NULLIF(telfamilia, ''), ?),
+                  email = COALESCE(NULLIF(email, ''), ?),
+                  especialidad = COALESCE(NULLIF(especialidad, ''), ?),
+                  id_especialidad_dual = COALESCE(id_especialidad_dual, ?),
+                  nacionalidad = COALESCE(NULLIF(nacionalidad, ''), ?),
+                  fechaNacimiento = COALESCE(fechaNacimiento, ?),
+                  emailColegio = COALESCE(NULLIF(emailColegio, ''), ?),
+                  sexo = COALESCE(NULLIF(sexo, ''), ?),
+                  numeroSS = COALESCE(NULLIF(numeroSS, ''), ?),
+                  situacionLaboral = COALESCE(NULLIF(situacionLaboral, ''), ?),
+                  idiomasConocidos = COALESCE(NULLIF(idiomasConocidos, ''), ?),
+                  tutorLegal = COALESCE(NULLIF(tutorLegal, ''), ?),
+                  dniTutorLegal = COALESCE(NULLIF(dniTutorLegal, ''), ?)
+            WHERE idalumno = ?`,
+          [nombre, domicilio, cp, localidad, telalumno, telfamilia, email,
+            codigoEsp, id_especialidad_dual, nacionalidad, fechaNacimiento || null,
+            emailColegio, sexo, numeroSS, situacionLaboral, idiomasConocidos,
+            tutorLegal, dniTutorLegal, idAlumno]
+        );
+      }
     } else {
       const [insertResult] = await conn.query(
         `INSERT INTO gf_alumnosfct
@@ -206,6 +288,7 @@ exports.create = async function (req, res) {
     return res.status(201).json({
       message: 'Solicitud enviada correctamente. Recibirás un correo de confirmación.',
       id_solicitud_alumno: idSolicitudAlumno,
+      cuenta_existente: cuentaExistente,
     });
   } catch (err) {
     await conn.rollback();

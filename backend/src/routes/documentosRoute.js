@@ -79,9 +79,11 @@ const docxUpload = multer({
 });
 
 router.get('/documentos/plantillas', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(plantillas.list));
+// SEC-6: templates are executed by docx-templates during generation, so only
+// ADMINISTRADOR may upload them. Coordinators can still list and download.
 router.post(
   '/documentos/plantillas',
-  requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'),
+  requireAuth, requireRole('ADMINISTRADOR'),
   docxUpload.single('archivo'),
   asyncHandler(plantillas.upload)
 );

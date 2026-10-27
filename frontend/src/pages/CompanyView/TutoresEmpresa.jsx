@@ -191,6 +191,8 @@ const TutoresEmpresa = () => {
           {tutores.map((t) => {
             const isEditing = editingId === t.id_empresa_tutor;
             const activo = Number(t.activo) === 1;
+            // The principal coordinator changes only through Mis datos (reviewed by the centre)
+            const esCoordinador = Number(t.es_coordinador) === 1;
 
             return (
               <article
@@ -213,8 +215,13 @@ const TutoresEmpresa = () => {
                     >
                       {activo ? "Activo" : "Inactivo"}
                     </span>
+                    {esCoordinador && (
+                      <span className="ml-2 mt-1 inline-flex rounded-full border border-charcoal-200 bg-charcoal-50 px-2 py-0.5 text-xs text-charcoal-800">
+                        Coordinador principal
+                      </span>
+                    )}
                   </div>
-                  {!isEditing && (
+                  {!isEditing && !esCoordinador && (
                     <div className="flex shrink-0 gap-2">
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => startEdit(t)}>
                         Editar
@@ -232,6 +239,12 @@ const TutoresEmpresa = () => {
                     </div>
                   )}
                 </div>
+
+                {!isEditing && esCoordinador && (
+                  <p className="mt-2 text-xs text-muted">
+                    Para cambiar sus datos usa «Mis datos › Editar datos»; el centro revisa el cambio.
+                  </p>
+                )}
 
                 {!isEditing && (
                   <div className="mt-3 grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
