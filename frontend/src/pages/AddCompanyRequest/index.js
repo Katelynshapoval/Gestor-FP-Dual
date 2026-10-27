@@ -362,7 +362,7 @@ const AddCompanyRequest = () => {
                   )}
                 </div>
 
-                <fieldset className="field">
+                <fieldset className="mb-5">
                   <legend className="mb-2 block text-sm font-semibold text-charcoal-800">Lugar de trabajo</legend>
                   <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm text-charcoal-800 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/15">
                     <input

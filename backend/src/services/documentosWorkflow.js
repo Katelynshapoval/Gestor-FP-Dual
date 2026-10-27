@@ -621,9 +621,27 @@ async function reservaDocumentos(reserva, rol) {
       row ? firmaMap[row.id_documento] || [] : [],
       { templates },
     );
-    if (item) items.push(item);
+    if (item) items.push(reserva.estado_reserva === "CANCELADA" ? soloConsulta(item) : item);
   }
   return items;
+}
+
+// A cancelled reservation keeps its documents as history: they can be viewed,
+// but nobody uploads, signs, generates or reviews them any more (the endpoints
+// refuse it too), so no pending action is shown either.
+function soloConsulta(item) {
+  return {
+    ...item,
+    puede_subir: false,
+    puede_reemplazar: false,
+    puede_revisar: false,
+    puede_firmar: false,
+    puede_generar: false,
+    puede_regenerar: false,
+    accion_pendiente: null,
+    accion_pendiente_de: [],
+    requiere_accion_actual: false,
+  };
 }
 
 // WF-15: real document state per reservation for list badges.

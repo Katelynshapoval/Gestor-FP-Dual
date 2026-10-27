@@ -116,7 +116,7 @@ const TutoresEmpresa = () => {
         <div className="min-w-0">
           <h2 className="form-section-title mb-1">Tutores</h2>
           <p className="text-sm text-muted">
-            {activos} en activo, {tutores.length} en total. El acceso al portal sigue siendo el CIF, en Mis datos.
+            {activos} en activo, {tutores.length} en total. El acceso al portal sigue siendo el CIF; los datos del coordinador principal están en «Datos de la empresa».
           </p>
         </div>
         {!adding && (
@@ -191,7 +191,7 @@ const TutoresEmpresa = () => {
           {tutores.map((t) => {
             const isEditing = editingId === t.id_empresa_tutor;
             const activo = Number(t.activo) === 1;
-            // The principal coordinator changes only through Mis datos (reviewed by the centre)
+            // The principal coordinator changes only through «Datos de la empresa» (reviewed by the centre)
             const esCoordinador = Number(t.es_coordinador) === 1;
 
             return (
@@ -242,7 +242,7 @@ const TutoresEmpresa = () => {
 
                 {!isEditing && esCoordinador && (
                   <p className="mt-2 text-xs text-muted">
-                    Para cambiar sus datos usa «Mis datos › Editar datos»; el centro revisa el cambio.
+                    Para cambiar sus datos usa «Datos de la empresa › Editar datos»; el centro revisa el cambio.
                   </p>
                 )}
 
