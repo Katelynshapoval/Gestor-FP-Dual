@@ -10,7 +10,6 @@
 // - The ciclo cannot change while the application has a PENDIENTE or CONFIRMADA
 //   reservation: those were checked against it (trg_dr_bi_reglas, and
 //   trg_dsa_bu_reglas enforces it too). Staff cancel them first.
-// - Preferences belong to a ciclo, so they are replaced with the ciclo.
 // - Only the active convocatoria, and never an application de baja.
 //
 // Lock order: the application row, then its reservations. sp_reservar_alumno
@@ -64,7 +63,6 @@ const ETIQUETAS = {
   tutorLegal: 'Tutor legal',
   dniTutorLegal: 'DNI del tutor legal',
   id_especialidad: 'Ciclo',
-  preferencias: 'Preferencias',
 };
 
 function httpError(status, code, message, extra = {}) {
@@ -105,22 +103,11 @@ function normalizeCampo(key, value) {
   return text;
 }
 
-function normalizePreferencias(value) {
-  if (!Array.isArray(value)) return [];
-  const ids = value.map((v) => parseInt(v, 10)).filter((v) => Number.isInteger(v) && v > 0);
-  return [...new Set(ids)];
-}
-
-function sameList(a = [], b = []) {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
-}
-
 // Current values in the same shape the edit form sends.
 function pickSnapshot(row) {
   const snap = {};
   for (const key of Object.keys(CAMPOS)) snap[key] = normalizeCampo(key, row[key]);
   snap.id_especialidad = row.id_especialidad ?? null;
-  snap.preferencias = row.preferencias || [];
   return snap;
 }
 
@@ -136,24 +123,15 @@ function sanitizeProposed(body = {}) {
   if (body.id_especialidad != null && body.id_especialidad !== '') {
     out.id_especialidad = parseInt(body.id_especialidad, 10) || null;
   }
-  if (Object.prototype.hasOwnProperty.call(body, 'preferencias')) {
-    out.preferencias = normalizePreferencias(body.preferencias);
-  }
   return out;
 }
 
-// Proposed values that differ from the snapshot. A new ciclo always brings its
-// preferences along (empty when none were chosen): the old ones no longer apply.
+// Proposed values that differ from the snapshot.
 function diffProposed(snapshot, proposed) {
   const out = {};
   for (const [key, value] of Object.entries(proposed)) {
-    if (key === 'preferencias') {
-      if (!sameList(snapshot.preferencias, value)) out.preferencias = value;
-    } else if (snapshot[key] !== value) {
-      out[key] = value;
-    }
+    if (snapshot[key] !== value) out[key] = value;
   }
-  if (out.id_especialidad != null && !out.preferencias) out.preferencias = proposed.preferencias || [];
   return out;
 }
 
@@ -181,9 +159,6 @@ function validateChanges(changes) {
     if (value && value.length > regla.max) errores[key] = `Máximo ${regla.max} caracteres.`;
     else if (value && regla.re && !regla.re.test(value)) errores[key] = regla.msg;
     else if (value && regla.dni && !dniNieValido(value)) errores[key] = 'No es un DNI/NIE válido.';
-  }
-  if (changes.preferencias && changes.preferencias.length > 3) {
-    errores.preferencias = 'Como máximo 3 preferencias.';
   }
   if (Object.prototype.hasOwnProperty.call(changes, 'id_especialidad') && !changes.id_especialidad) {
     errores.id_especialidad = 'Elige un ciclo.';
@@ -221,15 +196,7 @@ async function loadDatos(conn, idSolicitud, { lock = false } = {}) {
       WHERE sa.id_solicitud_alumno = ?`,
     [idSolicitud],
   );
-  const row = rows[0];
-  if (!row) return null;
-  const [prefs] = await conn.query(
-    `SELECT id_preferencia FROM dual_solicitud_preferencias
-      WHERE id_solicitud_alumno = ? ORDER BY orden`,
-    [idSolicitud],
-  );
-  row.preferencias = prefs.map((p) => p.id_preferencia);
-  return row;
+  return rows[0] || null;
 }
 
 // PENDIENTE / CONFIRMADA reservations of the application. With `lock`, a
@@ -263,8 +230,8 @@ function assertEditable(row) {
   }
 }
 
-// Checks the ciclo change against the database: an active ciclo, no active
-// reservations, and preferences of that ciclo.
+// Checks the ciclo change against the database: an active ciclo and no active
+// reservations.
 async function assertEspecialidad(conn, row, changes) {
   const idSolicitud = row.id_solicitud_alumno;
   if (changes.id_especialidad != null) {
@@ -280,16 +247,6 @@ async function assertEspecialidad(conn, row, changes) {
         { reservas: activas });
     }
     changes.codigo_especialidad = esp[0].codigo;
-  }
-  if (changes.preferencias && changes.preferencias.length) {
-    const ciclo = changes.id_especialidad ?? row.id_especialidad;
-    const [prefs] = await conn.query(
-      'SELECT id_preferencia FROM dual_preferencias WHERE id_preferencia IN (?) AND id_especialidad = ?',
-      [changes.preferencias, ciclo],
-    );
-    if (prefs.length !== changes.preferencias.length) {
-      throw httpError(400, 'PREFERENCIA_INVALIDA', 'Alguna preferencia no corresponde al ciclo elegido.');
-    }
   }
 }
 
@@ -313,15 +270,6 @@ async function applyChanges(conn, row, changes) {
       'UPDATE dual_solicitudes_alumno SET id_especialidad = ? WHERE id_solicitud_alumno = ?',
       [changes.id_especialidad, row.id_solicitud_alumno],
     );
-  }
-  if (changes.preferencias) {
-    await conn.query('DELETE FROM dual_solicitud_preferencias WHERE id_solicitud_alumno = ?', [row.id_solicitud_alumno]);
-    for (let i = 0; i < changes.preferencias.length; i++) {
-      await conn.query(
-        'INSERT INTO dual_solicitud_preferencias (id_solicitud_alumno, orden, id_preferencia) VALUES (?, ?, ?)',
-        [row.id_solicitud_alumno, i + 1, changes.preferencias[i]],
-      );
-    }
   }
   return Object.keys(changes).filter((k) => k !== 'codigo_especialidad');
 }
@@ -355,8 +303,7 @@ function parseJson(raw) {
   }
 }
 
-function sameValue(key, a, b) {
-  if (key === 'preferencias') return sameList(a || [], b || []);
+function sameValue(a, b) {
   return (a ?? null) === (b ?? null);
 }
 
@@ -364,33 +311,26 @@ function sameValue(key, a, b) {
 // student saw (staff corrected it meanwhile).
 function detectConflicts(snapshot, live, proposed) {
   return Object.keys(proposed)
-    .filter((key) => !sameValue(key, snapshot[key], live[key]))
+    .filter((key) => !sameValue(snapshot[key], live[key]))
     .map((key) => ({ field: key, original: snapshot[key], actual: live[key], solicitado: proposed[key] }));
 }
 
-// Display names for ciclos and preferences, for diffs and conflict lists.
+// Display names for ciclos, for diffs and conflict lists.
 async function nombres(conn, snaps) {
   const ciclos = new Set();
-  const prefs = new Set();
   for (const s of snaps) {
     if (s?.id_especialidad) ciclos.add(s.id_especialidad);
-    for (const p of s?.preferencias || []) prefs.add(p);
   }
-  const out = { ciclos: {}, prefs: {} };
+  const out = { ciclos: {} };
   if (ciclos.size) {
     const [rows] = await conn.query('SELECT id_especialidad, nombre FROM dual_especialidades WHERE id_especialidad IN (?)', [[...ciclos]]);
     rows.forEach((r) => { out.ciclos[r.id_especialidad] = r.nombre; });
-  }
-  if (prefs.size) {
-    const [rows] = await conn.query('SELECT id_preferencia, descripcion FROM dual_preferencias WHERE id_preferencia IN (?)', [[...prefs]]);
-    rows.forEach((r) => { out.prefs[r.id_preferencia] = r.descripcion; });
   }
   return out;
 }
 
 function formatDisplay(key, value, names) {
   if (key === 'id_especialidad') return names.ciclos[value] || (value ? `#${value}` : '—');
-  if (key === 'preferencias') return (value || []).map((id) => names.prefs[id] || `#${id}`).join('\n') || '—';
   if (CAMPOS[key]?.tipo === 'bool') return value == null ? '—' : value ? 'Sí' : 'No';
   return value == null || value === '' ? '—' : String(value);
 }

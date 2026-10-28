@@ -87,7 +87,7 @@ const AlumnoDatosActions = ({ r, onUpdated, editSignal = 0, onEditHandled, onEdi
     if (body.id_especialidad && String(body.id_especialidad) !== inicial.id_especialidad) {
       const ok = await confirm({
         title: "Cambiar el ciclo",
-        message: "Se cambiará el ciclo de la solicitud, se sustituirán las preferencias y se avisará al alumno por correo.",
+        message: "Se cambiará el ciclo de la solicitud y se avisará al alumno por correo.",
         confirmLabel: "Cambiar ciclo",
         tone: "primary",
       });

@@ -10,7 +10,6 @@
 | `chk_*_activo` / `chk_*_activa` / `chk_dual_usuarios_pwd_change` | varias | 0 o 1 |
 | `chk_dual_especialidades_turno` | especialidades | 0 o 1 |
 | `chk_dsee_cantidad_alumnos` | ofertas | `>= 0` |
-| `chk_dsp_orden` | preferencias | 1–3 |
 | `chk_dd_un_padre` | documentos | exactamente un padre |
 | `chk_documentos_origen` | documentos | `SUBIDA`, `GENERADO`, `LEGACY` |
 | `chk_dd_firmas_exentas` | documentos | 0 o 1 |
@@ -136,7 +135,7 @@ Un `START TRANSACTION` dentro de una transacción abierta la **confirma implíci
 ### 5.2 Requisitos de atomicidad y lo que no es atómico
 
 Atómico (todo o nada):
-- Alta pública de alumno (persona, solicitud, dos documentos, preferencias, cuenta).
+- Alta pública de alumno (persona, solicitud, dos documentos, cuenta).
 - Alta pública de empresa (empresa, domicilios, contactos, solicitud, ofertas, transportes, cuenta, tutor).
 - Validar un convenio **y** la solicitud de empresa PENDIENTE.
 - Guardar un documento (versión, procedencia, firmas, evento).

@@ -314,7 +314,7 @@ Las convocatorias se abren y se cierran solas según sus fechas.
 
    | Paso | Qué se pide |
    | --- | --- |
-   | 1. Ciclo | **Email del centro** (el que termina en `@zaragoza.salesianos.edu`), tu **ciclo** y, si quieres, hasta tres **preferencias** de tipo de puesto. |
+   | 1. Ciclo | **Email del centro** (el que termina en `@zaragoza.salesianos.edu`) y tu **ciclo**. |
    | 2. Datos personales | **DNI / NIE** (con letra, sin espacios ni guiones; será tu usuario), nombre y apellidos, fecha de nacimiento, nacionalidad y sexo. **Si eres menor de edad**, también el nombre y el DNI/NIE de tu tutor o tutora legal. |
    | 3. Contacto y movilidad | Email personal, teléfono (9 cifras), domicilio, código postal, localidad, si tienes carnet de conducir y vehículo, idiomas y nivel, y el número de la Seguridad Social si ya lo tienes (es opcional). |
    | 4. Documentos | **Currículum (PDF)** y **Anexo DGA (PDF)**. |

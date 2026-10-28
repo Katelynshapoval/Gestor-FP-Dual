@@ -6,8 +6,7 @@ import { EditGrid, EditSection, LockedField, W, focusFirstError } from "../../co
 
 // Student data form, shown inside EditDialog like CompanyEditForm: Administración
 // edits directly (AlumnoDatosActions) and the student sends it for review (MisDatos).
-// The DNI/NIE is shown read-only: it is never editable. A new ciclo clears the
-// preferences, which belong to a ciclo.
+// The DNI/NIE is shown read-only: it is never editable.
 
 export const ALUMNO_SECTIONS = [
   { id: "alu-ciclo", label: "Ciclo" },
@@ -45,9 +44,7 @@ const TEXT_FIELDS = [
 ];
 const BOOL_FIELDS = ["carnetDeConducir", "tieneCoche"];
 // Order on screen, to move to the first field with an error.
-const ORDER = ["id_especialidad", "pref1", ...TEXT_FIELDS, ...BOOL_FIELDS];
-// The preferences error is shown on the first preference.
-const conPref = (e) => ({ ...e, pref1: e.preferencias });
+const ORDER = ["id_especialidad", ...TEXT_FIELDS, ...BOOL_FIELDS];
 const REQUIRED = ["nombre", "email", "telalumno", "domicilio", "cp", "localidad"];
 const SI_NO = [
   { value: "true", label: "Sí" },
@@ -59,10 +56,6 @@ export function datosToAlumnoForm(datos = {}) {
   for (const k of TEXT_FIELDS) form[k] = datos[k] ?? "";
   for (const k of BOOL_FIELDS) form[k] = datos[k] == null ? "" : String(Boolean(datos[k]));
   form.id_especialidad = datos.id_especialidad ? String(datos.id_especialidad) : "";
-  const prefs = datos.preferencias || [];
-  form.pref1 = prefs[0] ? String(prefs[0]) : "";
-  form.pref2 = prefs[1] ? String(prefs[1]) : "";
-  form.pref3 = prefs[2] ? String(prefs[2]) : "";
   return form;
 }
 
@@ -76,7 +69,6 @@ function payload(form) {
   for (const k of TEXT_FIELDS) body[k] = form[k].trim();
   for (const k of BOOL_FIELDS) body[k] = form[k] === "" ? null : form[k] === "true";
   if (form.id_especialidad) body.id_especialidad = Number(form.id_especialidad);
-  body.preferencias = [...new Set([form.pref1, form.pref2, form.pref3].filter(Boolean).map(Number))];
   return body;
 }
 
@@ -100,7 +92,6 @@ const AlumnoEditForm = ({
   onSubmit,
 }) => {
   const [especialidades, setEspecialidades] = useState([]);
-  const [preferencias, setPreferencias] = useState({});
   const [faltan, setFaltan] = useState({});
   const errors = { ...faltan, ...errores };
 
@@ -114,28 +105,8 @@ const AlumnoEditForm = ({
     };
   }, []);
 
-  const idCiclo = values.id_especialidad;
-  useEffect(() => {
-    if (!idCiclo || preferencias[idCiclo]) return undefined;
-    let active = true;
-    publicJSON(`/preferencias?id_especialidad=${idCiclo}`)
-      .then((list) => active && setPreferencias((p) => ({ ...p, [idCiclo]: Array.isArray(list) ? list : [] })))
-      .catch(() => active && setPreferencias((p) => ({ ...p, [idCiclo]: [] })));
-    return () => {
-      active = false;
-    };
-  }, [idCiclo, preferencias]);
-
   const set = (name, value) => {
-    const next = { ...values, [name]: value };
-    if (name === "id_especialidad" && value !== values.id_especialidad) {
-      // Going back to the original ciclo restores its preferences.
-      const vuelta = inicial && value === inicial.id_especialidad;
-      next.pref1 = vuelta ? inicial.pref1 : "";
-      next.pref2 = vuelta ? inicial.pref2 : "";
-      next.pref3 = vuelta ? inicial.pref3 : "";
-    }
-    onChange(next);
+    onChange({ ...values, [name]: value });
     if (faltan[name]) setFaltan((f) => ({ ...f, [name]: undefined }));
   };
 
@@ -147,7 +118,6 @@ const AlumnoEditForm = ({
   if (inicial?.id_especialidad && !cicloOptions.some((o) => o.value === inicial.id_especialidad)) {
     cicloOptions.unshift({ value: inicial.id_especialidad, label: cicloActualNombre || "Ciclo actual" });
   }
-  const prefOptions = (preferencias[idCiclo] || []).map((p) => ({ value: String(p.id_preferencia), label: p.descripcion }));
 
   const field = (name) => ({
     name,
@@ -160,25 +130,20 @@ const AlumnoEditForm = ({
 
   // Server-side errors (after saving) also move to the first wrong field.
   useEffect(() => {
-    if (Object.keys(errores).some((k) => errores[k])) focusFirstError(conPref(errores), ORDER);
+    if (Object.keys(errores).some((k) => errores[k])) focusFirstError(errores, ORDER);
   }, [errores]);
 
   const submit = (event) => {
     event.preventDefault();
     const e = requiredErrors(values);
     setFaltan(e);
-    if (Object.keys(e).length) focusFirstError(conPref(e), ORDER);
+    if (Object.keys(e).length) focusFirstError(e, ORDER);
     else onSubmit(payload(values));
   };
 
   return (
     <form id={formId} noValidate onSubmit={submit}>
-      <EditSection
-        id="alu-ciclo"
-        icon={MdSchool}
-        title="Ciclo y preferencias"
-        description={cicloBloqueado ? undefined : "Al cambiar el ciclo se sustituyen las preferencias."}
-      >
+      <EditSection id="alu-ciclo" icon={MdSchool} title="Ciclo">
         <EditGrid>
           <SelectField
             {...field("id_especialidad")}
@@ -189,20 +154,6 @@ const AlumnoEditForm = ({
           />
         </EditGrid>
         {cicloAviso}
-        <EditGrid className="edit-grid-3 mt-4">
-          {["pref1", "pref2", "pref3"].map((p, i) => (
-            <SelectField
-              key={p}
-              name={p}
-              label={`Preferencia ${i + 1}`}
-              value={values[p]}
-              onChange={set}
-              options={prefOptions}
-              placeholder="Sin preferencia"
-              error={i === 0 ? errors.preferencias : undefined}
-            />
-          ))}
-        </EditGrid>
       </EditSection>
 
       <EditSection id="alu-personales" icon={MdPersonOutline} title="Datos personales">

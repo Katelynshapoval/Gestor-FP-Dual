@@ -14,7 +14,7 @@
 - **Excepción**: en los servicios que relanzan errores sin `sendSqlError` (baja, reactivación, subida de plantillas) llega como 500.
 
 ### Errores SQL no mapeados
-- **Comportamiento**: cualquier error que no sea `45000`, duplicado, interbloqueo, espera o `CHECK` → se registra con `console.error('DB error:')` y responde **500 `INTERNAL`**. Casos conocidos: FK inexistente (preferencias, especialidad en alta de empresa), columna inexistente (backend nuevo sobre esquema antiguo).
+- **Comportamiento**: cualquier error que no sea `45000`, duplicado, interbloqueo, espera o `CHECK` → se registra con `console.error('DB error:')` y responde **500 `INTERNAL`**. Casos conocidos: FK inexistente (especialidad en alta de empresa), columna inexistente (backend nuevo sobre esquema antiguo).
 
 ### Excepciones fuera de `try`
 - **Comportamiento**: errores en lecturas previas (antes de abrir la transacción) o en servicios sin `try/catch` llegan al manejador global de [`routes/index.js`](../../../backend/src/routes/index.js) → 500 `{"error":"Error interno del servidor."}` **sin `code`**. El frontend lo trata como `SERVER`.

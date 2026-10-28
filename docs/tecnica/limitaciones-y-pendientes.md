@@ -33,7 +33,6 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | --- | --- |
 | Rechazo del convenio de una empresa ya validada | La empresa sigue VALIDADO; sin decidir |
 | Las empresas suben cupos y añaden ciclos sin aprobación del centro | Comportamiento actual |
-| Preferencias del alumno | El catálogo está vacío, así que el formulario no las muestra |
 | Reactivar un tutor desactivado | Sin endpoint |
 | Borrado de convocatorias, ofertas o plantillas | No existe |
 | Edición de datos del alumno desde el portal | Sin endpoint |

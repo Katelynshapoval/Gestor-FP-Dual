@@ -34,14 +34,13 @@ El backend **solo normaliza** el DNI (trim + mayúsculas); la letra de control d
 3. Segunda comprobación de duplicado en la convocatoria → 409.
 4. `INSERT dual_solicitudes_alumno (id_alumno, id_convocatoria, id_especialidad = id_especialidad_dual del formulario, PENDIENTE)`. El trigger exige especialidad y convocatoria activa.
 5. `CALL sp_guardar_documento` para CV y ANEXO_DGA; el ANEXO_DGA queda con `estado_workflow = 'SUBIDO_FIRMADO'`.
-6. Preferencias 1–3 si vienen (`INSERT … ON DUPLICATE KEY UPDATE`).
-7. Cuenta ALUMNO si no existe (contraseña del formulario, `email` NULL, `must_change_password = 0`). **Nunca** se cambia la contraseña de una cuenta existente.
-8. Documentos de la solicitud: `id_usuario_origen` = cuenta, `origen_documento = 'SUBIDA'`, `registrado_en = NOW()`.
-9. `COMMIT`; correo «Solicitud Dual recibida» (sin esperar).
+6. Cuenta ALUMNO si no existe (contraseña del formulario, `email` NULL, `must_change_password = 0`). **Nunca** se cambia la contraseña de una cuenta existente.
+7. Documentos de la solicitud: `id_usuario_origen` = cuenta, `origen_documento = 'SUBIDA'`, `registrado_en = NOW()`.
+8. `COMMIT`; correo «Solicitud Dual recibida» (sin esperar).
 
 **Resultado**: 201 `{ id_solicitud_alumno, cuenta_existente }`.
 
-**Si falla**: `ROLLBACK` completo; errores SQL vía `mapSqlError`. Un id de preferencia inexistente provoca un error de FK no mapeado → **500** 🔶.
+**Si falla**: `ROLLBACK` completo; errores SQL vía `mapSqlError`.
 
 **Notas**:
 - Los documentos del alta se guardan llamando al procedimiento directamente (no con `saveByClave`): **no generan eventos `SUBIR`** ni crean filas de firma (CV y Anexo DGA no tienen firmantes en el catálogo).

@@ -28,9 +28,6 @@ erDiagram
   dual_solicitudes_empresa ||--o{ dual_solicitud_empresa_transportes : "transportes"
   dual_transportes ||--o{ dual_solicitud_empresa_transportes : ""
   dual_solicitudes_empresa ||--o{ dual_empresa_cambios : "cambios de datos"
-  dual_solicitudes_alumno ||--o{ dual_solicitud_preferencias : "preferencias (0..3)"
-  dual_preferencias ||--o{ dual_solicitud_preferencias : ""
-  dual_especialidades ||--o{ dual_preferencias : ""
 ```
 
 ## 2. Documentos, firmas y cuentas
@@ -94,7 +91,7 @@ Relaciones que la aplicación da por hechas pero **no están declaradas** como F
 ### 5.1 Qué se crea junto
 
 - **Alta pública de empresa**: `ge_empresas` → 1 o 2 `ge_domicilios` → 2 `ge_contactos` (representante en el domicilio legal; coordinador en el de trabajo) → `dual_solicitudes_empresa` → ofertas → transportes → `dual_usuarios` (EMPRESA, ligado al coordinador) → `dual_empresa_tutores` (coordinador). Todo en una transacción; el convenio se genera después.
-- **Alta pública de alumno**: `gf_alumnosfct` (nuevo o actualizado) → `dual_solicitudes_alumno` → 2 `dual_documentos` (CV, ANEXO_DGA) → preferencias → `dual_usuarios` (ALUMNO, si no existía).
+- **Alta pública de alumno**: `gf_alumnosfct` (nuevo o actualizado) → `dual_solicitudes_alumno` → 2 `dual_documentos` (CV, ANEXO_DGA) → `dual_usuarios` (ALUMNO, si no existía).
 
 ### 5.2 Qué se comparte entre convocatorias y cómo se protege
 
@@ -111,7 +108,7 @@ Relaciones que la aplicación da por hechas pero **no están declaradas** como F
 
 ### 5.3 Estrategia de borrado y actualización
 
-- **Todas las FK son `ON DELETE RESTRICT ON UPDATE RESTRICT`**, salvo `fk_dp_especialidad`, `fk_dsp_preferencia` y `fk_dsp_solicitud` (`CASCADE`).
+- **Todas las FK son `ON DELETE RESTRICT ON UPDATE RESTRICT`** (las únicas `CASCADE`, las de las preferencias, desaparecen con la migración 021).
 - La aplicación **no borra** filas de negocio: el único `DELETE` del backend es el de `dual_solicitud_empresa_transportes` al reescribir los transportes de una solicitud. No hay endpoints de borrado de alumnos, empresas, solicitudes, reservas, documentos, usuarios ni convocatorias.
 - `dual_eventos` es inmutable, y como tiene FK a `dual_usuarios`, **un usuario con eventos no puede borrarse** ni siquiera manualmente.
 - La «eliminación» funcional se expresa con estados: reserva `CANCELADA`, solicitud `RECHAZADO`/`BAJA`, documento `es_actual = 0`, tutor/usuario `activo = 0`.

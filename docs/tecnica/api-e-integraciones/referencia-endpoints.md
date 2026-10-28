@@ -43,7 +43,6 @@
 | `GET /especialidades` | Solo activas, con `turno` como texto |
 | `GET /transportes` | Catálogo completo |
 | `GET /tiposContrato` | Catálogo completo |
-| `GET /preferencias?id_especialidad=` | 400 sin parámetro |
 
 ## Solicitudes de alumno — `solicitudesAlumnoRoute`
 

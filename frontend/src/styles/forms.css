@@ -387,11 +387,6 @@
   display: none;
 }
 
-/* A row of three equal short fields (the three preferences). */
-.edit-grid.edit-grid-3 {
-  @apply sm:grid-cols-3;
-}
-
 .edit-grid .field > label,
 .edit-grid .field > legend,
 .edit-grid .field > p:first-child {

@@ -130,7 +130,7 @@ async function main() {
     // The dry run wipes inside its transaction with DELETE (audit events are left alone).
     const TABLAS = ['dual_documento_firmas', 'dual_documento_versiones', 'dual_documentos', 'dual_empresa_cambios', 'dual_empresa_transportes',
       'dual_empresa_tutores', 'dual_eventos', 'dual_reservas', 'dual_solicitud_empresa_especialidades', 'dual_solicitud_empresa_transportes',
-      'dual_solicitud_preferencias', 'dual_solicitudes_alumno', 'dual_solicitudes_empresa', 'dual_usuarios', 'dual_especialidades',
+      'dual_solicitudes_alumno', 'dual_solicitudes_empresa', 'dual_usuarios', 'dual_especialidades',
       'ge_contactos', 'ge_domicilios', 'ge_empresas', 'gf_alumnosfct'];
     await q('SET FOREIGN_KEY_CHECKS = 0');
     if (!dry) for (const t of TABLAS) await q('TRUNCATE TABLE `' + t + '`');

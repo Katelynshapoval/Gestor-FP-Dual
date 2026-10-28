@@ -1,6 +1,6 @@
 // Corrección de datos del alumno: Administración only, the DNI is never
-// editable, the ciclo only changes without active reservations (and brings its
-// own preferences), and the audit event names fields, never values.
+// editable, the ciclo only changes without active reservations, and the audit
+// event names fields, never values.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -19,10 +19,8 @@ function fresh() {
       numeroSS: null, situacionLaboral: null, idiomasConocidos: 'Inglés B2',
       tutorLegal: null, dniTutorLegal: null,
     },
-    prefs: [11, 12],
     reservas: [],
     especialidades: { 1: 'DAM', 2: 'DAW', 3: 'OFF' },
-    preferencias: { 11: 1, 12: 1, 21: 2, 22: 2 },
     events: [],
     writes: [],
   };
@@ -37,18 +35,12 @@ const pool = fakePool((sql, params) => {
   if (sql.startsWith('SELECT sa.id_solicitud_alumno, sa.id_alumno')) {
     return params[0] === db.sol.id_solicitud_alumno ? [{ ...db.sol }] : [];
   }
-  if (sql.startsWith('SELECT id_preferencia FROM dual_solicitud_preferencias')) {
-    return db.prefs.map((id) => ({ id_preferencia: id }));
-  }
   if (sql.startsWith('SELECT r.id_reserva, er.nombre AS estado_reserva')) return db.reservas;
   if (sql.startsWith('SELECT id_especialidad, codigo FROM dual_especialidades')) {
     const codigo = db.especialidades[params[0]];
     return codigo && codigo !== 'OFF' ? [{ id_especialidad: params[0], codigo }] : [];
   }
-  if (sql.startsWith('SELECT id_preferencia FROM dual_preferencias')) {
-    return params[0].filter((id) => db.preferencias[id] === params[1]).map((id) => ({ id_preferencia: id }));
-  }
-  if (sql.startsWith('UPDATE') || sql.startsWith('DELETE') || sql.startsWith('INSERT INTO dual_solicitud_preferencias')) {
+  if (sql.startsWith('UPDATE')) {
     db.writes.push({ sql, params });
     return { affectedRows: 1 };
   }
@@ -117,7 +109,6 @@ test('personal fields: only changed ones are written, the display name follows, 
   assert.deepEqual(upd.params, ['Ana Pérez López', '611111111', 42]);
   assert.equal(writes('UPDATE dual_usuarios SET nombre_mostrar')[0].params[0], 'Ana Pérez López');
   assert.equal(writes('UPDATE dual_solicitudes_alumno').length, 0);
-  assert.equal(writes('DELETE FROM dual_solicitud_preferencias').length, 0);
 
   assert.equal(db.events.length, 1);
   assert.deepEqual(db.events[0].slice(0, 3), ['SOLICITUD_ALUMNO', 10, 'DATOS_CORREGIDOS']);
@@ -178,47 +169,29 @@ test('ciclo change: blocked by a pending or confirmed reservation, listing them'
     < order.findIndex((s) => s.startsWith('SELECT r.id_reserva')));
 });
 
-test('ciclo change without active reservations replaces preferences and notifies', async () => {
+test('ciclo change without active reservations updates both copies and notifies', async () => {
   setup();
-  const res = await put({ id_especialidad: '2', preferencias: [22, 21] });
+  const res = await put({ id_especialidad: '2' });
   assert.equal(res.statusCode, 200);
 
   assert.deepEqual(writes('UPDATE dual_solicitudes_alumno')[0].params, [2, 10]);
   const alumno = writes('UPDATE gf_alumnosfct')[0];
   assert.equal(alumno.sql, 'UPDATE gf_alumnosfct SET especialidad = ?, id_especialidad_dual = ? WHERE idalumno = ?');
   assert.deepEqual(alumno.params, ['DAW', 2, 42]);
-  assert.equal(writes('DELETE FROM dual_solicitud_preferencias').length, 1);
-  assert.deepEqual(writes('INSERT INTO dual_solicitud_preferencias').map((w) => w.params), [[10, 1, 22], [10, 2, 21]]);
 
   const detalle = JSON.parse(db.events[0][8]);
-  assert.deepEqual(detalle, { campos: ['id_especialidad', 'preferencias'], especialidad_anterior: 1, especialidad_nueva: 2 });
+  assert.deepEqual(detalle, { campos: ['id_especialidad'], especialidad_anterior: 1, especialidad_nueva: 2 });
   assert.deepEqual(notified, [10]);
 });
 
-test('a new ciclo drops the old preferences when none are chosen', async () => {
-  setup();
-  const res = await put({ id_especialidad: 2 });
-  assert.equal(res.statusCode, 200);
-  assert.equal(writes('DELETE FROM dual_solicitud_preferencias').length, 1);
-  assert.equal(writes('INSERT INTO dual_solicitud_preferencias').length, 0);
-});
-
-test('preferences of another ciclo and inactive ciclos are rejected', async () => {
-  setup();
-  const wrong = await put({ id_especialidad: 2, preferencias: [11] });
-  assert.equal(wrong.body.code, 'PREFERENCIA_INVALIDA');
-
-  setup();
-  const sameCiclo = await put({ preferencias: [21] });
-  assert.equal(sameCiclo.body.code, 'PREFERENCIA_INVALIDA');
-
+test('inactive ciclos are rejected and an unknown preferencias key is ignored', async () => {
   setup();
   const off = await put({ id_especialidad: 3 });
   assert.equal(off.body.code, 'ESPECIALIDAD_INVALIDA');
 
   setup();
-  const many = await put({ preferencias: [11, 12, 13, 14] });
-  assert.equal(many.body.code, 'DATOS_INVALIDOS');
+  const old = await put({ preferencias: [11] });
+  assert.equal(old.body.code, 'SIN_CAMBIOS');
   assert.equal(db.writes.length, 0);
 });
 
@@ -241,7 +214,7 @@ test('GET datos returns the snapshot, the DNI read-only and the blocking reserva
   assert.equal(res.body.editable, true);
   assert.equal(res.body.datos.dni, undefined);
   assert.equal(res.body.datos.fechaNacimiento, '2005-03-04');
-  assert.deepEqual(res.body.datos.preferencias, [11, 12]);
+  assert.equal(res.body.datos.preferencias, undefined);
   assert.equal(res.body.reservas_activas.length, 1);
   assert.equal(pool.calls.some((c) => c.sql.includes('FOR UPDATE')), false);
 });

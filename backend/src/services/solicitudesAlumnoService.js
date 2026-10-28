@@ -42,8 +42,6 @@ exports.create = async function (req, res) {
     id_especialidad_dual, observaciones = '', nacionalidad, fechaNacimiento,
     emailColegio, sexo, carnetDeConducir, tieneCoche, numeroSS,
     situacionLaboral, idiomasConocidos, tutorLegal, dniTutorLegal,
-    // Preferencias (IDs de dual_preferencias) — opcionales
-    idPreferencia1, idPreferencia2, idPreferencia3,
     password,
   } = req.body;
 
@@ -242,20 +240,6 @@ exports.create = async function (req, res) {
         WHERE d.id_solicitud_alumno = ? AND td.nombre = 'ANEXO_DGA'`,
       [idSolicitudAlumno],
     );
-
-    // Save student preferences if provided (up to 3, ordered)
-    const prefs = [idPreferencia1, idPreferencia2, idPreferencia3];
-    for (let i = 0; i < prefs.length; i++) {
-      const idPref = prefs[i] ? parseInt(prefs[i], 10) : null;
-      if (idPref) {
-        await conn.query(
-          `INSERT INTO dual_solicitud_preferencias (id_solicitud_alumno, orden, id_preferencia)
-           VALUES (?, ?, ?)
-           ON DUPLICATE KEY UPDATE id_preferencia = VALUES(id_preferencia)`,
-          [idSolicitudAlumno, i + 1, idPref]
-        );
-      }
-    }
 
     // ALUMNO account: create only when this student has none. Never reset an existing password.
     const [rolRow] = await conn.query(
@@ -558,8 +542,7 @@ exports.getDatos = async function (req, res) {
 };
 
 // PUT /solicitudes/alumno/:id/datos — Administración corrects a student's data.
-// Body: any of the editable fields, id_especialidad and preferencias (ids, in
-// order). `dni` is refused. Only changed fields are written and audited.
+// Body: any of the editable fields and id_especialidad. `dni` is refused. Only changed fields are written and audited.
 exports.putDatos = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: 'Solicitud no válida.' });

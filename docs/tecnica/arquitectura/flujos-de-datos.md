@@ -71,7 +71,6 @@ sequenceDiagram
   S->>DB: INSERT dual_solicitudes_alumno (id_especialidad del formulario)
   Note over DB: trg_dsa_bi_reglas: especialidad obligatoria, convocatoria activa
   S->>DB: CALL sp_guardar_documento × 2 (CV, ANEXO_DGA)
-  S->>DB: INSERT dual_solicitud_preferencias (0..3)
   S->>DB: INSERT dual_usuarios ALUMNO (si no existía)
   S->>DB: UPDATE dual_documentos (origen SUBIDA, usuario, registrado_en)
   S->>DB: COMMIT

@@ -25,7 +25,7 @@
 | --- | --- | --- | --- |
 | `authRoute` | `authService`, `passwordResetService` | Login, `/auth/me`, cambio y recuperación de contraseña, `/usuarios` | [autenticación](../logica-de-negocio/autenticacion-y-cuentas.md) |
 | `convocatoriasRoute` | `convocatoriasService` | Convocatorias y su activación por fechas | [convocatorias](../logica-de-negocio/convocatorias.md) |
-| `especialidadesRoute`, `transportesRoute`, `preferencesNewRoute` | `especialidadesService`, `transportesService`, `preferencesNewService` | Catálogos públicos de solo lectura | [API](../api-e-integraciones/referencia-endpoints.md#catálogos-públicos) |
+| `especialidadesRoute`, `transportesRoute` | `especialidadesService`, `transportesService` | Catálogos públicos de solo lectura | [API](../api-e-integraciones/referencia-endpoints.md#catálogos-públicos) |
 | `solicitudesAlumnoRoute` | `solicitudesAlumnoService`, `solicitudTransiciones`, `bajaService` | Solicitud de alumno, revisión, baja | [solicitudes de alumno](../logica-de-negocio/solicitudes-alumno.md) |
 | `solicitudesEmpresaRoute` | `solicitudesEmpresaService`, `empresaDatos`, `solicitudTransiciones`, `bajaService` | Solicitud de empresa, reaplicación, datos, cambios, ofertas y cupos | [solicitudes de empresa](../logica-de-negocio/solicitudes-empresa.md) |
 | `reservasRoute` | `reservasService` | Reservas, tipo de contrato, confirmación, reasignación | [reservas](../logica-de-negocio/reservas.md) |
@@ -105,7 +105,7 @@ Puntos delicados de acoplamiento:
 | --- | --- | --- | --- |
 | `/` | `Home` | Todos | `/convocatorias/estado` |
 | `/login`, `/recuperar-contrasena`, `/restablecer-contrasena`, `/cambiarPassword` | `Login`, `RecuperarPassword`, `CambiarPassword` | Público / autenticado | `/auth/*` |
-| `/addDualStudent` | `AddDualStudent` (formulario en 6 pasos) | Público | `POST /solicitudes/alumno` (multipart), `/especialidades`, `/preferencias` |
+| `/addDualStudent` | `AddDualStudent` (formulario en 6 pasos) | Público | `POST /solicitudes/alumno` (multipart), `/especialidades` |
 | `/addCompanyRequest` | `AddCompanyRequest` (6 pasos) | Público | `POST /solicitudes/empresa`, `/especialidades`, `/transportes` |
 | `/panel` | `Panel` | Personal | `/panel/resumen` |
 | `/alumnos` | `LinkStudents` | Personal y EMPRESA | Personal: `/solicitudes/alumno?include=full`, validar/rechazar/reabrir, `/reservas/ofertas-elegibles`, `/reservas/admin`. Empresa: `/alumnos/disponibles`, `/cupos/empresa`, `POST /reservas` |

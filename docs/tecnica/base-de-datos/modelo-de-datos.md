@@ -38,9 +38,6 @@ Ciclos formativos. **No están en el baseline** (datos del centro).
 | `nombre` | Texto visible |
 | `activa` | `GET /especialidades` solo devuelve las activas; `addEspecialidad` exige activa. El alta de solicitudes **no** comprueba `activa` (solo que exista) |
 
-### `dual_preferencias` y `dual_solicitud_preferencias`
-Catálogo de preferencias por especialidad y elecciones del alumno (orden 1–3, PK `(id_solicitud_alumno, orden)`, `CHECK orden BETWEEN 1 AND 3`). **Únicas FK con `ON DELETE/UPDATE CASCADE`** del esquema. Catálogo vacío en desarrollo.
-
 ## 2. Alumnos
 
 ### 🔒 `gf_alumnosfct`

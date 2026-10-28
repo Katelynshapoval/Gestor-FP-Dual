@@ -19,7 +19,6 @@ function fresh() {
       carnetDeConducir: 1, tieneCoche: 0, numeroSS: null, situacionLaboral: null,
       idiomasConocidos: 'Inglés B2', tutorLegal: null, dniTutorLegal: null,
     },
-    prefs: [11],
     reservas: [],
     cambios: [],
     nextCambio: 1,
@@ -39,19 +38,12 @@ const pool = fakePool((sql, params) => {
     return params[0] === 10 ? [{ id_solicitud_alumno: 10 }] : [];
   }
   if (sql.startsWith('SELECT sa.id_solicitud_alumno, sa.id_alumno')) return params[0] === 10 ? [{ ...db.sol }] : [];
-  if (sql.startsWith('SELECT id_preferencia FROM dual_solicitud_preferencias')) return db.prefs.map((id) => ({ id_preferencia: id }));
   if (sql.startsWith('SELECT r.id_reserva, er.nombre AS estado_reserva')) return db.reservas;
   if (sql.startsWith('SELECT id_especialidad, codigo FROM dual_especialidades')) {
     return [1, 2].includes(params[0]) ? [{ id_especialidad: params[0], codigo: params[0] === 1 ? 'DAM' : 'DAW' }] : [];
   }
   if (sql.startsWith('SELECT id_especialidad, nombre FROM dual_especialidades')) {
     return params[0].map((id) => ({ id_especialidad: id, nombre: id === 1 ? 'DAM' : 'DAW' }));
-  }
-  if (sql.startsWith('SELECT id_preferencia, descripcion FROM dual_preferencias')) {
-    return params[0].map((id) => ({ id_preferencia: id, descripcion: `Pref ${id}` }));
-  }
-  if (sql.startsWith('SELECT id_preferencia FROM dual_preferencias')) {
-    return params[0].filter((id) => Math.floor(id / 10) === params[1]).map((id) => ({ id_preferencia: id }));
   }
   if (sql.startsWith("SELECT id_cambio FROM dual_alumno_cambios WHERE id_solicitud_alumno = ? AND estado = 'PENDIENTE'")) {
     return db.cambios.filter((c) => c.estado === 'PENDIENTE').map((c) => ({ id_cambio: c.id_cambio }));
@@ -83,7 +75,7 @@ const pool = fakePool((sql, params) => {
     c.motivo = params[1];
     return { affectedRows: 1 };
   }
-  if (sql.startsWith('UPDATE') || sql.startsWith('DELETE') || sql.startsWith('INSERT INTO dual_solicitud_preferencias')) {
+  if (sql.startsWith('UPDATE')) {
     db.writes.push({ sql, params });
     return { affectedRows: 1 };
   }
@@ -170,7 +162,7 @@ test('the student cannot request a DNI change, an empty request or invalid value
 
 test('approval applies the request, records it and tells the student', async () => {
   setup();
-  await pedir({ cp: '50002', id_especialidad: 2, preferencias: [21] });
+  await pedir({ cp: '50002', id_especialidad: 2 });
   db.events.length = 0;
   const res = await aprobar(1);
   assert.equal(res.statusCode, 200);
@@ -242,7 +234,7 @@ test('GET shows the pending request as a labelled diff, and the last resolution'
   const byField = Object.fromEntries(res.body.pending.diff.map((d) => [d.field, d]));
   assert.deepEqual(byField.carnetDeConducir, { field: 'carnetDeConducir', label: 'Carnet de conducir', actual: 'Sí', solicitado: 'No' });
   assert.equal(byField.id_especialidad.solicitado, 'DAW');
-  assert.equal(byField.preferencias.actual, 'Pref 11');
+  assert.equal(byField.preferencias, undefined);
   assert.deepEqual(res.body.pending.conflictos, []);
 
   const mine = await call('getMisDatos', { user: alumno });

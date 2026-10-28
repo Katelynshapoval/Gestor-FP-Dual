@@ -75,3 +75,5 @@ The Phase 2 backend reads `dual_eventos`, `dual_documentos.firmas_exentas_legacy
 Migration 018 and the Stage 2 backend also go together: from 018 the reservation procedures (`sp_reservar_alumno`, `sp_confirmar_reserva`, `sp_reasignar_reserva`, `sp_cancelar_reserva`, `sp_cancelar_reserva_admin`) only run inside a transaction opened by the caller with `SET autocommit = 0` (the backend's `src/db/transaction.js`); called from Workbench in autocommit mode they stop with SQLSTATE 45001. To try one by hand: `SET autocommit = 0; CALL …; COMMIT; SET autocommit = 1;`.
 
 Migration 017 and the Stage 1 backend (database improvement plan) go together: the backend inserts `dual_solicitudes_alumno.id_especialidad`, which only exists after 017. Stop the backend, take and verify a backup, apply 017, start the new backend.
+
+Migration 021 drops the preference tables, which the previous backend reads and writes: start the backend without preferences first, then apply 021. Its guard stops, changing nothing, if either table has a row.

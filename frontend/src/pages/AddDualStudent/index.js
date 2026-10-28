@@ -37,9 +37,6 @@ const STEPS = [
 const INITIAL = {
   emailColegio: "",
   especialidad: "",
-  pref1: "",
-  pref2: "",
-  pref3: "",
   dni: "",
   nombre: "",
   fechaNacimiento: "",
@@ -147,7 +144,6 @@ function AddDualStudent() {
   const form = useStepForm({ steps: STEPS, initialValues: INITIAL, validateStep });
   const { values: v, set, errors, step, headingRef } = form;
   const [especialidades, setEspecialidades] = useState({ status: "loading", items: [] });
-  const [preferencias, setPreferencias] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [enviado, setEnviado] = useState(null);
 
@@ -160,22 +156,6 @@ function AddDualStudent() {
       .catch(() => setEspecialidades({ status: "error", items: [] }));
   };
   useEffect(cargarEspecialidades, []);
-
-  // Preferences depend on the chosen ciclo; changing ciclo clears them.
-  useEffect(() => {
-    setPreferencias([]);
-    if (!v.especialidad) return;
-    publicJSON(`/preferencias?id_especialidad=${encodeURIComponent(v.especialidad)}`)
-      .then((rows) => setPreferencias(Array.isArray(rows) ? rows : []))
-      .catch(() => setPreferencias([]));
-  }, [v.especialidad]);
-
-  const onEspecialidad = (name, value) => {
-    set(name, value);
-    set("pref1", "");
-    set("pref2", "");
-    set("pref3", "");
-  };
 
   const handleSubmit = async () => {
     if (submitting || !form.validateAll()) return;
@@ -198,9 +178,6 @@ function AddDualStudent() {
       data.append("cp", v.cp.trim());
       data.append("localidad", v.localidad.trim());
       data.append("id_especialidad_dual", v.especialidad);
-      if (v.pref1) data.append("idPreferencia1", v.pref1);
-      if (v.pref2) data.append("idPreferencia2", v.pref2);
-      if (v.pref3) data.append("idPreferencia3", v.pref3);
       const menor = esMenor(v.fechaNacimiento);
       data.append("tutorLegal", menor ? v.tutorLegal.trim() : "");
       data.append("dniTutorLegal", menor ? v.dniTutorLegal.trim().toUpperCase() : "");
@@ -221,7 +198,6 @@ function AddDualStudent() {
     value: String(e.id_especialidad),
     label: `${e.nombre}${e.turno ? ` (${String(e.turno).toLowerCase()})` : ""}`,
   }));
-  const prefOptions = preferencias.map((p) => ({ value: String(p.id_preferencia), label: p.descripcion }));
   const nombreDe = (opts, value) => opts.find((o) => o.value === String(value))?.label || "";
   const siNo = (x) => (x === "true" ? "Sí" : x === "false" ? "No" : "");
   const menor = esMenor(v.fechaNacimiento);
@@ -291,31 +267,11 @@ function AddDualStudent() {
                 ) : (
                   <SelectField
                     {...field("especialidad")}
-                    onChange={onEspecialidad}
                     required
                     options={espOptions}
                     disabled={especialidades.status === "loading"}
                     placeholder={especialidades.status === "loading" ? "Cargando ciclos…" : "Selecciona tu ciclo"}
                   />
-                )}
-                {prefOptions.length > 0 && (
-                  <fieldset className="mt-2">
-                    <legend className="mb-1 text-sm font-semibold text-charcoal-800">Preferencias (opcional)</legend>
-                    <p className="mb-3 text-xs text-muted">Indica, por orden, los tipos de puesto que más te interesan.</p>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {["pref1", "pref2", "pref3"].map((p, i) => (
-                        <SelectField
-                          key={p}
-                          name={p}
-                          label={`Preferencia ${i + 1}`}
-                          value={v[p]}
-                          onChange={set}
-                          options={prefOptions}
-                          placeholder="Sin preferencia"
-                        />
-                      ))}
-                    </div>
-                  </fieldset>
                 )}
               </>
             )}
@@ -477,7 +433,6 @@ function AddDualStudent() {
                     rows={[
                       [LABELS.emailColegio, v.emailColegio],
                       [LABELS.especialidad, nombreDe(espOptions, v.especialidad)],
-                      ["Preferencias", [v.pref1, v.pref2, v.pref3].filter(Boolean).map((p) => nombreDe(prefOptions, p)).join(" · ")],
                     ]}
                   />
                   <ReviewSection

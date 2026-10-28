@@ -1,5 +1,4 @@
-// Student data editing: the shared form (DNI read-only, a new ciclo clears the
-// preferences), the admin panel (ciclo locked by reservations, approval with
+// Student data editing: the shared form (DNI read-only), the admin panel (ciclo locked by reservations, approval with
 // conflict) and the student's request.
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ToastProvider } from "../../components/feedback/ToastProvider.jsx";
@@ -19,7 +18,7 @@ const datos = {
   tutorLegal: null, dniTutorLegal: null, email: "ana@example.com", emailColegio: null,
   telalumno: "600000000", telfamilia: "", domicilio: "C/ Mayor 1", cp: "50001", localidad: "Zaragoza",
   carnetDeConducir: 1, tieneCoche: 0, idiomasConocidos: "Inglés B2", numeroSS: null, situacionLaboral: null,
-  id_especialidad: 1, preferencias: [11],
+  id_especialidad: 1,
 };
 
 const pendingDiff = {
@@ -32,11 +31,7 @@ const pendingDiff = {
 beforeEach(() => {
   publicJSON.mockImplementation((url) =>
     Promise.resolve(
-      url === "/especialidades"
-        ? [{ id_especialidad: 1, nombre: "DAM" }, { id_especialidad: 2, nombre: "DAW" }]
-        : url.endsWith("=1")
-          ? [{ id_preferencia: 11, descripcion: "Backend" }]
-          : [{ id_preferencia: 21, descripcion: "Frontend" }],
+      url === "/especialidades" ? [{ id_especialidad: 1, nombre: "DAM" }, { id_especialidad: 2, nombre: "DAW" }] : [],
     ),
   );
 });
@@ -87,14 +82,13 @@ test("edit dialog: saving needs a change, and closing with changes asks first", 
   await waitFor(() => expect(document.getElementById("campo-cp")).toBeNull());
 });
 
-test("direct edit: a new ciclo clears the preferences and the DNI is never sent", async () => {
+test("direct edit: a new ciclo is sent and the DNI is never sent", async () => {
   adminPanel();
   putJSON.mockResolvedValue({});
   await screen.findByRole("dialog");
   await screen.findByRole("option", { name: "DAW" });
   expect(screen.getByLabelText(/^Ciclo/)).toHaveValue("1");
   fireEvent.change(screen.getByLabelText(/^Ciclo/), { target: { value: "2" } });
-  expect(screen.getByLabelText("Preferencia 1")).toHaveValue("");
   fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
   // Changing the ciclo asks for confirmation first.
   fireEvent.click(await screen.findByRole("button", { name: "Cambiar ciclo" }));
@@ -103,7 +97,7 @@ test("direct edit: a new ciclo clears the preferences and the DNI is never sent"
   expect(url).toBe("/solicitudes/alumno/10/datos");
   expect(body.dni).toBeUndefined();
   expect(body.id_especialidad).toBe(2);
-  expect(body.preferencias).toEqual([]);
+  expect(body.preferencias).toBeUndefined();
 });
 
 test("pending request: approval asks again when staff changed the same field", async () => {

@@ -27,10 +27,6 @@
 - **Comportamiento**: desde la migración 017 cada solicitud guarda su ciclo (`dual_solicitudes_alumno.id_especialidad`); la ficha (`gf_alumnosfct.id_especialidad_dual` y `especialidad`) solo guarda el último. Todas las reglas y listados leen el de la solicitud. El ciclo de una solicitud no cambia mientras tenga reservas activas (trigger) y no hay endpoint para cambiarlo.
 - **Referencia**: migración 017, `trg_dsa_bu_reglas`, prueba `stage1.test.js`, `stage1.db.test.js`.
 
-### Preferencias con id inexistente
-- **Comportamiento**: el `INSERT` en `dual_solicitud_preferencias` falla por FK; `mapSqlError` no mapea ese código → **500** «Error interno del servidor.» y se deshace toda la solicitud 🔶.
-- **Referencia**: `solicitudesAlumnoService.create`, `dbHelpers.mapSqlError`.
-
 ### Especialidad inactiva en el alta
 - **Comportamiento**: el formulario solo muestra especialidades activas, pero el backend solo comprueba que **existan**; una petición directa puede usar una inactiva. Lo mismo en las ofertas del alta y de la reaplicación de empresa (en cambio `addEspecialidad` exige activa).
 

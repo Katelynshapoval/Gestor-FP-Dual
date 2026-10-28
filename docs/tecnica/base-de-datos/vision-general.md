@@ -29,7 +29,6 @@ flowchart TB
     CONV --> SE[dual_solicitudes_empresa]
     SE --> OF[dual_solicitud_empresa_especialidades<br/>ofertas y plazas]
     SE --> TR[dual_solicitud_empresa_transportes]
-    SA --> PREF[dual_solicitud_preferencias]
     SA --> RES[dual_reservas]
     OF --> RES
   end
@@ -43,7 +42,7 @@ flowchart TB
     EVT[dual_eventos]
     CAM[dual_empresa_cambios]
     TUT[dual_empresa_tutores]
-    LK["catálogos: dual_roles, dual_estados_validacion,<br/>dual_estados_reserva, dual_tipos_documento,<br/>dual_tipos_contrato, dual_transportes,<br/>dual_especialidades, dual_preferencias"]
+    LK["catálogos: dual_roles, dual_estados_validacion,<br/>dual_estados_reserva, dual_tipos_documento,<br/>dual_tipos_contrato, dual_transportes,<br/>dual_especialidades"]
   end
   ALU --> SA
   EMP --> SE
@@ -89,7 +88,7 @@ El código resuelve los estados **por nombre** (funciones `fn_id_estado_*` en BD
 | Funciones | `fn_id_estado_reserva`, `fn_id_estado_validacion`, `fn_id_tipo_documento` (nombre → id, error si no existe); `fn_reservas_activas`, `fn_cupos_disponibles` | [integridad](integridad-y-transacciones.md#2-funciones) |
 | Procedimientos | 14 en uso o heredados | [integridad](integridad-y-transacciones.md#3-procedimientos-almacenados) |
 | Triggers | 15 (14 de la auditoría + `trg_dsee_bu_cupo` de la 017) | [integridad](integridad-y-transacciones.md#4-triggers) |
-| Claves foráneas | 53+ (todas `RESTRICT` salvo las de preferencias, `CASCADE`) | [relaciones](relaciones.md) |
+| Claves foráneas | 50+ (todas `RESTRICT` desde la 021) | [relaciones](relaciones.md) |
 
 Objetos obsoletos que siguen en el esquema: tabla `calendario` (2 filas con fichero en desarrollo), tabla `dual_empresa_transportes` (sustituida por la 014), procedimientos `sp_activar_convocatoria` y `sp_asignar_transporte_empresa`, y las tres vistas. Ninguno lo usa la aplicación ([limitaciones](../limitaciones-y-pendientes.md)).
 
@@ -97,7 +96,7 @@ Objetos obsoletos que siguen en el esquema: tabla `calendario` (2 filas con fich
 
 - El baseline carga con **ids fijos**: roles (1–4), estados de validación (1–3), estados de reserva (1–3), 13 tipos de documento, 4 tipos de contrato y 6 transportes. La migración 016 añade `BAJA`.
 - **`dual_especialidades` no está en el baseline**: son datos del centro y deben cargarse en cada entorno. Sin ellas, ninguna solicitud de alumno ni de empresa puede crearse ([`db/README.md`](../../../db/README.md)).
-- `dual_preferencias` existe pero está **vacía** en desarrollo; el formulario de alumno solo muestra preferencias si hay filas.
+- Las preferencias del alumno se han quitado: la migración 021 elimina `dual_preferencias` y `dual_solicitud_preferencias` (nunca tuvieron filas).
 - `dual_documento_plantillas` puede estar vacía: sin plantilla activa no se generan convenios ni anexos (los documentos deben subirse).
 
 ## 5. Cómo usa la aplicación la base de datos
