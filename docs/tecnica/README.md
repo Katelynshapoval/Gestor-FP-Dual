@@ -79,7 +79,7 @@ Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, r
 
 ## Otra documentación
 
-- [`docs/MANUAL_DE_USUARIO.md`](../MANUAL_DE_USUARIO.md): manual de uso por rol.
+- [`docs/MANUAL_DE_USUARIO.md`](../MANUAL_DE_USUARIO.md): manual de uso por rol. La aplicación lo muestra en la página **Ayuda** (`/ayuda`), así que lo que se cambie aquí se ve allí sin tocar el código.
 - [`db/README.md`](../../db/README.md): operación de migraciones, copias y verificación (en inglés).
 
 ## Mantenimiento de esta documentación
@@ -88,3 +88,4 @@ Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, r
 - Al añadir o cambiar un endpoint: [referencia de endpoints](api-e-integraciones/referencia-endpoints.md), la [matriz de permisos](seguridad-y-permisos.md) y el documento del dominio.
 - Al cambiar una regla de `estadoReglas.js` o del catálogo: el documento del dominio y sus [casos especiales](comportamientos-especiales/README.md).
 - Al resolver una limitación: moverla de [limitaciones](limitaciones-y-pendientes.md) al documento correspondiente.
+- Al editar el manual de usuario: cada capítulo (`##`) y cada apartado al que se quiera enlazar (`###`) necesita su `<a id="…"></a>` justo antes; sin él, la página Ayuda no lo trata como capítulo ni lo encuentra el buscador. Si se renombra un ancla, revisar los `href` de [`faq.js`](../../frontend/src/pages/Ayuda/faq.js). Las capturas van en `docs/manual/imagenes/` y se enlazan como `manual/imagenes/<archivo>`.

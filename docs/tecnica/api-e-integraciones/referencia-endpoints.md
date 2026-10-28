@@ -8,8 +8,6 @@
 | --- | --- | --- | --- |
 | `POST /auth/login` | Público | `{ username | email, password }` | `{ token, user }` · 400 · 401 · 403 · 429 |
 | `POST /auth/forgotPassword` | Público | `{ username }` | 200 si se envía el enlace · 404 `CUENTA_NO_ENCONTRADA` · 403 `CUENTA_DESACTIVADA` · 400 `SIN_CORREO` · 429 |
-| `GET /ayuda/manual` | Público | — | `{ markdown }` del manual de usuario |
-| `GET /ayuda/imagenes/:file` | Público | nombre de archivo | PNG del manual |
 | `POST /auth/resetPassword` | Público | `{ token, newPassword }` | 200 · 400 `ENLACE_NO_VALIDO` |
 | `GET /auth/me` | Autenticado (aunque deba cambiar contraseña) | — | Usuario con `cif`/`dni` |
 | `POST /auth/changePassword` | Autenticado (ídem) | `{ currentPassword?, newPassword }` | 200 · 400 · 401 |
@@ -30,6 +28,13 @@
 | `GET /convocatorias` | Personal | Todas |
 | `POST /convocatorias` | ADMINISTRADOR | `{ nombre, fecha_inicio, fecha_fin }` · 400 · 409 solape/duplicado |
 | `PUT /convocatorias/:id` | ADMINISTRADOR | Igual; 400 si está activa |
+
+## Ayuda — `ayudaRoute`
+
+| Método y ruta | Acceso | Notas |
+| --- | --- | --- |
+| `GET /ayuda/manual` | Público | `{ markdown }` con [`docs/MANUAL_DE_USUARIO.md`](../../MANUAL_DE_USUARIO.md) tal cual; 404 si no se puede leer. La página `/ayuda` lo divide en capítulos en el navegador |
+| `GET /ayuda/imagenes/:file` | Público | Captura de `docs/manual/imagenes/`. Solo nombres simples `png`, `jpg`, `jpeg`, `webp` o `gif` (400 si no, sin rutas); 404 si no existe |
 
 ## Catálogos públicos
 

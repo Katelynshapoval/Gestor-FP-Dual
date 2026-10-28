@@ -29,9 +29,9 @@ No hay colas, *workers*, eventos de MySQL (0 `EVENT`) ni cron externo. Si se eje
 | --- | --- | --- |
 | Backend unitarias (`backend/test/*.test.js`) | `npm test` en `backend/` (`node --test`) | Servicios con BD simulada (`fakePool` del [arnés](../../../backend/test/helpers/harness.js)): autenticación, autorización, reglas de estado, transacciones de documentos, flujos de reservas y ficha, panel, notificaciones, bajas, recuperación de contraseña |
 | Backend contra BD (`backend/test/db/*.db.test.js`) | `DB_INTEGRATION=1 node --test test/db/…` | Migraciones, triggers, auditoría inmutable, DNI único, cancelar y volver a reservar, guardas y reglas de 017, concurrencia de documentos, reversión. Se omiten sin `DB_INTEGRATION` |
-| Frontend (`frontend/src/**/*.test.*`) | `npm test` en `frontend/` | Navegación, búsqueda, `Tabs` accesibles, formularios por pasos, «Qué tienes pendiente», cliente HTTP, etiquetas, insignias de reserva, `Modal`/`MotivoDialog` |
+| Frontend (`frontend/src/**/*.test.*`) | `npm test` en `frontend/` | Navegación, búsqueda, `Tabs` accesibles, formularios por pasos, «Qué tienes pendiente», cliente HTTP, etiquetas, insignias de reserva, `Modal`/`MotivoDialog`, división y búsqueda del manual de la página Ayuda |
 
-Estado conocido : 87 pruebas backend correctas, 20 omitidas sin BD, 1 fallo preexistente (`mail/config: development defaults to log mode`, porque el módulo vuelve a cargar `MAIL_MODE` del `.env` local); frontend 28/28. No hay CI configurada.
+Estado conocido (28/10/2026): 96 pruebas backend correctas, 20 omitidas sin BD, 1 fallo preexistente (`mail/config: development defaults to log mode`, porque el módulo vuelve a cargar `MAIL_MODE` del `.env` local); frontend 33/33. No hay CI configurada.
 
 ## 4. Operación habitual
 

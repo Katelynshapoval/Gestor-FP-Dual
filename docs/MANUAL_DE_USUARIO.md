@@ -15,7 +15,7 @@ _Versión del manual: 28/10/2026. Describe la aplicación tal y como funciona en
 2. [Acceso a la aplicación](#acceso)
    - [Iniciar sesión](#iniciar-sesion) · [Cerrar sesión](#cerrar-sesion) · [Cambiar la contraseña](#cambiar-contrasena) · [Contraseña temporal](#contrasena-temporal) · [Sesión caducada](#sesion-caducada) · [Si no puedes entrar](#no-puedes-entrar) · [Recuperar la contraseña](#recuperar)
 3. [Navegación general](#navegacion)
-   - [Menú principal](#menu) · [Listas, búsqueda y filtros](#filtros) · [Estados e indicadores](#estados) · [Botones y ventanas habituales](#botones)
+   - [Menú principal](#menu) · [Listas, búsqueda y filtros](#filtros) · [Estados e indicadores](#estados) · [Botones y ventanas habituales](#botones) · [La página de Ayuda](#ayuda)
 4. [Solicitudes públicas (alumnos y empresas nuevos)](#solicitudes-publicas)
    - [Comprobar si el plazo está abierto](#plazo) · [Solicitud de alumno](#solicitud-alumno) · [Solicitud de empresa](#solicitud-empresa) · [Después de enviar](#despues-enviar)
 5. [Manual del administrador](#administrador)
@@ -56,7 +56,7 @@ FP Dual es la aplicación del centro para gestionar la Formación Profesional Du
 
 **Cómo está organizado este manual**
 
-Los capítulos 2 y 3 sirven para todo el mundo. Después hay un capítulo por perfil: busca el tuyo en el [índice](#indice). El capítulo 9 explica las situaciones que más dudas generan; merece la pena leerlo aunque no tengas ningún problema.
+Los capítulos 2 y 3 sirven para todo el mundo. Después hay un capítulo por perfil: busca el tuyo en el [índice](#indice) (en la [página de Ayuda](#ayuda), en la lista de capítulos). El capítulo 9 explica las situaciones que más dudas generan; merece la pena leerlo aunque no tengas ningún problema.
 
 ---
 
@@ -260,6 +260,25 @@ El color sigue la regla de antes (verde, amarillo, rojo, gris). **Pasa el ratón
 - **Avisos**: tras cada acción aparece un mensaje breve (por ejemplo «Documento validado.»). Si algo falla, el aviso explica el motivo.
 - **Visor de documentos**: al pulsar «Ver documento» o «Ver» se abre el PDF dentro de la aplicación, con los botones **«Descargar»** y **«Nueva pestaña»**. En el móvil se recomienda abrirlo en una pestaña nueva.
 - **Datos sin enviar**: si sales de un formulario a medias, el navegador te avisa antes de cerrar la página.
+
+<a id="ayuda"></a>
+
+### La página de Ayuda
+
+**«Ayuda»** está en el menú de todos los perfiles, también sin iniciar sesión. Contiene este mismo manual y las preguntas que más se repiten.
+
+- **Buscador**: arriba del todo. Escribe una o varias palabras («contraseña», «convenio», «anexo»…); no importan las mayúsculas ni las tildes. Aparecen las **preguntas frecuentes** que coinciden y los **apartados del manual** que las contienen, con un fragmento del texto. Pulsa un resultado para ir a ese apartado. La X del buscador lo vacía.
+
+  ![Página de Ayuda buscando «anexo»: dos preguntas frecuentes y varios apartados del manual con un fragmento de texto](manual/imagenes/ayuda-buscar.png)
+  _Resultados del buscador: preguntas frecuentes arriba y apartados del manual debajo._
+- **Guías por perfil**: las tarjetas **Administración**, **Coordinación**, **Empresa** y **Alumno** llevan directamente al capítulo de cada perfil.
+- **Preguntas frecuentes**: pulsa una pregunta para desplegar la respuesta; **«Ver en el manual»** abre el apartado con el detalle.
+- **Manual de usuario**: se lee **por capítulos**. En el ordenador, la lista de capítulos está a la izquierda y, en el capítulo abierto, también sus apartados. En el móvil, el capítulo se elige en el desplegable que hay encima del texto. Al final de cada capítulo, **«Anterior»** y **«Siguiente»** pasan al capítulo de al lado.
+
+  ![Manual abierto en el capítulo 7, con la lista de capítulos a la izquierda y los apartados del capítulo abierto](manual/imagenes/ayuda-manual.png)
+  _El manual por capítulos: a la izquierda, el capítulo abierto y sus apartados._
+- Los enlaces del manual que llevan a otro capítulo lo abren y bajan hasta el apartado. El botón **Atrás** del navegador vuelve a donde estabas.
+- Cada apartado tiene su propia dirección (por ejemplo `/ayuda#recuperar`). Puedes copiarla y enviarla para que otra persona llegue directamente a ese punto.
 
 ---
 

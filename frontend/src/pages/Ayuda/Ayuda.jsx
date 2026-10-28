@@ -27,6 +27,8 @@ const PERFIL_ICONOS = {
 };
 
 const SECCIONES_PAGINA = ["preguntas", "manual"];
+// The manual's own index is not shown here; its links go to the chapter list.
+const ALIAS = { indice: "manual" };
 
 function currentHash() {
   return decodeURIComponent(window.location.hash.slice(1));
@@ -337,8 +339,9 @@ export default function Ayuda() {
   const chapter = chapters.find((item) => item.id === chapterId) || chapters[0] || null;
 
   const show = useCallback(
-    (id) => {
-      if (!id) return;
+    (anchor) => {
+      if (!anchor) return;
+      const id = ALIAS[anchor] || anchor;
       const owner = chapters.find((item) => item.ids.has(id));
       if (owner) {
         setChapterId(owner.id);

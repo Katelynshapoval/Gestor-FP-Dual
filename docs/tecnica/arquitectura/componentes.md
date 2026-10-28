@@ -115,6 +115,7 @@ Puntos delicados de acoplamiento:
 | `/convocatorias` | `Convocatorias` | Personal (crear/editar: ADMINISTRADOR en backend) | `/convocatorias` |
 | `/companyMain` | `CompanyView` (Datos, Reservas, Documentos, Tutores) | EMPRESA | `/solicitudes/empresa/mia?incluir_anteriores=1`, `reapply`, `cambios`, cupos, `/reservas/empresa`, `/documentos/empresa`, `/tutores/empresa` |
 | `/studentMain` | `StudentMain` (Datos, Reservas, Documentos) | ALUMNO | `/solicitudes/alumno/mia`, `/reservas/alumno`, `/documentos/alumno/mios` |
+| `/ayuda` | `Ayuda` (buscador, guías por perfil, preguntas frecuentes, manual por capítulos) | Todos, también sin sesión | `/ayuda/manual`, `/ayuda/imagenes/:file` |
 
 ### 2.3 Componentes compartidos relevantes
 
@@ -124,5 +125,6 @@ Puntos delicados de acoplamiento:
 - `components/BajaControls.jsx`: «Dar de baja» / «Reactivar» (solo se muestra a ADMINISTRADOR).
 - `components/CupoReductionDialog.jsx`: selección de las reservas pendientes a cancelar al reducir plazas (responde al `409 requires_selection` del backend).
 - `components/portal/Pendientes.jsx`: bloque «Qué tienes pendiente» de los portales, construido con datos que ya da el backend.
+- `pages/Ayuda/`: [`manual.js`](../../../frontend/src/pages/Ayuda/manual.js) divide el Markdown del manual en capítulos (cada `##` precedido de `<a id>`; el título, la versión y el «Índice» se quedan fuera), guarda qué anclas tiene cada capítulo, lo pasa a HTML con `marked` y busca en sus apartados sin tildes ni mayúsculas. [`faq.js`](../../../frontend/src/pages/Ayuda/faq.js) tiene las preguntas frecuentes y las tarjetas de perfil, que enlazan a anclas del manual. [`Ayuda.jsx`](../../../frontend/src/pages/Ayuda/Ayuda.jsx) muestra un capítulo cada vez: cualquier enlace `#ancla` (tarjetas, preguntas, resultados, enlaces del propio manual o la URL) abre el capítulo que la contiene, guarda la ancla en el historial y vuelve a desplazarse cuando cargan las capturas que hay encima. `#indice` lleva a la lista de capítulos.
 
 El frontend **no decide reglas de negocio**: los botones se habilitan según `puede_*`, `acciones.*.permitido` o el estado recibido, y el backend vuelve a comprobarlo todo. Excepción conocida: la validación de formato del DNI/NIE del alumno y del NSS solo existe en el formulario ([comportamientos especiales](../comportamientos-especiales/solicitudes.md#dni-del-alumno-sin-validar-en-el-backend)).

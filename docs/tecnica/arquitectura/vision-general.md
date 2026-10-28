@@ -16,7 +16,7 @@ FP Dual es el portal que gestiona el programa de Formación Profesional Dual de 
 
 | Capa | Tecnología | Evidencia |
 | --- | --- | --- |
-| Frontend | React 18 (Create React App, `react-scripts` 5), React Router 6, Tailwind CSS 3, `react-icons` | [`frontend/package.json`](../../../frontend/package.json) |
+| Frontend | React 18 (Create React App, `react-scripts` 5), React Router 6, Tailwind CSS 3, `react-icons`, `marked` (manual en la página Ayuda) | [`frontend/package.json`](../../../frontend/package.json) |
 | Backend | Node.js + Express 4 (CommonJS), `mysql2/promise`, `jsonwebtoken`, `bcrypt`, `multer`, `nodemailer`, `morgan` | [`backend/package.json`](../../../backend/package.json) |
 | Generación documental | `docx-templates` (rellena DOCX), `mammoth` (DOCX → HTML), `puppeteer` (HTML → PDF con Chromium) | [`documentGenerationService.js`](../../../backend/src/services/documentGenerationService.js) |
 | Base de datos | MySQL 8 (InnoDB, `utf8mb4_0900_ai_ci`), procedimientos almacenados y triggers | [`db/000_baseline.sql`](../../../db/000_baseline.sql), [`db/migrations/`](../../../db/migrations) |

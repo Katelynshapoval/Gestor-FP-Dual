@@ -38,6 +38,7 @@
 | Subir plantillas | ✔ | | | | |
 | Ver/descargar plantillas | ✔ | ✔ | | | |
 | Seguimiento y panel | ✔ | ✔ | | | |
+| Ayuda (manual y preguntas frecuentes) | ✔ | ✔ | ✔ | ✔ | ✔ |
 | Contraseña temporal, `/usuarios` | ✔ | | | | |
 | Alta, edición, baja y reactivación de personal | ✔ | | | | |
 
@@ -57,6 +58,7 @@
 | Plantillas solo ADMINISTRADOR | `docx-templates` ejecuta código de la plantilla | `documentosRoute` |
 | Escapado en correos | `escapeHtml` en todas las interpolaciones | `notificaciones.js` |
 | Minimización | Sin DNI, teléfonos ni motivo de cancelación en correos; alumnos sin motivo libre; `/usuarios` solo admin | varios |
+| Imágenes del manual sin rutas | Solo nombres de archivo de imagen dentro de `docs/manual/imagenes`; cualquier otra cosa es 400 | `ayudaRoute.resolveManualImage` |
 | SQL parametrizado | En todos los servicios | — |
 | Auditoría inmutable | `dual_eventos` con triggers que impiden modificarla | migración 013 |
 | Credenciales fuera del repositorio | `.env` ignorado; `mail/config.js` lee del entorno; `backups/` y `.pruebas.local.json` ignorados | `.gitignore` |
@@ -75,6 +77,7 @@
 | Sin cabeceras de seguridad ni CORS explícito | No hay `helmet`, CSP ni configuración CORS; depende del proxy de despliegue 🔶 | `index.js` |
 | `trust proxy` sin configurar | Afecta a la IP del limitador detrás de un proxy 🔶 | `index.js` |
 | Contraseña temporal de alumnos y empresas sin auditoría | El reseteo de personal sí queda en `dual_eventos` (`USUARIO`). El de alumnos y empresas no. Ver [autenticación § 6](logica-de-negocio/autenticacion-y-cuentas.md#6-contraseña-temporal--post-usuariosidresetpassword-administrador) | `authService.resetPassword` |
+| Manual pintado como HTML sin sanear | `marked` no limpia el HTML y la página lo inserta tal cual. Es seguro mientras `MANUAL_DE_USUARIO.md` solo lo edite el equipo; nunca debe salir de datos de usuarios | `pages/Ayuda/manual.js` |
 | Firmas no criptográficas | `CONFIRMACION_APP` / `SUBIDA_FIRMADA` son atestaciones | migración 013 |
 
 No se han encontrado credenciales en el código versionado; `backend/.env.example` solo contiene nombres de variables.
