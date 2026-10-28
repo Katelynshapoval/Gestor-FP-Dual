@@ -13,6 +13,7 @@ router.use(require("./documentosRoute"));
 router.use(require("./reservasRoute"));
 router.use(require("./empresaTutoresRoute"));
 router.use(require("./panelRoute"));
+router.use(require("./ayudaRoute"));
 
 // Global error handler — must come after all routes
 router.use((err, req, res, _next) => {

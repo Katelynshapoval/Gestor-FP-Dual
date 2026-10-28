@@ -6,9 +6,10 @@
 // password changes, by this link or any other way, the fingerprint no longer
 // matches and every older link stops working: each link works once.
 //
-// The request always gets the same answer, whether or not the account exists,
-// so the form cannot be used to find out who has an account. Requests are
-// limited per IP and identifier, like the login.
+// The form refuses the request when there is no active account, or when that
+// account has no email to write to, so the user is not told that a link was
+// sent when nothing went out. Requests are limited per IP and identifier,
+// like the login.
 //
 // Where the link goes: staff → their user email; students → the personal email
 // of their application; companies → the principal coordinator's email.
@@ -26,8 +27,11 @@ const TTL = "30m";
 const MIN_PASSWORD_LENGTH = 8;
 const limiter = createLoginRateLimiter({ maxPerIdentifier: 3, maxPerIp: 20 });
 
-const GENERIC =
-  "Si los datos corresponden a una cuenta activa, te hemos enviado un enlace al correo asociado. Caduca en 30 minutos. Revisa también la carpeta de spam.";
+const NOT_FOUND = "No hay ninguna cuenta con ese usuario. Comprueba el correo, el CIF o el DNI/NIE.";
+const DISABLED = "La cuenta está desactivada. Contacta con el centro.";
+const NO_EMAIL = "Esta cuenta no tiene un correo al que enviar el enlace. Contacta con el centro.";
+const SENT =
+  "Te hemos enviado un enlace al correo asociado. Caduca en 30 minutos. Revisa también la carpeta de spam.";
 const INVALID = "El enlace no es válido, ya se ha usado o ha caducado. Pide uno nuevo.";
 
 const resetSecret = () => `${getJwtSecret()}:password-reset`;
@@ -77,17 +81,20 @@ exports.solicitar = async function (req, res) {
   limiter.recordFailure(ip, identifier); // every request counts
 
   const user = await findUserByIdentifier(identifier);
-  if (user && user.activo) {
-    const to = await destino(user);
-    const base = appUrl();
-    if (to?.email && base) {
-      const link = `${base}/restablecer-contrasena?token=${encodeURIComponent(crearToken(user))}`;
-      notificar.restablecerContrasena(to.email, to.nombre || user.nombre_mostrar, link);
-    } else {
-      console.warn("[recuperar contraseña] sin correo de destino o sin APP_URL para el usuario", user.id_usuario);
-    }
+  if (!user) return res.status(404).json({ error: NOT_FOUND, code: "CUENTA_NO_ENCONTRADA" });
+  if (!user.activo) return res.status(403).json({ error: DISABLED, code: "CUENTA_DESACTIVADA" });
+
+  const to = await destino(user);
+  const base = appUrl();
+  if (!to?.email) return res.status(400).json({ error: NO_EMAIL, code: "SIN_CORREO" });
+  if (!base) {
+    console.warn("[recuperar contraseña] sin APP_URL para el usuario", user.id_usuario);
+    return res.status(500).json({ error: "No se ha podido preparar el enlace. Contacta con el centro." });
   }
-  return res.json({ message: GENERIC });
+
+  const link = `${base}/restablecer-contrasena?token=${encodeURIComponent(crearToken(user))}`;
+  notificar.restablecerContrasena(to.email, to.nombre || user.nombre_mostrar, link);
+  return res.json({ message: SENT });
 };
 
 // POST /auth/resetPassword { token, newPassword }

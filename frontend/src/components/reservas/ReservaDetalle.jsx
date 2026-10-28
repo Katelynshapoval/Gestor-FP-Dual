@@ -20,6 +20,7 @@ import { useConfirm, useToast } from "../feedback/ToastProvider.jsx";
 import { getJSON, postJSON } from "../../utils/api.js";
 import { tipoContratoLabel } from "../../utils/labels.js";
 import { formatDocumentDate } from "../../utils/documentos.js";
+import LongText from "../ui/LongText.jsx";
 
 // The whole lifecycle of one reservation in one place (Phase 3, D.1):
 // state, contract type, Anexo II/III and calendar (upload, generate, sign,
@@ -395,7 +396,9 @@ function Resumen({ r }) {
               </span>
               <div className="min-w-0">
                 <dt className="text-[0.68rem] font-semibold uppercase tracking-wide text-muted">{term}</dt>
-                <dd className="m-0 break-words text-sm font-medium text-charcoal-950">{value || "—"}</dd>
+                <dd className="m-0 min-w-0 break-words text-sm font-medium text-charcoal-950">
+                  {value ? <LongText>{value}</LongText> : "—"}
+                </dd>
                 {extra && <dd className="m-0 text-xs text-muted">{extra}</dd>}
               </div>
             </div>

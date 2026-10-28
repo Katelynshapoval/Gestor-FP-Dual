@@ -25,6 +25,7 @@ import MotivoDialog from "../../../components/ui/MotivoDialog.jsx";
 import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBadges.jsx";
 import CuentaPanel from "../../../components/CuentaPanel.jsx";
 import { label } from "../../../utils/labels.js";
+import LongText from "../../../components/ui/LongText.jsx";
 import {
   isCancelledReserva,
   isConfirmedReserva,
@@ -172,21 +173,21 @@ const StudentCard = ({
         onClick={handleToggle}
       >
         <div className="min-w-0 flex-1">
-          <p className={cardNameClass}>
-            {r.nombre}{" "}
-            <span className="text-[.8rem] font-normal text-muted">
+          <p className={`${cardNameClass} break-words`}>
+            <LongText>{r.nombre}</LongText>{" "}
+            <span className="whitespace-nowrap text-[.8rem] font-normal text-muted">
               ({r.dni})
             </span>
           </p>
           {r.especialidad && (
-            <p className={`${cardEspClass} text-sm text-muted`}>
-              {r.especialidad}
+            <p className={`${cardEspClass} break-words text-sm text-muted`}>
+              <LongText>{r.especialidad}</LongText>
               {r.turno && r.turno !== "DIURNO" && ` · ${r.turno}`}
             </p>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {!isEmpresa ? (
             <div className={cardChipsClass}>
               <EstadoBadge kind="solicitud" value={r.estado_validacion} />

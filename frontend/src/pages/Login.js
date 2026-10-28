@@ -229,6 +229,10 @@ const Login = () => {
             <Link to="/recuperar-contrasena" className="font-semibold text-brand-700 underline">
               ¿Has olvidado tu contraseña?
             </Link>
+            <span className="mx-2 text-muted">·</span>
+            <Link to="/ayuda" className="font-semibold text-brand-700 underline">
+              Ayuda
+            </Link>
           </p>
         </form>
       </div>

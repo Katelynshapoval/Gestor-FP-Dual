@@ -56,7 +56,7 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar, onReabrir }) => {
       </div>
 
       {r.estado_validacion === "RECHAZADO" && (
-        <p className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
+        <p className="mb-3 break-words rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
           <span className="font-semibold">Motivo:</span> {r.motivo || "Sin motivo indicado."}
         </p>
       )}

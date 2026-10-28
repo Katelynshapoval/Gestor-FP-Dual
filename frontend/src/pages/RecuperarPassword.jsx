@@ -27,7 +27,7 @@ const Card = ({ title, subtitle, children }) => (
 );
 
 // «¿Has olvidado tu contraseña?»: asks for the user and sends a link by email.
-// The answer is the same whether or not the account exists.
+// The server refuses the request when that account does not exist.
 export function RecuperarPassword() {
   const [username, setUsername] = useState("");
   const [enviado, setEnviado] = useState(null);
@@ -90,6 +90,10 @@ export function RecuperarPassword() {
           <p className="m-0 text-center text-xs">
             <Link to="/login" className="text-muted underline">
               Volver a Acceder
+            </Link>
+            <span className="mx-2 text-muted">·</span>
+            <Link to="/ayuda" className="text-muted underline">
+              Ayuda
             </Link>
           </p>
         </form>

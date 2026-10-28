@@ -12,6 +12,7 @@ import {
   FaUserGraduate,
   FaUserShield,
   FaUsers,
+  FaCircleQuestion,
 } from "react-icons/fa6";
 
 export const STAFF = ["ADMINISTRADOR", "COORDINADOR"];
@@ -22,6 +23,7 @@ const PUBLIC_NAV = [
   { to: "/addDualStudent", label: "Solicitud de alumno", Icon: FaUserGraduate },
   { to: "/addCompanyRequest", label: "Solicitud de empresa", Icon: FaBuilding },
   { to: "/login", label: "Acceder", Icon: FaRightToBracket },
+  { to: "/ayuda", label: "Ayuda", Icon: FaCircleQuestion },
 ];
 
 const STAFF_NAV = [
@@ -32,14 +34,19 @@ const STAFF_NAV = [
   { to: "/documentos", label: "Documentos", Icon: FaFileLines },
   { to: "/convocatorias", label: "Convocatorias", Icon: FaCalendarDays },
   { to: "/personal", label: "Personal", Icon: FaUserShield, roles: ["ADMINISTRADOR"] },
+  { to: "/ayuda", label: "Ayuda", Icon: FaCircleQuestion },
 ];
 
 const EMPRESA_NAV = [
   { to: "/companyMain", label: "Mi empresa", Icon: FaBuilding },
   { to: "/alumnos", label: "Alumnos disponibles", Icon: FaUsers },
+  { to: "/ayuda", label: "Ayuda", Icon: FaCircleQuestion },
 ];
 
-const ALUMNO_NAV = [{ to: "/studentMain", label: "Mi proceso Dual", Icon: FaUserGraduate }];
+const ALUMNO_NAV = [
+  { to: "/studentMain", label: "Mi proceso Dual", Icon: FaUserGraduate },
+  { to: "/ayuda", label: "Ayuda", Icon: FaCircleQuestion },
+];
 
 export function navForUser(user) {
   if (!user) return PUBLIC_NAV;
@@ -78,6 +85,7 @@ const TITLES = {
   "/documentos": "Documentos",
   "/convocatorias": "Convocatorias",
   "/personal": "Personal",
+  "/ayuda": "Ayuda",
   "/companyMain": "Mi empresa",
   "/studentMain": "Mi proceso Dual",
   "/cambiarPassword": "Cambiar contraseña",

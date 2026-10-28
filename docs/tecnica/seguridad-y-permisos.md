@@ -50,7 +50,7 @@
 | Cambio de contraseña seguro | Contraseña actual obligatoria salvo cambio forzado leído de BD | `authService.changePassword` |
 | Contraseñas | bcrypt coste 10; mínimo 8 caracteres en todos los caminos | `authService`, altas, recuperación |
 | Limitación de intentos | Login, formulario de alumno con cuenta, recuperación | `loginRateLimit.js` |
-| Recuperación sin enumeración | Respuesta única, enlace de un solo uso ligado al hash, clave derivada distinta de la de sesión | `passwordResetService.js` |
+| Recuperación de contraseña | No envía el enlace si la cuenta no existe, está desactivada o no tiene correo. El enlace es de un solo uso y va ligado al hash; la clave es distinta de la de sesión | `passwordResetService.js` |
 | Formulario público sin sobrescritura | Alumno existente: o prueba su contraseña o solo se rellenan campos vacíos; empresa existente: 409 | `solicitudesAlumnoService`, `solicitudesEmpresaService` |
 | Coordinador protegido | La empresa no lo edita desde Tutores | `empresaTutoresService` |
 | Guarda única de subidas | Tipo, rol, propiedad, estado de reserva, familia, no reemplazar validados | `documentosService.assertCanUpload` |

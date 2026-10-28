@@ -39,19 +39,19 @@ const FilaReserva = ({ r, onOpen }) => (
   <div className="flex flex-col gap-3 rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm md:flex-row md:items-center md:justify-between">
     <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
       <div className="min-w-0">
-        <p className="truncate font-medium text-charcoal-950">{r.alumno}</p>
-        <p className="text-xs text-muted">
+        <p className="truncate font-medium text-charcoal-950" title={r.alumno || undefined}>{r.alumno}</p>
+        <p className="break-words text-xs text-muted">
           {r.dni_alumno} · {r.especialidad}
         </p>
       </div>
       <div className="min-w-0">
-        <p className="truncate font-medium text-charcoal-950">{r.empresa}</p>
-        <p className="text-xs text-muted">
+        <p className="truncate font-medium text-charcoal-950" title={r.empresa || undefined}>{r.empresa}</p>
+        <p className="break-words text-xs text-muted">
           {[r.convocatoria, tipoContratoLabel(r.tipo_contrato), r.tutor_nombre && `Tutor: ${r.tutor_nombre}`].filter(Boolean).join(" · ")}
         </p>
       </div>
     </div>
-    <div className="flex shrink-0 items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3 md:shrink-0">
       <ReservaResumenBadges compact estado={r.estado_reserva} resumen={r.documentos_resumen} />
       <button
         type="button"

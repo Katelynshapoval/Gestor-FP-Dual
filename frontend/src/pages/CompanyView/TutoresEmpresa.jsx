@@ -203,7 +203,7 @@ const TutoresEmpresa = () => {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className={`truncate text-base font-semibold ${activo ? "text-charcoal-950" : "text-muted"}`}>
+                    <p className={`truncate text-base font-semibold ${activo ? "text-charcoal-950" : "text-muted"}`} title={t.nombre || undefined}>
                       {t.nombre}
                     </p>
                     <span
@@ -248,7 +248,7 @@ const TutoresEmpresa = () => {
 
                 {!isEditing && (
                   <div className="mt-3 grid gap-2 text-sm text-muted sm:grid-cols-2">
-                    <p>{t.email || "Sin email"}</p>
+                    <p className="min-w-0 break-words" title={t.email || undefined}>{t.email || "Sin email"}</p>
                     <p>{t.telefono || "Sin teléfono"}</p>
                     <p>{t.dni || "Sin DNI"}</p>
                     <p>{t.cargo || "Sin cargo"}</p>

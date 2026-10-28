@@ -7,7 +7,9 @@
 | Método y ruta | Acceso | Entrada | Salida / efecto |
 | --- | --- | --- | --- |
 | `POST /auth/login` | Público | `{ username | email, password }` | `{ token, user }` · 400 · 401 · 403 · 429 |
-| `POST /auth/forgotPassword` | Público | `{ username }` | Mensaje genérico siempre · 400 · 429 |
+| `POST /auth/forgotPassword` | Público | `{ username }` | 200 si se envía el enlace · 404 `CUENTA_NO_ENCONTRADA` · 403 `CUENTA_DESACTIVADA` · 400 `SIN_CORREO` · 429 |
+| `GET /ayuda/manual` | Público | — | `{ markdown }` del manual de usuario |
+| `GET /ayuda/imagenes/:file` | Público | nombre de archivo | PNG del manual |
 | `POST /auth/resetPassword` | Público | `{ token, newPassword }` | 200 · 400 `ENLACE_NO_VALIDO` |
 | `GET /auth/me` | Autenticado (aunque deba cambiar contraseña) | — | Usuario con `cif`/`dni` |
 | `POST /auth/changePassword` | Autenticado (ídem) | `{ currentPassword?, newPassword }` | 200 · 400 · 401 |

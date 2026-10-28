@@ -34,7 +34,7 @@ const MisReservas = ({ reservations, onChanged }) => {
               }`}
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-charcoal-950">{reserva.alumno || "Alumno"}</p>
+                <p className="truncate text-sm font-semibold text-charcoal-950" title={reserva.alumno || undefined}>{reserva.alumno || "Alumno"}</p>
                 <p className="mt-1 text-xs leading-5 text-muted">
                   {[reserva.especialidad, tipoContratoLabel(reserva.tipo_contrato), reserva.tutor_nombre && `Tutor: ${reserva.tutor_nombre}`]
                     .filter(Boolean)

@@ -155,7 +155,7 @@ El correo llega a:
 | Alumno | El email personal de tu solicitud |
 | Empresa | El email del coordinador principal |
 
-El enlace **caduca en 30 minutos** y **solo sirve una vez**. Si caduca, pide otro. Por seguridad, la pantalla responde lo mismo exista o no la cuenta, y no se envía nada a cuentas desactivadas. Si no te llega el correo (revisa también la carpeta de spam), pide al centro que Administración te restablezca la contraseña.
+El enlace **caduca en 30 minutos** y **solo sirve una vez**. Si no hay ninguna cuenta con ese usuario, la aplicación lo indica y no envía el correo. Tampoco se envía nada si la cuenta está desactivada o no tiene un correo asociado. Si no te llega el correo (revisa también la carpeta de spam), pide al centro que Administración te restablezca la contraseña.
 
 ![Pantalla Recuperar contraseña con el campo Usuario y el botón Enviar enlace](manual/imagenes/recuperar-contrasena.png)
 _Pantalla «Recuperar contraseña»._
@@ -174,11 +174,11 @@ El menú está a la izquierda. Cada perfil ve solo sus secciones:
 
 | Perfil | Secciones del menú |
 | --- | --- |
-| Administración | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias · Personal |
-| Coordinación | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias |
-| Empresa | Mi empresa · Alumnos disponibles |
-| Alumno | Mi proceso Dual |
-| Visitante | Inicio · Solicitud de alumno · Solicitud de empresa · Acceder |
+| Administración | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias · Personal · Ayuda |
+| Coordinación | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias · Ayuda |
+| Empresa | Mi empresa · Alumnos disponibles · Ayuda |
+| Alumno | Mi proceso Dual · Ayuda |
+| Visitante | Inicio · Solicitud de alumno · Solicitud de empresa · Acceder · Ayuda |
 
 Al final del menú están **«Cambiar contraseña»** y **«Cerrar sesión»**. Arriba a la derecha aparecen tu nombre, tu perfil y el botón **«Salir»**.
 
@@ -1121,12 +1121,13 @@ Si el centro te ha **dado de baja** del programa, tu cuenta del portal está des
 
 ### He olvidado la contraseña
 
-Pulsa **«¿Has olvidado tu contraseña?»** en la pantalla de acceso y sigue el enlace que te llega por correo ([paso a paso](#recuperar)).
+Pulsa **«¿Has olvidado tu contraseña?»** en la pantalla de acceso y sigue el enlace que te llega por correo ([paso a paso](#recuperar)). Si no hay ninguna cuenta con ese usuario, la pantalla lo dice y no envía el correo.
 
+- **«No hay ninguna cuenta con ese usuario…»**: el correo, el CIF o el DNI/NIE no corresponde a ninguna cuenta. Comprueba el identificador de tu perfil.
+- **«La cuenta está desactivada…»**: no se envía el enlace. Contacta con el centro.
 - **El correo no llega**: espera unos minutos y revisa la carpeta de spam. Comprueba que el correo de tu solicitud (alumnos) o el del coordinador principal (empresas) es correcto; si no lo es, avisa al centro.
 - **«El enlace no es válido, ya se ha usado o ha caducado»**: pide uno nuevo. Cada enlace dura 30 minutos y sirve una sola vez.
 - **Sigue sin funcionar**: alumnos y empresas pueden pedir al centro que Administración les dé una contraseña temporal.
-- **Si te han dado de baja**, la cuenta está desactivada y no se envía ningún enlace.
 
 ### Otras dudas habituales
 

@@ -236,7 +236,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
               {user.nombre?.trim()?.charAt(0).toUpperCase() || "U"}
             </div>
             <div className="hidden min-w-0 lg:flex lg:max-w-56 lg:flex-col">
-              <span className="truncate text-sm font-semibold text-white">{user.nombre}</span>
+              <span className="truncate text-sm font-semibold text-white" title={user.nombre || undefined}>{user.nombre}</span>
               {user.rol && (
                 <span className="truncate text-[0.68rem] font-semibold uppercase tracking-wider text-white/70">
                   {label("rol", user.rol)}
@@ -312,7 +312,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
           {user && (
             <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-3">
               <span className="block text-[0.66rem] font-semibold uppercase tracking-widest text-brand-200">Sesión</span>
-              <span className="mt-1 block truncate text-sm font-semibold text-white">{user.nombre}</span>
+              <span className="mt-1 block truncate text-sm font-semibold text-white" title={user.nombre || undefined}>{user.nombre}</span>
               {user.rol && <span className="mt-1 block truncate text-xs text-white/70">{label("rol", user.rol)}</span>}
             </div>
           )}

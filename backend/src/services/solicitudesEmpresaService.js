@@ -866,6 +866,7 @@ exports.getTodas = async function (req, res) {
     `SELECT
        d.id_solicitud_empresa,
        d.id_documento,
+       d.motivo,
        ev.nombre AS estado_validacion
      FROM dual_documentos d
      JOIN dual_estados_validacion ev
@@ -947,6 +948,7 @@ exports.getTodas = async function (req, res) {
         id_documento: d.id_documento,
         estado: d.estado_validacion,
         validado: d.estado_validacion === "VALIDADO",
+        motivo: d.motivo,
       };
     }
   });
@@ -967,6 +969,7 @@ exports.getTodas = async function (req, res) {
       tieneConvenio: conv ? 1 : 0,
       convenio_validado: conv?.validado ? 1 : 0,
       convenio_estado: conv?.estado ?? null,
+      convenio_motivo: conv?.motivo ?? null,
       id_documento_convenio: conv?.id_documento ?? null,
       cambio_pendiente: cambioMap[r.id_solicitud_empresa] ? 1 : 0,
       id_cambio_pendiente: cambioMap[r.id_solicitud_empresa]?.id_cambio ?? null,

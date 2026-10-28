@@ -32,6 +32,7 @@ import { cicloLabel, countChanged, espId } from "../../../utils/especialidades.j
 import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../../components/ui/InlineNotice.jsx";
 import { tipoContratoLabel } from "../../../utils/labels.js";
+import LongText from "../../../components/ui/LongText.jsx";
 
 const EspecialidadList = ({
   especialidades,
@@ -173,7 +174,7 @@ const EspecialidadList = ({
             const saving = savingId === idOferta;
             return (
               <li key={idOferta || e.id_especialidad} className="flex min-h-11 items-center justify-between gap-3 px-3 py-1.5">
-                <span className="min-w-0 text-sm text-charcoal-800">{cicloLabel(e)}</span>
+                <span className="min-w-0 break-words text-sm text-charcoal-800">{cicloLabel(e)}</span>
                 {editing ? (
                   <span className="flex shrink-0 items-center gap-1">
                     <input
@@ -325,8 +326,8 @@ const ReservasList = ({ reservations, onAssign, onUpdated }) => {
               className="flex flex-col gap-2 rounded-lg border border-surface-200 bg-white px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{r.alumno}</p>
-                <p className="text-xs text-muted">
+                <p className="truncate text-sm font-semibold" title={r.alumno || undefined}>{r.alumno}</p>
+                <p className="break-words text-xs text-muted">
                   {[r.especialidad, r.dni_alumno, tipoContratoLabel(r.tipo_contrato)].filter(Boolean).join(" · ")}
                 </p>
               </div>
@@ -429,34 +430,35 @@ const CompanyCard = ({
     <div className={cardClass}>
       {/* Card header */}
       <div
-        className={`${cardHeaderClass} flex items-center justify-between gap-2`}
+        className={`${cardHeaderClass} flex-wrap`}
         onClick={() => onToggle(id)}
       >
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <p className={`${cardNameClass} flex items-center gap-2 min-w-0`}>
-            <FaBuilding aria-hidden="true" className="text-brand-600 shrink-0" />
-            <span className="truncate">{razonSocial}</span>
-            <span className="hidden sm:inline text-[.8rem] text-muted shrink-0">
+        <div className="min-w-0 flex-1 basis-full overflow-hidden sm:basis-0">
+          <p className={`${cardNameClass} flex min-w-0 items-center gap-2`}>
+            <FaBuilding aria-hidden="true" className="shrink-0 text-brand-600" />
+            <span className="truncate" title={razonSocial || undefined}>{razonSocial}</span>
+            <span className="hidden shrink-0 text-[.8rem] text-muted sm:inline">
               ({empresa.cif})
             </span>
           </p>
           <p
             className={`${cardEspClass} hidden truncate text-sm text-muted sm:block`}
+            title={[formatDate(empresa.fechaPeticion), emailCoord].filter(Boolean).join(" · ")}
           >
             {formatDate(empresa.fechaPeticion)} · {emailCoord}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
           {empresa.cambio_pendiente ? (
             <span
-              className={`${signedBadgeClass} bg-amber-100 text-amber-800 flex items-center gap-1 whitespace-nowrap`}
+              className={`${signedBadgeClass} max-w-full bg-amber-100 text-amber-800`}
             >
               <MdPendingActions className="text-[13px]" />
               Cambios pendientes
             </span>
           ) : null}
           <span
-            className={`${signedBadgeClass} ${cls} flex items-center gap-1 whitespace-nowrap`}
+            className={`${signedBadgeClass} ${cls} max-w-full`}
           >
             <Icon className="text-[13px]" />
             {label}
@@ -550,7 +552,7 @@ const CompanyCard = ({
                       onEditingChange={setEditingCompany}
                     />
                   )}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   {/* Left column: company and coordinator data */}
                   <div className="space-y-5">
                     <div>
@@ -593,7 +595,9 @@ const CompanyCard = ({
                         <p className={sectionLabelClass}>
                           Descripción del puesto
                         </p>
-                        <p className="text-sm text-charcoal-700">{descripcion}</p>
+                        <p className="break-words text-sm leading-6 text-charcoal-700">
+                          <LongText>{descripcion}</LongText>
+                        </p>
                       </div>
                     )}
 
@@ -601,7 +605,7 @@ const CompanyCard = ({
                     <div>
                       <p className={sectionLabelClass}>Convenio</p>
                       <div
-                        className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${
+                        className={`rounded-lg border p-3 text-sm ${
                           convenioStatus === "validado"
                             ? "border-green-200 bg-green-50 text-green-700"
                             : convenioStatus === "pendiente"
@@ -609,24 +613,42 @@ const CompanyCard = ({
                               : "border-red-200 bg-red-50 text-red-700"
                         }`}
                       >
-                        <Icon className="shrink-0" />
-                        {convenioStatus === "validado" && "Convenio validado."}
-                        {convenioStatus === "pendiente" &&
-                          "Convenio pendiente de validar."}
-                        {convenioStatus === "sin_convenio" &&
-                          "Convenio pendiente de generar."}
+                        <div className="flex items-start gap-2">
+                          <Icon className="mt-0.5 shrink-0" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <p className="m-0 break-words">
+                              {convenioStatus === "validado" && "Convenio validado."}
+                              {convenioStatus === "pendiente" && "Convenio pendiente de validar."}
+                              {convenioStatus === "rechazado" && "Convenio rechazado."}
+                              {convenioStatus === "sin_convenio" && "Convenio pendiente de generar."}
+                            </p>
+                            {convenioStatus === "rechazado" && (
+                              <p className="m-0 mt-1 break-words text-xs leading-5">
+                                {empresa.convenio_motivo ? (
+                                  <>
+                                    Motivo: <LongText>{empresa.convenio_motivo}</LongText>
+                                  </>
+                                ) : (
+                                  "Hay que subir un convenio nuevo antes de poder validarlo."
+                                )}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       {convenioStatus !== "sin_convenio" && (
-                        <div className="flex gap-2 flex-wrap mt-2">
+                        <div className="mt-2 flex flex-wrap gap-2">
                           <button
+                            type="button"
                             onClick={() => onViewConvenio(empresa)}
                             className="flex items-center gap-1.5 rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-sm text-charcoal-700 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-surface-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
                           >
                             <MdOutlineFileUpload className="text-brand-600" />
                             Ver convenio
                           </button>
-                          {!empresa.convenio_validado && (
+                          {convenioStatus === "pendiente" && (
                             <button
+                              type="button"
                               onClick={() => onViewConvenio(empresa)}
                               className="flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-700 transition-colors duration-150 hover:bg-green-100"
                             >

@@ -19,6 +19,7 @@ import Reservas from "./pages/Reservas/Reservas.jsx";
 import RequireRole from "./components/auth/RequireRole.jsx";
 import CambiarPassword from "./pages/CambiarPassword.jsx";
 import { RecuperarPassword, RestablecerPassword } from "./pages/RecuperarPassword.jsx";
+import Ayuda from "./pages/Ayuda/Ayuda.jsx";
 import { STAFF } from "./navigation.js";
 
 import "./styles/main.css";
@@ -46,6 +47,7 @@ function App() {
                 <Route path="/restablecer-contrasena" element={<RestablecerPassword />} />
                 <Route path="/addDualStudent" element={<AddDualStudent />} />
                 <Route path="/addCompanyRequest" element={<AddCompanyRequest />} />
+                <Route path="/ayuda" element={<Ayuda />} />
 
                 <Route path="/panel" element={guard(STAFF, <Panel />)} />
                 <Route path="/alumnos" element={guard([...STAFF, "EMPRESA"], <LinkStudents />)} />

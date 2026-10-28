@@ -146,6 +146,7 @@ const jwt = require("jsonwebtoken");
 const USERS = {
   "b12345674": { id_usuario: 7, rol: "EMPRESA", activo: 1, id_contacto: 30, password_hash: "h:vieja", nombre_mostrar: "Empresa" },
   "baja@x.test": { id_usuario: 8, rol: "COORDINADOR", activo: 0, email: "baja@x.test", password_hash: "h:p", nombre_mostrar: "Baja" },
+  "sin@x.test": { id_usuario: 9, rol: "COORDINADOR", activo: 1, email: "", password_hash: "h:p", nombre_mostrar: "Sin correo" },
 };
 let hashActual = "h:vieja";
 function resetDb(sql, params) {
@@ -162,7 +163,7 @@ function resetDb(sql, params) {
   return [];
 }
 
-test("forgot password: same answer for every case; link only for active accounts, to the coordinator", async () => {
+test("forgot password: no link when the account is missing, inactive or has no email", async () => {
   const svc = load("src/services/passwordResetService");
   handler = resetDb;
   correos.length = 0;
@@ -174,8 +175,15 @@ test("forgot password: same answer for every case; link only for active accounts
   const a = await pedir("B12345674", "1.1.1.1");
   const b = await pedir("nadie@x.test", "1.1.1.2");
   const c = await pedir("baja@x.test", "1.1.1.3");
+  const d = await pedir("sin@x.test", "1.1.1.4");
   assert.equal(a.statusCode, 200);
-  assert.equal(new Set([a.body.message, b.body.message, c.body.message]).size, 1, "identical answer");
+  assert.match(a.body.message, /enviado un enlace/);
+  assert.equal(b.statusCode, 404);
+  assert.equal(b.body.code, "CUENTA_NO_ENCONTRADA");
+  assert.equal(c.statusCode, 403);
+  assert.equal(c.body.code, "CUENTA_DESACTIVADA");
+  assert.equal(d.statusCode, 400);
+  assert.equal(d.body.code, "SIN_CORREO");
   assert.equal(correos.length, 1);
   assert.equal(correos[0].to, "coord@empresa.test");
   assert.ok(correos[0].link.startsWith("http://localhost:3000/restablecer-contrasena?token="));

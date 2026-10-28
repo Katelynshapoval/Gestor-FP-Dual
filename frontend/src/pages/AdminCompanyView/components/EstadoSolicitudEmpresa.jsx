@@ -41,7 +41,7 @@ export default function EstadoSolicitudEmpresa({ empresa, onUpdated }) {
       <p className={sectionLabelClass}>Estado de la solicitud</p>
       <EstadoBadge kind="solicitud" value={estado} />
       {estado === "RECHAZADO" && (
-        <p className="mb-0 mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
+        <p className="mb-0 mt-3 break-words rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
           <span className="font-semibold">Motivo:</span> {empresa.motivo || "Sin motivo indicado."}
         </p>
       )}

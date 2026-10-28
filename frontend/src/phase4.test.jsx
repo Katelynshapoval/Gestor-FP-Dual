@@ -13,17 +13,19 @@ import { tipoContratoLabel } from "./utils/labels.js";
 describe("navigation (D.1)", () => {
   test("staff get management areas, never the public forms", () => {
     const staff = navForUser({ rol: "COORDINADOR" }).map((i) => i.to);
-    expect(staff).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias"]);
+    expect(staff).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias", "/ayuda"]);
     expect(staff).not.toContain("/personal");
     expect(staff).not.toContain("/addDualStudent");
     const admin = navForUser({ rol: "ADMINISTRADOR" }).map((i) => i.to);
-    expect(admin).toEqual([...staff, "/personal"]);
+    expect(admin).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias", "/personal", "/ayuda"]);
     expect(pageTitle("/personal")).toBe("Personal");
+    expect(pageTitle("/ayuda")).toBe("Ayuda");
   });
   test("visitors, companies and students get their own menus and homes", () => {
     expect(navForUser(null).map((i) => i.to)).toContain("/addCompanyRequest");
-    expect(navForUser({ rol: "EMPRESA" }).map((i) => i.label)).toEqual(["Mi empresa", "Alumnos disponibles"]);
-    expect(navForUser({ rol: "ALUMNO" }).map((i) => i.to)).toEqual(["/studentMain"]);
+    expect(navForUser(null).map((i) => i.to)).toContain("/ayuda");
+    expect(navForUser({ rol: "EMPRESA" }).map((i) => i.label)).toEqual(["Mi empresa", "Alumnos disponibles", "Ayuda"]);
+    expect(navForUser({ rol: "ALUMNO" }).map((i) => i.to)).toEqual(["/studentMain", "/ayuda"]);
     expect(homeForRole("ADMINISTRADOR")).toBe("/panel");
     expect(homeForRole("EMPRESA")).toBe("/companyMain");
   });

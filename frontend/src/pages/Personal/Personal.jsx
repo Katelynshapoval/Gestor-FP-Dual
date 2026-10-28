@@ -5,6 +5,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ResetPasswordButton from "../../components/ResetPasswordButton.jsx";
 import { useConfirm } from "../../components/feedback/ToastProvider.jsx";
+import LongText from "../../components/ui/LongText.jsx";
 
 const VISIBLE_MS = 2 * 60 * 1000;
 const ROL_LABEL = {
@@ -16,11 +17,21 @@ const VACIO = { nombre: "", email: "", rol: "COORDINADOR" };
 function ClaveTemporal({ password, onHide }) {
   if (!password) return null;
   return (
-    <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-charcoal-800" role="status">
-      Contraseña temporal de <strong>{password.nombre}</strong>:{" "}
-      <strong className="font-mono">{password.valor}</strong>
-      . Cópiala ahora: se ocultará en 2 minutos y habrá que cambiarla al entrar.
-      <button type="button" className="btn btn-ghost btn-sm ml-2" onClick={onHide}>
+    <p
+      className="mt-4 break-words rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-charcoal-800"
+      role="status"
+    >
+      Contraseña temporal de{" "}
+      <strong>
+        <LongText>{password.nombre}</LongText>
+      </strong>
+      : <strong className="break-all font-mono">{password.valor}</strong>.
+      Cópiala ahora: se ocultará en 2 minutos y habrá que cambiarla al entrar.
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm ml-2"
+        onClick={onHide}
+      >
         Ocultar
       </button>
     </p>
@@ -53,7 +64,9 @@ export default function Personal() {
     }
   };
 
-  useEffect(() => { cargar(); }, []);
+  useEffect(() => {
+    cargar();
+  }, []);
 
   useEffect(() => {
     if (!clave) return undefined;
@@ -113,10 +126,18 @@ export default function Personal() {
     setBusyId(persona.id_usuario);
     setError("");
     try {
-      await postJSON(`/usuarios/personal/${persona.id_usuario}/${baja ? "baja" : "reactivar"}`, {});
+      await postJSON(
+        `/usuarios/personal/${persona.id_usuario}/${baja ? "baja" : "reactivar"}`,
+        {},
+      );
       await cargar();
     } catch (err) {
-      setError(err.message || (baja ? "No se ha podido dar de baja." : "No se ha podido reactivar."));
+      setError(
+        err.message ||
+          (baja
+            ? "No se ha podido dar de baja."
+            : "No se ha podido reactivar."),
+      );
     } finally {
       setBusyId(null);
     }
@@ -131,7 +152,10 @@ export default function Personal() {
       />
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+        <div
+          className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          role="alert"
+        >
           {error}
         </div>
       )}
@@ -146,10 +170,13 @@ export default function Personal() {
                 id="personal-nombre"
                 className="input"
                 value={form.nombre}
-                onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, nombre: e.target.value }))
+                }
                 required
                 maxLength={100}
                 autoComplete="off"
+                placeholder="María López García"
               />
             </div>
             <div className="field">
@@ -159,10 +186,13 @@ export default function Personal() {
                 className="input"
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, email: e.target.value }))
+                }
                 required
                 maxLength={100}
                 autoComplete="off"
+                placeholder="maria.lopez@salesianos.zaragoza.edu"
               />
             </div>
             <div className="field">
@@ -171,14 +201,20 @@ export default function Personal() {
                 id="personal-rol"
                 className="select-input w-full"
                 value={form.rol}
-                onChange={(e) => setForm((f) => ({ ...f, rol: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, rol: e.target.value }))
+                }
               >
                 <option value="COORDINADOR">Coordinador</option>
                 <option value="ADMINISTRADOR">Administrador</option>
               </select>
             </div>
           </div>
-          <button type="submit" disabled={saving} className="btn btn-primary shadow-none">
+          <button
+            type="submit"
+            disabled={saving}
+            className="btn btn-primary shadow-none"
+          >
             {saving ? "Dando de alta…" : "Dar de alta"}
           </button>
         </form>
@@ -192,7 +228,9 @@ export default function Personal() {
         {loading ? (
           <p className="px-6 py-8 text-sm text-muted">Cargando…</p>
         ) : personal.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-muted">No hay cuentas de personal.</p>
+          <p className="px-6 py-8 text-sm text-muted">
+            No hay cuentas de personal.
+          </p>
         ) : (
           <div className="divide-y divide-surface-200">
             {personal.map((persona) => {
@@ -204,34 +242,64 @@ export default function Personal() {
                     <div className="space-y-3">
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div className="field mb-0">
-                          <label htmlFor={`personal-${persona.id_usuario}-nombre`} className="text-xs">Nombre</label>
+                          <label
+                            htmlFor={`personal-${persona.id_usuario}-nombre`}
+                            className="text-xs"
+                          >
+                            Nombre
+                          </label>
                           <input
                             id={`personal-${persona.id_usuario}-nombre`}
                             className="input py-1.5 text-sm"
                             value={editForm.nombre}
-                            onChange={(e) => setEditForm((f) => ({ ...f, nombre: e.target.value }))}
+                            onChange={(e) =>
+                              setEditForm((f) => ({
+                                ...f,
+                                nombre: e.target.value,
+                              }))
+                            }
                             maxLength={100}
                           />
                         </div>
                         <div className="field mb-0">
-                          <label htmlFor={`personal-${persona.id_usuario}-email`} className="text-xs">Email</label>
+                          <label
+                            htmlFor={`personal-${persona.id_usuario}-email`}
+                            className="text-xs"
+                          >
+                            Email
+                          </label>
                           <input
                             id={`personal-${persona.id_usuario}-email`}
                             type="email"
                             className="input py-1.5 text-sm"
                             value={editForm.email}
-                            onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                            onChange={(e) =>
+                              setEditForm((f) => ({
+                                ...f,
+                                email: e.target.value,
+                              }))
+                            }
                             maxLength={100}
                           />
                         </div>
                         <div className="field mb-0">
-                          <label htmlFor={`personal-${persona.id_usuario}-rol`} className="text-xs">Rol</label>
+                          <label
+                            htmlFor={`personal-${persona.id_usuario}-rol`}
+                            className="text-xs"
+                          >
+                            Rol
+                          </label>
                           <select
                             id={`personal-${persona.id_usuario}-rol`}
                             className="select-input w-full py-1.5 text-sm"
                             value={editForm.rol}
                             disabled={propia}
-                            onChange={(e) => setEditForm((f) => ({ ...f, rol: e.target.value }))}
+                            onChange={(e) =>
+                              setEditForm((f) => ({
+                                ...f,
+                                rol: e.target.value,
+                              }))
+                            }
                           >
                             <option value="ADMINISTRADOR">Administrador</option>
                             <option value="COORDINADOR">Coordinador</option>
@@ -239,7 +307,9 @@ export default function Personal() {
                         </div>
                       </div>
                       {propia && (
-                        <p className="text-xs text-muted">No puedes cambiar tu propio rol.</p>
+                        <p className="text-xs text-muted">
+                          No puedes cambiar tu propio rol.
+                        </p>
                       )}
                       <div className="flex gap-2">
                         <button
@@ -262,23 +332,37 @@ export default function Personal() {
                   ) : (
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div className="min-w-0">
-                        <p className="font-semibold text-charcoal-900">
-                          {persona.nombre_mostrar}
-                          {propia && <span className="ml-2 text-xs font-normal text-muted">(tú)</span>}
+                        <p className="break-words font-semibold text-charcoal-900">
+                          <LongText>{persona.nombre_mostrar}</LongText>
+                          {propia && (
+                            <span className="ml-2 text-xs font-normal text-muted">
+                              (tú)
+                            </span>
+                          )}
                         </p>
-                        <p className="truncate text-sm text-muted">{persona.email}</p>
+                        <p className="break-words text-sm text-muted">
+                          <LongText>{persona.email}</LongText>
+                        </p>
                         {persona.must_change_password && (
-                          <p className="text-xs text-amber-700">Debe cambiar la contraseña al entrar.</p>
+                          <p className="text-xs text-amber-700">
+                            Debe cambiar la contraseña al entrar.
+                          </p>
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge variant="brand">{ROL_LABEL[persona.rol] || persona.rol}</StatusBadge>
+                        <StatusBadge variant="brand">
+                          {ROL_LABEL[persona.rol] || persona.rol}
+                        </StatusBadge>
                         {persona.activo ? (
                           <StatusBadge variant="success">Activa</StatusBadge>
                         ) : (
                           <StatusBadge variant="neutral">De baja</StatusBadge>
                         )}
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => startEdit(persona)}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => startEdit(persona)}
+                        >
                           Editar
                         </button>
                         {persona.activo ? (
@@ -302,7 +386,10 @@ export default function Personal() {
                             Reactivar
                           </button>
                         )}
-                        <ResetPasswordButton idUsuario={persona.id_usuario} nombre={persona.nombre_mostrar} />
+                        <ResetPasswordButton
+                          idUsuario={persona.id_usuario}
+                          nombre={persona.nombre_mostrar}
+                        />
                       </div>
                     </div>
                   )}

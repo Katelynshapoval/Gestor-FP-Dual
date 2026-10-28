@@ -50,12 +50,14 @@ Efecto: desactivar una cuenta (p. ej. por una baja) o cambiar su rol expulsa al 
 
 ### `POST /auth/forgotPassword { username }`
 - Limitador propio: 3 peticiones por IP+identificador y 20 por IP en 15 min. **Cada petición cuenta**, exista o no la cuenta.
-- La respuesta es **siempre la misma** (mensaje genérico), para no revelar qué cuentas existen.
-- Solo si la cuenta existe **y está activa** se envía un enlace `APP_URL/restablecer-contrasena?token=…`:
+- Si no hay ninguna cuenta con ese identificador: **404 `CUENTA_NO_ENCONTRADA`** y no se envía nada.
+- Si la cuenta existe pero está desactivada: **403 `CUENTA_DESACTIVADA`** y no se envía nada.
+- Si está activa pero no hay correo de destino (personal sin email, alumno sin email personal, empresa sin email de coordinador): **400 `SIN_CORREO`**.
+- Si está activa y hay correo, se envía un enlace `APP_URL/restablecer-contrasena?token=…`:
   - personal → `dual_usuarios.email`;
   - alumno → `gf_alumnosfct.email` (correo personal);
   - empresa → email del contacto ligado al usuario (coordinador principal).
-- Si no hay email de destino o no hay `APP_URL` (obligatoria con `NODE_ENV=production`; en desarrollo vale `http://localhost:3000`), no se envía nada y se registra un aviso en consola.
+- Sin `APP_URL` (obligatoria con `NODE_ENV=production`; en desarrollo vale `http://localhost:3000`) responde 500 y no se envía nada.
 
 ### `POST /auth/resetPassword { token, newPassword }`
 - Token JWT firmado con `JWT_SECRET + ':password-reset'` (no sirve como token de sesión y viceversa), `purpose: 'reset'`, caducidad **30 min**, y `fp` = huella SHA-256 (22 caracteres) del hash actual.
