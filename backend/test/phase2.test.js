@@ -15,9 +15,18 @@ const staff = { id: 1, rol: 'COORDINADOR' };
 const calls = (prefix) => pool.calls.filter((c) => c.sql && c.sql.startsWith(prefix));
 const events = () => pool.calls.filter((c) => c.sql && c.sql.startsWith('INSERT INTO dual_eventos'));
 
+const DOC_LOCK = 'SELECT … FROM dual_documentos d … FOR UPDATE OF d, r, se';
+const isDocLock = (sql) => sql.includes('FROM dual_documentos d') && sql.includes('FOR UPDATE');
+
 function reset(fn) {
   pool.calls.length = 0;
-  handler = fn;
+  handler = (sql, params) => {
+    // lockDocumento (Stage 2) reads the parent first, then locks it, then the document.
+    if (sql.startsWith('SELECT id_solicitud_alumno, id_solicitud_empresa, id_reserva FROM dual_documentos WHERE id_documento')) {
+      return fn(DOC_LOCK, params);
+    }
+    return fn(sql, params);
+  };
 }
 
 // ── tooling ─────────────────────────────────────────────────────────────
@@ -173,7 +182,7 @@ function docRow(overrides = {}) {
 test('WF-6: POST /documentos/:id/validar refuses missing signatures without touching the row', async () => {
   const svc = load('src/services/documentosService');
   reset((sql) => {
-    if (sql.includes('FROM dual_documentos d') && sql.endsWith('FOR UPDATE')) return [docRow()];
+    if (isDocLock(sql)) return [docRow()];
     if (sql.startsWith('SELECT rol, estado, metodo FROM dual_documento_firmas')) return [{ rol: 'EMPRESA', estado: 'FIRMADO' }];
     return [];
   });
@@ -188,7 +197,7 @@ test('WF-6: POST /documentos/:id/validar refuses missing signatures without touc
 test('WF-6/WF-7: a signed convenio validates the PENDIENTE company in the same transaction, with events', async () => {
   const svc = load('src/services/documentosService');
   reset((sql) => {
-    if (sql.includes('FROM dual_documentos d') && sql.endsWith('FOR UPDATE')) {
+    if (isDocLock(sql)) {
       return [docRow({ tipo: 'CONVENIO', id_reserva: null, id_solicitud_empresa: 4, estado_reserva: null, estado_solicitud_empresa: 'PENDIENTE' })];
     }
     if (sql.startsWith('SELECT rol, estado, metodo FROM dual_documento_firmas')) {
@@ -214,7 +223,7 @@ test('WF-6/WF-7: a signed convenio validates the PENDIENTE company in the same t
 test('D6 open: rejecting the convenio of a validated company leaves the company as it is', async () => {
   const svc = load('src/services/documentosService');
   reset((sql) => {
-    if (sql.includes('FROM dual_documentos d') && sql.endsWith('FOR UPDATE')) {
+    if (isDocLock(sql)) {
       return [docRow({ tipo: 'CONVENIO', id_reserva: null, id_solicitud_empresa: 4, estado_reserva: null, estado_validacion: 'VALIDADO', estado_solicitud_empresa: 'VALIDADO' })];
     }
     return [];
