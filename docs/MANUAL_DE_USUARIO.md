@@ -570,11 +570,11 @@ _Lista de reservas. Pasa el ratón por un icono para ver qué significa._
 
 - **Arriba**, el alumno, la empresa, la especialidad, la convocatoria y el estado de la reserva (y el motivo, si está cancelada).
 - **A la izquierda**, los documentos de la reserva (Anexo II o III y Calendario) y, si los hay, el historial de versiones anteriores.
-- **A la derecha**, el tipo de contrato, el tutor de empresa y la lista **«Confirmación»**, con una barra que indica cuántos requisitos se cumplen.
-- **Abajo**, «Cerrar», «Reasignar» y «Cancelar reserva».
+- **A la derecha**, el tipo de contrato y el tutor de empresa.
+- **Abajo**, «Cerrar», «Reasignar», «Cancelar reserva» y, cuando ya se puede, **«Confirmar reserva»**.
 
 ![Ventana de una reserva pendiente con el tipo de contrato, los documentos, el tutor y la lista de confirmación](manual/imagenes/reserva-detalle.png)
-_Panel de una reserva pendiente con tipo de contrato «Beca»: el Anexo III está pendiente de generar y se cumple 1 de los 4 requisitos para confirmar._
+_Panel de una reserva pendiente con tipo de contrato «Beca»: el Anexo III está pendiente de generar, así que todavía no aparece «Confirmar reserva»._
 
 El trabajo normal con una reserva sigue este orden:
 
@@ -608,14 +608,14 @@ Cuando están todas las firmas, revisa el documento y pulsa **«Validar»** (o *
 
 **5. Confirmar la reserva**
 
-En **«Confirmación»** hay una lista que se va marcando:
+El botón **«Confirmar reserva»** aparece abajo, junto a «Cancelar reserva», solo cuando se cumple todo:
 
-- Tipo de contrato indicado
-- Anexo II/III subido o generado
-- Anexo II/III firmado por empresa, centro y alumno
-- Anexo II/III validado por el centro
+- el tipo de contrato está indicado;
+- el Anexo II/III está subido o generado;
+- lo han firmado empresa, centro y alumno;
+- el centro lo ha validado.
 
-Cuando todo está marcado aparece **«Confirmar reserva»**. Al confirmar, el alumno queda asignado definitivamente a la empresa y **sus otras reservas pendientes se cancelan solas**. Si falta algo, debajo de la lista se explica qué es.
+Mientras falte algo, el estado del anexo en «Documentos de la reserva» indica qué queda y de quién (por ejemplo «Pendiente de firma» con la firma del alumno «Sin firmar»). Al confirmar, el alumno queda asignado definitivamente a la empresa y **sus otras reservas pendientes se cancelan solas**.
 
 **Calendario y tutor**
 
@@ -1061,7 +1061,7 @@ Las solicitudes solo se admiten mientras hay una **convocatoria activa**, y eso 
 - **¿Qué anexo toca?** **Beca → Anexo III.** Contrato de formación en alternancia, Convenio u Otro → **Anexo II.**
 - **¿Por qué no aparece el anexo?** Porque todavía no se ha indicado el tipo de contrato. También puede estar «Pendiente de generar» si el centro tiene que generarlo y aún no lo ha hecho (o no hay plantilla).
 - **¿Se puede cambiar el tipo de contrato?** Entre tipos del mismo anexo, sí. Para pasar de Anexo II a Anexo III (o al revés), **no**, cuando el anexo actual ya está subido pendiente de revisión o validado; la aplicación lo indica. En una reserva **confirmada** el tipo ya no se puede cambiar.
-- **¿Por qué no se puede confirmar la reserva?** Porque falta algo de la lista de «Confirmación»: el tipo de contrato, el anexo, alguna firma o la validación. La lista dice qué falta y de quién («Falta: Alumno»). El Calendario no es necesario para confirmar.
+- **¿Por qué no se puede confirmar la reserva?** Porque falta algo: el tipo de contrato, el anexo, alguna firma o la validación. Hasta entonces el botón «Confirmar reserva» no aparece; el anexo, en «Documentos de la reserva», indica qué falta y de quién. El Calendario no es necesario para confirmar.
 
 ### Subido, firmado y validado no son lo mismo
 

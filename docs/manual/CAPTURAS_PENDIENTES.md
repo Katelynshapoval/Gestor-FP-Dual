@@ -26,9 +26,9 @@ El manual ya se entiende sin ellas. Para añadir una:
 - **Apartado:** 5.5 Reservas → «El panel de la reserva», pasos 3 a 5
 - **Rol:** Coordinación o Administración
 - **Dónde:** Reservas → grupo «Anexo pendiente de validar» (o «Anexo pendiente de firmas») → «Gestionar reserva»
-- **Qué mostrar:** el panel con un tipo de contrato elegido; en «Documentos de la reserva», el Anexo II con la lista de firmas (Empresa, Alumno, Centro) y los botones «Firmar» / «Validar»; y la lista «Confirmación» con algunos puntos marcados.
+- **Qué mostrar:** el panel con un tipo de contrato elegido; en «Documentos de la reserva», el Anexo II con la lista de firmas (Empresa, Alumno, Centro) y los botones «Firmar» / «Validar»; abajo, sin el botón «Confirmar reserva» todavía.
 - **Datos necesarios:** una reserva pendiente con tipo de contrato y el Anexo II subido. Los datos de prueba actuales no tienen ninguna en ese estado.
-- **Pie de imagen:** «Anexo II con el estado de cada firma y la lista de requisitos para confirmar.»
+- **Pie de imagen:** «Anexo II con el estado de cada firma, antes de poder confirmar la reserva.»
 - **Markdown para insertar:** `![Panel de reserva con el Anexo II, sus firmas y la lista de confirmación](manual/imagenes/reserva-anexo-firmas.png)`
 
 ## 3. `seleccion-tipo-contrato.png` — Opcional

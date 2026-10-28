@@ -2,12 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
   FaBuilding,
   FaCalendarDays,
-  FaCheck,
   FaClockRotateLeft,
   FaFileContract,
   FaFileSignature,
   FaGraduationCap,
-  FaListCheck,
   FaUserGraduate,
   FaUserTie,
 } from "react-icons/fa6";
@@ -20,7 +18,7 @@ import TipoContratoSelect from "../TipoContratoSelect.jsx";
 import TutorAssignSelect from "../TutorAssignSelect.jsx";
 import { useConfirm, useToast } from "../feedback/ToastProvider.jsx";
 import { getJSON, postJSON } from "../../utils/api.js";
-import { ACTOR, tipoContratoLabel } from "../../utils/labels.js";
+import { tipoContratoLabel } from "../../utils/labels.js";
 import { formatDocumentDate } from "../../utils/documentos.js";
 
 // The whole lifecycle of one reservation in one place (Phase 3, D.1):
@@ -129,6 +127,11 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
                   Cancelar reserva
                 </button>
               )}
+              {r.estado_reserva === "PENDIENTE" && acciones.confirmar?.permitido && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={confirmar} disabled={busy}>
+                  Confirmar reserva
+                </button>
+              )}
             </>
           )
         }
@@ -200,8 +203,8 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
                 )}
               </div>
 
-              {/* Side column: what the centre decides and the confirmation checklist */}
-              <aside className="space-y-4" aria-label="Datos y confirmación de la reserva">
+              {/* Side column: contract type and tutor */}
+              <aside className="space-y-4" aria-label="Tipo de contrato y tutor">
                 <Card title="Tipo de contrato" Icon={FaFileContract}>
                   {acciones.cambiar_tipo?.permitido ? (
                     <>
@@ -246,10 +249,6 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
                     </>
                   )}
                 </Card>
-
-                {r.estado_reserva === "PENDIENTE" && (
-                  <Confirmacion requisitos={data.confirmacion.requisitos} accion={acciones.confirmar} onConfirmar={confirmar} busy={busy} />
-                )}
               </aside>
             </div>
           </div>
@@ -409,57 +408,6 @@ function Resumen({ r }) {
         </p>
       )}
     </div>
-  );
-}
-
-// Confirmation checklist with progress, in the side column.
-function Confirmacion({ requisitos, accion, onConfirmar, busy }) {
-  const hechos = requisitos.filter((q) => q.ok).length;
-  const pct = requisitos.length ? Math.round((hechos / requisitos.length) * 100) : 0;
-  return (
-    <Card title="Confirmación" Icon={FaListCheck}>
-      <div className="mb-3 flex items-center justify-between text-xs">
-        <span className="text-muted">Requisitos</span>
-        <span className="font-semibold text-charcoal-900">
-          {hechos} de {requisitos.length}
-        </span>
-      </div>
-      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-surface-100" aria-hidden="true">
-        <div className="h-full rounded-full bg-green-600 transition-[width] duration-300" style={{ width: `${pct}%` }} />
-      </div>
-      <ul className="m-0 list-none space-y-3 p-0" aria-label="Requisitos para confirmar">
-        {requisitos.map((req) => (
-          <li key={req.clave} className="flex items-start gap-2.5 text-sm">
-            <span
-              aria-hidden="true"
-              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                req.ok ? "border-green-600 bg-green-600 text-white" : "border-surface-300 bg-white"
-              }`}
-            >
-              {req.ok && <FaCheck className="h-2 w-2" />}
-            </span>
-            <span className={`leading-5 ${req.ok ? "text-charcoal-800" : "text-muted"}`}>
-              {req.texto}
-              <span className="sr-only">{req.ok ? " (cumplido)" : " (pendiente)"}</span>
-              {!req.ok && req.pendientes?.length > 0 && (
-                <span className="block text-xs text-amber-800">
-                  Falta: {req.pendientes.map((p) => ACTOR[p === "GESTOR" ? "CENTRO" : p] || p).join(", ")}
-                </span>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4 border-t border-surface-200 pt-4">
-        {accion?.permitido ? (
-          <button type="button" className="btn btn-primary w-full" onClick={onConfirmar} disabled={busy}>
-            Confirmar reserva
-          </button>
-        ) : (
-          <p className="m-0 text-xs leading-5 text-muted">{accion?.motivo}</p>
-        )}
-      </div>
-    </Card>
   );
 }
 
