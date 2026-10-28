@@ -1,24 +1,24 @@
 // «Dar de baja» and «Reactivar» for student and company applications
 // (Phase 5, Administración only; migration 016 adds the BAJA state).
 //
-// Baja, in this order:
-//   1. one transaction: the application goes to BAJA, the audit event keeps the
-//      reason and the previous state, and the portal account(s) are deactivated
-//      (a session already open ends on its next request, SEC-8);
-//   2. each active reservation (pending or confirmed) is cancelled with the
-//      existing staff procedure, which commits on its own, and the other side
-//      is told by email. Nothing new can be reserved meanwhile: reservations
-//      need both applications VALIDADO.
-// If a cancellation fails, the baja stays and the response lists what is left;
-// calling baja again is refused (already BAJA), so the remaining reservations
-// are cancelled one by one from their panel.
+// Baja is ONE transaction (database improvement plan, Stage 2): the application
+// goes to BAJA, the audit event keeps the reason and the previous state, the
+// portal account(s) are deactivated (a session already open ends on its next
+// request, SEC-8) and every active reservation (pending or confirmed) is
+// cancelled with the staff procedure, each with its own event. If anything
+// fails, nothing changes. Only after the commit is the other side of each
+// cancelled reservation told by email.
+// Locks: the application first, then its reservations (the order of migration
+// 018), so a reservation being created at the same time either commits first
+// and is cancelled here, or waits and is then refused (application not VALIDADO).
 //
 // Reactivar restores the state recorded by the last BAJA event and the
 // account(s). Cancelled reservations are NOT restored.
 const pool = require("../db/pool");
-const { recordEvent, recordEventAfterCommit } = require("./auditLog");
+const { inTransaction, HttpError } = require("../db/transaction");
+const { recordEvent } = require("./auditLog");
 const { bajaTransicion } = require("./estadoReglas");
-const { callProcedure } = require("../helpers/dbHelpers");
+const reservasTx = require("./reservasTx");
 const notificar = require("./notificaciones");
 
 const ENTIDADES = {
@@ -49,8 +49,9 @@ function cfgOf(entidad) {
   return cfg;
 }
 
-// Active reservations that a baja would cancel, for the confirmation dialog.
-async function reservasActivas(entidad, id, conn = pool) {
+// Active reservations that a baja would cancel: for the confirmation dialog, and
+// with { lock: true } inside the baja transaction (latest rows, locked).
+async function reservasActivas(entidad, id, conn = pool, { lock = false } = {}) {
   const cfg = cfgOf(entidad);
   const [rows] = await conn.query(
     `SELECT r.id_reserva, er.nombre AS estado_reserva,
@@ -66,7 +67,7 @@ async function reservasActivas(entidad, id, conn = pool) {
        LEFT JOIN dual_especialidades esp ON esp.id_especialidad = see.id_especialidad
       WHERE ${cfg.reservasWhere}
         AND er.nombre IN ('PENDIENTE', 'CONFIRMADA')
-      ORDER BY er.nombre = 'CONFIRMADA' DESC, r.id_reserva`,
+      ORDER BY er.nombre = 'CONFIRMADA' DESC, r.id_reserva${lock ? " FOR UPDATE OF r" : ""}`,
     [id],
   );
   return rows;
@@ -102,71 +103,66 @@ async function lockSolicitud(conn, cfg, id) {
   return rows[0] || null;
 }
 
-// Returns { ok, canceladas, pendientes } or { status, error, code }.
+// Returns { ok, canceladas } or { status, error, code }. All or nothing.
 async function darDeBaja(entidad, id, { user, motivo }) {
   const cfg = cfgOf(entidad);
   const texto = String(motivo || "").trim();
-  const conn = await pool.getConnection();
   let reservas;
   try {
-    await conn.beginTransaction();
-    const row = await lockSolicitud(conn, cfg, id);
-    const denied = bajaTransicion(row?.estado || null, "BAJA", { motivo: texto });
-    if (denied) {
-      await conn.rollback();
-      return denied;
-    }
-    const [[estadoBaja]] = await conn.query(
-      "SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'BAJA'",
-    );
-    if (!estadoBaja) {
-      await conn.rollback();
-      return { status: 503, code: "MIGRACION_PENDIENTE", error: "La baja no está disponible: falta aplicar la migración 016 de la base de datos." };
-    }
-    // motivo must be NULL outside RECHAZADO (triggers); the reason lives in the event.
-    await conn.query(
-      `UPDATE ${cfg.table}
-          SET id_estado_validacion = (SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'BAJA'),
-              motivo = NULL
-        WHERE ${cfg.pk} = ?`,
-      [id],
-    );
-    const cuentas = await setCuentasActivas(conn, entidad, row.owner_id, 0);
-    reservas = await reservasActivas(entidad, id, conn);
-    await recordEvent(conn, {
-      entidad, id, accion: "BAJA", antes: row.estado, despues: "BAJA", user, motivo: texto,
-      detalle: { cuentas_desactivadas: cuentas, reservas_a_cancelar: reservas.map((r) => r.id_reserva) },
+    reservas = await inTransaction(async (conn) => {
+      const row = await lockSolicitud(conn, cfg, id);
+      const denied = bajaTransicion(row?.estado || null, "BAJA", { motivo: texto });
+      if (denied) throw new HttpError(denied.status, denied.error, { code: denied.code });
+      const [[estadoBaja]] = await conn.query(
+        "SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'BAJA'",
+      );
+      if (!estadoBaja) {
+        throw new HttpError(503, "La baja no está disponible: falta aplicar la migración 016 de la base de datos.", { code: "MIGRACION_PENDIENTE" });
+      }
+      // motivo must be NULL outside RECHAZADO (triggers); the reason lives in the event.
+      await conn.query(
+        `UPDATE ${cfg.table}
+            SET id_estado_validacion = ?, motivo = NULL
+          WHERE ${cfg.pk} = ?`,
+        [estadoBaja.id_estado_validacion, id],
+      );
+      const cuentas = await setCuentasActivas(conn, entidad, row.owner_id, 0);
+      // Lock order of migration 018: offers (ascending), then the reservations.
+      // With the application locked no reservation of it can be created meanwhile.
+      const [ofertas] = await conn.query(
+        `SELECT DISTINCT r.id_solicitud_empresa_especialidad AS oferta
+           FROM dual_reservas r
+           JOIN dual_solicitud_empresa_especialidades see
+             ON see.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+          WHERE ${cfg.reservasWhere} AND r.id_estado_reserva IN (1, 2)`,
+        [id],
+      );
+      await reservasTx.bloquearOfertas(conn, ofertas.map((o) => o.oferta));
+      const activas = await reservasActivas(entidad, id, conn, { lock: true });
+      await recordEvent(conn, {
+        entidad, id, accion: "BAJA", antes: row.estado, despues: "BAJA", user, motivo: texto,
+        detalle: { cuentas_desactivadas: cuentas, reservas_canceladas: activas.map((r) => r.id_reserva) },
+      });
+      const motivoReserva = `${cfg.prefijo}: ${texto}`;
+      for (const r of activas) {
+        await reservasTx.cancelarAdmin(conn, {
+          idReserva: r.id_reserva, motivo: motivoReserva, user, detalle: { por_baja: { entidad, id } },
+        });
+      }
+      return activas;
     });
-    await conn.commit();
   } catch (err) {
-    await conn.rollback();
+    if (err.status) return { status: err.status, error: err.message, code: err.code };
     throw err;
-  } finally {
-    conn.release();
   }
 
-  const motivoReserva = `${cfg.prefijo}: ${texto}`;
-  const canceladas = [];
-  const pendientes = [];
+  // After the commit: the withdrawn side gets no email; the other side is told the place is free.
   for (const r of reservas) {
-    try {
-      await callProcedure(pool, "sp_cancelar_reserva_admin", [r.id_reserva, motivoReserva]);
-      canceladas.push(r.id_reserva);
-      await recordEventAfterCommit({
-        entidad: "RESERVA", id: r.id_reserva, accion: "CANCELAR",
-        antes: r.estado_reserva, despues: "CANCELADA", user, motivo: motivoReserva,
-        detalle: { administrativa: true, por_baja: { entidad, id } },
-      });
-      // The withdrawn side gets no email; the other side is told the place is free.
-      notificar.reservaCancelada(r.id_reserva, entidad === "SOLICITUD_ALUMNO"
-        ? { avisarAlumno: false, avisarEmpresa: true }
-        : { avisarAlumno: true, avisarEmpresa: false });
-    } catch (err) {
-      console.error("[baja] no se pudo cancelar la reserva", r.id_reserva, err.message);
-      pendientes.push(r.id_reserva);
-    }
+    notificar.reservaCancelada(r.id_reserva, entidad === "SOLICITUD_ALUMNO"
+      ? { avisarAlumno: false, avisarEmpresa: true }
+      : { avisarAlumno: true, avisarEmpresa: false });
   }
-  return { ok: true, canceladas, pendientes };
+  return { ok: true, canceladas: reservas.map((r) => r.id_reserva) };
 }
 
 async function reactivar(entidad, id, { user, motivo }) {
@@ -238,13 +234,11 @@ function handlers(entidad) {
       const out = await darDeBaja(entidad, id, { user: req.user, motivo: req.body?.motivo });
       if (!out.ok) return res.status(out.status).json({ error: out.error, code: out.code });
       const n = out.canceladas.length;
-      let message = n
+      const message = n
         ? `Baja registrada. Se ${n === 1 ? "ha cancelado 1 reserva" : `han cancelado ${n} reservas`}.`
         : "Baja registrada.";
-      if (out.pendientes.length) {
-        message += ` No se pudieron cancelar ${out.pendientes.length}; cancélalas desde su reserva.`;
-      }
-      return res.json({ message, canceladas: out.canceladas, pendientes: out.pendientes });
+      // `pendientes` stays in the response for the screen: always empty now (all or nothing).
+      return res.json({ message, canceladas: out.canceladas, pendientes: [] });
     },
     reactivar: async (req, res) => {
       const id = parse(req);

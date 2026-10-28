@@ -1,10 +1,10 @@
 // Phase 2 integration tests against the REAL development database.
-// Skipped unless DB_INTEGRATION=1. Requires migrations 012–015 applied.
-//
+// Skipped unless DB_INTEGRATION=1. Requires migrations 012–018 applied (018: the reservation
+// procedures run only inside a transaction, and re-booking creates a new row).
 //   DB_INTEGRATION=1 node --test test/db/phase2.db.test.js
 //
-// What they write: one temporary reservation (and its documents) for a
-// student/offer pair that had no reservation row, removed again in `after`.
+// What they write: two temporary reservations (two attempts for one student/offer pair
+// that had no reservation row) and one document, removed again in `after`.
 // Nothing else is modified. Refuses to run with NODE_ENV=production.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -110,20 +110,39 @@ async function freePair() {
   return rows[0] || null;
 }
 
-test('WF-4 / WF-5: cancel and re-book retires the old annex; confirmation needs type and validated annex', opts, async (t) => {
+// Migration 018: reservation procedures run only inside a caller's transaction.
+async function inTx(fn) {
+  await conn.query('SET autocommit = 0');
+  try {
+    const out = await fn();
+    await conn.query('COMMIT');
+    return out;
+  } catch (err) {
+    await conn.query('ROLLBACK');
+    throw err;
+  } finally {
+    await conn.query('SET autocommit = 1');
+  }
+}
+
+test('WF-4 / WF-5 (as of 018): re-booking creates a new attempt; confirmation needs type and validated annex', opts, async (t) => {
   const pair = await freePair();
   if (!pair) return t.skip('no hay un par alumno/oferta libre en la base de desarrollo');
 
-  const [[first]] = await conn.query('CALL sp_reservar_alumno(?, ?)', [pair.id_solicitud_alumno, pair.id_oferta]);
-  const idReserva = first[0].id_reserva;
+  const idReserva = await inTx(async () => {
+    const [[first]] = await conn.query('CALL sp_reservar_alumno(?, ?)', [pair.id_solicitud_alumno, pair.id_oferta]);
+    return first[0].id_reserva;
+  });
   created.reservas.push(idReserva);
 
   // Confirmation without a contract type, then with a type but no annex.
-  assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idReserva])), /tipo de contrato/);
   const [[beca]] = await conn.query("SELECT id_tipo_contrato FROM dual_tipos_contrato WHERE nombre = 'BECA'");
-  await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [beca.id_tipo_contrato, idReserva]);
-  assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idReserva])), /firmado y validado/);
-  assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, ?)', [idReserva, beca.id_tipo_contrato + 1])), /no coincide/);
+  await inTx(async () => {
+    assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idReserva])), /tipo de contrato/);
+    await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [beca.id_tipo_contrato, idReserva]);
+    assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idReserva])), /firmado y validado/);
+    assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, ?)', [idReserva, beca.id_tipo_contrato + 1])), /no coincide/);
+  });
 
   // An annex is uploaded and validated, then the reservation is cancelled.
   const [res] = await conn.query("CALL sp_guardar_documento(NULL, NULL, ?, fn_id_tipo_documento('ANEXO_III'), ?)",
@@ -131,22 +150,32 @@ test('WF-4 / WF-5: cancel and re-book retires the old annex; confirmation needs 
   const idDoc = res[0][0].id_documento;
   created.documentos.push(idDoc);
   await conn.query('CALL sp_validar_documento(?)', [idDoc]);
-  await conn.query('CALL sp_cancelar_reserva(?, ?)', [idReserva, 'Prueba de integración Phase 2']);
+  await inTx(() => conn.query('CALL sp_cancelar_reserva(?, ?)', [idReserva, 'Prueba de integración Phase 2']));
 
-  // Re-booking the same pair reuses the row but starts clean.
-  const [[again]] = await conn.query('CALL sp_reservar_alumno(?, ?)', [pair.id_solicitud_alumno, pair.id_oferta]);
-  assert.equal(again[0].id_reserva, idReserva);
+  // D5: the cancelled attempt keeps its contract type and its annex.
+  const [[cancelada]] = await conn.query('SELECT id_tipo_contrato FROM dual_reservas WHERE id_reserva = ?', [idReserva]);
+  assert.equal(cancelada.id_tipo_contrato, beca.id_tipo_contrato);
+  const [[doc]] = await conn.query('SELECT es_actual FROM dual_documentos WHERE id_documento = ?', [idDoc]);
+  assert.equal(Number(doc.es_actual), 1, 'the annex stays with the cancelled attempt');
+
+  // D2: re-booking the same pair creates a NEW row that starts clean.
+  const idNueva = await inTx(async () => {
+    const [[again]] = await conn.query('CALL sp_reservar_alumno(?, ?)', [pair.id_solicitud_alumno, pair.id_oferta]);
+    return again[0].id_reserva;
+  });
+  created.reservas.push(idNueva);
+  assert.notEqual(idNueva, idReserva);
   const [[row]] = await conn.query(
     `SELECT er.nombre AS estado, r.id_tipo_contrato, r.id_empresa_tutor FROM dual_reservas r
        JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva WHERE r.id_reserva = ?`,
-    [idReserva],
+    [idNueva],
   );
   assert.deepEqual([row.estado, row.id_tipo_contrato, row.id_empresa_tutor], ['PENDIENTE', null, null]);
-  const [[doc]] = await conn.query('SELECT es_actual FROM dual_documentos WHERE id_documento = ?', [idDoc]);
-  assert.equal(Number(doc.es_actual), 0, 'the old annex stays in history but is no longer current');
 
-  // With the type set again, the retired annex cannot support a confirmation.
-  await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [beca.id_tipo_contrato, idReserva]);
-  assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idReserva])), /firmado y validado/);
-  await conn.query('CALL sp_cancelar_reserva(?, ?)', [idReserva, 'Fin de la prueba de integración']);
+  // The earlier attempt's validated annex cannot support the new one.
+  await inTx(async () => {
+    await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [beca.id_tipo_contrato, idNueva]);
+    assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idNueva])), /firmado y validado/);
+  });
+  await inTx(() => conn.query('CALL sp_cancelar_reserva(?, ?)', [idNueva, 'Fin de la prueba de integración']));
 });

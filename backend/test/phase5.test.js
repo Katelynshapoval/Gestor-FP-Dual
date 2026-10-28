@@ -32,11 +32,16 @@ test('baja rules: needs a reason, not twice; reactivar only from BAJA', () => {
 
 function bajaDb({ estado = 'VALIDADO', reservas = [], falla = [], sinMigracion = false } = {}) {
   return (sql, params) => {
+    // reservasTx.estadoBloqueado (state of one reservation before cancelling it)
+    if (sql.includes('r.id_tipo_contrato') && sql.includes('FROM dual_reservas r')) {
+      const r = reservas.find((x) => x.id_reserva === params[0]);
+      return r ? [{ id_reserva: r.id_reserva, estado: r.estado_reserva }] : [];
+    }
+    if (sql.includes('FROM dual_reservas r')) return reservas;
     if (sql.includes('FOR UPDATE')) return estado ? [{ estado, owner_id: 77 }] : [];
     if (sql.startsWith('SELECT id_estado_validacion FROM dual_estados_validacion')) return sinMigracion ? [] : [{ id_estado_validacion: 4 }];
     if (sql.startsWith('UPDATE dual_usuarios')) return { affectedRows: 1 };
     if (sql.startsWith('UPDATE dual_solicitudes')) return { affectedRows: 1 };
-    if (sql.includes('FROM dual_reservas r')) return reservas;
     if (sql.startsWith('INSERT INTO dual_eventos')) return { insertId: 1 };
     if (sql.startsWith('CALL sp_cancelar_reserva_admin')) {
       if (falla.includes(params[0])) throw Object.assign(new Error('fallo'), { sqlState: '45000' });
@@ -46,7 +51,7 @@ function bajaDb({ estado = 'VALIDADO', reservas = [], falla = [], sinMigracion =
   };
 }
 
-test('student baja: state, account off, every active reservation cancelled, companies told', async () => {
+test('student baja (Stage 2): one transaction — state, account, every reservation and every event before COMMIT; emails after', async () => {
   const { darDeBaja } = load('src/services/bajaService');
   pool.calls.length = 0;
   avisos.length = 0;
@@ -57,32 +62,40 @@ test('student baja: state, account off, every active reservation cancelled, comp
     ],
   });
   const out = await darDeBaja('SOLICITUD_ALUMNO', 10, { user: { id: 1, rol: 'ADMINISTRADOR' }, motivo: 'Abandona el ciclo' });
-  assert.deepEqual(out, { ok: true, canceladas: [5, 6], pendientes: [] });
+  assert.deepEqual(out, { ok: true, canceladas: [5, 6] });
 
   const sqls = pool.calls.map((c) => c.sql);
+  assert.equal(sqls[0], 'SET autocommit = 0', 'backend-owned transaction');
   const commit = sqls.indexOf('COMMIT');
-  assert.ok(sqls.findIndex((s) => s.includes("WHERE nombre = 'BAJA'")) < commit, 'state change inside the transaction');
-  assert.ok(sqls.findIndex((s) => s.startsWith('UPDATE dual_usuarios SET activo')) < commit, 'account off inside the transaction');
+  assert.ok(commit > 0);
+  assert.equal(sqls.filter((x) => x === 'COMMIT').length, 1, 'a single commit');
+  assert.ok(sqls.findIndex((x) => x.startsWith('UPDATE dual_solicitudes_alumno')) < commit, 'state change inside the transaction');
+  assert.ok(sqls.findIndex((x) => x.startsWith('UPDATE dual_usuarios SET activo')) < commit, 'account off inside the transaction');
   const cancels = pool.calls.filter((c) => c.sql.startsWith('CALL sp_cancelar_reserva_admin'));
   assert.deepEqual(cancels.map((c) => c.params[0]), [5, 6]);
-  assert.ok(sqls.indexOf(cancels[0].sql) > commit, 'reservations cancelled after the baja commits');
+  assert.ok(pool.calls.lastIndexOf(cancels[1]) < commit, 'reservations cancelled inside the same transaction');
   assert.match(cancels[0].params[1], /^Baja del alumno en el programa: Abandona el ciclo$/);
-  // The row keeps motivo NULL (triggers); the reason is in the event.
   const update = pool.calls.find((c) => c.sql.startsWith('UPDATE dual_solicitudes_alumno'));
   assert.match(update.sql, /motivo = NULL/);
-  const ev = pool.calls.find((c) => c.sql.startsWith('INSERT INTO dual_eventos') && c.params[2] === 'BAJA');
-  assert.deepEqual(ev.params.slice(0, 5), ['SOLICITUD_ALUMNO', 10, 'BAJA', 'VALIDADO', 'BAJA']);
-  assert.equal(ev.params[7], 'Abandona el ciclo');
+  const evs = pool.calls.filter((c) => c.sql.startsWith('INSERT INTO dual_eventos'));
+  assert.deepEqual(evs.map((e) => [e.params[0], e.params[1], e.params[2]]),
+    [['SOLICITUD_ALUMNO', 10, 'BAJA'], ['RESERVA', 5, 'CANCELAR'], ['RESERVA', 6, 'CANCELAR']]);
+  assert.ok(pool.calls.lastIndexOf(evs[2]) < commit, 'events before COMMIT');
+  assert.deepEqual(evs[1].params.slice(3, 5), ['CONFIRMADA', 'CANCELADA']);
+  assert.equal(evs[0].params[7], 'Abandona el ciclo');
   assert.deepEqual(avisos.map((a) => [a.id, a.avisarAlumno, a.avisarEmpresa]), [[5, false, true], [6, false, true]]);
 });
 
-test('company baja: students are told, a failed cancellation is reported, not fatal', async () => {
+test('company baja (Stage 2): one failed cancellation rolls the whole baja back and sends nothing', async () => {
   const { darDeBaja } = load('src/services/bajaService');
+  pool.calls.length = 0;
   avisos.length = 0;
   handler = bajaDb({ reservas: [{ id_reserva: 8, estado_reserva: 'PENDIENTE' }, { id_reserva: 9, estado_reserva: 'PENDIENTE' }], falla: [9] });
-  const out = await darDeBaja('SOLICITUD_EMPRESA', 3, { user: { id: 1 }, motivo: 'Cierra el centro de trabajo' });
-  assert.deepEqual(out, { ok: true, canceladas: [8], pendientes: [9] });
-  assert.deepEqual(avisos, [{ id: 8, avisarAlumno: true, avisarEmpresa: false }]);
+  await assert.rejects(darDeBaja('SOLICITUD_EMPRESA', 3, { user: { id: 1 }, motivo: 'Cierra el centro de trabajo' }), /fallo/);
+  const sqls = pool.calls.map((c) => c.sql);
+  assert.ok(sqls.includes('ROLLBACK'));
+  assert.ok(!sqls.includes('COMMIT'));
+  assert.deepEqual(avisos, []);
   const cuentas = pool.calls.find((c) => c.sql.startsWith('UPDATE dual_usuarios u'));
   assert.match(cuentas.sql, /ro\.nombre = 'EMPRESA' AND d\.idempresa = \?/);
   assert.deepEqual(cuentas.params, [0, 77]);
