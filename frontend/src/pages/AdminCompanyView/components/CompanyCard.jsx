@@ -477,12 +477,7 @@ const CompanyCard = ({
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-100 hover:text-brand-600"
               onClick={(e) => {
                 e.stopPropagation();
-                setInnerTab("info");
                 setEditSignal((v) => v + 1);
-
-                if (!isExpanded) {
-                  onToggle(id);
-                }
               }}
             >
               <MdEdit aria-hidden="true" className="text-lg" />
@@ -538,20 +533,25 @@ const CompanyCard = ({
               </button>
             </div>
 
+            {/* Pending change request (Información tab) and the edit dialog, which
+                the header pencil opens without expanding the card. */}
+            {(empresa.cambio_pendiente || empresa.convocatoria_activa) && (
+              <div className={innerTab === "info" && isExpanded && empresa.cambio_pendiente ? "mb-5" : ""}>
+                <EmpresaDatosActions
+                  empresa={empresa}
+                  transports={transports}
+                  onUpdated={onUpdated}
+                  editSignal={editSignal}
+                  onEditHandled={() => setEditSignal(0)}
+                  onEditingChange={setEditingCompany}
+                  mostrarPendiente={innerTab === "info" && isExpanded}
+                />
+              </div>
+            )}
+
             {/* Information tab */}
             {innerTab === "info" && (
               <div className="space-y-5">
-                {isExpanded &&
-                  (empresa.cambio_pendiente || empresa.convocatoria_activa) && (
-                    <EmpresaDatosActions
-                      empresa={empresa}
-                      transports={transports}
-                      onUpdated={onUpdated}
-                      editSignal={editSignal}
-                      onEditHandled={() => setEditSignal(0)}
-                      onEditingChange={setEditingCompany}
-                    />
-                  )}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   {/* Left column: company and coordinator data */}
                   <div className="space-y-5">

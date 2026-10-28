@@ -3,6 +3,7 @@ const multer = require('multer');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const svc = require('../services/solicitudesAlumnoService');
+const cambios = require('../services/alumnoCambiosService');
 const baja = require('../services/bajaService').handlers('SOLICITUD_ALUMNO');
 
 const router = Router();
@@ -25,6 +26,8 @@ router.post(
 
 // Alumno: own current application (must be registered before /:id)
 router.get('/solicitudes/alumno/mia', requireAuth, requireRole('ALUMNO'), asyncHandler(svc.getMia));
+router.get('/solicitudes/alumno/mia/datos', requireAuth, requireRole('ALUMNO'), asyncHandler(cambios.getMisDatos));
+router.post('/solicitudes/alumno/mia/cambios', requireAuth, requireRole('ALUMNO'), asyncHandler(cambios.upsertMiCambio));
 
 // Admin / Coordinador
 router.get('/solicitudes/alumno', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.getAll));
@@ -32,6 +35,13 @@ router.get('/solicitudes/alumno/:id', requireAuth, requireRole('ADMINISTRADOR', 
 router.post('/solicitudes/alumno/:id/validar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.validar));
 router.post('/solicitudes/alumno/:id/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.rechazar));
 router.post('/solicitudes/alumno/:id/reabrir', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.reabrir));
+
+// Corrección de datos del alumno (Administración only). The DNI is never editable.
+router.get('/solicitudes/alumno/:id/datos', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(svc.getDatos));
+router.put('/solicitudes/alumno/:id/datos', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(svc.putDatos));
+router.get('/solicitudes/alumno/:id/cambios', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(cambios.getCambio));
+router.post('/solicitudes/alumno/:id/cambios/:idCambio/aprobar', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(cambios.aprobarCambio));
+router.post('/solicitudes/alumno/:id/cambios/:idCambio/rechazar', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(cambios.rechazarCambio));
 
 // Dar de baja / reactivar (Administración only, Phase 5)
 router.get('/solicitudes/alumno/:id/baja', requireAuth, requireRole('ADMINISTRADOR'), asyncHandler(baja.preview));

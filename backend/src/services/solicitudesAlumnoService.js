@@ -4,7 +4,9 @@ const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni 
 const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation, reservaDocSummary } = require('./documentosWorkflow');
 const { loginRateLimiter } = require('../middleware/loginRateLimit');
 const { aplicarTransicion } = require('./solicitudTransiciones');
-const { escapeHtml } = require('./notificaciones');
+const { escapeHtml, cicloCorregido } = require('./notificaciones');
+const alumnoDatos = require('./alumnoDatos');
+const { recordEvent } = require('./auditLog');
 const MIN_PASSWORD_LENGTH = 8;
 
 let transporter = null;
@@ -316,9 +318,11 @@ exports.getAll = async function (req, res) {
            a.idiomasConocidos,
            esp.id_especialidad, esp.codigo AS codigo_especialidad, esp.nombre AS especialidad,
            CASE esp.turno WHEN 0 THEN 'DIURNO' WHEN 1 THEN 'VESPERTINO' END AS turno,
-           c.nombre AS convocatoria,
+           c.nombre AS convocatoria, c.activa AS convocatoria_activa,
            CASE WHEN u.id_usuario IS NOT NULL THEN 1 ELSE 0 END AS tiene_cuenta,
            u.id_usuario, u.activo AS cuenta_activa,
+           (SELECT dc.id_cambio FROM dual_alumno_cambios dc
+             WHERE dc.id_solicitud_pendiente = sa.id_solicitud_alumno) AS id_cambio_pendiente,
            (SELECT e.motivo FROM dual_eventos e
              WHERE e.entidad = 'SOLICITUD_ALUMNO' AND e.id_entidad = sa.id_solicitud_alumno AND e.accion = 'BAJA'
              ORDER BY e.id_evento DESC LIMIT 1) AS motivo_baja,
@@ -516,4 +520,87 @@ exports.getDocumentos = async function (req, res) {
     [id]
   );
   return res.json(rows);
+};
+
+function sendDatosError(res, err) {
+  if (err.status && err.code) {
+    const body = { error: err.message, code: err.code };
+    if (err.errores) body.errores = err.errores;
+    if (err.reservas) body.reservas = err.reservas;
+    return res.status(err.status).json(body);
+  }
+  return sendSqlError(res, err);
+}
+
+// GET /solicitudes/alumno/:id/datos — Administración: editable data, plus what
+// blocks a ciclo change (active reservations).
+exports.getDatos = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Solicitud no válida.' });
+  const row = await alumnoDatos.loadDatos(pool, id);
+  if (!row) return res.status(404).json({ error: 'Solicitud no encontrada.' });
+  const reservas = await alumnoDatos.reservasActivas(pool, id);
+  let bloqueo = null;
+  try {
+    alumnoDatos.assertEditable(row);
+  } catch (err) {
+    bloqueo = err.message;
+  }
+  return res.json({
+    id_solicitud_alumno: row.id_solicitud_alumno,
+    dni: row.dni,
+    estado_validacion: row.estado_validacion,
+    editable: !bloqueo,
+    motivo_no_editable: bloqueo,
+    datos: alumnoDatos.pickSnapshot(row),
+    reservas_activas: reservas,
+  });
+};
+
+// PUT /solicitudes/alumno/:id/datos — Administración corrects a student's data.
+// Body: any of the editable fields, id_especialidad and preferencias (ids, in
+// order). `dni` is refused. Only changed fields are written and audited.
+exports.putDatos = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Solicitud no válida.' });
+
+  let proposed;
+  try {
+    proposed = alumnoDatos.sanitizeProposed(req.body);
+  } catch (err) {
+    return sendDatosError(res, err);
+  }
+
+  const conn = await pool.getConnection();
+  let changed;
+  try {
+    await conn.beginTransaction();
+    const row = await alumnoDatos.loadDatos(conn, id, { lock: true });
+    alumnoDatos.assertEditable(row);
+
+    const { changes, campos } = await alumnoDatos.corregir(conn, row, proposed);
+    changed = campos;
+    // Field names and ciclo ids only: never the values themselves.
+    await recordEvent(conn, {
+      entidad: 'SOLICITUD_ALUMNO',
+      id,
+      accion: 'DATOS_CORREGIDOS',
+      user: req.user,
+      detalle: {
+        campos: changed,
+        ...(changes.id_especialidad != null
+          ? { especialidad_anterior: row.id_especialidad, especialidad_nueva: changes.id_especialidad }
+          : {}),
+      },
+    });
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    return sendDatosError(res, err);
+  } finally {
+    conn.release();
+  }
+
+  if (changed.includes('id_especialidad')) cicloCorregido(id);
+  return res.json({ message: 'Datos del alumno actualizados.', campos: changed });
 };

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IoMdArrowDropdown } from "react-icons/io";
-import { MdOutlineCancel } from "react-icons/md";
+import { MdEdit, MdOutlineCancel, MdPendingActions } from "react-icons/md";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { RxLockClosed, RxClock } from "react-icons/rx";
 
@@ -12,6 +12,7 @@ import {
   cardHeaderClass,
   cardNameClass,
   empresaChipClass,
+  signedBadgeClass,
   toggleBtnClass,
 } from "../../../components/ui/cardStyles";
 
@@ -19,6 +20,7 @@ import DatosRapidos from "./student-card/DatosRapidos";
 import Documentos from "./student-card/Documentos";
 import EmpresaControl from "./student-card/EmpresaControl";
 import EstadoSolicitud from "./student-card/EstadoSolicitud";
+import AlumnoDatosActions from "./student-card/AlumnoDatosActions";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import EstadoBadge from "../../../components/ui/EstadoBadge.jsx";
 import MotivoDialog from "../../../components/ui/MotivoDialog.jsx";
@@ -163,6 +165,9 @@ const StudentCard = ({
   const referencia = reservaDeReferencia(r.reservas);
   // "info" or "reservas" — inner tab state, staff only
   const [innerTab, setInnerTab] = useState("info");
+  const [editSignal, setEditSignal] = useState(0);
+  const [editingAlumno, setEditingAlumno] = useState(false);
+  const isAdmin = user?.rol === "ADMINISTRADOR";
   const handleToggle = () => onToggle(r.id_solicitud_alumno);
 
   return (
@@ -190,6 +195,12 @@ const StudentCard = ({
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {!isEmpresa ? (
             <div className={cardChipsClass}>
+              {r.id_cambio_pendiente ? (
+                <span className={`${signedBadgeClass} max-w-full bg-amber-100 text-amber-800`}>
+                  <MdPendingActions className="text-[13px]" />
+                  Cambios pendientes
+                </span>
+              ) : null}
               <EstadoBadge kind="solicitud" value={r.estado_validacion} />
               {confirmedReserva && (
                 <StatusBadge variant="success">
@@ -214,6 +225,21 @@ const StudentCard = ({
               onReserve={onReserve}
               onCancel={onCancel}
             />
+          )}
+
+          {isAdmin && r.convocatoria_activa && !editingAlumno && (
+            <button
+              type="button"
+              title="Editar datos"
+              aria-label={`Editar los datos de ${r.nombre}`}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-100 hover:text-brand-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditSignal((v) => v + 1);
+              }}
+            >
+              <MdEdit aria-hidden="true" className="text-lg" />
+            </button>
           )}
 
           <button
@@ -305,6 +331,21 @@ const StudentCard = ({
             )}
 
             {/* Information tab */}
+            {/* Pending change request (Información tab) and the edit dialog, which
+                the header pencil opens without expanding the card. */}
+            {isAdmin && (r.id_cambio_pendiente || r.convocatoria_activa) && (
+              <div className={innerTab === "info" && isExpanded && r.id_cambio_pendiente ? "mb-5" : ""}>
+                <AlumnoDatosActions
+                  r={r}
+                  onUpdated={onChanged}
+                  editSignal={editSignal}
+                  onEditHandled={() => setEditSignal(0)}
+                  onEditingChange={setEditingAlumno}
+                  mostrarPendiente={innerTab === "info" && isExpanded}
+                />
+              </div>
+            )}
+
             {(isEmpresa || innerTab === "info") && (
               <div
                 className={`grid grid-cols-1 gap-6 ${isEmpresa ? "md:grid-cols-2" : "md:grid-cols-[1.2fr_1fr]"}`}

@@ -6,6 +6,7 @@ import CompanyEditForm, {
 import CambioDiff from "../../CompanyView/CambioDiff.jsx";
 import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../../components/ui/InlineNotice.jsx";
+import Modal from "../../../components/ui/Modal.jsx";
 
 const EmpresaDatosActions = ({
   empresa,
@@ -14,6 +15,7 @@ const EmpresaDatosActions = ({
   editSignal = 0,
   onEditHandled,
   onEditingChange,
+  mostrarPendiente = true,
 }) => {
   const toast = useToast();
   const id = empresa.id_solicitud_empresa;
@@ -35,10 +37,10 @@ const EmpresaDatosActions = ({
   };
 
   useEffect(() => {
-    if (empresa.cambio_pendiente) loadCambio();
+    if (empresa.cambio_pendiente && mostrarPendiente) loadCambio();
     else setCambio({ pending: null, ultimo: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, empresa.cambio_pendiente, empresa.id_cambio_pendiente]);
+  }, [id, empresa.cambio_pendiente, empresa.id_cambio_pendiente, mostrarPendiente]);
 
   const pending = cambio?.pending;
 
@@ -145,7 +147,7 @@ const EmpresaDatosActions = ({
 
   return (
     <div className="space-y-4">
-      {pending && (
+      {mostrarPendiente && pending && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
           <p className="text-sm font-semibold text-amber-900">
             La empresa ha solicitado cambios
@@ -219,11 +221,19 @@ const EmpresaDatosActions = ({
         </div>
       )}
 
-      {editing && form && (
-        <div className="rounded-lg border border-surface-200 bg-white p-4">
-          <p className="text-sm font-semibold mb-3">
-            Edición directa (sin aprobación)
-          </p>
+      <Modal
+        open={editing && Boolean(form)}
+        onClose={() => {
+          setEditing(false);
+          setForm(null);
+          if (onEditingChange) onEditingChange(false);
+        }}
+        title={`Editar datos · ${empresa.empresa || "empresa"}`}
+        description="Edición directa (sin aprobación)."
+        size="xl"
+        busy={submitting}
+      >
+        {editing && form && (
           <CompanyEditForm
             key={`admin-${id}`}
             values={form}
@@ -242,8 +252,8 @@ const EmpresaDatosActions = ({
               }
             }}
           />
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };

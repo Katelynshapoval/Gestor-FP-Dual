@@ -1,4 +1,4 @@
-const CambioDiff = ({ diff = [] }) => {
+const CambioDiff = ({ diff = [], nuevoLabel = "Solicitado" }) => {
   if (!diff.length) {
     return <p className="text-sm text-muted">No hay campos distintos.</p>;
   }
@@ -7,7 +7,7 @@ const CambioDiff = ({ diff = [] }) => {
       <div className="grid grid-cols-3 gap-2 bg-surface-50 px-3 py-2 text-[0.7rem] font-semibold uppercase tracking-wide text-muted">
         <span>Campo</span>
         <span>Actual</span>
-        <span>Solicitado</span>
+        <span>{nuevoLabel}</span>
       </div>
       {diff.map((row) => (
         <div key={row.field} className="grid grid-cols-3 gap-2 border-t border-surface-200 px-3 py-2 text-sm">

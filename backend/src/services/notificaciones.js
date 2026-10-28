@@ -170,6 +170,34 @@ const solicitudAlumno = safe('solicitud_alumno', async (idSolicitud, estado, mot
   return false;
 });
 
+// The centre corrected the ciclo of a student application.
+const cicloCorregido = safe('ciclo_corregido', async (idSolicitud) => {
+  const d = await datosSolicitudAlumno(idSolicitud);
+  if (!d) return false;
+  return enviar('ciclo_corregido', d.email, 'Hemos corregido el ciclo de tu solicitud de FP Dual',
+    layout(html`Hola ${d.nombre}:`, [
+      html`El centro ha corregido el ciclo de tu solicitud para la convocatoria <strong>${d.convocatoria}</strong>. Ahora figura como <strong>${d.especialidad || 'FP Dual'}</strong>.`,
+      'Si no es correcto, ponte en contacto con el centro.',
+    ]));
+});
+
+// Administración resolved the student's request to correct their data.
+const cambioDatosResuelto = safe('cambio_datos_alumno', async (idSolicitud, aprobado, motivo) => {
+  const d = await datosSolicitudAlumno(idSolicitud);
+  if (!d) return false;
+  if (aprobado) {
+    return enviar('cambio_datos_aprobado', d.email, 'Hemos corregido tus datos de FP Dual',
+      layout(html`Hola ${d.nombre}:`, [
+        html`El centro ha aprobado la corrección de datos que pediste para la convocatoria <strong>${d.convocatoria}</strong>.`,
+      ]));
+  }
+  return enviar('cambio_datos_rechazado', d.email, 'Tu petición de corrección de datos no se ha aplicado',
+    layout(html`Hola ${d.nombre}:`, [
+      html`El centro no ha aplicado la corrección de datos que pediste para la convocatoria <strong>${d.convocatoria}</strong>.`,
+      ...(motivo ? [html`Motivo indicado por el centro: ${motivo}`] : []),
+    ]));
+});
+
 const solicitudEmpresa = safe('solicitud_empresa', async (idSolicitud, estado, motivo) => {
   const d = await datosSolicitudEmpresa(idSolicitud);
   if (!d) return false;
@@ -295,6 +323,8 @@ const restablecerContrasena = safe('restablecer_contrasena', async (to, nombre, 
 module.exports = {
   restablecerContrasena,
   solicitudAlumno,
+  cicloCorregido,
+  cambioDatosResuelto,
   solicitudEmpresa,
   documentoRechazado,
   reservaCreada,
