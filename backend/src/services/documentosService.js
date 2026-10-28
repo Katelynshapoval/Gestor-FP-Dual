@@ -383,8 +383,29 @@ exports.getEmpresaDocumentos = async function (req, res) {
   return res.json({ items });
 };
 
-// Locks the document (and its parent rows) for a review or signature.
+// Locks the document and its parent for a review or signature. Parent first,
+// then the document — the order of uploads (documentosStore) and confirmations
+// (migration 018); taking the document first could deadlock with them. The
+// parent of a document never changes, so a plain read finds it.
 async function lockDocumento(conn, id) {
+  const [[padre]] = await conn.query(
+    "SELECT id_solicitud_alumno, id_solicitud_empresa, id_reserva FROM dual_documentos WHERE id_documento = ?",
+    [id],
+  );
+  if (!padre) return null;
+  if (padre.id_reserva) {
+    await conn.query("SELECT id_reserva FROM dual_reservas WHERE id_reserva = ? FOR UPDATE", [padre.id_reserva]);
+  } else if (padre.id_solicitud_empresa) {
+    await conn.query(
+      "SELECT id_solicitud_empresa FROM dual_solicitudes_empresa WHERE id_solicitud_empresa = ? FOR UPDATE",
+      [padre.id_solicitud_empresa],
+    );
+  } else if (padre.id_solicitud_alumno) {
+    await conn.query(
+      "SELECT id_solicitud_alumno FROM dual_solicitudes_alumno WHERE id_solicitud_alumno = ? FOR UPDATE",
+      [padre.id_solicitud_alumno],
+    );
+  }
   const [rows] = await conn.query(
     `SELECT
         d.id_documento,
@@ -406,7 +427,7 @@ async function lockDocumento(conn, id) {
        LEFT JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = d.id_solicitud_empresa
        LEFT JOIN dual_estados_validacion ev_se ON ev_se.id_estado_validacion = se.id_estado_validacion
       WHERE d.id_documento = ?
-      FOR UPDATE`,
+      FOR UPDATE OF d, r, se`,
     [id],
   );
   return rows[0] || null;

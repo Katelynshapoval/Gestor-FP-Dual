@@ -1,10 +1,15 @@
 // Append-only audit trail (dual_eventos, migration 013; decision D5).
 // Records ids and states only: never names, DNIs, emails, passwords or files.
-// Pass the transaction's connection when there is one, so the event commits or
-// rolls back with the change it describes.
+//
+// Stage 2 (D6): pass the transaction's connection, so the event commits or rolls
+// back with the change it describes; a failure to write the event fails the
+// change. The former recordEventAfterCommit (log after a procedure had already
+// committed, ignore failures) is gone: reservation procedures now run inside the
+// caller's transaction (src/db/transaction.js).
 const pool = require("../db/pool");
 
-const ENTIDADES = ["SOLICITUD_ALUMNO", "SOLICITUD_EMPRESA", "RESERVA", "DOCUMENTO"];
+// OFERTA and TUTOR since migration 018 (chk_de_entidad).
+const ENTIDADES = ["SOLICITUD_ALUMNO", "SOLICITUD_EMPRESA", "RESERVA", "DOCUMENTO", "OFERTA", "TUTOR"];
 
 function actorFrom(user) {
   return { id: user?.id || null, rol: user?.rol || null };
@@ -21,15 +26,4 @@ async function recordEvent(conn, { entidad, id, accion, antes = null, despues = 
   );
 }
 
-// For changes made by a procedure that commits on its own (sp_reservar_alumno,
-// sp_confirmar_reserva, …): the change is already durable, so a failure to log
-// must not turn a successful request into an error. It is reported instead.
-async function recordEventAfterCommit(event) {
-  try {
-    await recordEvent(pool, event);
-  } catch (err) {
-    console.error("[auditoría] no se pudo registrar el evento", event.entidad, event.id, event.accion, err.message);
-  }
-}
-
-module.exports = { recordEvent, recordEventAfterCommit, ENTIDADES };
+module.exports = { recordEvent, ENTIDADES };

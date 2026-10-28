@@ -3,6 +3,7 @@ const {
   getCompanyIdFromUser,
   sendSqlError,
 } = require('../helpers/dbHelpers');
+const { recordEvent } = require('./auditLog');
 
 function parseId(value) {
   const n = parseInt(value, 10);
@@ -177,6 +178,12 @@ exports.create = async function (req, res) {
       [idEmpresa, idContacto]
     );
 
+    // DB-11 (migration 018): tutor changes are audited (ids only, no personal data).
+    await recordEvent(conn, {
+      entidad: 'TUTOR', id: insTutor.insertId, accion: 'ALTA', despues: 'ACTIVO', user: req.user,
+      detalle: { id_empresa: idEmpresa },
+    });
+
     const tutor = await loadTutorForEmpresa(conn, insTutor.insertId, idEmpresa);
     await conn.commit();
     return res.status(201).json(tutor);
@@ -269,6 +276,10 @@ exports.update = async function (req, res) {
 
     params.push(tutor.id_contacto);
     await conn.query(`UPDATE ge_contactos SET ${sets.join(', ')} WHERE idcontacto = ?`, params);
+    await recordEvent(conn, {
+      entidad: 'TUTOR', id: idTutor, accion: 'EDITAR', user: req.user,
+      detalle: { id_empresa: tutor.id_empresa, campos: sets.map((x) => x.split(' ')[0]) },
+    });
 
     const updated = await loadTutorForEmpresa(conn, idTutor, tutor.id_empresa);
     await conn.commit();
@@ -324,6 +335,10 @@ exports.deactivate = async function (req, res) {
       'UPDATE dual_empresa_tutores SET activo = 0 WHERE id_empresa_tutor = ?',
       [idTutor]
     );
+    await recordEvent(conn, {
+      entidad: 'TUTOR', id: idTutor, accion: 'DESACTIVAR', antes: 'ACTIVO', despues: 'INACTIVO',
+      user: req.user, detalle: { id_empresa: tutor.id_empresa },
+    });
 
     const updated = await loadTutorForEmpresa(conn, idTutor, tutor.id_empresa);
     await conn.commit();
@@ -366,9 +381,11 @@ exports.assignToReserva = async function (req, res) {
            ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
          JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
         WHERE r.id_reserva = ?
-        FOR UPDATE`,
+        FOR UPDATE OF r`,
       [idReserva]
     );
+    // OF r: only the reservation is locked. Locking the joined offer and company
+    // application after it would invert the lock order of migration 018.
     const reserva = resRows[0];
     if (!reserva) {
       await conn.rollback();
@@ -418,6 +435,14 @@ exports.assignToReserva = async function (req, res) {
       'UPDATE dual_reservas SET id_empresa_tutor = ? WHERE id_reserva = ?',
       [idEmpresaTutor, idReserva]
     );
+    if (!((reserva.id_empresa_tutor ?? null) === (idEmpresaTutor ?? null))) {
+      await recordEvent(conn, {
+        entidad: 'RESERVA', id: idReserva, accion: 'TUTOR',
+        antes: reserva.id_empresa_tutor != null ? String(reserva.id_empresa_tutor) : null,
+        despues: idEmpresaTutor != null ? String(idEmpresaTutor) : null,
+        user: req.user,
+      });
+    }
 
     const [out] = await conn.query(
       `SELECT

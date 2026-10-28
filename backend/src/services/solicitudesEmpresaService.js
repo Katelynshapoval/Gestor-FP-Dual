@@ -13,6 +13,9 @@ const { generateDocument } = require("./documentGenerationService");
 const { aplicarTransicion } = require("./solicitudTransiciones");
 const notificar = require("./notificaciones");
 const { escapeHtml } = notificar;
+const { inTransaction, HttpError } = require("../db/transaction");
+const { recordEvent } = require("./auditLog");
+const reservasTx = require("./reservasTx");
 
 const EMPRESA_YA_REGISTRADA =
   "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
@@ -1829,6 +1832,11 @@ exports.addEspecialidad = async function (req, res) {
       [id, idEspecialidad, cantidad],
     );
 
+    await recordEvent(conn, {
+      entidad: "OFERTA", id: ins.insertId, accion: "ALTA", despues: String(cantidad), user: req.user,
+      detalle: { id_solicitud_empresa: id, id_especialidad: idEspecialidad },
+    });
+
     await conn.commit();
 
     return res.status(201).json({
@@ -1892,201 +1900,153 @@ exports.updateCupoEspecialidad = async function (req, res) {
       ? "Cupo reducido por la empresa."
       : "Cupo reducido por administración.";
 
-  const conn = await pool.getConnection();
-
-  let canceladas = [];
-  let cantidadAnterior;
-  let especialidadNombre;
-  let emailCoordinador;
-  let empresaNombre;
-
+  // Stage 2: one transaction (src/db/transaction.js). Lock order of migration 018:
+  // the offer, then its reservations; each cancellation goes through the common
+  // procedure (sp_cancelar_reserva, which keeps the contract type) with its own
+  // audit event, the quota change is recorded as an OFERTA event, and
+  // trg_dsee_bu_cupo re-checks the floor. Any failure rolls everything back.
+  let out;
   try {
-    await conn.beginTransaction();
+    out = await inTransaction(async (conn) => {
+      const [locked] = await conn.query(
+        `SELECT cantidad_alumnos
+           FROM dual_solicitud_empresa_especialidades
+          WHERE id_solicitud_empresa_especialidad = ?
+            AND id_solicitud_empresa = ?
+          FOR UPDATE`,
+        [idOferta, id],
+      );
+      if (!locked[0]) throw new HttpError(404, "La especialidad no pertenece a esta solicitud.");
 
-    const [offers] = await conn.query(
-      `SELECT
-         ee.id_solicitud_empresa_especialidad,
-         ee.cantidad_alumnos,
-         ee.id_especialidad,
-         se.id_solicitud_empresa,
-         se.id_empresa,
-         se.id_coordinador_empresa,
-         c.activa AS convocatoria_activa,
-         emp.empresa,
-         coord.email AS email_coordinador,
-         coord.nombre AS nombre_coordinador,
-         esp.nombre AS especialidad
-       FROM dual_solicitud_empresa_especialidades ee
-       JOIN dual_solicitudes_empresa se
-         ON se.id_solicitud_empresa = ee.id_solicitud_empresa
-       JOIN dual_convocatorias c
-         ON c.id_convocatoria = se.id_convocatoria
-       JOIN ge_empresas emp
-         ON emp.idempresa = se.id_empresa
-       JOIN ge_contactos coord
-         ON coord.idcontacto = se.id_coordinador_empresa
-       JOIN dual_especialidades esp
-         ON esp.id_especialidad = ee.id_especialidad
-       WHERE ee.id_solicitud_empresa_especialidad = ?
-         AND ee.id_solicitud_empresa = ?
-       FOR UPDATE`,
-      [idOferta, id],
-    );
+      const [[offer]] = await conn.query(
+        `SELECT esp.nombre AS especialidad, emp.empresa, coord.email AS email_coordinador
+           FROM dual_solicitud_empresa_especialidades ee
+           JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+           JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+           JOIN ge_contactos coord ON coord.idcontacto = se.id_coordinador_empresa
+           JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
+          WHERE ee.id_solicitud_empresa_especialidad = ?`,
+        [idOferta],
+      );
 
-    const offer = offers[0];
+      const [reservas] = await conn.query(
+        `SELECT r.id_reserva, er.nombre AS estado_reserva, a.nombre AS alumno, a.dni AS dni_alumno
+           FROM dual_reservas r
+           JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+           JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
+           JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
+          WHERE r.id_solicitud_empresa_especialidad = ?
+            AND er.nombre IN ('PENDIENTE', 'CONFIRMADA')
+          ORDER BY r.id_reserva DESC
+          FOR UPDATE OF r`,
+        [idOferta],
+      );
 
-    if (!offer) {
-      await conn.rollback();
-
-      return res.status(404).json({
-        error: "La especialidad no pertenece a esta solicitud.",
-      });
-    }
-
-    const [reservas] = await conn.query(
-      `SELECT
-         r.id_reserva,
-         er.nombre AS estado_reserva,
-         a.nombre AS alumno,
-         a.dni AS dni_alumno
-       FROM dual_reservas r
-       JOIN dual_estados_reserva er
-         ON er.id_estado_reserva = r.id_estado_reserva
-       JOIN dual_solicitudes_alumno sa
-         ON sa.id_solicitud_alumno = r.id_solicitud_alumno
-       JOIN gf_alumnosfct a
-         ON a.idalumno = sa.id_alumno
-       WHERE r.id_solicitud_empresa_especialidad = ?
-         AND er.nombre IN ('PENDIENTE', 'CONFIRMADA')
-       ORDER BY r.id_reserva DESC
-       FOR UPDATE`,
-      [idOferta],
-    );
-
-    const confirmadas = reservas.filter(
-      (r) => r.estado_reserva === "CONFIRMADA",
-    );
-
-    const pendientes = reservas.filter((r) => r.estado_reserva === "PENDIENTE");
-
-    const activas = confirmadas.length + pendientes.length;
-
-    cantidadAnterior = Number(offer.cantidad_alumnos);
-
-    especialidadNombre = offer.especialidad;
-    emailCoordinador = offer.email_coordinador;
-    empresaNombre = offer.empresa;
-
-    if (cantidad === cantidadAnterior) {
-      await conn.rollback();
-
-      return res.json({
-        message: "La cantidad no ha cambiado.",
-        cantidad,
-        plazas_ocupadas: activas,
-        plazas_confirmadas: confirmadas.length,
-        plazas_pendientes: pendientes.length,
-        plazas_disponibles: Math.max(0, cantidad - activas),
+      const confirmadas = reservas.filter((r) => r.estado_reserva === "CONFIRMADA");
+      const pendientes = reservas.filter((r) => r.estado_reserva === "PENDIENTE");
+      const activas = confirmadas.length + pendientes.length;
+      const cantidadAnterior = Number(locked[0].cantidad_alumnos);
+      const ctx = {
+        cantidadAnterior,
+        especialidadNombre: offer.especialidad,
+        emailCoordinador: offer.email_coordinador,
+        empresaNombre: offer.empresa,
         canceladas: [],
-      });
-    }
+      };
 
-    if (cantidad < confirmadas.length) {
-      await conn.rollback();
+      if (cantidad === cantidadAnterior) {
+        return {
+          ...ctx,
+          sinCambio: {
+            message: "La cantidad no ha cambiado.",
+            cantidad,
+            plazas_ocupadas: activas,
+            plazas_confirmadas: confirmadas.length,
+            plazas_pendientes: pendientes.length,
+            plazas_disponibles: Math.max(0, cantidad - activas),
+            canceladas: [],
+          },
+        };
+      }
 
-      return res.status(400).json({
-        error: ERROR_CUPO_CONFIRMADAS,
-        plazas_confirmadas: confirmadas.length,
-        plazas_pendientes: pendientes.length,
-        plazas_ocupadas: activas,
-      });
-    }
-
-    if (cantidad < activas) {
-      const nCancelar = activas - cantidad;
-      const requested = Array.isArray(req.body?.ids_reservas_cancelar)
-        ? [...new Set(req.body.ids_reservas_cancelar.map((value) => parseInt(value, 10)).filter((value) => value > 0))]
-        : [];
-      const aviso =
-        `Al reducir de ${cantidadAnterior} a ${cantidad} plazas hay que cancelar ${nCancelar} reserva${
-          nCancelar !== 1 ? "s" : ""
-        } pendiente${nCancelar !== 1 ? "s" : ""}. Elige cuáles. Las reservas confirmadas no se modifican.`;
-
-      const selected = pendientes.filter((row) => requested.includes(row.id_reserva));
-      if (!confirmarCancelaciones || selected.length !== nCancelar) {
-        await conn.rollback();
-        return res.status(409).json({
-          error: aviso,
-          requires_confirm: true,
-          requires_selection: true,
-          cancelar_pendientes: nCancelar,
-          cantidad_actual: cantidadAnterior,
-          cantidad_nueva: cantidad,
-          plazas_confirmadas: confirmadas.length,
-          plazas_pendientes: pendientes.length,
-          pendientes: pendientes.map((row) => ({
-            id_reserva: row.id_reserva,
-            alumno: row.alumno,
-            dni_alumno: row.dni_alumno,
-          })),
+      if (cantidad < confirmadas.length) {
+        throw new HttpError(400, ERROR_CUPO_CONFIRMADAS, {
+          payload: {
+            plazas_confirmadas: confirmadas.length,
+            plazas_pendientes: pendientes.length,
+            plazas_ocupadas: activas,
+          },
         });
       }
 
-      for (const row of selected) {
-        const [upd] = await conn.query(
-          `UPDATE dual_reservas
-           SET
-             id_estado_reserva = (
-               SELECT id_estado_reserva
-               FROM dual_estados_reserva
-               WHERE nombre = 'CANCELADA'
-               LIMIT 1
-             ),
-             id_tipo_contrato = NULL,
-             motivo = ?
-           WHERE id_reserva = ?
-             AND id_estado_reserva = (
-               SELECT id_estado_reserva
-               FROM dual_estados_reserva
-               WHERE nombre = 'PENDIENTE'
-               LIMIT 1
-             )`,
-          [motivo, row.id_reserva],
-        );
+      if (cantidad < activas) {
+        const nCancelar = activas - cantidad;
+        const requested = Array.isArray(req.body?.ids_reservas_cancelar)
+          ? [...new Set(req.body.ids_reservas_cancelar.map((value) => parseInt(value, 10)).filter((value) => value > 0))]
+          : [];
+        const aviso =
+          `Al reducir de ${cantidadAnterior} a ${cantidad} plazas hay que cancelar ${nCancelar} reserva${
+            nCancelar !== 1 ? "s" : ""
+          } pendiente${nCancelar !== 1 ? "s" : ""}. Elige cuáles. Las reservas confirmadas no se modifican.`;
 
-        if (!upd.affectedRows) {
-          await conn.rollback();
-
-          return res.status(409).json({
-            error:
-              "El estado de las reservas ha cambiado. Vuelve a intentar la reducción de plazas.",
+        const selected = pendientes.filter((row) => requested.includes(row.id_reserva));
+        if (!confirmarCancelaciones || selected.length !== nCancelar) {
+          throw new HttpError(409, aviso, {
+            payload: {
+              requires_confirm: true,
+              requires_selection: true,
+              cancelar_pendientes: nCancelar,
+              cantidad_actual: cantidadAnterior,
+              cantidad_nueva: cantidad,
+              plazas_confirmadas: confirmadas.length,
+              plazas_pendientes: pendientes.length,
+              pendientes: pendientes.map((row) => ({
+                id_reserva: row.id_reserva,
+                alumno: row.alumno,
+                dni_alumno: row.dni_alumno,
+              })),
+            },
           });
         }
 
-        canceladas.push({
-          id_reserva: row.id_reserva,
-          alumno: row.alumno,
-          dni_alumno: row.dni_alumno,
-          especialidad: offer.especialidad,
-          motivo,
-        });
+        for (const row of selected) {
+          await reservasTx.cancelarPendiente(conn, {
+            idReserva: row.id_reserva, motivo, user: req.user,
+            detalle: { por_reduccion_cupo: { id_oferta: idOferta, de: cantidadAnterior, a: cantidad } },
+          });
+          ctx.canceladas.push({
+            id_reserva: row.id_reserva,
+            alumno: row.alumno,
+            dni_alumno: row.dni_alumno,
+            especialidad: offer.especialidad,
+            motivo,
+          });
+        }
       }
-    }
 
-    await conn.query(
-      `UPDATE dual_solicitud_empresa_especialidades
-       SET cantidad_alumnos = ?
-       WHERE id_solicitud_empresa_especialidad = ?`,
-      [cantidad, idOferta],
-    );
-
-    await conn.commit();
+      await conn.query(
+        `UPDATE dual_solicitud_empresa_especialidades
+         SET cantidad_alumnos = ?
+         WHERE id_solicitud_empresa_especialidad = ?`,
+        [cantidad, idOferta],
+      );
+      await recordEvent(conn, {
+        entidad: "OFERTA", id: idOferta, accion: "CUPO",
+        antes: String(cantidadAnterior), despues: String(cantidad), user: req.user,
+        detalle: {
+          id_solicitud_empresa: id,
+          ...(ctx.canceladas.length ? { reservas_canceladas: ctx.canceladas.map((c) => c.id_reserva) } : {}),
+        },
+      });
+      return ctx;
+    });
   } catch (err) {
-    await conn.rollback();
+    if (err.status) return res.status(err.status).json({ error: err.message, ...(err.payload || {}) });
     return sendSqlError(res, err);
-  } finally {
-    conn.release();
   }
+
+  if (out.sinCambio) return res.json(out.sinCambio);
+  const { canceladas, cantidadAnterior, especialidadNombre, emailCoordinador, empresaNombre } = out;
 
   if (canceladas.length) {
     await sendCupoReductionEmail({

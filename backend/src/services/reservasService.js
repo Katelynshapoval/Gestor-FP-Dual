@@ -1,9 +1,11 @@
 const pool = require('../db/pool');
-const { getCompanyIdFromUser, getStudentIdFromUser, sendSqlError, callProcedureWithResult, callProcedure } = require('../helpers/dbHelpers');
+const { getCompanyIdFromUser, getStudentIdFromUser, sendSqlError } = require('../helpers/dbHelpers');
+const { inTransaction, HttpError } = require('../db/transaction');
+const tx = require('./reservasTx');
 const { attachSolicitudDocumentos, reservaDocumentos, reservaDocSummary, reservaHistorial } = require('./documentosWorkflow');
 const { ESTADOS_RESERVA } = require('../constants/reservaEstados');
 const { anexoClaveSql, anexoClaveForContrato, defByClave, pendingSignatures } = require('./documentCatalogue');
-const { recordEvent, recordEventAfterCommit } = require('./auditLog');
+const { recordEvent } = require('./auditLog');
 const reglas = require('./estadoReglas');
 const notificar = require('./notificaciones');
 
@@ -13,26 +15,6 @@ const ANEXO_SQL = anexoClaveSql('tc');
 function parseId(value) {
   const n = parseInt(value, 10);
   return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-async function loadReservaPair(idSolicitudAlumno, idOferta) {
-  const [rows] = await pool.query(
-    `SELECT r.id_reserva, er.nombre AS estado_reserva
-       FROM dual_reservas r
-       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-      WHERE r.id_solicitud_alumno = ?
-        AND r.id_solicitud_empresa_especialidad = ?
-      LIMIT 1`,
-    [idSolicitudAlumno, idOferta]
-  );
-  return rows[0] || null;
-}
-
-async function resolveReservaId(callRow, idSolicitudAlumno, idOferta) {
-  const fromCall = parseId(callRow?.id_reserva);
-  if (fromCall) return fromCall;
-  const pair = await loadReservaPair(idSolicitudAlumno, idOferta);
-  return parseId(pair?.id_reserva);
 }
 
 // WF-15: real annex/calendar state for each listed reservation.
@@ -84,20 +66,6 @@ async function validateReservaTargets(idSolicitudAlumno, idOferta, { requireActi
     return { error: 'La especialidad del alumno no coincide con la especialidad solicitada por la empresa.', status: 400 };
   }
   return { ok: true, row };
-}
-
-async function executeReservar(idSolicitudAlumno, idOferta) {
-  const callRow = await callProcedureWithResult(pool, 'sp_reservar_alumno', [
-    idSolicitudAlumno,
-    idOferta,
-  ]);
-  const idReserva = await resolveReservaId(callRow, idSolicitudAlumno, idOferta);
-  if (!idReserva) {
-    const err = new Error('No se pudo obtener el identificador de la reserva.');
-    err.status = 500;
-    throw err;
-  }
-  return idReserva;
 }
 
 // GET /alumnos/disponibles — validated students without a confirmed placement,
@@ -565,6 +533,22 @@ exports.getAlumnosElegibles = async function (req, res) {
   return res.json(rows);
 };
 
+// Runs a reservation transition in one transaction and answers the request.
+// `work(conn)` returns the JSON body (and optional status); refusals thrown as
+// HttpError or SQL errors roll everything back. `after(out)` runs only after the
+// commit (emails), so nothing is announced that did not happen.
+async function transicion(res, work, { status = 200, after = null } = {}) {
+  let out;
+  try {
+    out = await inTransaction(work);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) });
+    return sendSqlError(res, err);
+  }
+  if (after) after(out);
+  return res.status(out.status || status).json(out.body);
+}
+
 // POST /reservas — empresa reserves a student against one of its validated speciality offers
 exports.reservar = async function (req, res) {
   const idSolicitudAlumno = parseId(req.body.id_solicitud_alumno);
@@ -595,27 +579,19 @@ exports.reservar = async function (req, res) {
     return res.status(403).json({ error: 'No tienes permiso para usar esta oferta o no está aprobada.' });
   }
 
+  // Readable messages first; the procedure and trg_dr_bi_reglas re-check under lock.
   const validation = await validateReservaTargets(idSolicitudAlumno, idOferta, { requireActive: true });
   if (!validation.ok) {
     return res.status(validation.status).json({ error: validation.error });
   }
 
-  try {
-    const idReserva = await executeReservar(idSolicitudAlumno, idOferta);
-    await recordEventAfterCommit({
-      entidad: 'RESERVA', id: idReserva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
-      user: req.user, detalle: { id_solicitud_alumno: idSolicitudAlumno, id_oferta: idOferta },
-    });
-    notificar.reservaCreada(idReserva);
-    return res.status(201).json({
-      message: 'Alumno reservado correctamente.',
-      id_reserva: idReserva,
-      estado_reserva: ESTADOS_RESERVA.PENDIENTE,
-    });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message });
-    return sendSqlError(res, err);
-  }
+  return transicion(res, async (conn) => {
+    const idReserva = await tx.reservar(conn, { idSolicitudAlumno, idOferta, user: req.user });
+    return {
+      idReserva,
+      body: { message: 'Alumno reservado correctamente.', id_reserva: idReserva, estado_reserva: ESTADOS_RESERVA.PENDIENTE },
+    };
+  }, { status: 201, after: (out) => notificar.reservaCreada(out.idReserva) });
 };
 
 // POST /reservas/admin — staff reserves a student for a validated company offer
@@ -632,22 +608,13 @@ exports.reservarAdmin = async function (req, res) {
     return res.status(validation.status).json({ error: validation.error });
   }
 
-  try {
-    const idReserva = await executeReservar(idSolicitudAlumno, idOferta);
-    await recordEventAfterCommit({
-      entidad: 'RESERVA', id: idReserva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
-      user: req.user, detalle: { id_solicitud_alumno: idSolicitudAlumno, id_oferta: idOferta },
-    });
-    notificar.reservaCreada(idReserva, { porCentro: true });
-    return res.status(201).json({
-      message: 'Reserva creada correctamente.',
-      id_reserva: idReserva,
-      estado_reserva: ESTADOS_RESERVA.PENDIENTE,
-    });
-  } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message });
-    return sendSqlError(res, err);
-  }
+  return transicion(res, async (conn) => {
+    const idReserva = await tx.reservar(conn, { idSolicitudAlumno, idOferta, user: req.user });
+    return {
+      idReserva,
+      body: { message: 'Reserva creada correctamente.', id_reserva: idReserva, estado_reserva: ESTADOS_RESERVA.PENDIENTE },
+    };
+  }, { status: 201, after: (out) => notificar.reservaCreada(out.idReserva, { porCentro: true }) });
 };
 
 // POST /reservas/:id/cancelar — empresa cancels its own pending reservation (motivo required)
@@ -665,6 +632,7 @@ exports.cancelar = async function (req, res) {
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
   if (!idEmpresa) return res.status(404).json({ error: 'No se encontró empresa vinculada a este usuario.' });
 
+  // Ownership never changes (the offer of a reservation is immutable).
   const [check] = await pool.query(
     `SELECT r.id_reserva, er.nombre AS estado_reserva, se.id_empresa
        FROM dual_reservas r
@@ -683,17 +651,10 @@ exports.cancelar = async function (req, res) {
     return res.status(400).json({ error: 'Solo puede cancelar una reserva pendiente propia.' });
   }
 
-  try {
-    await callProcedure(pool, 'sp_cancelar_reserva', [idReserva, motivo]);
-    await recordEventAfterCommit({
-      entidad: 'RESERVA', id: idReserva, accion: 'CANCELAR',
-      antes: ESTADOS_RESERVA.PENDIENTE, despues: ESTADOS_RESERVA.CANCELADA, user: req.user, motivo,
-    });
-    notificar.reservaCancelada(idReserva);
-    return res.json({ message: 'Reserva cancelada correctamente.', estado_reserva: ESTADOS_RESERVA.CANCELADA });
-  } catch (err) {
-    return sendSqlError(res, err);
-  }
+  return transicion(res, async (conn) => {
+    await tx.cancelarPendiente(conn, { idReserva, motivo, user: req.user });
+    return { body: { message: 'Reserva cancelada correctamente.', estado_reserva: ESTADOS_RESERVA.CANCELADA } };
+  }, { after: () => notificar.reservaCancelada(idReserva) });
 };
 
 // POST /reservas/:id/cancelar-admin — staff cancels pending or confirmed reservations
@@ -708,28 +669,15 @@ exports.cancelarAdmin = async function (req, res) {
     return res.status(400).json({ error: 'Debe indicar el motivo de la cancelación.' });
   }
 
-  const [antes] = await pool.query(
-    `SELECT er.nombre AS estado FROM dual_reservas r
-       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-      WHERE r.id_reserva = ?`,
-    [idReserva]
-  );
-
-  try {
-    await callProcedure(pool, 'sp_cancelar_reserva_admin', [idReserva, motivo]);
-    await recordEventAfterCommit({
-      entidad: 'RESERVA', id: idReserva, accion: 'CANCELAR',
-      antes: antes[0]?.estado || null, despues: ESTADOS_RESERVA.CANCELADA, user: req.user, motivo,
-      detalle: { administrativa: true },
-    });
-    notificar.reservaCancelada(idReserva, { avisarEmpresa: true });
-    return res.json({ message: 'Reserva cancelada correctamente.', estado_reserva: ESTADOS_RESERVA.CANCELADA });
-  } catch (err) {
-    return sendSqlError(res, err);
-  }
+  return transicion(res, async (conn) => {
+    await tx.cancelarAdmin(conn, { idReserva, motivo, user: req.user });
+    return { body: { message: 'Reserva cancelada correctamente.', estado_reserva: ESTADOS_RESERVA.CANCELADA } };
+  }, { after: () => notificar.reservaCancelada(idReserva, { avisarEmpresa: true }) });
 };
 
-// POST /reservas/:id/reasignar — staff moves a student to another eligible offer atomically
+// POST /reservas/:id/reasignar — staff moves a student to another eligible offer atomically.
+// The origin is cancelled (it keeps its contract type, tutor and documents) and a NEW
+// reservation is created with id_reserva_origen pointing at it (migration 018).
 exports.reasignar = async function (req, res) {
   const idReservaOrigen = parseId(req.params.id);
   const idOferta = parseId(req.body.id_solicitud_empresa_especialidad);
@@ -766,36 +714,23 @@ exports.reasignar = async function (req, res) {
     return res.status(validation.status).json({ error: validation.error });
   }
 
-  try {
-    const callRow = await callProcedureWithResult(pool, 'sp_reasignar_reserva', [
-      idReservaOrigen,
-      idOferta,
-      motivo,
-    ]);
-    const idNueva = await resolveReservaId(callRow, origen[0].id_solicitud_alumno, idOferta);
-    if (!idNueva) {
-      return res.status(500).json({ error: 'No se pudo obtener el identificador de la nueva reserva.' });
-    }
-    await recordEventAfterCommit({
-      entidad: 'RESERVA', id: idReservaOrigen, accion: 'REASIGNAR',
-      antes: origen[0].estado_reserva, despues: ESTADOS_RESERVA.CANCELADA, user: req.user, motivo,
-      detalle: { id_reserva_destino: idNueva, id_oferta_destino: idOferta },
-    });
-    await recordEventAfterCommit({
-      entidad: 'RESERVA', id: idNueva, accion: 'RESERVAR', despues: ESTADOS_RESERVA.PENDIENTE,
-      user: req.user, motivo, detalle: { reasignada_desde: idReservaOrigen },
-    });
-    notificar.reservaCancelada(idReservaOrigen, { avisarEmpresa: true });
-    notificar.reservaCreada(idNueva, { porCentro: true });
-    return res.json({
-      message: 'Alumno reasignado correctamente.',
-      id_reserva: idNueva,
-      id_reserva_origen: idReservaOrigen,
-      estado_reserva: ESTADOS_RESERVA.PENDIENTE,
-    });
-  } catch (err) {
-    return sendSqlError(res, err);
-  }
+  return transicion(res, async (conn) => {
+    const { idNueva } = await tx.reasignar(conn, { idReservaOrigen, idOferta, motivo, user: req.user });
+    return {
+      idNueva,
+      body: {
+        message: 'Alumno reasignado correctamente.',
+        id_reserva: idNueva,
+        id_reserva_origen: idReservaOrigen,
+        estado_reserva: ESTADOS_RESERVA.PENDIENTE,
+      },
+    };
+  }, {
+    after: (out) => {
+      notificar.reservaCancelada(idReservaOrigen, { avisarEmpresa: true });
+      notificar.reservaCreada(out.idNueva, { porCentro: true });
+    },
+  });
 };
 
 async function currentAnexos(conn, idReserva, { lock = false } = {}) {
@@ -824,36 +759,26 @@ exports.setTipoContrato = async function (req, res) {
   if (!idReserva || !idTipo) {
     return res.status(400).json({ error: 'Indica la reserva y el tipo de contrato.' });
   }
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
+  // Locks the reservation, then its annexes (a subset of the confirmation order).
+  return transicion(res, async (conn) => {
     const [rows] = await conn.query(
       `SELECT r.id_reserva, r.id_tipo_contrato, er.nombre AS estado, tc.nombre AS tipo_contrato
          FROM dual_reservas r
          JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
          LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
         WHERE r.id_reserva = ?
-        FOR UPDATE`,
+        FOR UPDATE OF r`,
       [idReserva],
     );
     const [tipos] = await conn.query(
       'SELECT id_tipo_contrato, nombre FROM dual_tipos_contrato WHERE id_tipo_contrato = ?',
       [idTipo],
     );
-    if (rows[0] && !tipos[0]) {
-      await conn.rollback();
-      return res.status(400).json({ error: 'Tipo de contrato no válido.' });
-    }
+    if (rows[0] && !tipos[0]) throw new HttpError(400, 'Tipo de contrato no válido.');
     const anexos = rows[0] ? await currentAnexos(conn, idReserva, { lock: true }) : [];
     const denied = reglas.tipoContratoCambiable(rows[0] || null, tipos[0]?.nombre, anexos);
-    if (denied) {
-      await conn.rollback();
-      return res.status(denied.status).json({ error: denied.error, code: denied.code });
-    }
-    if (rows[0].id_tipo_contrato === idTipo) {
-      await conn.rollback();
-      return res.json({ message: 'Tipo de contrato actualizado.' });
-    }
+    if (denied) throw new HttpError(denied.status, denied.error, { code: denied.code });
+    if (rows[0].id_tipo_contrato === idTipo) return { body: { message: 'Tipo de contrato actualizado.' } };
 
     await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [idTipo, idReserva]);
 
@@ -864,8 +789,7 @@ exports.setTipoContrato = async function (req, res) {
     if (retirados.length) {
       await conn.query('UPDATE dual_documentos SET es_actual = 0 WHERE id_documento IN (?)', [retirados]);
     }
-    // estado_* columns are varchar(30) and some type names are longer
-    // (CONTRATO_DE_FORMACION_EN_ALTERNANCIA): store ids there, names in detalle.
+    // Contract-type names can exceed the event's state columns: ids there, names in detalle.
     await recordEvent(conn, {
       entidad: 'RESERVA', id: idReserva, accion: 'TIPO_CONTRATO',
       antes: rows[0].id_tipo_contrato != null ? String(rows[0].id_tipo_contrato) : null,
@@ -877,19 +801,15 @@ exports.setTipoContrato = async function (req, res) {
         ...(retirados.length ? { documentos_retirados: retirados } : {}),
       },
     });
-    await conn.commit();
-    return res.json({ message: 'Tipo de contrato actualizado.', documentos_retirados: retirados });
-  } catch (err) {
-    await conn.rollback();
-    return sendSqlError(res, err);
-  } finally {
-    conn.release();
-  }
+    return { body: { message: 'Tipo de contrato actualizado.', documentos_retirados: retirados } };
+  });
 };
 
 // POST /reservas/:id/confirmar — admin/coordinador confirms a reservation.
 // D2: uses the stored contract type and needs its annex fully signed and validated.
-// sp_confirmar_reserva re-checks the type and the validated annex under its lock.
+// Stage 2: the checks, the procedure and every event run in ONE transaction, with
+// locks taken in the order of migration 018 (student application → offers →
+// reservations → documents), so an upload or signature in between cannot slip through.
 exports.confirmar = async function (req, res) {
   const idReserva = parseId(req.params.id);
   const raw = req.body?.id_tipo_contrato;
@@ -902,61 +822,44 @@ exports.confirmar = async function (req, res) {
     return res.status(400).json({ error: 'Tipo de contrato no válido.' });
   }
 
-  try {
-    const [rows] = await pool.query(
+  return transicion(res, async (conn) => {
+    await tx.bloquearParaConfirmar(conn, idReserva);
+    const [rows] = await conn.query(
       `SELECT r.id_reserva, r.id_solicitud_alumno, r.id_tipo_contrato,
               er.nombre AS estado, tc.nombre AS tipo_contrato
          FROM dual_reservas r
          JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
          LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
-        WHERE r.id_reserva = ?`,
+        WHERE r.id_reserva = ?
+        FOR UPDATE OF r`,
       [idReserva]
     );
     const reserva = rows[0] || null;
     const clave = reserva ? anexoClaveForContrato(reserva.tipo_contrato) : null;
     const def = clave ? defByClave(clave) : null;
-    const anexo = clave ? (await currentAnexos(pool, idReserva)).find((a) => a.clave === clave) || null : null;
+    const anexo = clave ? (await currentAnexos(conn, idReserva, { lock: true })).find((a) => a.clave === clave) || null : null;
     let firmas = [];
     if (anexo) {
-      [firmas] = await pool.query(
-        'SELECT rol, estado FROM dual_documento_firmas WHERE id_documento = ?',
+      [firmas] = await conn.query(
+        'SELECT rol, estado FROM dual_documento_firmas WHERE id_documento = ? FOR SHARE',
         [anexo.id_documento]
       );
     }
     const denied = reglas.reservaConfirmable(reserva, idTipoPedido, def, anexo, firmas);
-    if (denied) return res.status(denied.status).json({ error: denied.error, code: denied.code });
+    if (denied) throw new HttpError(denied.status, denied.error, { code: denied.code });
 
-    const [otras] = await pool.query(
-      `SELECT r.id_reserva FROM dual_reservas r
-         JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
-        WHERE r.id_solicitud_alumno = ? AND r.id_reserva <> ? AND er.nombre = ?`,
-      [reserva.id_solicitud_alumno, idReserva, ESTADOS_RESERVA.PENDIENTE]
-    );
-
-    await callProcedure(pool, 'sp_confirmar_reserva', [idReserva, reserva.id_tipo_contrato]);
-
-    await recordEventAfterCommit({
-      entidad: 'RESERVA', id: idReserva, accion: 'CONFIRMAR',
-      antes: ESTADOS_RESERVA.PENDIENTE, despues: ESTADOS_RESERVA.CONFIRMADA, user: req.user,
+    const otras = await tx.confirmar(conn, {
+      idReserva, idTipoContrato: reserva.id_tipo_contrato, user: req.user,
       detalle: { tipo_contrato: reserva.tipo_contrato, id_documento_anexo: anexo.id_documento },
     });
-    for (const o of otras) {
-      await recordEventAfterCommit({
-        entidad: 'RESERVA', id: o.id_reserva, accion: 'CANCELAR',
-        antes: ESTADOS_RESERVA.PENDIENTE, despues: ESTADOS_RESERVA.CANCELADA, user: req.user,
-        motivo: 'Alumno asignado a otra empresa.', detalle: { por_confirmacion_de: idReserva },
-      });
-    }
-    notificar.reservaConfirmada(idReserva);
-    // The student hears about the confirmation; each company that lost the student is told.
-    for (const o of otras) notificar.reservaCancelada(o.id_reserva, { avisarEmpresa: true, avisarAlumno: false });
-    return res.json({ message: 'Reserva confirmada correctamente.', estado_reserva: ESTADOS_RESERVA.CONFIRMADA });
-  } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ error: 'El alumno ya tiene otra reserva confirmada.' });
-    }
-    return sendSqlError(res, err);
-  }
+    return { otras, body: { message: 'Reserva confirmada correctamente.', estado_reserva: ESTADOS_RESERVA.CONFIRMADA } };
+  }, {
+    after: (out) => {
+      notificar.reservaConfirmada(idReserva);
+      // The student hears about the confirmation; each company that lost the student is told.
+      for (const id of out.otras) notificar.reservaCancelada(id, { avisarEmpresa: true, avisarAlumno: false });
+    },
+  });
 };
 
 const STAFF = ['ADMINISTRADOR', 'COORDINADOR'];
@@ -964,7 +867,7 @@ const STAFF = ['ADMINISTRADOR', 'COORDINADOR'];
 // Reservation row with everything the detail panel and the rules need.
 async function loadReservaCompleta(idReserva) {
   const [rows] = await pool.query(
-    `SELECT r.id_reserva, er.nombre AS estado_reserva, r.motivo, r.id_tipo_contrato,
+    `SELECT r.id_reserva, er.nombre AS estado_reserva, r.motivo, r.id_tipo_contrato, r.id_reserva_origen,
             tc.nombre AS tipo_contrato_clave, tc.nombre_mostrar AS tipo_contrato,
             r.id_empresa_tutor, tutor_c.nombre AS tutor_nombre, tutor_c.email AS tutor_email,
             tutor_c.telefono AS tutor_telefono, t.activo AS tutor_activo,
@@ -992,6 +895,46 @@ async function loadReservaCompleta(idReserva) {
   return rows[0] || null;
 }
 
+// Stage 2 (migration 018): each booking attempt is its own row. The attempts
+// linked to this one: the reservation it was reassigned from, the one that
+// replaced it, and earlier or later attempts of the same student on the same
+// offer. A company only sees attempts on its own offers.
+async function reservasRelacionadas(reserva, { idEmpresa = null } = {}) {
+  const [rows] = await pool.query(
+    `SELECT r.id_reserva, er.nombre AS estado_reserva, r.id_reserva_origen,
+            r.id_solicitud_empresa_especialidad, se.id_empresa, emp.empresa,
+            esp.nombre AS especialidad, tc.nombre_mostrar AS tipo_contrato
+       FROM dual_reservas r
+       JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+       LEFT JOIN dual_tipos_contrato tc ON tc.id_tipo_contrato = r.id_tipo_contrato
+       JOIN dual_solicitud_empresa_especialidades ee
+         ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
+       JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
+       JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
+       JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
+      WHERE r.id_solicitud_alumno = ?
+        AND r.id_reserva <> ?
+        AND (r.id_solicitud_empresa_especialidad = ? OR r.id_reserva = ? OR r.id_reserva_origen = ?)
+      ORDER BY r.id_reserva`,
+    [reserva.id_solicitud_alumno, reserva.id_reserva, reserva.id_solicitud_empresa_especialidad,
+      reserva.id_reserva_origen ?? -1, reserva.id_reserva],
+  );
+  return rows
+    .filter((r) => idEmpresa == null || r.id_empresa === idEmpresa)
+    .map((r) => ({
+      id_reserva: r.id_reserva,
+      estado_reserva: r.estado_reserva,
+      empresa: r.empresa,
+      especialidad: r.especialidad,
+      tipo_contrato: r.tipo_contrato,
+      relacion: r.id_reserva === reserva.id_reserva_origen
+        ? 'REASIGNADA_DESDE'
+        : r.id_reserva_origen === reserva.id_reserva
+          ? 'REASIGNADA_A'
+          : r.id_reserva < reserva.id_reserva ? 'INTENTO_ANTERIOR' : 'INTENTO_POSTERIOR',
+    }));
+}
+
 function permitido(ok, motivo = null) {
   return ok ? { permitido: true } : { permitido: false, motivo };
 }
@@ -1009,8 +952,10 @@ exports.getDetalle = async function (req, res) {
 
   const rol = req.user.rol;
   const isStaff = STAFF.includes(rol);
+  let idEmpresaPropia = null;
   if (rol === 'EMPRESA') {
     const idEmpresa = await getCompanyIdFromUser(req.user.id);
+    idEmpresaPropia = idEmpresa;
     if (!idEmpresa || idEmpresa !== reserva.id_empresa) {
       return res.status(403).json({ error: 'No tienes permiso para ver esta reserva.', code: 'FORBIDDEN' });
     }
@@ -1081,6 +1026,7 @@ exports.getDetalle = async function (req, res) {
   return res.json({
     reserva: {
       id_reserva: reserva.id_reserva,
+      id_reserva_origen: reserva.id_reserva_origen,
       estado_reserva: estado,
       // SEC-11: the free-text reason is for staff and the company, not the student.
       motivo: estado === ESTADOS_RESERVA.CANCELADA && rol !== 'ALUMNO' ? reserva.motivo : null,
@@ -1107,6 +1053,7 @@ exports.getDetalle = async function (req, res) {
     },
     documentos,
     historial: isStaff ? await reservaHistorial(idReserva) : [],
+    relacionadas: await reservasRelacionadas(reserva, { idEmpresa: rol === 'EMPRESA' ? idEmpresaPropia : null }),
     confirmacion: { lista: !bloqueoConfirmar, motivo: bloqueoConfirmar?.error || null, requisitos },
     acciones,
   });
