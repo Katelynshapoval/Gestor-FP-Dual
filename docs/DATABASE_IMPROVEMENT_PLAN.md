@@ -7,7 +7,7 @@ _FP Dual · 2026-10-28 · Companion document: [DATABASE_AUDIT.md](DATABASE_AUDIT
 | Stage | Status |
 | --- | --- |
 | 1 — Integrity fixes (017) | **Complete.** Verified on the isolated database, then applied to `proyecto_dual` on 2026-10-28 with your approval and verified there (branch `database-improvements`, not committed). Report: [DATABASE_STAGE_1_REPORT.md](DATABASE_STAGE_1_REPORT.md). |
-| 2 — Reservation model and transactions | Not started. Needs your go-ahead after Stage 1 is applied. |
+| 2 — Reservation model and transactions (018) | **Implemented and verified on the isolated database** (branch `database-improvements-stage-2`, based on the committed Stage 1). **018 is NOT applied to `proyecto_dual`**: it needs your approval. Report: [DATABASE_STAGE_2_REPORT.md](DATABASE_STAGE_2_REPORT.md). |
 | 3 — Document history and audit | Not started. |
 | 4 — Cleanup, performance, security | Not started. |
 
@@ -307,6 +307,14 @@ GRANT ALL PRIVILEGES ON proyecto_dual.* TO 'fpdual_migrator'@'localhost';
 - **Risks:** a caller that forgets the transaction would run a procedure in autocommit, so its `FOR UPDATE` locks would last one statement — **highest risk of the plan**. Mitigation: the procedures are called only from one module, through `withTransaction`; a test fails if any `CALL sp_reservar_alumno|sp_reasignar_reserva|sp_confirmar_reserva|sp_cancelar_reserva_admin` appears outside it. If you prefer not to take this risk, the fallback (D6) is to keep the procedures' own transactions and pass the acting user so each procedure writes its own event — atomic for events, but *baja* would still need a dedicated procedure.
 - **Tests:** concurrency tests on a disposable schema: two sessions reserving the last place (one wins); confirm vs reserve on the same student (no deadlock, or one retried); *baja* with two active reservations rolls back fully if one cancellation fails; rebook after cancel creates a new id and the old row keeps its contract type and documents; reassignment sets `id_reserva_origen`.
 - **Acceptance:** every reservation transition writes exactly one event in the same transaction (test kills the event insert → no state change); `SHOW ENGINE INNODB STATUS` shows no deadlock in the concurrency suite; no `UPDATE … CANCELADA → PENDIENTE` path remains.
+- **Result (2026-10-28):** implemented. Changes from this plan, found during the isolated tests:
+  - The lock order became application → company application → **offers (ascending)** → reservations. Nothing changes a reservation's state without holding its offer, because the first stress run showed a booking/cancellation deadlock across the offer index.
+  - Locking counts pin their index, and backend transactions run at READ COMMITTED.
+  - The procedures refuse `autocommit = 1` (SQLSTATE 45001), so the "forgotten transaction" risk is enforced by the database itself, not only by a static test (which also exists).
+  - Eligibility is checked before places.
+  - Tutor assignment and document review now lock in the same order.
+
+  On the isolated database: 21/21 real-MySQL tests, in 8 consecutive clean runs with no deadlock and no retry. Stage 1 14/14, Phase 2 6/6, mocked 94 pass (1 failure that predates Stage 1), frontend 28/28, ESLint 0, build OK, browser check OK. The rollback is exact only before any second attempt or OFERTA/TUTOR event; after that its guard refuses and only the backup restore remains. **018 not applied to `proyecto_dual` (awaiting approval).**
 
 ### Stage 3 — Document history and audit coverage (migration 019)
 
