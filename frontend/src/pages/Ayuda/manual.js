@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { coincide, normalizar } from "../../utils/busqueda";
 
@@ -103,9 +104,12 @@ export function manualHtml(markdown) {
     /\]\(manual\/imagenes\/([^)\s]+)\)/g,
     (_, file) => `](/ayuda/imagenes/${encodeURIComponent(file)})`,
   );
-  return marked
+  const html = marked
     .parse(withImages)
     .replace(/<p><a id="([^"]+)"><\/a><\/p>\s*<h(\d)>/g, '<h$2 id="$1">');
+  // SEC-011: the result goes into dangerouslySetInnerHTML; never trust the
+  // Markdown to be free of script, even though today it comes from the repo.
+  return DOMPurify.sanitize(html);
 }
 
 // Same folding as normalizar, one UTF-16 unit at a time, so positions in the

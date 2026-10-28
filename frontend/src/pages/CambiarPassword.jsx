@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FaCheck, FaEye, FaEyeSlash, FaLightbulb, FaShieldHalved } from "react-icons/fa6";
 import { postJSON } from "../utils/api.js";
+import { useUser } from "../context/UserContext.js";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import InlineNotice from "../components/ui/InlineNotice.jsx";
 import { useToast } from "../components/feedback/ToastProvider.jsx";
@@ -76,6 +77,7 @@ const Requisito = ({ ok, children }) => (
 // current password (SEC-2); the forced first-login change stays in Login.js.
 const CambiarPassword = () => {
   const toast = useToast();
+  const { user, setUser } = useUser();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -105,7 +107,9 @@ const CambiarPassword = () => {
     }
     setSubmitting(true);
     try {
-      await postJSON("/auth/changePassword", { currentPassword, newPassword });
+      const data = await postJSON("/auth/changePassword", { currentPassword, newPassword });
+      // The old token stops working once the password changes.
+      if (data?.token) setUser({ ...user, token: data.token });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { signupRateLimit } = require('../middleware/loginRateLimit');
 const asyncHandler = require('../middleware/asyncHandler');
 const svc = require('../services/solicitudesEmpresaService');
 const baja = require('../services/bajaService').handlers('SOLICITUD_EMPRESA');
@@ -7,7 +8,7 @@ const baja = require('../services/bajaService').handlers('SOLICITUD_EMPRESA');
 const router = Router();
 
 // Public: submit new company application
-router.post('/solicitudes/empresa', asyncHandler(svc.create));
+router.post('/solicitudes/empresa', signupRateLimit, asyncHandler(svc.create));
 
 // Empresa: re-apply for the active convocatoria
 router.post('/solicitudes/empresa/reapply', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.reapply));

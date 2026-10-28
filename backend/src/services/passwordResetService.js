@@ -6,19 +6,17 @@
 // password changes, by this link or any other way, the fingerprint no longer
 // matches and every older link stops working: each link works once.
 //
-// The form refuses the request when there is no active account, or when that
-// account has no email to write to, so the user is not told that a link was
-// sent when nothing went out. Requests are limited per IP and identifier,
-// like the login.
+// SEC-009: the form gives the same answer for every identifier (no account,
+// disabled account, no email, link sent), worded so it never claims that a
+// link went out. Requests are limited per IP and identifier, like the login.
 //
 // Where the link goes: staff → their user email; students → the personal email
 // of their application; companies → the principal coordinator's email.
 // Deactivated accounts (for example after a «baja») get no link.
-const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const pool = require("../db/pool");
-const { getJwtSecret } = require("../middleware/auth");
+const { getJwtSecret, passwordFingerprint } = require("../middleware/auth");
 const { findUserByIdentifier } = require("./authService");
 const { createLoginRateLimiter } = require("../middleware/loginRateLimit");
 const notificar = require("./notificaciones");
@@ -27,15 +25,15 @@ const TTL = "30m";
 const MIN_PASSWORD_LENGTH = 8;
 const limiter = createLoginRateLimiter({ maxPerIdentifier: 3, maxPerIp: 20 });
 
-const NOT_FOUND = "No hay ninguna cuenta con ese usuario. Comprueba el correo, el CIF o el DNI/NIE.";
-const DISABLED = "La cuenta está desactivada. Contacta con el centro.";
-const NO_EMAIL = "Esta cuenta no tiene un correo al que enviar el enlace. Contacta con el centro.";
+// SEC-009: the same answer whether the account exists, is disabled, has no
+// email or gets the link, so the form cannot be used to find out who has an
+// account. The real reason is only logged on the server.
 const SENT =
-  "Te hemos enviado un enlace al correo asociado. Caduca en 30 minutos. Revisa también la carpeta de spam.";
+  "Si la cuenta existe, está activa y tiene un correo asociado, te enviaremos un enlace. Caduca en 30 minutos. Revisa también la carpeta de spam. Si no llega, contacta con el centro.";
 const INVALID = "El enlace no es válido, ya se ha usado o ha caducado. Pide uno nuevo.";
 
 const resetSecret = () => `${getJwtSecret()}:password-reset`;
-const fingerprint = (hash) => crypto.createHash("sha256").update(String(hash)).digest("base64url").slice(0, 22);
+const fingerprint = passwordFingerprint;
 
 function appUrl() {
   const url = (process.env.APP_URL || "").replace(/\/$/, "");
@@ -81,12 +79,14 @@ exports.solicitar = async function (req, res) {
   limiter.recordFailure(ip, identifier); // every request counts
 
   const user = await findUserByIdentifier(identifier);
-  if (!user) return res.status(404).json({ error: NOT_FOUND, code: "CUENTA_NO_ENCONTRADA" });
-  if (!user.activo) return res.status(403).json({ error: DISABLED, code: "CUENTA_DESACTIVADA" });
+  if (!user || !user.activo) return res.json({ message: SENT });
 
   const to = await destino(user);
   const base = appUrl();
-  if (!to?.email) return res.status(400).json({ error: NO_EMAIL, code: "SIN_CORREO" });
+  if (!to?.email) {
+    console.warn("[recuperar contraseña] cuenta sin correo:", user.id_usuario);
+    return res.json({ message: SENT });
+  }
   if (!base) {
     console.warn("[recuperar contraseña] sin APP_URL para el usuario", user.id_usuario);
     return res.status(500).json({ error: "No se ha podido preparar el enlace. Contacta con el centro." });
@@ -107,7 +107,7 @@ exports.restablecer = async function (req, res) {
 
   let payload;
   try {
-    payload = jwt.verify(token, resetSecret());
+    payload = jwt.verify(token, resetSecret(), { algorithms: ["HS256"] });
   } catch {
     return res.status(400).json({ error: INVALID, code: "ENLACE_NO_VALIDO" });
   }

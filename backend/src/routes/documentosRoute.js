@@ -2,25 +2,18 @@ const { Router } = require('express');
 const multer = require('multer');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const { pdfUpload, requirePdfSignature, NOT_PDF } = require('../middleware/pdfUpload');
 const svc = require('../services/documentosService');
 const plantillas = require('../services/plantillasService');
 
 const router = Router();
 
-const pdfUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype !== 'application/pdf') return cb(new Error('Solo se aceptan archivos PDF.'));
-    cb(null, true);
-  },
-});
 
 // Re-upload a student document the caller is allowed to replace
 router.post(
   '/documentos/alumno/:idSolicitud/:tipo',
   requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'ALUMNO'),
-  pdfUpload.single('archivo'),
+  pdfUpload.single('archivo'), requirePdfSignature,
   asyncHandler(svc.uploadAlumno)
 );
 
@@ -33,7 +26,7 @@ router.post('/documentos/generar', requireAuth, requireRole('ADMINISTRADOR', 'CO
 router.post(
   '/documentos/subir',
   requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA', 'ALUMNO'),
-  pdfUpload.single('archivo'),
+  pdfUpload.single('archivo'), requirePdfSignature,
   asyncHandler(svc.uploadContexto)
 );
 
@@ -53,7 +46,7 @@ router.post(
 router.post(
   '/documentos/empresa/:idSolicitud/convenio',
   requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'),
-  pdfUpload.single('archivo'),
+  pdfUpload.single('archivo'), requirePdfSignature,
   asyncHandler(svc.uploadEmpresa)
 );
 
@@ -61,7 +54,7 @@ router.post(
 router.post(
   '/documentos/reserva/:idReserva/anexo',
   requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'),
-  pdfUpload.single('archivo'),
+  pdfUpload.single('archivo'), requirePdfSignature,
   asyncHandler(svc.uploadReserva)
 );
 
@@ -91,7 +84,7 @@ router.get('/documentos/plantillas/:id/descargar', requireAuth, requireRole('ADM
 
 // Forward multer errors as 400 responses
 router.use((err, req, res, next) => {
-  if (err.name === 'MulterError' || err.message === 'Solo se aceptan archivos PDF.') {
+  if (err.name === 'MulterError' || err.message === NOT_PDF) {
     return res.status(400).json({ error: err.message });
   }
   next(err);

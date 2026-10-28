@@ -46,7 +46,7 @@ test('SEC-3: existing DNI with account + wrong password → 401, nothing written
   const res = mockRes();
   await svc.create(studentReq('adivinada1'), res);
   assert.equal(res.statusCode, 401);
-  assert.equal(res.body.code, 'CUENTA_EXISTENTE');
+  assert.equal(res.body.code, 'IDENTIDAD_NO_VERIFICADA');
   assert.equal(updates().length, 0);
   assert.ok(pool.calls.some((c) => c.sql === 'ROLLBACK'));
   assert.ok(!pool.calls.some((c) => c.sql.startsWith('INSERT INTO dual_solicitudes_alumno')));
@@ -76,15 +76,29 @@ test('SEC-3: existing DNI with account + correct password → full update, cuent
   assert.ok(!pool.calls.some((c) => c.sql.startsWith('INSERT INTO dual_usuarios')));
 });
 
-test('SEC-3: existing DNI without account → stored data kept (only empty fields filled)', async () => {
+test('SEC-001: existing DNI without account → 401 with the same answer, nothing written, no account', async () => {
+  const { loginRateLimiter } = require('../src/middleware/loginRateLimit');
+  loginRateLimiter.reset();
   const svc = load('src/services/solicitudesAlumnoService');
   studentDb({ cuenta: null });
   const res = mockRes();
   await svc.create(studentReq('nueva1234'), res);
-  assert.equal(res.statusCode, 201);
-  assert.equal(res.body.cuenta_existente, false);
-  assert.equal(updates().length, 1);
-  assert.match(updates()[0].sql, /SET nombre = COALESCE\(NULLIF\(nombre, ''\), \?\)/);
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.body.code, 'IDENTIDAD_NO_VERIFICADA');
+  assert.equal(updates().length, 0);
+  assert.ok(!pool.calls.some((c) => c.sql.startsWith('INSERT INTO dual_usuarios')));
+  assert.ok(!pool.calls.some((c) => c.sql.startsWith('INSERT INTO dual_solicitudes_alumno')));
+  assert.ok(pool.calls.some((c) => c.sql === 'ROLLBACK'));
+  loginRateLimiter.reset();
+});
+
+test('SEC-001: the public student form rejects an invalid DNI/NIE', async () => {
+  const svc = load('src/services/solicitudesAlumnoService');
+  studentDb({ cuenta: null });
+  const res = mockRes();
+  await svc.create(mockReq({ body: { ...studentBody('nueva1234'), dni: '12345678A' }, files: { cv: [pdf], anexoDga: [pdf] } }), res);
+  assert.equal(res.statusCode, 400);
+  assert.equal(pool.calls.length, 0);
 });
 
 // ── SEC-4 ───────────────────────────────────────────────────────────────

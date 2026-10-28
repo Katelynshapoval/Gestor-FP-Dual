@@ -13,6 +13,9 @@ const EspecialidadCuposEditor = ({
   catalogo = [],
   onUpdated,
   canEdit = true,
+  // Validated application: the company may lower places but not add ciclos
+  // or raise places without the centre (the backend enforces it too).
+  soloReducir = false,
 }) => {
   const toast = useToast();
   const [drafts, setDrafts] = useState({});
@@ -139,11 +142,17 @@ const EspecialidadCuposEditor = ({
 
   return (
     <div className="space-y-3">
-      {canEdit && (
+      {canEdit && !soloReducir && (
         <p className="field-hint">
           Puedes cambiar el número de alumnos de un ciclo, o añadir uno que no
           estuviera en la solicitud. El cambio se aplica de inmediato y no pasa
           por la revisión de datos de empresa.
+        </p>
+      )}
+      {canEdit && soloReducir && (
+        <p className="field-hint">
+          Tu solicitud ya está validada: puedes reducir plazas. Para añadir un
+          ciclo o ampliar plazas, contacta con el centro.
         </p>
       )}
       <InlineNotice tone="error">{fieldError}</InlineNotice>
@@ -214,7 +223,7 @@ const EspecialidadCuposEditor = ({
           </div>
         );
       })}
-      {canEdit && adding && missing.length > 0 && (
+      {canEdit && !soloReducir && adding && missing.length > 0 && (
         <div className="rounded-lg border bg-white px-4 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
@@ -280,7 +289,7 @@ const EspecialidadCuposEditor = ({
           </div>
         </div>
       )}
-      {canEdit && missing.length > 0 && (
+      {canEdit && !soloReducir && missing.length > 0 && (
         <button
           type="button"
           className="w-full rounded-lg border border-dashed border-surface-300 bg-white px-4 py-3 text-left text-sm font-medium text-charcoal-700 hover:border-brand-300 hover:bg-brand-50 disabled:cursor-default disabled:hover:border-surface-300 disabled:hover:bg-white"

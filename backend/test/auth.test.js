@@ -18,7 +18,7 @@ const db = {
 };
 
 const pool = fakePool((sql, params) => {
-  if (sql.startsWith('SELECT u.activo, u.must_change_password, r.nombre AS rol')) {
+  if (sql.startsWith('SELECT u.activo, u.must_change_password, u.password_hash, r.nombre AS rol')) {
     const u = db.users[params[0]];
     return u ? [u] : [];
   }
@@ -50,7 +50,10 @@ function runMiddleware(mw, req) {
   });
 }
 
-const bearer = (payload, secret = SECRET) => ({ authorization: `Bearer ${jwt.sign(payload, secret)}` });
+// Session tokens carry a fingerprint of the user's current password hash (SEC-006).
+const fp = (hash) => require('crypto').createHash('sha256').update(String(hash)).digest('base64url').slice(0, 22);
+const withPwd = (payload) => ({ pwd: fp(db.users[payload.id]?.password_hash), ...payload });
+const bearer = (payload, secret = SECRET) => ({ authorization: `Bearer ${jwt.sign(withPwd(payload), secret)}` });
 
 test('SEC-1: missing, short or old fallback secret is refused', () => {
   const auth = load('src/middleware/auth');
@@ -106,6 +109,56 @@ test('SEC-2: must_change_password blocks normal routes but allows /auth/me and c
   assert.equal(blocked.res.body.code, 'PASSWORD_CHANGE_REQUIRED');
   const allowed = await runMiddleware(auth.requireAuthAllowPasswordChange, mockReq({ headers }));
   assert.equal(allowed.nextCalled, true);
+});
+
+test('SEC-006: a session token stops working once the password changes', async () => {
+  process.env.JWT_SECRET = SECRET;
+  const auth = load('src/middleware/auth');
+  const headers = bearer({ id: 1, rol: 'ADMINISTRADOR' });
+  const before = await runMiddleware(auth.requireAuth, mockReq({ headers }));
+  assert.equal(before.nextCalled, true);
+  assert.equal(before.req.user.pwd, undefined);
+
+  const original = db.users[1].password_hash;
+  db.users[1].password_hash = 'h:otra-clave';
+  try {
+    const after = await runMiddleware(auth.requireAuth, mockReq({ headers }));
+    assert.equal(after.nextCalled, false);
+    assert.equal(after.res.statusCode, 401);
+    assert.equal(after.res.body.code, 'SESSION_STALE');
+  } finally {
+    db.users[1].password_hash = original;
+  }
+
+  // A token without the fingerprint (issued before this change) is refused too.
+  const legacy = { authorization: `Bearer ${jwt.sign({ id: 1, rol: 'ADMINISTRADOR' }, SECRET)}` };
+  assert.equal((await runMiddleware(auth.requireAuth, mockReq({ headers: legacy }))).res.statusCode, 401);
+});
+
+test('SEC-006: only HS256 tokens are accepted', async () => {
+  process.env.JWT_SECRET = SECRET;
+  const auth = load('src/middleware/auth');
+  const hs512 = jwt.sign(withPwd({ id: 1, rol: 'ADMINISTRADOR' }), SECRET, { algorithm: 'HS512' });
+  const r = await runMiddleware(auth.requireAuth, mockReq({ headers: { authorization: `Bearer ${hs512}` } }));
+  assert.equal(r.res.statusCode, 401);
+  assert.equal(r.res.body.code, 'TOKEN_INVALID');
+});
+
+test('SEC-006: changing the password returns a new token bound to the new password', async () => {
+  process.env.JWT_SECRET = SECRET;
+  const svc = load('src/services/authService');
+  const res = mockRes();
+  await svc.changePassword(mockReq({
+    user: { id: 1, rol: 'ADMINISTRADOR', nombre: 'Admin', iat: 1, exp: 2, must_change_password: false },
+    body: { currentPassword: 'correcta1', newPassword: 'nuevaClave1' },
+  }), res);
+  assert.equal(res.statusCode, 200);
+  const payload = jwt.verify(res.body.token, SECRET);
+  assert.equal(payload.id, 1);
+  assert.equal(payload.rol, 'ADMINISTRADOR');
+  assert.equal(payload.must_change_password, undefined);
+  const nuevoHash = db.updates.at(-1)[0];
+  assert.equal(payload.pwd, fp(nuevoHash));
 });
 
 test('SEC-2: changing a password without the current one returns 400; a wrong one 401', async () => {

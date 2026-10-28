@@ -370,7 +370,9 @@ exports.descargar = async function (req, res) {
   res.setHeader("Content-Length", pdf.length);
   res.setHeader(
     "Content-Disposition",
-    `inline; filename="documento_${id}.pdf"`,
+    // SEC-008: the SPA reads the file as a blob, so it is never rendered on the
+    // API origin; `attachment` keeps a direct visit from rendering it either.
+    `attachment; filename="documento_${id}.pdf"`,
   );
   return res.send(pdf);
 };

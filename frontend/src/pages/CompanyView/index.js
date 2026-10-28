@@ -383,6 +383,7 @@ const MisDatos = ({
           catalogo={specialities}
           onUpdated={onCupoChange}
           canEdit={!!solicitud.convocatoria_activa}
+          soloReducir={solicitud.estado_validacion === "VALIDADO"}
         />
       </div>
 

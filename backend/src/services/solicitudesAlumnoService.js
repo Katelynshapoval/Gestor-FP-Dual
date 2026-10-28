@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
-const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni } = require('../helpers/dbHelpers');
+const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni, dniNieValido } = require('../helpers/dbHelpers');
 const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation, reservaDocSummary } = require('./documentosWorkflow');
 const { loginRateLimiter } = require('../middleware/loginRateLimit');
 const { aplicarTransicion } = require('./solicitudTransiciones');
@@ -8,6 +8,10 @@ const { escapeHtml, cicloCorregido } = require('./notificaciones');
 const alumnoDatos = require('./alumnoDatos');
 const { recordEvent } = require('./auditLog');
 const MIN_PASSWORD_LENGTH = 8;
+
+// SEC-001 / SEC-009: one answer for every identity rejection on the public form,
+// so it does not reveal whether a DNI already has an account or only a record.
+const IDENTIDAD_NO_VERIFICADA = 'No se ha podido verificar tu identidad con este DNI/NIE. Si ya tienes cuenta en el portal, escribe en «Contraseña» tu contraseña actual. Si no la tienes o no la recuerdas, contacta con el centro.';
 
 let transporter = null;
 try {
@@ -62,6 +66,9 @@ exports.create = async function (req, res) {
   if (!dniNorm) {
     return res.status(400).json({ error: 'Faltan campos obligatorios del formulario.' });
   }
+  if (!dniNieValido(dniNorm)) {
+    return res.status(400).json({ error: 'No es un DNI/NIE válido.' });
+  }
 
   const convocatoria = await getActiveConvocatoria();
   if (!convocatoria) {
@@ -113,10 +120,11 @@ exports.create = async function (req, res) {
         [idAlumno]
       );
 
+      // Every identity check below counts towards the login limiter.
+      const ip = req.ip || req.socket?.remoteAddress || 'unknown';
       if (cuenta[0]) {
         // Returning student with an account: the form password must be the
-        // current portal password. Failures count towards the login limiter.
-        const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+        // current portal password.
         const wait = loginRateLimiter.retryAfter(ip, dniNorm);
         if (wait > 0) {
           await conn.rollback();
@@ -130,10 +138,7 @@ exports.create = async function (req, res) {
         if (!ok) {
           loginRateLimiter.recordFailure(ip, dniNorm);
           await conn.rollback();
-          return res.status(401).json({
-            error: 'Ya existe una cuenta con este DNI/NIE. Para volver a presentar la candidatura, escribe en «Contraseña» tu contraseña actual del portal. Si no la recuerdas, contacta con el centro.',
-            code: 'CUENTA_EXISTENTE',
-          });
+          return res.status(401).json({ error: IDENTIDAD_NO_VERIFICADA, code: 'IDENTIDAD_NO_VERIFICADA' });
         }
         if (!cuenta[0].activo) {
           await conn.rollback();
@@ -159,35 +164,13 @@ exports.create = async function (req, res) {
             idAlumno]
         );
       } else {
-        // Known student without an account (e.g. imported record): identity
-        // cannot be proven, so stored values are kept and only empty fields
-        // are completed from the form. Staff can correct the rest.
-        await conn.query(
-          `UPDATE gf_alumnosfct
-              SET nombre = COALESCE(NULLIF(nombre, ''), ?),
-                  domicilio = COALESCE(NULLIF(domicilio, ''), ?),
-                  cp = COALESCE(NULLIF(cp, ''), ?),
-                  localidad = COALESCE(NULLIF(localidad, ''), ?),
-                  telalumno = COALESCE(NULLIF(telalumno, ''), ?),
-                  telfamilia = COALESCE(NULLIF(telfamilia, ''), ?),
-                  email = COALESCE(NULLIF(email, ''), ?),
-                  especialidad = COALESCE(NULLIF(especialidad, ''), ?),
-                  id_especialidad_dual = COALESCE(id_especialidad_dual, ?),
-                  nacionalidad = COALESCE(NULLIF(nacionalidad, ''), ?),
-                  fechaNacimiento = COALESCE(fechaNacimiento, ?),
-                  emailColegio = COALESCE(NULLIF(emailColegio, ''), ?),
-                  sexo = COALESCE(NULLIF(sexo, ''), ?),
-                  numeroSS = COALESCE(NULLIF(numeroSS, ''), ?),
-                  situacionLaboral = COALESCE(NULLIF(situacionLaboral, ''), ?),
-                  idiomasConocidos = COALESCE(NULLIF(idiomasConocidos, ''), ?),
-                  tutorLegal = COALESCE(NULLIF(tutorLegal, ''), ?),
-                  dniTutorLegal = COALESCE(NULLIF(dniTutorLegal, ''), ?)
-            WHERE idalumno = ?`,
-          [nombre, domicilio, cp, localidad, telalumno, telfamilia, email,
-            codigoEsp, id_especialidad_dual, nacionalidad, fechaNacimiento || null,
-            emailColegio, sexo, numeroSS, situacionLaboral, idiomasConocidos,
-            tutorLegal, dniTutorLegal, idAlumno]
-        );
+        // SEC-001: known student without an account (e.g. imported record).
+        // Nobody has proven who sends this anonymous form, so it must neither
+        // create the account nor write to the record: the student has to go
+        // through the centre.
+        loginRateLimiter.recordFailure(ip, dniNorm);
+        await conn.rollback();
+        return res.status(401).json({ error: IDENTIDAD_NO_VERIFICADA, code: 'IDENTIDAD_NO_VERIFICADA' });
       }
     } else {
       const [insertResult] = await conn.query(

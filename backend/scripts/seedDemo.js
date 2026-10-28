@@ -9,12 +9,17 @@
 // document types, transports), the convocatorias, templates and schema_migrations.
 //
 // Logins (all accounts have must_change_password = 0):
-//   ADMINISTRADOR  katelyn.shapoval@gmail.com   password = the email
-//   COORDINADOR    katya.shapoval12@gmail.com   password = the email
-//   EMPRESA        user = CIF                   password = the CIF
-//   ALUMNO         user = DNI                   password = the DNI
+//   ADMINISTRADOR  DEMO_ADMIN_EMAIL (default admin.demo@fpdual.test)
+//   COORDINADOR    DEMO_COORD_EMAIL (default coord.demo@fpdual.test)
+//   EMPRESA        user = CIF
+//   ALUMNO         user = DNI
+// SEC-013: every password is random and is written ONLY to backend/.demo.local.json
+// (git-ignored), never printed. Use this script on a disposable development database only.
 // All people and companies are fictitious; e-mails use example.com.
 // Refuses NODE_ENV=production.
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { connect, target, assertNotProduction } = require('./lib/connect');
 
@@ -112,6 +117,8 @@ async function main() {
   const q = async (sql, p) => (await conn.query(sql, p))[0];
   const one = async (sql, p) => (await q(sql, p))[0] || null;
   const hash = (pw) => bcrypt.hash(pw, 10);
+  const OUT = path.join(__dirname, '..', '.demo.local.json');
+  const secrets = [];
   const stats = {};
   const inc = (k, n = 1) => { stats[k] = (stats[k] || 0) + n; };
 
@@ -147,7 +154,9 @@ async function main() {
     inc('especialidades', ESPECIALIDADES.length);
 
     // ------------------------------------------------------------ staff
-    const addUser = async (nombre, email, pw, rol, extra = {}) => {
+    const addUser = async (nombre, email, usuario, rol, extra = {}) => {
+      const pw = crypto.randomBytes(12).toString('base64url');
+      secrets.push({ rol, usuario, password: pw });
       const r = await q(
         `INSERT INTO dual_usuarios (nombre_mostrar, email, password_hash, id_rol, id_contacto, id_alumno, activo, must_change_password)
          VALUES (?, ?, ?, ?, ?, ?, 1, 0)`,
@@ -156,8 +165,10 @@ async function main() {
       inc(`usuarios ${rol}`);
       return r.insertId;
     };
-    const idAdmin = await addUser('Katelyn Shapoval', 'katelyn.shapoval@gmail.com', 'katelyn.shapoval@gmail.com', 'ADMINISTRADOR');
-    await addUser('Katya Shapoval', 'katya.shapoval12@gmail.com', 'katya.shapoval12@gmail.com', 'COORDINADOR');
+    const adminEmail = process.env.DEMO_ADMIN_EMAIL || 'admin.demo@fpdual.test';
+    const coordEmail = process.env.DEMO_COORD_EMAIL || 'coord.demo@fpdual.test';
+    const idAdmin = await addUser('Administración (demo)', adminEmail, adminEmail, 'ADMINISTRADOR');
+    await addUser('Coordinación (demo)', coordEmail, coordEmail, 'COORDINADOR');
 
     // ------------------------------------------------------------ companies
     let dniSeq = 17000000;
@@ -345,7 +356,11 @@ async function main() {
     }
 
     if (dry) { await conn.rollback(); console.log('Dry-run correcto: se ha revertido todo.'); }
-    else { await conn.commit(); console.log('Datos cargados.'); }
+    else {
+      await conn.commit();
+      fs.writeFileSync(OUT, JSON.stringify(secrets, null, 2), { mode: 0o600 });
+      console.log(`Datos cargados. Contraseñas en ${OUT} (no se versiona).`);
+    }
     console.log(JSON.stringify(stats, null, 2));
   } catch (err) {
     await conn.rollback().catch(() => {});

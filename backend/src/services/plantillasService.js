@@ -4,6 +4,7 @@ const workflow = require("./documentosWorkflow");
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX_BYTES = 10 * 1024 * 1024;
+const ZIP_SIGNATURE = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 
 function isDocx(file) {
   if (!file) return false;
@@ -11,7 +12,16 @@ function isDocx(file) {
   const mime = String(file.mimetype || "").toLowerCase();
   const extensionOk = name.endsWith(".docx");
   const mimeOk = mime === DOCX_MIME || mime === "application/octet-stream" || mime === "application/zip";
-  return extensionOk && mimeOk;
+  // A DOCX is a ZIP archive: the bytes must say so too, not only the client.
+  const zipOk = Buffer.isBuffer(file.buffer) && file.buffer.subarray(0, 4).equals(ZIP_SIGNATURE);
+  return extensionOk && mimeOk && zipOk;
+}
+
+// SEC-012: the client's file name is only shown in lists; strip anything that
+// could break a header or the UI (control characters, quotes, path separators).
+function nombreSeguro(name) {
+  const limpio = String(name || "").replace(/[\u0000-\u001f\u007f"\\/]/g, "").trim().slice(0, 200);
+  return limpio || "plantilla.docx";
 }
 
 exports.list = async function (req, res) {
@@ -87,7 +97,7 @@ exports.upload = async function (req, res) {
       `INSERT INTO dual_documento_plantillas
          (id_tipo_documento, archivo, nombre_archivo, mime_type, version, es_activa, id_usuario_subida)
        VALUES (?, ?, ?, ?, ?, 1, ?)`,
-      [idTipo, file.buffer, file.originalname, file.mimetype || DOCX_MIME, version, req.user.id],
+      [idTipo, file.buffer, nombreSeguro(file.originalname), DOCX_MIME, version, req.user.id],
     );
     await conn.commit();
     return res.status(201).json({
@@ -96,7 +106,7 @@ exports.upload = async function (req, res) {
       clave,
       nombre: def.nombre,
       version,
-      nombre_archivo: file.originalname,
+      nombre_archivo: nombreSeguro(file.originalname),
     });
   } catch (err) {
     await conn.rollback();
@@ -109,16 +119,19 @@ exports.upload = async function (req, res) {
 exports.descargar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const [rows] = await pool.query(
-    `SELECT archivo, nombre_archivo, mime_type
-       FROM dual_documento_plantillas
-      WHERE id_plantilla = ?`,
+    `SELECT p.archivo, p.version, td.nombre AS clave
+       FROM dual_documento_plantillas p
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = p.id_tipo_documento
+      WHERE p.id_plantilla = ?`,
     [id],
   );
   const row = rows[0];
   if (!row) return res.status(404).json({ error: "Plantilla no encontrada." });
   const file = Buffer.isBuffer(row.archivo) ? row.archivo : Buffer.from(row.archivo);
-  res.setHeader("Content-Type", row.mime_type || DOCX_MIME);
+  // SEC-012: type and file name are fixed by the server, never taken from the upload.
+  const nombre = `plantilla-${String(row.clave).toLowerCase().replace(/[^a-z0-9_-]/g, "")}-v${Number(row.version)}.docx`;
+  res.setHeader("Content-Type", DOCX_MIME);
   res.setHeader("Content-Length", file.length);
-  res.setHeader("Content-Disposition", `attachment; filename="${row.nombre_archivo || "plantilla.docx"}"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${nombre}"`);
   return res.send(file);
 };

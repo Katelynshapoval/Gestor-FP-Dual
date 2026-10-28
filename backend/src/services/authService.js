@@ -21,7 +21,7 @@ function buildResponse(user) {
     id_contacto: user.id_contacto,
     id_alumno: user.id_alumno ?? null,
   };
-  const token = signToken(payload);
+  const token = signToken(payload, user.password_hash);
   return {
     token,
     user: {
@@ -164,7 +164,11 @@ exports.changePassword = async function (req, res) {
     [hash, idUsuario]
   );
 
-  return res.json({ message: 'Contraseña actualizada correctamente.' });
+  // SEC-006: every earlier token is now refused; this session gets a new one.
+  const { iat, exp, ...claims } = req.user;
+  delete claims.must_change_password;
+  const token = signToken(claims, hash);
+  return res.json({ message: 'Contraseña actualizada correctamente.', token });
 };
 
 // GET /auth/me

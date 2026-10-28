@@ -176,7 +176,7 @@ function resetDb(sql, params) {
   return [];
 }
 
-test("forgot password: no link when the account is missing, inactive or has no email", async () => {
+test("forgot password: no link when the account is missing, inactive or has no email, and the same answer for all", async () => {
   const svc = load("src/services/passwordResetService");
   handler = resetDb;
   correos.length = 0;
@@ -189,14 +189,12 @@ test("forgot password: no link when the account is missing, inactive or has no e
   const b = await pedir("nadie@x.test", "1.1.1.2");
   const c = await pedir("baja@x.test", "1.1.1.3");
   const d = await pedir("sin@x.test", "1.1.1.4");
-  assert.equal(a.statusCode, 200);
-  assert.match(a.body.message, /enviado un enlace/);
-  assert.equal(b.statusCode, 404);
-  assert.equal(b.body.code, "CUENTA_NO_ENCONTRADA");
-  assert.equal(c.statusCode, 403);
-  assert.equal(c.body.code, "CUENTA_DESACTIVADA");
-  assert.equal(d.statusCode, 400);
-  assert.equal(d.body.code, "SIN_CORREO");
+  // SEC-009: the same answer for every case; only the real account gets a link.
+  for (const r of [a, b, c, d]) {
+    assert.equal(r.statusCode, 200);
+    assert.deepEqual(r.body, a.body);
+  }
+  assert.match(a.body.message, /Si la cuenta existe/);
   assert.equal(correos.length, 1);
   assert.equal(correos[0].to, "coord@empresa.test");
   assert.ok(correos[0].link.startsWith("http://localhost:3000/restablecer-contrasena?token="));

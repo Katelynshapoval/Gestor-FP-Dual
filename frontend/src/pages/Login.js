@@ -72,17 +72,18 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const token = tempToken;
       const res = await fetch("/auth/changePassword", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${tempToken}`,
         },
         body: JSON.stringify({ currentPassword: password, newPassword }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al cambiar contraseña");
+      // The old token stops working once the password changes.
+      const token = data.token;
 
       const meRes = await fetch("/auth/me", {
         headers: { Authorization: `Bearer ${token}` },

@@ -17,6 +17,19 @@ const { inTransaction, HttpError } = require("../db/transaction");
 const { recordEvent } = require("./auditLog");
 const reservasTx = require("./reservasTx");
 
+// SEC-002: upper bound for the places a company can offer for one ciclo.
+const MAX_PLAZAS_POR_CICLO = Number(process.env.MAX_PLAZAS_POR_CICLO) || 20;
+const PLAZAS_EXCEDIDAS = `Como máximo se pueden ofrecer ${MAX_PLAZAS_POR_CICLO} plazas por ciclo.`;
+
+// SEC-002: once the centre has validated a company's application, the company
+// cannot add ciclos or raise places by itself (that would give it access to
+// students the centre never offered). Staff can still do it on its behalf.
+const AMPLIACION_REQUIERE_CENTRO =
+  "La solicitud ya está validada. Para añadir ciclos o ampliar plazas, contacta con el centro.";
+function empresaNoPuedeAmpliar(req, datos) {
+  return req.user.rol === "EMPRESA" && datos.estado_validacion === "VALIDADO";
+}
+
 const EMPRESA_YA_REGISTRADA =
   "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
 
@@ -422,6 +435,10 @@ exports.create = async function (req, res) {
         return res.status(400).json({
           error: "Cada especialidad debe tener un id válido y cantidad > 0.",
         });
+      }
+      if (cant > MAX_PLAZAS_POR_CICLO) {
+        await conn.rollback();
+        return res.status(400).json({ error: PLAZAS_EXCEDIDAS });
       }
 
       await conn.query(
@@ -1155,6 +1172,10 @@ exports.reapply = async function (req, res) {
 
         return res.status(400).json({ error: "Especialidad inválida." });
       }
+      if (cant > MAX_PLAZAS_POR_CICLO) {
+        await conn.rollback();
+        return res.status(400).json({ error: PLAZAS_EXCEDIDAS });
+      }
 
       await conn.query(
         `INSERT INTO dual_solicitud_empresa_especialidades (
@@ -1761,6 +1782,9 @@ exports.addEspecialidad = async function (req, res) {
       error: "Indica al menos un alumno para añadir el ciclo.",
     });
   }
+  if (cantidad > MAX_PLAZAS_POR_CICLO) {
+    return res.status(400).json({ error: PLAZAS_EXCEDIDAS });
+  }
 
   const { datos, error } = await resolveSolicitudForUser(req, id);
 
@@ -1772,6 +1796,10 @@ exports.addEspecialidad = async function (req, res) {
     return res.status(400).json({
       error: "Solo se puede añadir un ciclo en la convocatoria activa.",
     });
+  }
+
+  if (empresaNoPuedeAmpliar(req, datos)) {
+    return res.status(403).json({ error: AMPLIACION_REQUIERE_CENTRO, code: "REQUIERE_CENTRO" });
   }
 
   const conn = await pool.getConnection();
@@ -1885,6 +1913,9 @@ exports.updateCupoEspecialidad = async function (req, res) {
       error: "La cantidad debe ser un entero mayor o igual que 0.",
     });
   }
+  if (cantidad > MAX_PLAZAS_POR_CICLO) {
+    return res.status(400).json({ error: PLAZAS_EXCEDIDAS });
+  }
 
   const { datos, error } = await resolveSolicitudForUser(req, id);
 
@@ -1956,6 +1987,11 @@ exports.updateCupoEspecialidad = async function (req, res) {
         empresaNombre: offer.empresa,
         canceladas: [],
       };
+
+      // SEC-002: a validated company may lower its places, never raise them.
+      if (cantidad > cantidadAnterior && empresaNoPuedeAmpliar(req, datos)) {
+        throw new HttpError(403, AMPLIACION_REQUIERE_CENTRO, { payload: { code: "REQUIERE_CENTRO" } });
+      }
 
       if (cantidad === cantidadAnterior) {
         return {

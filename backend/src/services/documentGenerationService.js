@@ -19,12 +19,48 @@ async function loadActiveTemplate(clave) {
   return rows[0] || null;
 }
 
+// SEC-004: docx-templates would evaluate every <<command>> as JavaScript in a
+// node:vm context, which is not a security boundary. Templates only need to
+// print values from the data object, so commands are resolved here as plain
+// variable paths (`razonSocial`, `$fila.codigo`) and nothing is ever executed.
+const VARIABLE_PATH = /^\$?[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+const FORBIDDEN_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
+function resolveTemplateVariable(sandbox, code) {
+  const expr = String(code ?? "").trim();
+  if (!VARIABLE_PATH.test(expr)) {
+    throw new Error(`La plantilla solo admite nombres de variable; no se ejecuta «${expr.slice(0, 80)}».`);
+  }
+  const keys = expr.split(".");
+  if (keys.some((key) => FORBIDDEN_KEYS.has(key))) throw new Error(`Variable de plantilla no permitida: «${expr}».`);
+  let value = sandbox;
+  for (const key of keys) {
+    if (value == null || !Object.prototype.hasOwnProperty.call(Object(value), key)) return undefined;
+    value = value[key];
+  }
+  if (typeof value === "function") throw new Error(`Variable de plantilla no permitida: «${expr}».`);
+  return value;
+}
+
+function runTemplateCommand({ sandbox }) {
+  return { modifiedSandbox: sandbox, result: resolveTemplateVariable(sandbox, sandbox.__code__) };
+}
+
 async function docxBufferToPdf(docxBuffer) {
   const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer });
   const browser = await puppeteer.launch();
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // SEC-004: the HTML comes from a template, so the server's browser runs no
+    // script and makes no request (no remote images, no internal URLs).
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.startsWith("data:") || url === "about:blank") request.continue();
+      else request.abort();
+    });
+    await page.setContent(html, { waitUntil: "load" });
     return await page.pdf({
       format: "A4",
       margin: { top: "2cm", bottom: "2cm", left: "2cm", right: "2cm" },
@@ -90,6 +126,7 @@ async function generateDocument({ clave, parents, userId = null, userRol = null,
     template: template.archivo,
     data,
     cmdDelimiter: ["<<", ">>"],
+    runJs: runTemplateCommand,
   });
   const pdf = await docxBufferToPdf(Buffer.from(filled));
   const idDocumento = await saveByClave(clave, parents, pdf, {
@@ -114,6 +151,7 @@ async function generateDocument({ clave, parents, userId = null, userRol = null,
 }
 
 module.exports = {
+  resolveTemplateVariable,
   loadActiveTemplate,
   generateDocument,
   docxBufferToPdf,

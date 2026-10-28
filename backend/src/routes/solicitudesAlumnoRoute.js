@@ -1,26 +1,21 @@
 const { Router } = require('express');
-const multer = require('multer');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { signupRateLimit } = require('../middleware/loginRateLimit');
 const asyncHandler = require('../middleware/asyncHandler');
+const { pdfUpload, requirePdfSignature, NOT_PDF } = require('../middleware/pdfUpload');
 const svc = require('../services/solicitudesAlumnoService');
 const cambios = require('../services/alumnoCambiosService');
 const baja = require('../services/bajaService').handlers('SOLICITUD_ALUMNO');
 
 const router = Router();
 
-const pdfUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype !== 'application/pdf') return cb(new Error('Solo se aceptan archivos PDF.'));
-    cb(null, true);
-  },
-});
 
 // Public: submit student application with CV + Anexo DGA
 router.post(
   '/solicitudes/alumno',
+  signupRateLimit,
   pdfUpload.fields([{ name: 'cv', maxCount: 1 }, { name: 'anexoDga', maxCount: 1 }]),
+  requirePdfSignature,
   asyncHandler(svc.create)
 );
 
@@ -51,7 +46,7 @@ router.get('/solicitudes/alumno/:id/documentos', requireAuth, requireRole('ADMIN
 
 // Forward multer errors as 400 responses
 router.use((err, req, res, next) => {
-  if (err.name === 'MulterError' || err.message === 'Solo se aceptan archivos PDF.') {
+  if (err.name === 'MulterError' || err.message === NOT_PDF) {
     return res.status(400).json({ error: err.message });
   }
   next(err);

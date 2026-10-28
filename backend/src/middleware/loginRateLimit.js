@@ -73,4 +73,38 @@ function createLoginRateLimiter({
 
 const loginRateLimiter = createLoginRateLimiter();
 
-module.exports = { createLoginRateLimiter, loginRateLimiter };
+// SEC-003: the public sign-up forms (student and company) count every attempt,
+// successful or not: per IP per hour, and a global daily cap for all IPs.
+// Mounted before multer so a blocked request never has its files read.
+const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function createSignupRateLimit({
+  maxPerIp = Number(process.env.SIGNUP_MAX_PER_IP_HOUR) || 10,
+  maxPerDay = Number(process.env.SIGNUP_MAX_PER_DAY) || 300,
+  now = () => Date.now(),
+} = {}) {
+  const perIp = createLoginRateLimiter({ windowMs: SIGNUP_WINDOW_MS, maxPerIdentifier: Infinity, maxPerIp, now });
+  const global = createLoginRateLimiter({ windowMs: DAY_MS, maxPerIdentifier: Infinity, maxPerIp: maxPerDay, now });
+
+  function middleware(req, res, next) {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    const wait = Math.max(perIp.retryAfter(ip, ''), global.retryAfter('global', ''));
+    if (wait > 0) {
+      res.set('Retry-After', String(wait));
+      return res.status(429).json({
+        error: 'Se han recibido demasiadas solicitudes. Vuelve a intentarlo más tarde.',
+        code: 'TOO_MANY_ATTEMPTS',
+      });
+    }
+    perIp.recordFailure(ip, '');
+    global.recordFailure('global', '');
+    return next();
+  }
+  middleware.reset = () => { perIp.reset(); global.reset(); };
+  return middleware;
+}
+
+const signupRateLimit = createSignupRateLimit();
+
+module.exports = { createLoginRateLimiter, loginRateLimiter, createSignupRateLimit, signupRateLimit };
