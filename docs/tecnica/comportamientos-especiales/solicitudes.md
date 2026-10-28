@@ -7,24 +7,34 @@
 ### Alumno que repite con cuenta
 - **Contexto**: `POST /solicitudes/alumno`.
 - **Condición**: el DNI ya existe en `gf_alumnosfct` y tiene usuario.
-- **Comportamiento**: el campo «Contraseña» del formulario se interpreta como **su contraseña actual del portal**. Incorrecta → 401 `CUENTA_EXISTENTE` sin escribir nada; correcta → se actualizan todos sus datos personales y su ciclo «último» y se crea la nueva solicitud; la contraseña no cambia. Cuenta inactiva → 403.
+- **Comportamiento**: el campo «Contraseña» del formulario se interpreta como **su contraseña actual del portal**. Incorrecta → 401 `IDENTIDAD_NO_VERIFICADA` sin escribir nada; correcta → se actualizan todos sus datos personales y su ciclo «último» y se crea la nueva solicitud; la contraseña no cambia. Cuenta inactiva → 403.
 - **Referencia**: `solicitudesAlumnoService.create`.
 
 ### Alumno existente sin cuenta (ficha importada)
 - **Condición**: el DNI existe pero no hay usuario.
-- **Comportamiento**: solo se **rellenan los campos vacíos** de la ficha; los ya informados se conservan aunque el formulario traiga otros. Se crea la cuenta con la contraseña del formulario. La solicitud se crea con el ciclo del formulario, aunque `gf_alumnosfct.id_especialidad_dual` conserve el anterior.
-- **Motivo**: no se puede probar la identidad; el centro corrige el resto (comentario en el código).
-- **Consecuencias**: el correo de confirmación se envía al email **del formulario**, pero las notificaciones posteriores y la recuperación de contraseña van al email **guardado** en la ficha (que se conserva si ya tenía uno).
+- **Comportamiento** (SEC-001): **no se hace nada**. Responde 401 `IDENTIDAD_NO_VERIFICADA`, con el mismo mensaje que una contraseña incorrecta, y cuenta como intento fallido. No se crea la cuenta, no se escribe la ficha ni se abre la solicitud.
+- **Motivo**: nadie ha probado quién envía el formulario anónimo; antes cualquiera podía crear la cuenta de ese alumno con su DNI.
+- **Consecuencias**: el alumno tiene que pasar por el centro, y el portal todavía **no tiene pantalla** para que Administración le cree la cuenta. En desarrollo no hay ninguna ficha así con solicitud.
 
-### DNI del alumno sin validar en el backend
-- **Condición**: petición directa a la API (sin el formulario).
-- **Comportamiento**: el backend solo normaliza el DNI (trim + mayúsculas). La letra de control de DNI/NIE, el NSS y la exigencia de tutor legal para menores se validan solo en el formulario (`formatValidation.js`, `AddDualStudent`). En cambio, el alta de empresa **sí** valida CIF y DNI en el backend.
-- **Consecuencias**: pueden entrar DNI con formato inválido por la API. La unicidad (`uq_gf_alumnosfct_dni`) sí se garantiza.
-- **Referencia**: `solicitudesAlumnoService.create`, [`frontend/src/utils/formatValidation.js`](../../../frontend/src/utils/formatValidation.js).
+### DNI del alumno en el backend
+- **Comportamiento** (SEC-001): el backend normaliza el DNI (trim + mayúsculas) y comprueba su formato y letra con `dniNieValido` → 400 «No es un DNI/NIE válido.». El NSS y la exigencia de tutor legal para menores se validan solo en el formulario (`formatValidation.js`, `AddDualStudent`).
+- **Referencia**: `solicitudesAlumnoService.create`, [`helpers/dbHelpers.js`](../../../backend/src/helpers/dbHelpers.js).
+
+### Petición de corrección y edición del centro a la vez
+- **Condición**: el alumno pide corregir un campo y, antes de que Administración la apruebe, alguien del centro cambia ese mismo campo.
+- **Comportamiento**: al aprobar, 409 `CONFLICTO` con cada campo (original, actual y solicitado). «Aplicar igualmente» aprueba con `confirmar_conflicto: true` y sobrescribe el valor actual.
+- **Referencia**: `alumnoCambiosService.aprobarCambio`.
+
+### Petición de corrección cuando ya no se puede editar
+- **Condición**: la convocatoria deja de estar activa o la solicitud se da de baja con una petición pendiente.
+- **Comportamiento**: aprobar falla con 400 (`CONVOCATORIA_CERRADA` / `SOLICITUD_BAJA`) y la petición se queda PENDIENTE; se puede rechazar. El alumno ya no puede modificarla: fuera de la convocatoria activa `GET /solicitudes/alumno/mia/datos` responde 404 `SIN_SOLICITUD`, y con la baja su cuenta está desactivada.
+
+### Petición que cambia el ciclo con reservas activas
+- **Comportamiento**: se puede enviar, pero al aprobar falla con 409 `RESERVAS_ACTIVAS` mientras el alumno tenga reservas pendientes o confirmadas. Hay que cancelarlas o rechazar la petición.
 
 ### Ciclo de la ficha frente al ciclo de la solicitud
 - **Condición**: un alumno solicita ciclos distintos en convocatorias distintas.
-- **Comportamiento**: desde la migración 017 cada solicitud guarda su ciclo (`dual_solicitudes_alumno.id_especialidad`); la ficha (`gf_alumnosfct.id_especialidad_dual` y `especialidad`) solo guarda el último. Todas las reglas y listados leen el de la solicitud. El ciclo de una solicitud no cambia mientras tenga reservas activas (trigger) y no hay endpoint para cambiarlo.
+- **Comportamiento**: desde la migración 017 cada solicitud guarda su ciclo (`dual_solicitudes_alumno.id_especialidad`); la ficha (`gf_alumnosfct.id_especialidad_dual` y `especialidad`) solo guarda el último. Todas las reglas y listados leen el de la solicitud. Administración puede cambiarlo con la [corrección de datos](../logica-de-negocio/solicitudes-alumno.md#5-corrección-de-datos-del-alumno-migración-020), solo en la convocatoria activa y sin reservas activas (también lo impide el trigger).
 - **Referencia**: migración 017, `trg_dsa_bu_reglas`, prueba `stage1.test.js`, `stage1.db.test.js`.
 
 ### Especialidad inactiva en el alta
@@ -43,7 +53,10 @@
 
 ### Alta pública con un CIF ya registrado
 - **Comportamiento**: 409 «Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.». También si dos altas simultáneas del mismo CIF chocan con el índice único.
-- **Motivo**: «Public registration must not upsert» (comentario).
+- **Motivo**: «Public registration must not upsert» (comentario). La auditoría de seguridad mantuvo este 409 aunque revela que el CIF existe (SEC-009), porque evita empresas duplicadas.
+
+### Demasiadas altas públicas
+- **Comportamiento** (SEC-003): las dos altas públicas comparten `signupRateLimit`: 10 por IP y hora y 300 al día en total (configurables). Al pasarse → 429 «Se han recibido demasiadas solicitudes. Vuelve a intentarlo más tarde.» con `Retry-After`. El contador está en memoria y es de un solo proceso. Detrás de un proxy, `TRUST_PROXY` decide qué IP se cuenta.
 
 ### Alta de empresa sin plantilla de convenio
 - **Condición**: no hay plantilla activa de CONVENIO, o la generación (Chromium, plantilla) falla.

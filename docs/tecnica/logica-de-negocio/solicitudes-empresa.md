@@ -10,11 +10,12 @@
 
 | Paso | Detalle |
 | --- | --- |
+| Límite | `signupRateLimit` (SEC-003): 10 altas por IP y hora y 300 al día en total, compartido con el alta de alumno → 429 `TOO_MANY_ATTEMPTS` |
 | Obligatorios | Empresa (`cif`, `empresa`, domicilio legal completo), representante (`dni, nombre, email, telefono`), coordinador (ídem), `descripcion_puesto`, `especialidades[]` no vacío, `passwordCoordinador` → 400 |
 | Formatos | `cifValido` (letra + 7 dígitos + control) → 400 `CIF_INVALIDO`; `dniNieValido` de representante y coordinador → 400 `DNI_INVALIDO`; contraseña ≥ 8 → 400 `PASSWORD_CORTA` |
 | Convocatoria | Debe haber una activa → si no, 409 |
 | CIF existente | `SELECT … WHERE cif = ? FOR UPDATE` (índice único) → **409** «Esta empresa ya está registrada. Inicia sesión con el CIF…». El alta pública nunca actualiza una empresa existente |
-| Inserciones | `ge_empresas` (CIF normalizado) → domicilio legal → domicilio de trabajo (o el mismo id si `mismoLugarTrabajo`; si no, sus campos son obligatorios → 400) → representante (en el domicilio legal) → coordinador (en el de trabajo) → `dual_solicitudes_empresa` PENDIENTE → ofertas (cada una con id válido y `cantidadAlumnos ≥ 1`, si no 400) → transportes → usuario EMPRESA (contraseña elegida, `must_change_password = 0`) → `dual_empresa_tutores` (coordinador, activo) |
+| Inserciones | `ge_empresas` (CIF normalizado) → domicilio legal → domicilio de trabajo (o el mismo id si `mismoLugarTrabajo`; si no, sus campos son obligatorios → 400) → representante (en el domicilio legal) → coordinador (en el de trabajo) → `dual_solicitudes_empresa` PENDIENTE → ofertas (cada una con id válido y `1 ≤ cantidadAlumnos ≤ MAX_PLAZAS_POR_CICLO`, por defecto 20; si no 400) → transportes → usuario EMPRESA (contraseña elegida, `must_change_password = 0`) → `dual_empresa_tutores` (coordinador, activo) |
 | Después del commit | `generateDocument(CONVENIO)`; si hay plantilla activa, se guarda el PDF (evento `GENERAR` sin usuario) y se envía al email del coordinador con el PDF adjunto. **Si no hay plantilla o falla la generación, no se envía ningún correo** y solo se registra en consola |
 | Resultado | 201 `{ id_solicitud_empresa }` |
 
@@ -87,14 +88,16 @@ Motivo obligatorio; debe estar PENDIENTE; marca RECHAZADO. Se hace sin transacci
 
 ### 5.1 Añadir un ciclo — `POST /solicitudes/empresa/:id/especialidades` (personal o empresa propietaria)
 
-Convocatoria activa; `id_especialidad` de un ciclo **activo**; `cantidad ≥ 1`; que no esté ya en la solicitud (409). Sin revisión del centro y sin auditoría.
+Convocatoria activa; `id_especialidad` de un ciclo **activo**; `1 ≤ cantidad ≤ MAX_PLAZAS_POR_CICLO` (400 «Como máximo se pueden ofrecer 20 plazas por ciclo.»); que no esté ya en la solicitud (409). **Una empresa con la solicitud VALIDADO no puede añadir ciclos** (SEC-002) → 403 `REQUIERE_CENTRO` «La solicitud ya está validada. Para añadir ciclos o ampliar plazas, contacta con el centro.»; el personal sí. Evento `OFERTA/ALTA`.
 
 ### 5.2 Cambiar plazas — `PUT /solicitudes/empresa/:id/especialidades/:idOferta/cantidad` (personal o empresa propietaria)
 
 ```mermaid
 flowchart TD
-  A[cantidad entera ≥ 0, convocatoria activa] --> B[BEGIN; bloquea oferta y sus reservas activas]
-  B --> C{cantidad = actual?}
+  A[cantidad entera 0..MAX_PLAZAS_POR_CICLO, convocatoria activa] --> B[inTransaction; bloquea la oferta]
+  B --> V{empresa con solicitud VALIDADO y cantidad > actual?}
+  V -- sí --> W[403 REQUIERE_CENTRO]
+  V -- no --> C{cantidad = actual?}
   C -- sí --> Z[200 sin cambios]
   C -- no --> D{cantidad < confirmadas?}
   D -- sí --> E[400: no se puede bajar de las confirmadas]
@@ -102,14 +105,15 @@ flowchart TD
   F -- no --> G[UPDATE cantidad · COMMIT]
   F -- sí --> H{confirmar_cancelaciones y se eligen exactamente activas−cantidad pendientes?}
   H -- no --> I[409 requires_selection + lista de pendientes]
-  H -- sí --> J[cancela cada elegida PENDIENTE→CANCELADA<br/>motivo «Cupo reducido por la empresa/administración»]
+  H -- sí --> J[sp_cancelar_reserva por cada elegida<br/>motivo «Cupo reducido por la empresa/administración»<br/>evento CANCELAR]
   J --> G
-  G --> K[correo resumen al coordinador + aviso a cada alumno afectado]
+  G --> L[evento OFERTA/CUPO · COMMIT]
+  L --> K[correo resumen al coordinador + aviso a cada alumno afectado]
 ```
 
-- Subir plazas no tiene límite ni revisión.
-- Las cancelaciones de este camino se hacen con un `UPDATE` propio (no con `sp_cancelar_reserva`) y **no generan evento de auditoría**.
-- Si entre la consulta y la cancelación una reserva elegida dejó de estar PENDIENTE → 409 y no se cambia nada.
+- Una empresa con la solicitud **VALIDADO solo puede reducir** plazas (SEC-002). El personal puede subirlas. Nunca por encima de `MAX_PLAZAS_POR_CICLO` (20 por defecto, configurable).
+- Desde la 018 las cancelaciones pasan por `sp_cancelar_reserva` (vía `reservasTx.cancelarPendiente`), cada una con su evento `CANCELAR`, y el cambio registra `OFERTA/CUPO` con la cantidad anterior y la nueva. **Todo o nada.**
+- Si una reserva elegida dejó de estar PENDIENTE → 409 y no se cambia nada.
 - `trg_dsee_bu_cupo` impide en BD bajar por debajo de las reservas activas (respaldo).
 - No se comprueba el estado de la solicitud (también se pueden cambiar plazas de una solicitud PENDIENTE o RECHAZADO; una empresa en BAJA no puede entrar, pero el personal sí podría) 🔶.
 

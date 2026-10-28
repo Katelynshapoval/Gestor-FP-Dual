@@ -8,9 +8,9 @@ No hay registro de usuarios como tal. Las cuentas nacen así:
 
 | Rol | Cómo se crea | `email` | `must_change_password` |
 | --- | --- | --- | --- |
-| ALUMNO | Primer envío del formulario público de solicitud (la contraseña la elige el alumno) | NULL | 0 |
+| ALUMNO | Primer envío del formulario público de solicitud con un DNI **nuevo** (la contraseña la elige el alumno). Un DNI que ya tiene ficha sin cuenta no obtiene cuenta por esta vía (SEC-001) | NULL | 0 |
 | EMPRESA | Alta pública de la empresa (contraseña elegida; ligada al **coordinador principal**) | NULL | 0 |
-| ADMINISTRADOR, COORDINADOR | `POST /usuarios/personal` (solo ADMINISTRADOR). En desarrollo también `scripts/seedPruebas.js` | obligatorio (trigger); es el usuario de acceso | 1 (contraseña temporal) |
+| ADMINISTRADOR, COORDINADOR | `POST /usuarios/personal` (solo ADMINISTRADOR). En desarrollo también `scripts/seedPruebas.js` y `scripts/seedDemo.js`, con contraseñas aleatorias escritas solo en `backend/.pruebas.local.json` / `.demo.local.json` (ignorados por Git, SEC-013) | obligatorio (trigger); es el usuario de acceso | 1 (contraseña temporal) |
 
 Una empresa tiene, en la práctica, **un único usuario EMPRESA** (el del coordinador del alta). No hay endpoint para crear más usuarios de empresa.
 
@@ -24,7 +24,7 @@ Una empresa tiene, en la práctica, **un único usuario EMPRESA** (el del coordi
 | Usuario no encontrado / contraseña incorrecta | 401 «Credenciales incorrectas.» y se cuenta un fallo. |
 | Cuenta inactiva | Solo **después** de comprobar la contraseña: 403 «La cuenta está desactivada…». Así no se revela si existe una cuenta desactivada a quien no sabe la contraseña. No cuenta como fallo. |
 | Éxito | Borra el contador del identificador (no el de la IP). Devuelve `{ token, user: { id, nombre, email, rol, must_change_password, cif, dni } }`. |
-| Token | JWT HS256 con `JWT_SECRET`, caducidad **8 h**. Carga útil: `id, email, nombre, rol, id_contacto, id_alumno`. |
+| Token | JWT **HS256** con `JWT_SECRET` (al verificar solo se admite HS256), caducidad **8 h**. Carga útil: `id, email, nombre, rol, id_contacto, id_alumno` y `pwd`, una huella del hash de la contraseña (SEC-006). |
 
 En el frontend, si `must_change_password` es verdadero, el token se guarda solo en memoria y se muestra el cambio de contraseña obligatorio; la sesión se persiste en `localStorage` después del cambio.
 
@@ -32,35 +32,35 @@ En el frontend, si `must_change_password` es verdadero, el token se guarda solo 
 
 1. Cabecera `Authorization: Bearer …` ausente → 401 `AUTH_REQUIRED`.
 2. Firma inválida o caducada → 401 `TOKEN_INVALID`.
-3. Relee `activo`, `must_change_password` y rol **de la base de datos**:
+3. Relee `activo`, `must_change_password`, el hash de la contraseña y el rol **de la base de datos**:
    - usuario inexistente o inactivo → 401 `ACCOUNT_DISABLED`;
+   - la huella `pwd` del token ya no coincide con el hash actual (la contraseña cambió) → 401 `SESSION_STALE`;
    - rol distinto del del token → 401 `SESSION_STALE`;
    - `must_change_password = 1` → 403 `PASSWORD_CHANGE_REQUIRED`, salvo en `/auth/me` y `/auth/changePassword` (`requireAuthAllowPasswordChange`).
 4. `req.user` = carga útil del token con el **rol de BD**.
 
-Efecto: desactivar una cuenta (p. ej. por una baja) o cambiar su rol expulsa al usuario en su siguiente petición, aunque su token siga sin caducar. **Cambiar la contraseña no invalida los tokens ya emitidos** (no hay versión de sesión): siguen siendo válidos hasta su caducidad (salvo tras una contraseña temporal, que deja `must_change_password = 1` y bloquea las sesiones abiertas con 403 `PASSWORD_CHANGE_REQUIRED`). Para expulsar a alguien de inmediato hay que desactivar la cuenta; rotar `JWT_SECRET` expulsa a todos.
+Efecto: desactivar una cuenta (p. ej. por una baja), cambiar su rol o **cambiar su contraseña** (por el propio usuario, por enlace de recuperación o con una contraseña temporal) expulsa las sesiones abiertas en su siguiente petición, aunque el token no haya caducado (SEC-006). Rotar `JWT_SECRET` expulsa a todos. Al desplegar SEC-006 todas las sesiones anteriores caducaron una vez, porque sus tokens no llevaban la huella.
 
 ## 4. Cambio de contraseña — `POST /auth/changePassword`
 
 - Nueva contraseña ≥ 8 caracteres y distinta de la actual (comparada con bcrypt).
 - La contraseña actual es **obligatoria**, salvo si `must_change_password = 1` en BD (cambio forzado tras una contraseña temporal). Si se envía, se comprueba (401 si es incorrecta).
 - Guarda el nuevo hash (bcrypt coste 10) y pone `must_change_password = 0`.
+- Devuelve un **token nuevo** (el anterior deja de valer con el hash nuevo). El frontend lo sustituye en la sesión, tanto en «Cambiar contraseña» como en el cambio obligatorio del login. Las demás sesiones del usuario se cierran.
 
 ## 5. Recuperación de contraseña
 
 ### `POST /auth/forgotPassword { username }`
 - Limitador propio: 3 peticiones por IP+identificador y 20 por IP en 15 min. **Cada petición cuenta**, exista o no la cuenta.
-- Si no hay ninguna cuenta con ese identificador: **404 `CUENTA_NO_ENCONTRADA`** y no se envía nada.
-- Si la cuenta existe pero está desactivada: **403 `CUENTA_DESACTIVADA`** y no se envía nada.
-- Si está activa pero no hay correo de destino (personal sin email, alumno sin email personal, empresa sin email de coordinador): **400 `SIN_CORREO`**.
-- Si está activa y hay correo, se envía un enlace `APP_URL/restablecer-contrasena?token=…`:
+- **Misma respuesta en todos los casos** (SEC-009): 200 «Si la cuenta existe, está activa y tiene un correo asociado, te enviaremos un enlace. Caduca en 30 minutos. Revisa también la carpeta de spam. Si no llega, contacta con el centro.», tanto si no hay cuenta como si está desactivada, no tiene correo o el enlace se envía. Así el formulario no sirve para averiguar quién tiene cuenta. El motivo real solo queda en el registro del servidor (cuenta sin correo).
+- Solo si la cuenta está activa y hay correo se envía un enlace `APP_URL/restablecer-contrasena?token=…`:
   - personal → `dual_usuarios.email`;
   - alumno → `gf_alumnosfct.email` (correo personal);
   - empresa → email del contacto ligado al usuario (coordinador principal).
 - Sin `APP_URL` (obligatoria con `NODE_ENV=production`; en desarrollo vale `http://localhost:3000`) responde 500 y no se envía nada.
 
 ### `POST /auth/resetPassword { token, newPassword }`
-- Token JWT firmado con `JWT_SECRET + ':password-reset'` (no sirve como token de sesión y viceversa), `purpose: 'reset'`, caducidad **30 min**, y `fp` = huella SHA-256 (22 caracteres) del hash actual.
+- Token JWT HS256 firmado con `JWT_SECRET + ':password-reset'` (no sirve como token de sesión y viceversa), `purpose: 'reset'`, caducidad **30 min**, y `fp` = huella SHA-256 (22 caracteres) del hash actual (la misma `passwordFingerprint` que las sesiones).
 - Se rechaza (400 `ENLACE_NO_VALIDO`) si: firma o caducidad inválidas, propósito incorrecto, usuario inexistente o inactivo, o la huella ya no coincide (la contraseña cambió desde que se emitió).
 - `UPDATE … WHERE password_hash = <hash anterior>`: si dos peticiones usan el mismo enlace a la vez, solo una gana. **Cada enlace sirve una vez** y cualquier cambio de contraseña invalida los enlaces anteriores. Pone `must_change_password = 0`.
 - No hay tabla de tokens.
@@ -107,7 +107,7 @@ Devuelve todos los usuarios sin hash, alumnos y empresas incluidos. Ninguna pant
 
 ## 10. Casos límite
 
-- **Limitador en memoria**: los contadores viven en un `Map` del proceso; se pierden al reiniciar y no se comparten entre procesos. La clave usa `req.ip` y Express no tiene `trust proxy`, así que detrás de un proxy inverso todas las peticiones compartirían IP y el límite por IP se alcanzaría entre todos los usuarios 🔶.
-- **Formulario público de alumno**: un alumno con cuenta que reenvía la solicitud con contraseña incorrecta cuenta como login fallido (clave IP + DNI); tras 5 fallos, 429. Un acierto borra el contador.
-- **Recuperación sin envío**: sin `APP_URL` en producción, o con una cuenta sin email, no se manda enlace pero la respuesta es la genérica de éxito; solo queda un aviso en consola.
+- **Limitador en memoria**: los contadores viven en un `Map` del proceso; se pierden al reiniciar y no se comparten entre procesos. La clave usa `req.ip`. Detrás de un proxy inverso hay que fijar `TRUST_PROXY` con el número de proxies (nunca `true`); sin ella todas las peticiones compartirían la IP del proxy y el límite por IP se alcanzaría entre todos los usuarios.
+- **Formulario público de alumno**: un DNI con cuenta y contraseña incorrecta, o un DNI con ficha pero sin cuenta, cuenta como login fallido (clave IP + DNI); tras 5 fallos, 429. Un acierto borra el contador.
+- **Recuperación sin envío**: con una cuenta sin email no se manda enlace pero la respuesta es la genérica; solo queda un aviso en consola. Sin `APP_URL` en producción la respuesta es 500 y no se envía nada.
 - **Emails**: `dual_usuarios.email` es NULL para EMPRESA y ALUMNO. Las notificaciones y la recuperación usan el email del coordinador (`ge_contactos`) o de la ficha del alumno (`gf_alumnosfct`); cambiar el del coordinador cambia también dónde llega la recuperación de la empresa.

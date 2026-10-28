@@ -4,24 +4,26 @@
 
 ### Reservar dos veces el mismo par
 - **Contexto**: `POST /reservas` y `POST /reservas/admin`.
-- **Condición**: el par alumno–oferta ya tiene una reserva PENDIENTE (doble clic, dos pestañas, empresa y centro a la vez).
-- **Comportamiento**: `sp_reservar_alumno` devuelve el id existente **sin cambiar nada** (idempotente en BD). El backend, sin embargo, **vuelve a registrar** un evento `RESERVAR`, **vuelve a enviar** el correo al alumno (y a la empresa si lo hizo el centro) y responde 201 como si fuera nueva.
-- **Consecuencias**: eventos y correos duplicados; no hay plazas consumidas de más.
-- **Referencia**: `reservasService.reservar` / `reservarAdmin`, procedimiento `sp_reservar_alumno` (rama `v_estado = v_pendiente`).
+- **Condición**: el par alumno–oferta ya tiene una reserva PENDIENTE o CONFIRMADA (doble clic, dos pestañas, empresa y centro a la vez).
+- **Comportamiento** (desde la 018): la segunda petición espera al bloqueo de la primera y después falla con «El alumno ya tiene una reserva activa con esta oferta.» → 400. No se escribe evento ni se envía correo.
+- **Antes de la 018**: el procedimiento devolvía la reserva existente y el backend duplicaba el evento `RESERVAR` y el correo.
+- **Referencia**: `reservasService.reservar` / `reservarAdmin`, `reservasTx.reservar`, `sp_reservar_alumno`, `uq_dr_par_activo`.
 
-### Reservar un par ya confirmado
-- **Comportamiento**: error del procedimiento «El alumno ya tiene una reserva confirmada con esta oferta.» → 400. Si el alumno está confirmado en **otra** oferta: «El alumno ya tiene una reserva confirmada.» → 400.
+### Reservar a un alumno confirmado en otra oferta
+- **Comportamiento**: «El alumno ya tiene una reserva confirmada.» → 400.
 
-### Reactivación de una fila cancelada
-- **Condición**: se vuelve a reservar un par cancelado, o una reasignación tiene como destino una oferta en la que el alumno ya estuvo y fue cancelado.
-- **Comportamiento**: se reutiliza la **misma fila** (`id_reserva`): pasa a PENDIENTE sin tipo de contrato, sin tutor ni motivo, y sus documentos se marcan `es_actual = 0` (siguen visibles en el historial del personal).
-- **Motivo**: la clave única `(alumno, oferta)` obliga a reutilizar la fila; por eso no se heredan anexos ni tutor del intento anterior.
-- **Consecuencias**: los documentos de varios intentos comparten `id_reserva` y solo se distinguen por fecha y `es_actual`. La reactivación no vuelve a comprobar en BD que las solicitudes sigan VALIDADO (lo hace Node antes, fuera del bloqueo).
-- **Referencia**: `sp_reservar_alumno`, `sp_reasignar_reserva`.
+### Volver a reservar tras una cancelación
+- **Condición**: se reserva de nuevo un par cancelado, o una reasignación tiene como destino una oferta en la que el alumno ya estuvo y fue cancelado.
+- **Comportamiento** (018): se crea una **fila nueva** PENDIENTE, sin tipo de contrato, tutor, motivo ni documentos. La fila cancelada no cambia: conserva su tipo, tutor, motivo, anexo y firmas.
+- **Consecuencias**: la ficha de cada intento muestra los demás en «Intentos relacionados». Las filas **reactivadas antes de la 018** siguen mezclando los documentos de sus dos intentos (los del primero, como no actuales).
+- **Referencia**: `sp_reservar_alumno`, `sp_reasignar_reserva`, `reservasService.reservasRelacionadas`.
 
-### El tipo de contrato se pierde al cancelar
-- **Comportamiento**: todos los caminos de cancelación ponen `id_tipo_contrato = NULL` porque `trg_dr_bu_reglas` lo prohíbe en CANCELADA. La ficha de una reserva cancelada ya no sabe qué anexo correspondía y **solo lista el Calendario**.
-- **Consecuencias**: el anexo de una reserva cancelada sigue con `es_actual = 1` (hasta una reactivación), pero no aparece ni en `documentos` (se elige por familia y ya no hay familia) ni en `historial` (que solo muestra `es_actual = 0` y tipos heredados). Sigue en la BD y es descargable por id.
+### Una reserva cancelada no se puede modificar
+- **Comportamiento**: `trg_dr_bu_reglas` rechaza cualquier cambio («Una reserva cancelada es definitiva y no se puede modificar. Crea una reserva nueva.» → 400): tutor, tipo de contrato, estado o motivo. La ficha la muestra en solo lectura, con su motivo (excepto al alumno).
+
+### Tipo de contrato de las reservas canceladas
+- **Comportamiento** (018): se conserva, así que la ficha de una reserva cancelada sigue mostrando su anexo (en solo lectura).
+- **Datos anteriores**: las canceladas antes de la 018 perdieron el tipo (la regla anterior lo prohibía en CANCELADA). Su ficha solo lista el Calendario; el anexo sigue en la BD con `es_actual = 1` y es descargable por id. En desarrollo hay 7 reservas así.
 
 ### Cambio de familia de contrato con anexo existente
 - **Condición**: Beca ↔ (Contrato, Convenio, Otro) con un anexo de la familia actual subido o generado.
@@ -33,13 +35,14 @@
 
 ### Confirmación concurrente del mismo alumno
 - **Condición**: dos miembros del centro confirman a la vez dos reservas distintas del mismo alumno.
-- **Comportamiento**: la primera confirma y cancela la otra; la segunda falla en el procedimiento («Solo una reserva PENDIENTE puede confirmarse.» → 400) o, en el peor caso, choca con `uq_dual_reservas_confirmada_alumno` → 409 «El alumno ya tiene otra reserva confirmada.».
+- **Comportamiento**: las dos bloquean primero la solicitud del alumno, así que se serializan. La primera confirma y cancela la otra; la segunda recibe «Solo una reserva PENDIENTE puede confirmarse.» → 400. Como red de seguridad, `uq_dual_reservas_confirmada_alumno` → 409 «El alumno ya tiene otra reserva confirmada.».
 
-### Confirmación con eventos y correos después del commit
-- **Comportamiento**: los eventos `CONFIRMAR` y `CANCELAR` de las hermanas se calculan **antes** de llamar al procedimiento (consulta `otras`) y se escriben después. Si otra reserva pendiente se creara entre esa consulta y el procedimiento, se cancelaría sin evento ni aviso 🔶 (ventana muy estrecha).
+### Confirmación y reserva nueva del mismo alumno a la vez
+- **Comportamiento** (018): si la reserva llega primero, la confirmación espera y la cancela como hermana («Alumno asignado a otra empresa.»), con su evento. Si la confirmación llega primero, la reserva espera y falla con «ya tiene una reserva confirmada». Los eventos `CONFIRMAR` y `CANCELAR` se escriben en la misma transacción; los correos, después del commit.
 
 ### Reasignación desde una reserva confirmada
-- **Comportamiento**: se permite. El origen pasa a CANCELADA y el destino queda **PENDIENTE**: el alumno deja de tener plaza confirmada hasta que se confirme el destino (con su propio anexo, firmas y validación). Las demás reservas pendientes del alumno no se tocan.
+- **Comportamiento**: se permite. El origen pasa a CANCELADA y el destino queda **PENDIENTE**: el alumno deja de tener plaza confirmada hasta que se confirme el destino (con su propio anexo, firmas y validación). Las demás reservas pendientes del alumno no se tocan. Una reserva solo se reasigna una vez (`id_reserva_origen` único): la cancelada ya no admite otra reasignación.
+- **Interfaz**: tras reasignar, el panel pasa a la reserva nueva, que muestra «Reasignada desde»; la de origen muestra «Reasignada a».
 
 ### Reservas del centro en convocatorias pasadas
 - **Comportamiento**: `/reservas/admin` y `/reservas/:id/reasignar` no exigen convocatoria activa; basta que ambas solicitudes sigan VALIDADO y compartan convocatoria y ciclo. La empresa, en cambio, solo reserva en la activa.
@@ -57,4 +60,4 @@
 - **Comportamiento**: `GET /reservas/alumno` devuelve `motivo = NULL` y la ficha lo oculta al rol ALUMNO; el correo al alumno no incluye el motivo.
 
 ### Tutor en una reserva confirmada
-- **Comportamiento**: se puede asignar o cambiar (el trigger permite CONFIRMADA → CONFIRMADA). En CANCELADA, no (400).
+- **Comportamiento**: se puede asignar o cambiar (el trigger permite CONFIRMADA → CONFIRMADA). En CANCELADA, no (400). Cada asignación registra `RESERVA/TUTOR`.

@@ -2,13 +2,13 @@
 export const FAQ = [
   {
     q: "He olvidado la contraseña",
-    a: "En Acceder, pulsa «¿Has olvidado tu contraseña?», escribe tu usuario (correo, CIF o DNI/NIE) y abre el enlace que llega al correo. Caduca en 30 minutos y solo sirve una vez. Si no hay ninguna cuenta con ese usuario, o está desactivada, no se envía el enlace.",
+    a: "En Acceder, pulsa «¿Has olvidado tu contraseña?», escribe tu usuario (correo, CIF o DNI/NIE) y abre el enlace que llega al correo. Caduca en 30 minutos y solo sirve una vez. La pantalla responde siempre lo mismo; el enlace solo llega si la cuenta existe, está activa y tiene un correo asociado.",
     href: "#recuperar",
   },
   {
-    q: "Me dice que no existe la cuenta",
-    a: "El usuario depende del perfil: correo para el personal del centro, CIF para la empresa y DNI/NIE para el alumno. Si acabas de presentar la solicitud, usa el mismo identificador. Si sigue sin encontrarla, habla con el centro.",
-    href: "#iniciar-sesion",
+    q: "No me reconoce el usuario o no me llega el correo",
+    a: "El usuario depende del perfil: correo para el personal del centro, CIF para la empresa y DNI/NIE para el alumno. Si acabas de presentar la solicitud, usa el mismo identificador. Revisa también la carpeta de spam. Si sigue sin funcionar, habla con el centro.",
+    href: "#faq-contrasena",
   },
   {
     q: "No puedo entrar",
@@ -37,8 +37,13 @@ export const FAQ = [
   },
   {
     q: "No puedo reservar a un alumno",
-    a: "Puede ser porque la solicitud de la empresa aún no está validada, porque no quedan plazas en ese ciclo o porque el alumno ya tiene una plaza confirmada en otra empresa.",
+    a: "Puede ser porque la solicitud de la empresa aún no está validada, porque no quedan plazas en ese ciclo o porque el alumno ya tiene una plaza confirmada en otra empresa. Con la solicitud validada, la empresa solo puede reducir plazas: para ampliarlas hay que pedírselo al centro.",
     href: "#faq-plazas",
+  },
+  {
+    q: "Uno de mis datos es incorrecto",
+    a: "El alumno lo pide desde «Mis datos», en «Mi solicitud», con «Solicitar corrección»; la empresa, con «Editar datos». En los dos casos el centro revisa la petición antes de aplicarla. El DNI/NIE y el CIF no se pueden cambiar.",
+    href: "#alumno-datos",
   },
   {
     q: "¿Qué anexo me toca y por qué no aparece?",
@@ -66,5 +71,5 @@ export const PERFILES = [
   { href: "#administrador", title: "Administración", text: "Convocatorias, personal, validaciones, reservas y plantillas." },
   { href: "#coordinador", title: "Coordinación", text: "Casi lo mismo que Administración. Aquí están las diferencias." },
   { href: "#empresa", title: "Empresa", text: "Convenio, plazas, reservas, tutores y firmas." },
-  { href: "#alumno", title: "Alumno", text: "Candidatura, documentos y firma del anexo." },
+  { href: "#alumno", title: "Alumno", text: "Candidatura, documentos, firma del anexo y corrección de datos." },
 ];

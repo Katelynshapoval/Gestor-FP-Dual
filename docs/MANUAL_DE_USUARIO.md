@@ -3,7 +3,7 @@
 _Gestor FP Dual · Centro Salesiano Ntra. Sra. del Pilar (Salesianos Zaragoza)_
 _Versión del manual: 28/10/2026. Describe la aplicación tal y como funciona en esta fecha._
 
-> Las capturas de este manual se han hecho con **datos de prueba** (empresas, alumnos y correos inventados). Algunos estados que aparecen en ellas solo sirven de ejemplo.
+> Las capturas de este manual se han hecho con **datos de prueba** (empresas, alumnos y correos inventados), en dos momentos distintos, así que los nombres cambian de una captura a otra. Algunos estados que aparecen en ellas solo sirven de ejemplo.
 
 ---
 
@@ -101,6 +101,8 @@ Puedes cambiarla siempre que quieras, sea cual sea tu perfil.
 3. Escribe la **«Nueva contraseña»** (mínimo 8 caracteres) y repítela en **«Confirmar nueva contraseña»**. El icono del ojo muestra lo que has escrito.
 4. Pulsa **«Cambiar contraseña»**.
 
+Tu sesión sigue abierta en este dispositivo. Si tenías la aplicación abierta en otro ordenador o en el móvil, allí se cierra y tendrás que entrar con la contraseña nueva.
+
 A la derecha verás una lista que se marca sola: al menos 8 caracteres, distinta de la actual y que las dos contraseñas coincidan. La barra de **«Seguridad»** es solo orientativa.
 
 ![Página Cambiar contraseña con el formulario a la izquierda y el panel de requisitos y consejos a la derecha](manual/imagenes/cambiar-contrasena.png)
@@ -125,7 +127,7 @@ Por seguridad, la sesión dura unas **8 horas**. Cuando caduca, la aplicación t
 
 También puedes ver estos avisos:
 
-- **«Tus permisos han cambiado. Inicia sesión de nuevo.»**: el centro ha cambiado algo de tu cuenta. Vuelve a entrar.
+- **«Tus permisos han cambiado. Inicia sesión de nuevo.»**: el centro ha cambiado algo de tu cuenta, o se ha cambiado tu contraseña (por ti en otro dispositivo, con el enlace de recuperación o por Administración). Vuelve a entrar.
 - **«Tu cuenta está desactivada. Contacta con el centro.»**: no podrás entrar hasta que el centro la reactive.
 
 <a id="no-puedes-entrar"></a>
@@ -155,7 +157,7 @@ El correo llega a:
 | Alumno | El email personal de tu solicitud |
 | Empresa | El email del coordinador principal |
 
-El enlace **caduca en 30 minutos** y **solo sirve una vez**. Si no hay ninguna cuenta con ese usuario, la aplicación lo indica y no envía el correo. Tampoco se envía nada si la cuenta está desactivada o no tiene un correo asociado. Si no te llega el correo (revisa también la carpeta de spam), pide al centro que Administración te restablezca la contraseña.
+El enlace **caduca en 30 minutos** y **solo sirve una vez**. Por seguridad, la pantalla responde siempre lo mismo: «Si la cuenta existe, está activa y tiene un correo asociado, te enviaremos un enlace…». No dice si el usuario existe. El correo solo se envía a cuentas activas con un correo asociado. Si no te llega (revisa también la carpeta de spam), comprueba que has escrito bien tu usuario y, si sigue sin llegar, pide al centro que Administración te restablezca la contraseña.
 
 ![Pantalla Recuperar contraseña con el campo Usuario y el botón Enviar enlace](manual/imagenes/recuperar-contrasena.png)
 _Pantalla «Recuperar contraseña»._
@@ -260,6 +262,7 @@ El color sigue la regla de antes (verde, amarillo, rojo, gris). **Pasa el ratón
 - **Avisos**: tras cada acción aparece un mensaje breve (por ejemplo «Documento validado.»). Si algo falla, el aviso explica el motivo.
 - **Visor de documentos**: al pulsar «Ver documento» o «Ver» se abre el PDF dentro de la aplicación, con los botones **«Descargar»** y **«Nueva pestaña»**. En el móvil se recomienda abrirlo en una pestaña nueva.
 - **Datos sin enviar**: si sales de un formulario a medias, el navegador te avisa antes de cerrar la página.
+- **Ventana de edición de datos**: es la misma para empresas y alumnos, la abra el centro o la propia empresa o alumno. Arriba, unos botones llevan a cada sección del formulario; debajo del título se indica si los cambios se aplican al momento («Edición directa · sin aprobación») o se envían al centro («Se envía al centro para revisión»). Abajo, **«Cancelar»**, el botón de guardar o enviar y cuántos campos has cambiado. Los campos que no se pueden cambiar aparecen bloqueados, con un candado: el DNI/NIE del alumno y, cuando edita la propia empresa, el CIF. Si cierras con cambios sin guardar, se pide confirmación («Descartar cambios»).
 
 <a id="ayuda"></a>
 
@@ -315,7 +318,7 @@ Las convocatorias se abren y se cierran solas según sus fechas.
    | Paso | Qué se pide |
    | --- | --- |
    | 1. Ciclo | **Email del centro** (el que termina en `@zaragoza.salesianos.edu`) y tu **ciclo**. |
-   | 2. Datos personales | **DNI / NIE** (con letra, sin espacios ni guiones; será tu usuario), nombre y apellidos, fecha de nacimiento, nacionalidad y sexo. **Si eres menor de edad**, también el nombre y el DNI/NIE de tu tutor o tutora legal. |
+   | 2. Datos personales | **DNI / NIE** (con letra, sin espacios ni guiones; será tu usuario; se comprueba que la letra es correcta), nombre y apellidos, fecha de nacimiento, nacionalidad y sexo. **Si eres menor de edad**, también el nombre y el DNI/NIE de tu tutor o tutora legal. |
    | 3. Contacto y movilidad | Email personal, teléfono (9 cifras), domicilio, código postal, localidad, si tienes carnet de conducir y vehículo, idiomas y nivel, y el número de la Seguridad Social si ya lo tienes (es opcional). |
    | 4. Documentos | **Currículum (PDF)** y **Anexo DGA (PDF)**. |
    | 5. Cuenta | La **contraseña** con la que entrarás al portal (mínimo 8 caracteres), dos veces. **Si ya tienes cuenta de un curso anterior, escribe aquí tu contraseña actual** ([más información](#faq-alumno-existente)). |
@@ -324,6 +327,8 @@ Las convocatorias se abren y se cierran solas según sus fechas.
 3. Pulsa **«Enviar solicitud»** y espera a que termine: aparece «Enviando la solicitud. No cierres esta página.»
 
 Los campos con **\*** son obligatorios. Si falta algo, al pulsar «Siguiente →» aparece arriba un recuadro rojo con la lista de problemas; pulsa cada uno para ir directamente al campo.
+
+Si desde la misma conexión se envían muchas solicitudes seguidas, aparece «Se han recibido demasiadas solicitudes. Vuelve a intentarlo más tarde.». Espera un rato y vuelve a enviarla.
 
 ![Primer paso de la solicitud de alumno con el indicador de seis pasos](manual/imagenes/solicitud-alumno-paso1.png)
 _Paso 1 de la solicitud de alumno. Los círculos de arriba muestran en qué paso estás._
@@ -343,7 +348,7 @@ _Paso 1 de la solicitud de alumno. Los círculos de arriba muestran en qué paso
    | 1. Empresa | Razón social, **CIF** (será el usuario del portal), teléfono (opcional), dirección fiscal, municipio, provincia y código postal. |
    | 2. Responsable legal | La persona que firma el convenio: nombre y apellidos, DNI/NIE, cargo, email y teléfono. |
    | 3. Coordinador | La persona de contacto con el centro: recibe los avisos y el convenio, gestiona el portal y queda como primer tutor de la empresa. Nombre, DNI/NIE, email y teléfono. |
-   | 4. Puesto y ciclos | Descripción del puesto (las tareas del alumno); el **lugar de trabajo** (marca «El alumno trabajará en la dirección fiscal de la empresa» o escribe otra dirección); los **ciclos** que os interesan y cuántos alumnos podéis acoger en cada uno; y, si queréis, los medios de transporte para llegar al puesto. |
+   | 4. Puesto y ciclos | Descripción del puesto (las tareas del alumno); el **lugar de trabajo** (marca «El alumno trabajará en la dirección fiscal de la empresa» o escribe otra dirección); los **ciclos** que os interesan y cuántos alumnos podéis acoger en cada uno (como máximo 20 por ciclo); y, si queréis, los medios de transporte para llegar al puesto. |
    | 5. Cuenta | La contraseña del portal (mínimo 8 caracteres), dos veces. |
    | 6. Revisión y envío | Resumen con botones **«Modificar»**. |
 
@@ -406,6 +411,8 @@ Es la primera pantalla al entrar. Arriba eliges la **convocatoria** (por defecto
 
 Cada tarjeta tiene **«Ver lista»**, que abre la lista correspondiente **ya filtrada**. Una tarjeta con la etiqueta «Al día» no tiene nada pendiente.
 
+Las peticiones de corrección de datos de los **alumnos** no tienen tarjeta en el Panel: se ven en la lista de [Alumnos](#alumno-correcciones), con la etiqueta **«Cambios pendientes»**.
+
 <a id="convocatorias"></a>
 
 ### 5.2 Convocatorias
@@ -456,7 +463,7 @@ Pulsa **«Editar»** para cambiar el nombre, el email o el rol (de coordinador a
 
 ### 5.4 Alumnos: revisar y validar solicitudes
 
-Menú **«Alumnos»**. Cada tarjeta muestra el nombre, el DNI/NIE, el ciclo, el estado de la solicitud y un resumen de sus reservas. Filtros disponibles: convocatoria, especialidad, estado de la solicitud y situación de la reserva.
+Menú **«Alumnos»**. Cada tarjeta muestra el nombre, el DNI/NIE, el ciclo, el estado de la solicitud y un resumen de sus reservas. Si el alumno ha pedido corregir sus datos, aparece también la etiqueta amarilla **«Cambios pendientes»**. Filtros disponibles: convocatoria, especialidad, estado de la solicitud y situación de la reserva.
 
 ![Lista de alumnos con el buscador, los filtros y las tarjetas de cada alumno](manual/imagenes/alumnos.png)
 _Lista de alumnos de la convocatoria activa._
@@ -482,6 +489,43 @@ En **«Estado de la solicitud»**:
 - **«Rechazar solicitud»** rechaza la **candidatura entera**, no un documento. Hay que escribir el motivo, que el alumno verá.
 
 Una vez validado, el alumno aparece en «Alumnos disponibles» para las empresas de su ciclo.
+
+<a id="alumno-editar"></a>
+
+#### Editar los datos de un alumno — 🔒 Solo Administración
+
+1. Pulsa el **icono del lápiz** de la tarjeta del alumno («Editar los datos de…»). No hace falta desplegarla.
+2. Se abre la [ventana de edición](#botones) con cuatro secciones: **Ciclo**, **Datos personales**, **Contacto** y **Movilidad y otros**. Cambia lo necesario.
+3. Pulsa **«Guardar cambios»**. Los cambios se aplican al momento, sin aprobación.
+
+Ten en cuenta:
+
+- El **DNI/NIE no se puede cambiar**: es el usuario con el que el alumno entra al portal.
+- Solo se pueden editar los datos de la **convocatoria activa**, y no los de una solicitud dada de baja (hay que reactivarla antes).
+- El **ciclo** no se puede cambiar mientras el alumno tenga reservas pendientes o confirmadas. La ventana las muestra, cada una con **«Cancelar reserva»**, por si hay que cancelarlas antes. Al cambiar el ciclo se pide confirmación y el alumno recibe un correo.
+- Los documentos ya generados (convenio, anexos) conservan los datos anteriores. Si alguno depende de estos datos, vuelve a generarlo.
+
+![Ventana Editar datos de un alumno, vista por Administración, con las secciones Ciclo, Datos personales, Contacto y Movilidad y otros](manual/imagenes/alumno-editar.png)
+_Edición directa de los datos de un alumno con una reserva confirmada: el ciclo no se puede cambiar y el DNI/NIE aparece bloqueado._
+
+<a id="alumno-correcciones"></a>
+
+#### Aprobar o rechazar correcciones pedidas por el alumno — 🔒 Solo Administración
+
+Los alumnos no cambian sus datos directamente: piden la corrección desde su portal ([cómo](#alumno-datos)). Hasta que Administración la revisa, sus datos no cambian.
+
+1. Busca las tarjetas con la etiqueta **«Cambios pendientes»** y despliega la del alumno.
+2. En la pestaña **«Información»** aparece el recuadro **«El alumno ha pedido corregir sus datos»**, con una tabla **Actual → Solicitado**.
+3. Pulsa **«Aprobar»** para aplicar los cambios, o escribe el **«Motivo del rechazo»** (obligatorio) y pulsa **«Rechazar»**.
+
+El alumno recibe un correo en los dos casos; si la rechazas, ve el motivo en su portal. Al aprobar se aplican las mismas reglas que en la edición directa: por ejemplo, un cambio de ciclo no se puede aprobar mientras el alumno tenga reservas activas.
+
+Si alguien del centro ha cambiado esos mismos datos después de que el alumno enviara la petición, al aprobar aparece «Los datos actuales han cambiado desde que el alumno envió la petición.», con cada campo afectado. Revísalo y pulsa **«Aplicar igualmente»** si quieres aplicar lo que pidió el alumno.
+
+![Tarjeta de alumno con la etiqueta Cambios pendientes y el recuadro El alumno ha pedido corregir sus datos, con los botones Aprobar y Rechazar](manual/imagenes/alumno-correccion-pendiente.png)
+_Petición de corrección pendiente, vista por Administración._
+
+Coordinación ve la etiqueta «Cambios pendientes», pero no el lápiz ni el recuadro de la petición: los datos de los alumnos los corrige Administración.
 
 #### Pestaña «Cuenta»
 
@@ -522,7 +566,7 @@ _Lista de empresas._
 
 Cada tarjeta tiene las pestañas **«Información»** y **«Reservas»**.
 
-![Tarjeta de empresa desplegada con datos, credenciales de acceso, especialidades solicitadas, descripción del puesto y convenio](manual/imagenes/empresa-detalle.png)
+![Tarjeta de empresa desplegada con los datos de la empresa, las especialidades solicitadas, la descripción del puesto y el convenio](manual/imagenes/empresa-detalle.png)
 _Pestaña «Información» de una empresa._
 
 #### Validar la empresa: el convenio
@@ -552,7 +596,11 @@ _Pestaña «Información» de una empresa pendiente: datos alineados a la izquie
 El centro puede corregir los datos directamente:
 
 1. Pulsa el **icono del lápiz** de la tarjeta («Editar los datos de…»).
-2. Cambia lo necesario y pulsa **«Guardar cambios»**.
+2. Se abre la [ventana de edición](#botones), con las secciones **Empresa**, **Domicilio fiscal**, **Lugar de trabajo**, **Responsable legal**, **Coordinador** y **Puesto y transporte**. Cambia lo necesario.
+3. Pulsa **«Guardar cambios»**. Se aplican al momento.
+
+![Ventana Editar datos de una empresa, vista por el centro, con los botones de sección arriba y Guardar cambios abajo](manual/imagenes/empresa-editar.png)
+_Edición directa de los datos de una empresa._
 
 #### Aprobar o rechazar cambios propuestos por la empresa
 
@@ -570,7 +618,7 @@ En **«Especialidades solicitadas»** cada ciclo aparece con su número de plaza
 - **Cambiar plazas**: pulsa el lápiz del ciclo, escribe el número y pulsa ✓ (o Enter). La X cancela.
 - **Añadir un ciclo**: pulsa **«+ Añadir ciclo»**, elige el ciclo, indica las plazas y pulsa ✓.
 
-Solo se pueden cambiar en la convocatoria activa. Si reduces plazas por debajo de las reservas pendientes, aparece **«Elegir reservas a cancelar»**: marca cuáles se cancelan y pulsa **«Reducir plazas»**. No se puede bajar por debajo de las plazas **confirmadas**: primero hay que cancelar o reasignar esas reservas.
+Solo se pueden cambiar en la convocatoria activa, y como máximo hasta 20 plazas por ciclo. El centro puede ampliar plazas o añadir ciclos aunque la empresa ya esté validada; la empresa, en cambio, a partir de ese momento solo puede reducirlas ([por qué](#empresa-plazas)). Si reduces plazas por debajo de las reservas pendientes, aparece **«Elegir reservas a cancelar»**: marca cuáles se cancelan y pulsa **«Reducir plazas»**. No se puede bajar por debajo de las plazas **confirmadas**: primero hay que cancelar o reasignar esas reservas.
 
 #### Asignar un alumno desde la empresa
 
@@ -615,10 +663,11 @@ _Lista de reservas. Pasa el ratón por un icono para ver qué significa._
 - **Arriba**, el alumno, la empresa, la especialidad, la convocatoria y el estado de la reserva (y el motivo, si está cancelada).
 - **A la izquierda**, los documentos de la reserva (Anexo II o III y Calendario) y, si los hay, el historial de versiones anteriores.
 - **A la derecha**, el tipo de contrato y el tutor de empresa.
+- **«Intentos relacionados»**, si los hay: la reserva de la que viene («Reasignada desde»), la que la sustituyó («Reasignada a») y los intentos anteriores o posteriores del mismo alumno con la misma empresa y ciclo. Cada uno muestra su estado y un botón **«Ver»** que lo abre en la misma ventana.
 - **Abajo**, «Cerrar», «Reasignar», «Cancelar reserva» y, cuando ya se puede, **«Confirmar reserva»**.
 
-![Ventana de una reserva pendiente con el tipo de contrato, los documentos, el tutor y la lista de confirmación](manual/imagenes/reserva-detalle.png)
-_Panel de una reserva pendiente con tipo de contrato «Beca»: el Anexo III está pendiente de generar, así que todavía no aparece «Confirmar reserva»._
+![Ventana de una reserva pendiente con los documentos de la reserva, el tipo de contrato y el tutor de empresa](manual/imagenes/reserva-detalle.png)
+_Panel de una reserva pendiente con tipo de contrato «Convenio»: el Anexo II lleva la firma de la empresa y faltan las del centro y el alumno, así que todavía no aparece «Confirmar reserva»._
 
 El trabajo normal con una reserva sigue este orden:
 
@@ -668,14 +717,18 @@ Mientras falte algo, el estado del anexo en «Documentos de la reserva» indica 
 
 #### Cancelar una reserva
 
-Pulsa **«Cancelar reserva»**, escribe el motivo y confirma. La reserva y sus documentos quedan en el historial. El centro puede cancelar reservas pendientes y confirmadas.
+Pulsa **«Cancelar reserva»**, escribe el motivo y confirma. El centro puede cancelar reservas pendientes y confirmadas.
+
+**Una reserva cancelada es definitiva**: ya no se puede modificar, pero conserva todo lo que tenía (tipo de contrato, tutor, anexo, firmas y motivo) y se puede abrir para consultarlo. Si más adelante se vuelve a reservar al mismo alumno en la misma empresa, se crea una **reserva nueva** que empieza desde cero; las dos aparecen enlazadas en «Intentos relacionados».
 
 #### Reasignar a otra empresa
 
 Pulsa **«Reasignar»**, elige la **«Nueva oferta»** (misma especialidad y convocatoria, con plazas libres), escribe el motivo y pulsa **«Reasignar»**.
 
 - La reserva actual se cancela y se crea una **reserva pendiente nueva** en la otra empresa, **sin documentos heredados**: hay que repetir el proceso (tipo de contrato, anexo, firmas, validación y confirmación).
+- La ventana pasa a mostrar la reserva nueva, con «Reasignada desde» en «Intentos relacionados». La antigua muestra «Reasignada a».
 - Funciona también con reservas **confirmadas**.
+- Una reserva solo se puede reasignar una vez: si hay que volver a cambiar, se reasigna la nueva.
 - Si no hay otras ofertas con plazas, se indica y no se puede reasignar.
 
 En **«Historial de documentos»** se pueden consultar las versiones anteriores que ya no están vigentes.
@@ -744,7 +797,7 @@ Sirve para **retirar del programa** a un alumno o a una empresa en una convocato
 2. Pulsa **«Dar de baja»**. La ventana muestra **qué reservas se cancelarán**; las confirmadas se marcan en rojo.
 3. Escribe el **«Motivo de la baja»** (obligatorio) y pulsa **«Dar de baja»**.
 
-El aviso final indica cuántas reservas se han cancelado. Si alguna no se ha podido cancelar, el aviso lo dice: cancélala a mano desde su panel ([Cancelar una reserva](#staff-reservas)).
+El aviso final indica cuántas reservas se han cancelado. La baja se hace **entera o no se hace**: si algo falla, no cambia nada (ni la solicitud, ni la cuenta, ni las reservas) y aparece un aviso de error. Vuelve a intentarlo.
 
 ![Ventana Dar de baja al alumno con la reserva confirmada que se cancelará y el campo Motivo de la baja](manual/imagenes/dar-de-baja.png)
 _Antes de confirmar, la ventana muestra las reservas que se van a cancelar._
@@ -774,6 +827,7 @@ El perfil de Coordinación hace **el mismo trabajo diario** que Administración:
 | Validar y rechazar documentos y solicitudes; reabrir solicitudes | ✅ | ✅ |
 | Gestionar reservas: tipo de contrato, firmas, confirmar, cancelar, reasignar | ✅ | ✅ |
 | Editar datos de empresas, aprobar o rechazar cambios, cambiar plazas | ✅ | ✅ |
+| **Editar datos de alumnos y resolver sus peticiones de corrección** | ✅ | ❌ |
 | Rechazar y reabrir solicitudes de empresa | ✅ | ✅ |
 | Consultar convocatorias | ✅ | ✅ |
 | **Crear y editar convocatorias** | ✅ | ❌ |
@@ -789,6 +843,7 @@ En la práctica, el coordinador:
 - No tiene el menú **«Personal»**.
 - En **Documentos › Plantillas** no tiene el botón «Subir plantilla».
 - En la pestaña **«Cuenta»** de alumnos y empresas ve el usuario y el estado de la cuenta, pero no los botones «Resetear contraseña» ni «Dar de baja».
+- En **Alumnos** no tiene el lápiz de edición ni el recuadro de las peticiones de corrección (sí ve la etiqueta «Cambios pendientes»).
 
 Si necesitas una de estas acciones, pídesela a Administración.
 
@@ -836,10 +891,13 @@ _Pestaña «Datos de la empresa»._
 
 Los cambios de datos **los revisa el centro antes de aplicarse**:
 
-1. Pulsa **«Editar datos»**.
-2. Cambia lo necesario y pulsa **«Enviar para revisión»**.
+1. Pulsa **«Editar datos»**. Se abre la [ventana de edición](#botones), marcada «Se envía al centro para revisión».
+2. Cambia lo necesario (los botones de arriba llevan a cada sección) y pulsa **«Enviar para revisión»**, abajo a la derecha.
 3. Aparece el recuadro **«Cambios enviados para revisión»** con lo que has pedido. Mientras tanto, se siguen mostrando los datos aprobados.
 4. Si quieres corregir la propuesta, pulsa **«Modificar solicitud pendiente»** y luego **«Actualizar solicitud de cambios»**.
+
+![Ventana Editar datos abierta por la empresa, con el aviso de que se envía al centro para revisión y el botón Enviar para revisión](manual/imagenes/portal-empresa-editar.png)
+_La empresa propone cambios; el centro los revisa antes de aplicarlos._
 
 Si el centro la rechaza, verás **«Solicitud de cambios rechazada»** con el motivo.
 
@@ -851,10 +909,12 @@ Si el centro la rechaza, verás **«Solicitud de cambios rechazada»** con el mo
 
 ### 7.3 Ciclos y plazas
 
-En **«Ciclo(s) de Grado solicitados»** veis, para cada ciclo, cuántas plazas tenéis y cuántas están **Ocupadas**, **Confirmadas** y **Disponibles**. **Esto sí lo podéis cambiar directamente**, sin esperar al centro (solo en la convocatoria activa):
+En **«Ciclo(s) de Grado solicitados»** veis, para cada ciclo, cuántas plazas tenéis y cuántas están **Ocupadas**, **Confirmadas** y **Disponibles**. Esto lo cambiáis directamente, sin pasar por la revisión de datos (solo en la convocatoria activa):
 
-- **Cambiar el número de plazas**: escribe el número nuevo y pulsa **«Guardar»**.
+- **Cambiar el número de plazas**: escribe el número nuevo y pulsa **«Guardar»**. Como máximo, 20 plazas por ciclo.
 - **Añadir un ciclo**: elige el ciclo, indica cuántos alumnos y guárdalo.
+
+**Cuando vuestra solicitud ya está validada, solo podéis reducir plazas.** Para ampliar plazas o añadir un ciclo, contactad con el centro; la pantalla lo indica («Tu solicitud ya está validada: puedes reducir plazas…») y ya no muestra «Añadir ciclo».
 
 Al reducir plazas:
 
@@ -905,7 +965,7 @@ En la pestaña **«Reservas»** del portal aparecen todas, con su estado. Pulsa 
 
 - subir y firmar el **Anexo II o III** y el **Calendario** ([cómo](#empresa-documentos));
 - elegir el **«Tutor de empresa»**;
-- **cancelar** la reserva mientras esté pendiente («Cancelar reserva», con un motivo).
+- **cancelar** la reserva mientras esté pendiente («Cancelar reserva», con un motivo). Una reserva cancelada ya no se puede cambiar; si volvéis a reservar al mismo alumno, se crea una reserva nueva.
 
 Lo que **solo hace el centro**: indicar el tipo de contrato, validar el anexo, confirmar la reserva, cancelar una reserva ya confirmada y reasignar al alumno.
 
@@ -983,7 +1043,7 @@ _Portal del alumno. En este ejemplo de prueba faltan documentos por subir._
 | «Tienes una reserva pendiente de confirmación.» | Una empresa te ha reservado, pero todavía no es definitivo. |
 | «Tu plaza en … está confirmada.» | Ya tienes plaza definitiva. |
 
-En **«Mi solicitud»** ves tus datos (nombre, DNI/NIE, especialidad, convocatoria y fecha) y el estado.
+En **«Mi solicitud»** ves tus datos (nombre, DNI/NIE, especialidad, convocatoria y fecha) y el estado. Debajo está el bloque **«Mis datos»**, desde el que puedes [pedir que se corrija algún dato](#alumno-datos).
 
 ![Portal del alumno en un móvil](manual/imagenes/portal-alumno-movil.png)
 _El portal también se puede usar desde el móvil._
@@ -1035,7 +1095,23 @@ El **Calendario** se firma igual, con «Firmar». En el panel también ves el tu
 
 ### 8.4 Corregir datos personales
 
-Tus datos del portal son **de solo lectura**. Si alguno es incorrecto, **comunícaselo al centro** para que lo corrija. Si es un error en tu CV o en el Anexo DGA y el documento todavía no está validado, puedes [sustituirlo tú](#alumno-documentos).
+Si algún dato tuyo es incorrecto (teléfono, domicilio, email, ciclo…), puedes **pedir que se corrija** desde el portal. **Tus datos no cambian hasta que el centro revisa la petición.**
+
+1. En **«Mi solicitud»**, en el bloque **«Mis datos»**, pulsa **«Solicitar corrección»**.
+2. Se abre la [ventana de edición](#botones) con tus datos, marcada «Se envía al centro para revisión». Cambia **solo** lo que esté mal.
+3. Pulsa **«Enviar para revisión»**. Verás el aviso «Hemos recibido tu petición. El centro la revisará.»
+
+Mientras está pendiente, aparece el recuadro **«Corrección enviada para revisión»** con la tabla de lo que has pedido. Si te has equivocado, pulsa **«Modificar petición pendiente»**, cambia lo necesario y pulsa **«Actualizar petición»**: la nueva sustituye a la anterior.
+
+Cuando el centro la revisa, te llega un correo. Si la aprueba, tus datos ya aparecen corregidos. Si la rechaza, verás **«Petición de corrección rechazada»** con el motivo.
+
+- El **DNI/NIE no se puede cambiar**: es tu usuario. Si está mal, habla con el centro.
+- Solo puedes pedir correcciones en la **convocatoria activa**.
+- Un cambio de **ciclo** no se puede aplicar mientras tengas reservas pendientes o confirmadas.
+- Si es un error en tu CV o en el Anexo DGA y el documento todavía no está validado, no hace falta pedir nada: puedes [sustituirlo tú](#alumno-documentos).
+
+![Bloque Mis datos del portal del alumno con el recuadro Corrección enviada para revisión y la tabla de cambios](manual/imagenes/portal-alumno-correccion.png)
+_Una petición de corrección pendiente en el portal del alumno._
 
 ---
 
@@ -1049,11 +1125,11 @@ Tus datos del portal son **de solo lectura**. Si alguno es incorrecto, **comuní
 
 Usa el mismo formulario de [solicitud de alumno](#solicitud-alumno). La diferencia está en el paso **«Cuenta»**: **escribe tu contraseña actual del portal**, no una nueva.
 
-- Si la contraseña no coincide, aparece: «Ya existe una cuenta con este DNI/NIE. Para volver a presentar la candidatura, escribe en «Contraseña» tu contraseña actual del portal. Si no la recuerdas, contacta con el centro.» Así se evita que otra persona pueda presentar una solicitud con tu DNI.
+- Si la contraseña no coincide, aparece: «No se ha podido verificar tu identidad con este DNI/NIE. Si ya tienes cuenta en el portal, escribe en «Contraseña» tu contraseña actual. Si no la tienes o no la recuerdas, contacta con el centro.» Así se evita que otra persona pueda presentar una solicitud con tu DNI.
 - Al enviar con la contraseña correcta, tus datos se actualizan con los del formulario y sigues entrando con la misma contraseña.
 - Los intentos fallidos cuentan igual que en el inicio de sesión: tras varios fallos tendrás que esperar unos minutos.
 - Si tu cuenta está desactivada, no podrás presentar la solicitud hasta que el centro la reactive.
-- Si el centro ya tenía tus datos pero **nunca habías tenido cuenta**, se conservan los datos que ya tenía y el formulario solo completa los que faltaban. Si algo no está bien, avisa al centro.
+- Si el centro ya tenía tus datos pero **nunca habías tenido cuenta**, el formulario no puede comprobar que eres tú: verás el mismo mensaje y no se guardará nada. **Ponte en contacto con el centro** para presentar la solicitud.
 
 ### Ya presenté la solicitud en esta convocatoria
 
@@ -1068,7 +1144,7 @@ No uséis el formulario público: el CIF ya está registrado. Entrad en el porta
 
 ### No puedo presentar la solicitud: el plazo está cerrado
 
-Las solicitudes solo se admiten mientras hay una **convocatoria activa**, y eso depende de sus fechas. Con el plazo cerrado el formulario no se muestra y se indica cuándo empieza la próxima. Si ya participas, puedes entrar en el portal para consultar tu situación. Las empresas tampoco pueden pedir cambios de datos ni cambiar plazas fuera de la convocatoria activa.
+Las solicitudes solo se admiten mientras hay una **convocatoria activa**, y eso depende de sus fechas. Con el plazo cerrado el formulario no se muestra y se indica cuándo empieza la próxima. Si ya participas, puedes entrar en el portal para consultar tu situación. Fuera de la convocatoria activa tampoco se pueden pedir cambios o correcciones de datos ni cambiar plazas.
 
 <a id="faq-documentos"></a>
 
@@ -1093,9 +1169,10 @@ Las solicitudes solo se admiten mientras hay una **convocatoria activa**, y eso 
 
 <a id="faq-plazas"></a>
 
-- **«Sin plazas disponibles»**: todas las plazas del ciclo están ocupadas por reservas. Podéis subir el número de plazas en [Ciclos y plazas](#empresa-plazas) o cancelar alguna reserva pendiente.
+- **«Sin plazas disponibles»**: todas las plazas del ciclo están ocupadas por reservas. Podéis cancelar alguna reserva pendiente o, si vuestra solicitud aún no está validada, subir el número de plazas en [Ciclos y plazas](#empresa-plazas). Con la solicitud validada, pedid al centro que amplíe las plazas.
 - **¿Quién puede cancelar?** La empresa puede cancelar sus reservas **pendientes**. Una reserva **confirmada** solo la puede cancelar el centro.
 - **¿Se puede cambiar de empresa?** Sí, pero solo lo hace el centro, con «Reasignar». La reserva nueva empieza **desde cero**, sin los documentos de la anterior, y hay que confirmarla de nuevo.
+- **¿Se puede «recuperar» una reserva cancelada?** No: una reserva cancelada es definitiva y se conserva tal cual en el historial. Si la empresa (o el centro) vuelve a reservar al alumno, se crea una reserva nueva que empieza desde cero.
 - **El alumno no ve el motivo de cancelación** que escribe la empresa o el centro; ve un texto general: «Esta reserva ya no está activa…».
 
 <a id="faq-anexos"></a>
@@ -1127,7 +1204,8 @@ Las firmas de la aplicación son una **declaración**: «Firmar» deja constanci
 Cada perfil solo ve y cambia lo que le corresponde. Si no ves un botón o te aparece un aviso como «Solo el centro confirma la reserva.» o «No tienes acceso a esta reserva.», es que **esa acción solo puede realizarla el personal autorizado del centro** (o, en algunos casos, solo Administración). Algunos ejemplos:
 
 - Las empresas no ven las reservas de otras empresas ni el Anexo DGA de los alumnos.
-- Los alumnos no pueden modificar sus datos personales.
+- Los alumnos no cambian sus datos personales directamente: piden la corrección y Administración la revisa.
+- Las empresas con la solicitud validada no pueden ampliar plazas ni añadir ciclos.
 - Coordinación no puede crear convocatorias, subir plantillas, restablecer contraseñas ni dar de baja.
 
 ### Me han dado de baja / ya no puedo entrar
@@ -1140,11 +1218,12 @@ Si el centro te ha **dado de baja** del programa, tu cuenta del portal está des
 
 ### He olvidado la contraseña
 
-Pulsa **«¿Has olvidado tu contraseña?»** en la pantalla de acceso y sigue el enlace que te llega por correo ([paso a paso](#recuperar)). Si no hay ninguna cuenta con ese usuario, la pantalla lo dice y no envía el correo.
+Pulsa **«¿Has olvidado tu contraseña?»** en la pantalla de acceso y sigue el enlace que te llega por correo ([paso a paso](#recuperar)). Por seguridad, la pantalla responde siempre lo mismo, exista o no la cuenta: «Si la cuenta existe, está activa y tiene un correo asociado, te enviaremos un enlace…».
 
-- **«No hay ninguna cuenta con ese usuario…»**: el correo, el CIF o el DNI/NIE no corresponde a ninguna cuenta. Comprueba el identificador de tu perfil.
-- **«La cuenta está desactivada…»**: no se envía el enlace. Contacta con el centro.
-- **El correo no llega**: espera unos minutos y revisa la carpeta de spam. Comprueba que el correo de tu solicitud (alumnos) o el del coordinador principal (empresas) es correcto; si no lo es, avisa al centro.
+- **El correo no llega**: espera unos minutos y revisa la carpeta de spam. Después comprueba:
+  - que has escrito el identificador de tu perfil (correo, CIF o DNI/NIE) sin errores;
+  - que tu cuenta no está desactivada (por ejemplo, tras una baja): en ese caso no se envía el enlace;
+  - que el correo de tu solicitud (alumnos) o el del coordinador principal (empresas) es correcto. Los alumnos pueden [pedir que se corrija](#alumno-datos) y las empresas cambiarlo con [«Editar datos»](#empresa-datos); si no puedes entrar, avisa al centro.
 - **«El enlace no es válido, ya se ha usado o ha caducado»**: pide uno nuevo. Cada enlace dura 30 minutos y sirve una sola vez.
 - **Sigue sin funcionar**: alumnos y empresas pueden pedir al centro que Administración les dé una contraseña temporal.
 

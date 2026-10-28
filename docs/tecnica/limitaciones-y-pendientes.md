@@ -6,12 +6,13 @@
 
 | Limitación | Estado |
 | --- | --- |
-| Filas de reserva reutilizadas; el tipo de contrato se pierde al cancelar | Abierta |
-| La reactivación de reservas no recomprueba en BD que las solicitudes sigan VALIDADO | Abierta |
-| Procedimientos con transacción propia: la auditoría se escribe tras el commit y la baja no es atómica | Abierta |
-| Órdenes de bloqueo distintos entre procedimientos (posibles interbloqueos) | Sospechada, no reproducida |
+| Filas de reserva reutilizadas; el tipo de contrato se pierde al cancelar | **Resuelta** en la 018 (una fila por intento). Las filas anteriores no se reescriben: 7 canceladas sin tipo y una reserva con documentos de dos intentos en desarrollo |
+| La reactivación de reservas no recomprueba en BD que las solicitudes sigan VALIDADO | **Resuelta** en la 018 (ya no hay reactivación: siempre `INSERT`) |
+| Procedimientos con transacción propia: la auditoría se escribe tras el commit y la baja no es atómica | **Resuelta** en la 018 (`inTransaction`) |
+| Órdenes de bloqueo distintos entre procedimientos (posibles interbloqueos) | **Resuelta** en la 018 (orden único; un interbloqueo real encontrado en pruebas y eliminado) |
+| La reversión de la 018 solo es posible antes del primer reintento de un par o del primer evento `OFERTA`/`TUTOR`; después, solo restaurando la copia | Aceptada |
 | Firmas de versiones anteriores perdidas; `dual_documento_versiones` incompleta y sin lectores | Abierta |
-| Auditoría limitada a solicitudes, reservas, documentos, bajas y cuentas de personal (`USUARIO`); no cubre empresa, tutores, cupos, convocatorias, plantillas ni la contraseña de alumnos y empresas. Las cancelaciones por reducción de cupo no generan evento | Abierta |
+| Auditoría: no cubre los datos de empresa, convocatorias, plantillas ni la contraseña de alumnos y empresas | Abierta |
 | Las ediciones de `ge_empresas` y de tutores no guardan historial | Abierta |
 | Familia de anexo deducida del nombre del tipo de contrato | Baja prioridad |
 | Objetos obsoletos: `calendario`, `dual_empresa_transportes`, `sp_activar_convocatoria`, `sp_asignar_transporte_empresa`, 3 vistas, índices `ix_dual_empresa_tutores_empresa` e `ix_plantilla_tipo` | Pendiente de exportar y borrar |
@@ -32,12 +33,14 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | Aspecto | Estado |
 | --- | --- |
 | Rechazo del convenio de una empresa ya validada | La empresa sigue VALIDADO; sin decidir |
-| Las empresas suben cupos y añaden ciclos sin aprobación del centro | Comportamiento actual |
+| Las empresas suben cupos y añaden ciclos sin aprobación del centro | Solo mientras su solicitud no está validada (SEC-002). Después solo pueden reducir. Máximo `MAX_PLAZAS_POR_CICLO` (20) por ciclo |
+| Cuenta de empresa activa desde el alta, antes de que el centro la valide | Abierta (SEC-003); sin validar no ve alumnos ni puede reservar |
+| Ficha de alumno sin cuenta (importada) | No puede darse de alta desde el formulario público (SEC-001) y el portal no tiene pantalla para que Administración le cree la cuenta |
 | Reactivar un tutor desactivado | Sin endpoint |
 | Borrado de convocatorias, ofertas o plantillas | No existe |
-| Edición de datos del alumno desde el portal | Sin endpoint |
-| Aviso por correo al reabrir, reactivar, cambiar el tipo de contrato o resolver cambios de datos | No se envía |
-| Formato del DNI y NSS del alumno | Solo se valida en el formulario, no en el backend |
+| Edición de datos del alumno | Administración la edita directamente; el alumno pide la corrección desde el portal (020). Solo en la convocatoria activa |
+| Aviso por correo al reabrir, reactivar, cambiar el tipo de contrato o resolver cambios de datos de **empresa** | No se envía (los de alumno sí) |
+| Formato del NSS del alumno | Solo se valida en el formulario. El DNI/NIE se valida también en el backend (SEC-001) |
 
 ## 5. Operación
 
@@ -61,6 +64,6 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | --- | --- |
 | Si otras herramientas del centro leen las tablas protegidas o `calendario` | Fuera del repositorio |
 | Volúmenes reales y tamaño de ficheros; cuenta de MySQL, zona horaria y despliegue de un entorno real | No hay producción |
-| Comportamiento detrás de un proxy inverso (IP del limitador, CORS, servido de la SPA) | No hay configuración de despliegue |
+| Comportamiento detrás de un proxy inverso (CORS, servido de la SPA) | No hay configuración de despliegue. La IP del limitador se ajusta con `TRUST_PROXY` |
 | Uso previsto de `dual_documento_versiones` | Ningún código la lee |
 | Origen de las plantillas de `backend/required_documents/` | No se referencian desde el código |

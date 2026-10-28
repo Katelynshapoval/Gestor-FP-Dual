@@ -14,10 +14,10 @@ Lista las reservas **PENDIENTE y CONFIRMADA** que la baja cancelaría (primero l
 | --- | --- |
 | Regla | Solicitud existente (404); no BAJA ya (**409 `YA_DE_BAJA`**); motivo no vacío (400 `MOTIVO_OBLIGATORIO`). Se admite desde PENDIENTE, VALIDADO o RECHAZADO |
 | Migración | Si no existe el estado `BAJA` → **503 `MIGRACION_PENDIENTE`** sin cambios |
-| Transacción 1 | Bloquea la solicitud; estado BAJA con `motivo = NULL` (los triggers solo admiten motivo en RECHAZADO); **desactiva cuentas**: alumno → su usuario; empresa → **todos** los usuarios EMPRESA cuyo contacto pertenece a la empresa; evento `BAJA` con `estado_anterior`, motivo y `detalle { cuentas_desactivadas, reservas_a_cancelar }`; commit |
-| Después, por reserva | `sp_cancelar_reserva_admin` con motivo «Baja del alumno en el programa: …» o «Baja de la empresa en el programa: …»; evento `CANCELAR` (`detalle.por_baja`) tras el commit; aviso **solo a la otra parte** (baja de alumno → empresa; baja de empresa → alumno) |
-| Fallos parciales | Si una cancelación falla, se registra y se devuelve en `pendientes`; la baja **no** se deshace. Repetir la baja da 409, así que las reservas restantes se cancelan a mano desde su ficha |
-| Respuesta | `{ message, canceladas: [ids], pendientes: [ids] }` |
+| Una transacción (`inTransaction`, 018) | Bloquea la solicitud; estado BAJA con `motivo = NULL` (los triggers solo admiten motivo en RECHAZADO); **desactiva cuentas**: alumno → su usuario; empresa → **todos** los usuarios EMPRESA cuyo contacto pertenece a la empresa; evento `BAJA` con `estado_anterior`, motivo y `detalle { cuentas_desactivadas, reservas_a_cancelar }`; y, por cada reserva activa, `sp_cancelar_reserva_admin` con motivo «Baja del alumno en el programa: …» o «Baja de la empresa en el programa: …» y su evento `CANCELAR` (`detalle.por_baja`). Un único `COMMIT` |
+| Fallos | **Todo o nada**: si una cancelación o un evento falla, no queda nada hecho (ni la baja, ni las cuentas desactivadas) y la petición responde con error |
+| Después del commit | Aviso de cada cancelación **solo a la otra parte** (baja de alumno → empresa; baja de empresa → alumno) |
+| Respuesta | `{ message, canceladas: [ids], pendientes: [] }` (`pendientes` se mantiene por compatibilidad y siempre va vacío) |
 
 Efectos colaterales:
 - La sesión abierta del usuario termina en su siguiente petición (401 `ACCOUNT_DISABLED`); no puede entrar (403) ni recibir enlace de recuperación.

@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Motor | MySQL 8.0 (8.0.44 en desarrollo), InnoDB en todas las tablas | `000_baseline.sql` |
 | Juego de caracteres | `utf8mb4` / `utf8mb4_0900_ai_ci` (comparaciones **insensibles a mayúsculas y acentos**) | `000_baseline.sql` |
-| Aislamiento | `REPEATABLE READ` (valor por defecto de InnoDB; verificado en desarrollo) | Auditoría § 2 |
+| Aislamiento | `REPEATABLE READ` (valor por defecto de InnoDB; verificado en desarrollo). Las transacciones de `inTransaction` usan `READ COMMITTED` | Auditoría § 2, [`db/transaction.js`](../../../backend/src/db/transaction.js) |
 | `sql_mode` | Incluye `STRICT_TRANS_TABLES` y `ONLY_FULL_GROUP_BY` (verificado en desarrollo) | Auditoría § 2 |
 | Zona horaria | `SYSTEM` del servidor. `CURDATE()` decide qué convocatoria está activa | `convocatoriasService.syncConvocatoriaActiva` |
 | Conexión de la aplicación | Pool `mysql2` de 10 conexiones, `dateStrings: ['DATE']` | [`backend/src/db/pool.js`](../../../backend/src/db/pool.js) |
@@ -41,6 +41,7 @@ flowchart TB
     USR[dual_usuarios]
     EVT[dual_eventos]
     CAM[dual_empresa_cambios]
+    CAA[dual_alumno_cambios]
     TUT[dual_empresa_tutores]
     LK["catálogos: dual_roles, dual_estados_validacion,<br/>dual_estados_reserva, dual_tipos_documento,<br/>dual_tipos_contrato, dual_transportes,<br/>dual_especialidades"]
   end
@@ -73,22 +74,22 @@ flowchart TB
 | Documento (revisión) | `dual_documentos.id_estado_validacion` | `dual_estados_validacion` | `PENDIENTE`, `VALIDADO`, `RECHAZADO` (BAJA no se usa en documentos) |
 | Reserva | `id_estado_reserva` | `dual_estados_reserva` | `PENDIENTE` (1), `CONFIRMADA` (2), `CANCELADA` (3) |
 | Firma | `dual_documento_firmas.estado` | `CHECK` | `SIN_FIRMAR`, `FIRMADO` |
-| Solicitud de cambio de datos | `dual_empresa_cambios.estado` | `CHECK` | `PENDIENTE`, `APROBADO`, `RECHAZADO` |
+| Solicitud de cambio de datos | `dual_empresa_cambios.estado`, `dual_alumno_cambios.estado` (020) | `CHECK` | `PENDIENTE`, `APROBADO`, `RECHAZADO` |
 | Convocatoria | `dual_convocatorias.activa` | `CHECK` 0/1 | derivado de fechas por el backend |
 | Tutor, usuario, especialidad | `activo` / `activa` | `CHECK` 0/1 | — |
 
-El código resuelve los estados **por nombre** (funciones `fn_id_estado_*` en BD y subconsultas `WHERE nombre = …` en Node) desde la migración 012. Quedan identificadores numéricos fijos en: la columna generada `dual_reservas.id_solicitud_alumno_confirmada` (`= 2`), las tres vistas (no usadas) y los `INSERT … id_estado_validacion = 1` de las altas de solicitud. Las filas de catálogo se cargan con ids fijos en el baseline, por lo que **no deben renumerarse** ([decisiones técnicas](../decisiones-tecnicas.md#ids-fijos-de-catálogo)).
+El código resuelve los estados **por nombre** (funciones `fn_id_estado_*` en BD y subconsultas `WHERE nombre = …` en Node) desde la migración 012. Quedan identificadores numéricos fijos en: las columnas generadas `dual_reservas.id_solicitud_alumno_confirmada` (`= 2`) e `id_alumno_activo` (`IN (1, 2)`, 018), dos consultas de `reservasTx.bloquearParaConfirmar` y `bajaService`, las tres vistas (no usadas) y los `INSERT … id_estado_validacion = 1` de las altas de solicitud. Las filas de catálogo se cargan con ids fijos en el baseline, por lo que **no deben renumerarse** ([decisiones técnicas](../decisiones-tecnicas.md#ids-fijos-de-catálogo)).
 
 ## 3. Inventario de objetos
 
 | Tipo | Cantidad | Detalle |
 | --- | --- | --- |
-| Tablas | 30 (incluida `schema_migrations`) | [modelo de datos](modelo-de-datos.md) |
+| Tablas | 29 (incluida `schema_migrations`), tras añadir `dual_alumno_cambios` (020) y quitar las dos de preferencias (021) | [modelo de datos](modelo-de-datos.md) |
 | Vistas | 3: `vw_alumnos_disponibles`, `vw_cupos_empresa_disponibles`, `vw_reservas_detalle` | **Ninguna se usa** desde el backend, pruebas o scripts. Usan ids fijos (`= 2`). Pendientes de eliminar. |
 | Funciones | `fn_id_estado_reserva`, `fn_id_estado_validacion`, `fn_id_tipo_documento` (nombre → id, error si no existe); `fn_reservas_activas`, `fn_cupos_disponibles` | [integridad](integridad-y-transacciones.md#2-funciones) |
 | Procedimientos | 14 en uso o heredados | [integridad](integridad-y-transacciones.md#3-procedimientos-almacenados) |
 | Triggers | 15 (14 de la auditoría + `trg_dsee_bu_cupo` de la 017) | [integridad](integridad-y-transacciones.md#4-triggers) |
-| Claves foráneas | 50+ (todas `RESTRICT` desde la 021) | [relaciones](relaciones.md) |
+| Claves foráneas | 55 (todas `RESTRICT` desde la 021) | [relaciones](relaciones.md) |
 
 Objetos obsoletos que siguen en el esquema: tabla `calendario` (2 filas con fichero en desarrollo), tabla `dual_empresa_transportes` (sustituida por la 014), procedimientos `sp_activar_convocatoria` y `sp_asignar_transporte_empresa`, y las tres vistas. Ninguno lo usa la aplicación ([limitaciones](../limitaciones-y-pendientes.md)).
 
@@ -104,7 +105,7 @@ Objetos obsoletos que siguen en el esquema: tabla `calendario` (2 filas con fich
 - **Acceso directo con SQL parametrizado** desde los servicios; no hay ORM ni repositorios.
 - **Lecturas de listados**: consultas con muchos `JOIN` sobre claves primarias/foráneas (los planes revisados en la auditoría son `eq_ref`/`ref`). Los listados del personal **no filtran por convocatoria en SQL** (`GET /reservas`, Seguimiento, `/solicitudes/empresa/todas`): cargan todos los años y, en Seguimiento, filtran y paginan en memoria ([limitaciones](../limitaciones-y-pendientes.md#2-rendimiento)).
 - **Ficheros**: PDF y DOCX se guardan como `LONGBLOB` en `dual_documentos.archivo`, `dual_documento_versiones.archivo` y `dual_documento_plantillas.archivo`. Los listados nunca seleccionan `archivo`; calculan `archivo IS NULL` como `tiene_archivo`.
-- **Escrituras críticas** dentro de transacciones del backend o de procedimientos con transacción propia ([integridad y transacciones](integridad-y-transacciones.md)).
+- **Escrituras críticas** dentro de transacciones del backend. Desde la 018 ningún procedimiento abre su propia transacción: las reservas se hacen con `inTransaction` ([integridad y transacciones](integridad-y-transacciones.md)).
 - **Auditoría** en `dual_eventos` (solo ids y estados, sin datos personales).
 
 ## 6. Herramientas
@@ -117,6 +118,7 @@ Objetos obsoletos que siguen en el esquema: tabla `calendario` (2 filas con fich
 | `npm run db:schema -- dump|diff|baseline` | Volcado normalizado, comparación entre esquemas, regeneración del baseline (solo catálogos como datos) | No (sobre la BD) |
 | `npm run db:backup [-- verify <fichero>]` | `mysqldump` completo a `backups/`; `verify` restaura en `<DBNAME>_backupcheck` y compara esquema, recuentos y `CHECKSUM TABLE` | Solo en la BD temporal |
 | `node scripts/verifyDb.js create|migrate|rollback|drop` | BD aislada `<DBNAME>_verify` construida solo desde el repositorio | Solo en `*_verify` |
-| `node scripts/seedPruebas.js --yes` | Cuentas y datos de prueba «PRUEBA» en desarrollo | Sí (desarrollo) |
+| `node scripts/seedPruebas.js --yes` | Cuentas y datos de prueba «PRUEBA» en desarrollo; contraseñas aleatorias en `backend/.pruebas.local.json` | Sí (desarrollo) |
+| `node scripts/seedDemo.js --dry-run|--yes` | **Borra** los datos y carga un conjunto de demostración ficticio; contraseñas aleatorias en `backend/.demo.local.json` | Sí (desarrollo, destructivo) |
 
 Todos los comandos que escriben exigen `--yes` y se niegan a ejecutarse con `NODE_ENV=production` sin `--allow-production`. Detalle en [migraciones](migraciones.md) y [procesos](../procesos/README.md).

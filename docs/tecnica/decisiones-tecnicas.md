@@ -23,19 +23,21 @@
 - **Consecuencia**: un tipo nuevo cuyo nombre contenga «beca» pasa a la familia III; renombrar `BECA` rompería la regla.
 
 ## Ids fijos de catálogo
-- **Qué**: el baseline inserta los catálogos con ids explícitos; el código resuelve por nombre, pero quedan literales: `id_solicitud_alumno_confirmada` (`= 2`), las vistas (`= 2`) y los `INSERT … id_estado_validacion = 1` de las altas.
+- **Qué**: el baseline inserta los catálogos con ids explícitos; el código resuelve por nombre, pero quedan literales: `id_solicitud_alumno_confirmada` (`= 2`), `id_alumno_activo` (`IN (1, 2)`, 018, que su guarda comprueba), dos consultas de `reservasTx` y `bajaService`, las vistas (`= 2`) y los `INSERT … id_estado_validacion = 1` de las altas.
 - **Consecuencia**: los catálogos no deben renumerarse; un estado nuevo se añade por nombre (como `BAJA`).
 
-## Reutilización de filas de reserva
-- **Qué**: clave única `(id_solicitud_alumno, id_solicitud_empresa_especialidad)`; volver a reservar reactiva la fila cancelada.
-- **Consecuencia**: lógica de reactivación en dos procedimientos y un trigger; los documentos de varios intentos comparten `id_reserva`.
+## Una fila por intento de reserva
+- **Qué** (migración 018, decisiones D2 y D5): la unicidad es solo del par **activo** (`uq_dr_par_activo`); volver a reservar tras una cancelación inserta una fila nueva, y una reasignación enlaza la nueva con `id_reserva_origen`. Una reserva CANCELADA es definitiva y conserva tipo de contrato, tutor, motivo y documentos.
+- **Antes**: la clave única `(alumno, oferta)` obligaba a reactivar la fila cancelada, que perdía el tipo de contrato y mezclaba los documentos de varios intentos bajo el mismo `id_reserva`. Esas filas antiguas no se han reescrito.
+- **Consecuencia**: el panel de la reserva muestra los **intentos relacionados** (reasignada desde / a, intentos anteriores y posteriores con la misma oferta).
 
-## Procedimientos con transacción propia
-- **Qué**: los procedimientos de reservas hacen `START TRANSACTION … COMMIT`.
-- **Consecuencia**: el backend no puede envolverlos; la auditoría se escribe después (`recordEventAfterCommit`) y la baja no es atómica.
+## Transacciones del backend para las reservas
+- **Qué** (018, D6): los procedimientos de reservas ya no abren ni confirman transacciones y se niegan a ejecutarse en autocommit. El backend las abre con `inTransaction` ([`db/transaction.js`](../../backend/src/db/transaction.js)), con READ COMMITTED, escribe la auditoría en la misma transacción y confirma una sola vez. Solo [`reservasTx.js`](../../backend/src/services/reservasTx.js) llama a los procedimientos (lo comprueba una prueba).
+- **Motivo**: que la transición y su evento, la baja completa y la reducción de cupo sean todo o nada.
+- **Consecuencia**: un orden de bloqueo único (solicitud de alumno → solicitud de empresa → ofertas → reservas). Un interbloqueo repite la operación entera (máx. 2 veces), así que la función no debe tener efectos fuera de la BD; los correos van después.
 
 ## Unicidad condicional con columnas generadas
-- **Qué**: `uq_dual_reservas_confirmada_alumno`, `uq_dec_solicitud_pendiente`, `uq_plantilla_activa`, `uq_dd_actual`: una columna generada que es NULL cuando la regla no aplica, más un índice único.
+- **Qué**: `uq_dual_reservas_confirmada_alumno`, `uq_dr_par_activo`, `uq_dec_solicitud_pendiente`, `uq_dac_solicitud_pendiente`, `uq_plantilla_activa`, `uq_dd_actual`: una columna generada que es NULL cuando la regla no aplica, más un índice único.
 - **Motivo**: MySQL no tiene índices únicos parciales.
 
 ## Copia en escritura de datos de empresa compartidos
@@ -58,23 +60,27 @@
 ## Activación de convocatorias por fechas
 - **Qué**: el indicador `activa` se deriva de las fechas con un temporizador interno.
 
-## Recuperación de contraseña sin tabla
-- **Qué**: JWT con huella del hash; cada enlace sirve una vez sin almacenar tokens.
+## Recuperación de contraseña y sesiones ligadas a la contraseña
+- **Qué**: JWT con huella del hash; cada enlace sirve una vez sin almacenar tokens. Desde SEC-006 el token de **sesión** también lleva esa huella: cambiar o restablecer la contraseña cierra las sesiones anteriores sin tabla de revocación.
+
+## Correcciones de datos con revisión
+- **Qué**: empresas (`dual_empresa_cambios`) y alumnos (`dual_alumno_cambios`, 020) no cambian sus datos: envían una petición con solo los campos cambiados y una foto (`snapshot`) de su valor. El centro la aprueba o la rechaza; si los datos cambiaron entretanto, la aprobación se detiene y pide confirmación.
+- **Excepción**: el DNI/NIE del alumno y el CIF no se pueden cambiar (son el usuario de acceso).
 
 ## Generación con Chromium por petición
-- **Qué**: `puppeteer.launch()` por documento.
+- **Qué**: `puppeteer.launch()` por documento, sin JavaScript y sin red (SEC-004: se cancela cualquier petición que no sea `data:`). Las plantillas solo resuelven nombres de variable: no se evalúa código.
 - **Consecuencia**: generaciones simultáneas multiplican el consumo de memoria.
 
 ## Notificaciones «disparar y olvidar»
 - **Qué**: sin cola; tras el commit; nunca hacen fallar la petición.
 
 ## Dependencias sin uso
-`google-auth-library`, `soffice`, `crypto-browserify`, `body-parser`, `@react-oauth/google` y el paquete npm `mysql` (`backup.js` usa el cliente de línea de comandos, no el paquete) no se importan en ningún sitio.
+`google-auth-library`, `soffice`, `crypto-browserify` y `body-parser` se quitaron del backend (SEC-005). Siguen sin importarse en ningún sitio `@react-oauth/google` (frontend) y el paquete npm `mysql` (backend; `backup.js` usa el cliente de línea de comandos, no el paquete).
 
 ## Puntos especialmente delicados
-- Cualquier cambio en `sp_reservar_alumno`, `sp_reasignar_reserva`, `sp_confirmar_reserva` o los triggers de `dual_reservas` (probar reservas concurrentes por la última plaza).
+- Cualquier cambio en los procedimientos o triggers de `dual_reservas`, en `reservasTx.js` o en `db/transaction.js`: respetar el orden de bloqueo y pasar `test/db/stage2.db.test.js` (concurrencia real, inyección de fallos).
 - `documentosStore.saveByClave`: el bloqueo del padre debe seguir siendo la **primera** lectura de la transacción (REPEATABLE READ).
 - El orden «desactivar antes de activar» en `syncConvocatoriaActiva`.
 - `empresaDatos.applyEmpresaDatos`: copia en escritura y caso de domicilio legal = trabajo.
 - Cambiar `dateStrings` en el pool cambia el formato de todas las fechas de la API.
-- Cambiar `JWT_SECRET` cierra todas las sesiones.
+- Cambiar `JWT_SECRET` cierra todas las sesiones. Cambiar cómo se calcula la huella de la contraseña (`passwordFingerprint`) también.

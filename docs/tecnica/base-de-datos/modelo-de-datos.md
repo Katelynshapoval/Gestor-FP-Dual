@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> Parte de la [base de datos](vision-general.md). Esquema de referencia: [`db/000_baseline.sql`](../../../db/000_baseline.sql) + [`db/migrations/012–017`](../../../db/migrations). Se describe el **estado tras la migración 017** (aplicada en desarrollo el 28/10/2026).
+> Parte de la [base de datos](vision-general.md). Esquema de referencia: [`db/000_baseline.sql`](../../../db/000_baseline.sql) + [`db/migrations/012–021`](../../../db/migrations). Se describe el **estado tras la migración 021** (aplicada en desarrollo el 28/10/2026).
 >
 > Notación: **PK** clave primaria · **FK** clave foránea · **UQ** único · **NN** `NOT NULL` · 🔒 tabla protegida.
 
@@ -139,6 +139,20 @@ Solicitudes de cambio de datos enviadas por la empresa, revisadas por el centro.
 | `fecha_solicitud`, `fecha_resolucion`, `motivo` | `motivo` = motivo de rechazo |
 | `id_solicitud_pendiente` (columna generada) | `= id_solicitud_empresa` si PENDIENTE, si no NULL; **UQ** → como mucho **una solicitud de cambio pendiente por solicitud de empresa** |
 
+### `dual_alumno_cambios` (020)
+Peticiones del alumno para corregir sus datos. Nada cambia hasta que **Administración** la aprueba. Mismo modelo que `dual_empresa_cambios`.
+
+| Columna | Notas |
+| --- | --- |
+| `id_cambio` PK; `id_solicitud_alumno`, `id_usuario_solicitante`, `id_usuario_resolutor` FK | Todas `RESTRICT` |
+| `payload` JSON NN | Solo los campos que el alumno quiere cambiar. **Nunca el DNI/NIE** (el backend lo rechaza) |
+| `snapshot` JSON NN | Valor de esos campos al enviar la petición. Al aprobar, si el centro los cambió entretanto, se pide confirmación (409 `CONFLICTO`) |
+| `estado` | `CHECK IN ('PENDIENTE','APROBADO','RECHAZADO')`; `chk_dac_motivo`: RECHAZADO exige motivo; `chk_dac_resolucion`: `fecha_resolucion` solo cuando ya no está PENDIENTE |
+| `fecha_solicitud`, `fecha_actualizacion`, `fecha_resolucion`, `motivo` | Mientras está pendiente, el alumno la modifica sobre la misma fila |
+| `id_solicitud_pendiente` (generada) | **UQ** → como mucho **una petición pendiente por solicitud de alumno** |
+
+Las filas se conservan tras resolverse como historial; no se borran ni se anonimizan (D7).
+
 ## 4. Reservas
 
 ### `dual_reservas`
@@ -147,14 +161,16 @@ Asignación de una solicitud de alumno a una oferta.
 | Columna | Notas |
 | --- | --- |
 | `id_reserva` PK | |
-| `id_solicitud_alumno` FK, `id_solicitud_empresa_especialidad` FK | **UQ `(id_solicitud_alumno, id_solicitud_empresa_especialidad)`**: una fila por par alumno–oferta **para siempre**. Volver a reservar el mismo par **reactiva** la fila cancelada ([decisiones técnicas](../decisiones-tecnicas.md#reutilización-de-filas-de-reserva)). El par no puede cambiar (`trg_dr_bu_reglas`) |
-| `id_estado_reserva` FK, por defecto 1 | |
-| `id_tipo_contrato` FK NULL | Se fija en PENDIENTE; obligatorio en CONFIRMADA; **prohibido en CANCELADA** (los procedimientos lo ponen a NULL al cancelar, por lo que se pierde) |
-| `id_empresa_tutor` FK NULL | Se conserva al cancelar; se borra al reactivar |
+| `id_solicitud_alumno` FK, `id_solicitud_empresa_especialidad` FK | El par no puede cambiar (`trg_dr_bu_reglas`). Desde la 018 **cada intento es una fila**: volver a reservar el mismo par tras una cancelación inserta una fila nueva ([decisiones técnicas](../decisiones-tecnicas.md#una-fila-por-intento-de-reserva)) |
+| `id_alumno_activo` (generada, 018) | `= id_solicitud_alumno` si PENDIENTE o CONFIRMADA; **UQ `uq_dr_par_activo (id_alumno_activo, id_solicitud_empresa_especialidad)`** → como mucho un intento activo por par |
+| `id_reserva_origen` FK NULL **UQ** (018) | Reserva cancelada a la que sustituye una reasignación. Una reserva solo se reasigna una vez. Las reasignaciones anteriores a la 018 solo constan en `dual_eventos` |
+| `id_estado_reserva` FK, por defecto 1 | **CANCELADA es definitiva**: el trigger rechaza cualquier cambio posterior |
+| `id_tipo_contrato` FK NULL | Se fija en PENDIENTE; obligatorio en CONFIRMADA; **se conserva al cancelar** (018). Las canceladas antes de la 018 lo perdieron |
+| `id_empresa_tutor` FK NULL | Se conserva al cancelar; un intento nuevo empieza sin tutor |
 | `motivo` TEXT | **Solo** en CANCELADA (obligatorio) |
 | `id_solicitud_alumno_confirmada` (generada) | `= id_solicitud_alumno` si `id_estado_reserva = 2`; **UQ** → **una sola reserva confirmada por solicitud de alumno**, garantizado por el motor |
 
-Índices: `ix_dual_reservas_oferta_estado`, `ix_dual_reservas_estado`, `ix_dual_reservas_tipo_contrato`, `ix_dr_empresa_tutor`.
+Índices: `ix_dual_reservas_oferta_estado`, `ix_dual_reservas_estado`, `ix_dual_reservas_tipo_contrato`, `ix_dr_empresa_tutor`, `ix_dr_solicitud_alumno` (018).
 
 ## 5. Documentos
 
@@ -170,7 +186,7 @@ Documento **actual** (o histórico, si `es_actual = 0`) de un padre y tipo.
 | `id_estado_validacion` NN, por defecto 1 | Estado de **revisión** (independiente de las firmas) |
 | `motivo` | Solo si RECHAZADO |
 | `estado_workflow` VARCHAR(30) | Informativo heredado (`SUBIDO`, `SUBIDO_FIRMADO`); no gobierna reglas |
-| `es_actual` TINYINT NN, por defecto 1 | 0 = versión retirada (reserva reactivada, cambio de familia de contrato) que se conserva como historial |
+| `es_actual` TINYINT NN, por defecto 1 | 0 = versión retirada (cambio de familia de contrato o, antes de la 018, reserva reactivada) que se conserva como historial |
 | `id_usuario_origen` FK, `origen_documento` (`CHECK IN ('SUBIDA','GENERADO','LEGACY')`), `id_plantilla` FK, `registrado_en` | Procedencia. `LEGACY` = anterior al registro de procedencia |
 | `firmas_exentas_legacy` TINYINT NN, por defecto 0 (013) | 1 solo en documentos que la 013 encontró ya VALIDADO sin filas de firma. Cualquier fichero nuevo lo vuelve a 0 |
 | `padre_actual` VARCHAR(16) (generada, 017) | `'A'|'E'|'R' + id` si `es_actual = 1`, si no NULL; **UQ `uq_dd_actual (padre_actual, id_tipo_documento)`** → como mucho un documento actual por padre y tipo |
@@ -223,13 +239,15 @@ Registro de auditoría **solo de inserción**: los triggers `trg_de_bu_inmutable
 | --- | --- |
 | `id_evento` BIGINT PK | |
 | `entidad` | Desde la 019: `SOLICITUD_ALUMNO`, `SOLICITUD_EMPRESA`, `RESERVA`, `DOCUMENTO`, `OFERTA`, `TUTOR`, `USUARIO`. `OFERTA` y `TUTOR` los aporta la migración de reservas 018; la 019 los conserva y añade `USUARIO` |
-| `id_entidad`, `accion` (VARCHAR 40) | Acciones usadas: `VALIDAR`, `RECHAZAR`, `REABRIR`, `BAJA`, `REACTIVAR`, `RESERVAR`, `CANCELAR`, `REASIGNAR`, `CONFIRMAR`, `TIPO_CONTRATO`, `SUBIR`, `GENERAR`, `FIRMAR`, `EXENCION_FIRMA_LEGACY`. En `USUARIO`: `ALTA`, `BAJA`, `REACTIVAR`, `CAMBIAR_ROL`, `CAMBIAR_DATOS`, `RESETEAR_PASSWORD` |
-| `estado_anterior`, `estado_nuevo` VARCHAR(30) | En `TIPO_CONTRATO` se guardan **ids** (algún nombre supera 30 caracteres) y los nombres en `detalle` |
+| `id_entidad`, `accion` (VARCHAR 40) | Acciones usadas: `VALIDAR`, `RECHAZAR`, `REABRIR`, `BAJA`, `REACTIVAR`, `RESERVAR`, `CANCELAR`, `REASIGNAR`, `CONFIRMAR`, `TIPO_CONTRATO`, `TUTOR`, `SUBIR`, `GENERAR`, `FIRMAR`, `EXENCION_FIRMA_LEGACY`. En `SOLICITUD_ALUMNO`, además: `DATOS_CORREGIDOS`, `CAMBIO_SOLICITADO`, `CAMBIO_APROBADO`, `CAMBIO_RECHAZADO`. En `OFERTA`: `ALTA`, `CUPO`. En `TUTOR`: `ALTA`, `EDITAR`, `DESACTIVAR`. En `USUARIO`: `ALTA`, `BAJA`, `REACTIVAR`, `CAMBIAR_ROL`, `CAMBIAR_DATOS`, `RESETEAR_PASSWORD` |
+| `estado_anterior`, `estado_nuevo` VARCHAR(40) (018) | En `TIPO_CONTRATO` se guardan **ids** y los nombres en `detalle` |
 | `id_usuario` FK NULL, `rol_usuario` | NULL en acciones públicas (p. ej. generación del convenio en el alta) |
 | `motivo`, `detalle` JSON | Ids y metadatos; nunca nombres, DNI, emails ni ficheros |
 | `creado_en` DATETIME(3) | |
 
-Lo que **no** se audita: cambios de datos de empresa, cupos y ofertas, tutores y su asignación, convocatorias, plantillas, la contraseña de alumnos y empresas, y las cancelaciones por reducción de cupo. Las cuentas de personal sí: alta, edición, baja, reactivación y reseteo de contraseña, con entidad `USUARIO` (ids, rol y `activo`; nunca el email ni la contraseña).
+Desde la 018 se auditan también los cupos y las ofertas nuevas (`OFERTA`), los tutores y su asignación (`TUTOR`, `RESERVA/TUTOR`) y las cancelaciones por reducción de cupo. Las correcciones de datos de alumno se auditan con los nombres de los campos, nunca sus valores.
+
+Lo que **no** se audita: cambios de datos de empresa, convocatorias, plantillas y la contraseña de alumnos y empresas. Las cuentas de personal sí: alta, edición, baja, reactivación y reseteo de contraseña, con entidad `USUARIO` (ids, rol y `activo`; nunca el email ni la contraseña).
 
 ### `schema_migrations`
 Historial del ejecutor de migraciones: `version` CHAR(3) PK, `name`, `checksum` (SHA-256 del fichero con saltos de línea normalizados), `applied_at`, `applied_by`, `mode` (`RUN` o `MARK`).

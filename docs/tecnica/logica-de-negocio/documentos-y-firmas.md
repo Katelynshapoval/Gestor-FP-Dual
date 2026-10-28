@@ -46,7 +46,7 @@ Las firmas **aplican** si el tipo tiene firmantes, hay fichero y la fila no est�
 
 ## 3. Subir un documento
 
-Endpoints (todos `multipart`, campo `archivo`, PDF ≤ 10 MB por tipo MIME):
+Endpoints (todos `multipart`, campo `archivo`, PDF ≤ 10 MB: tipo MIME `application/pdf` **y** contenido que empieza por `%PDF-`, comprobado por `requirePdfSignature` en [`middleware/pdfUpload.js`](../../../backend/src/middleware/pdfUpload.js), SEC-008):
 
 | Endpoint | Roles | Documento |
 | --- | --- | --- |
@@ -103,15 +103,16 @@ Efecto: `sp_validar_documento` + evento. Si es un **CONVENIO** y la solicitud de
 3. Plantilla activa del tipo → si no, **409 `SIN_PLANTILLA`**.
 4. Ya hay fichero y no se pidió `regenerar` → 409; ya está VALIDADO → 400.
 5. Datos (`documentGenerationConfig`): convenio = razón social, representante, DNI, domicilio legal, CIF, cargo, códigos de ciclos, fecha, convocatoria; anexos = alumno, DNI, empresa, CIF, ciclo, tipo de contrato, convocatoria, tutor (nombre, email, teléfono) y fecha.
-6. `docx-templates` (delimitadores `<<` `>>`) → `mammoth` (HTML) → `puppeteer` (PDF A4, márgenes 2 cm). **Se lanza un Chromium por generación.**
+6. `docx-templates` (delimitadores `<<` `>>`) → `mammoth` (HTML) → `puppeteer` (PDF A4, márgenes 2 cm). **Se lanza un Chromium por generación.** Desde SEC-004 cada comando `<<…>>` solo puede ser un **nombre de variable** (`razonSocial`, `$fila.codigo`): se resuelve con `resolveTemplateVariable` y nunca se ejecuta como JavaScript; cualquier otra cosa da error. Chromium genera el PDF con JavaScript desactivado y sin red (solo se permiten recursos `data:`).
 7. `saveByClave` con origen `GENERADO` (sin firmas).
 
 El PDF refleja los datos **del momento**: cambios posteriores (tutor, datos de empresa) no se aplican hasta regenerar, y solo puede regenerarse mientras no esté validado.
 
 ## 7. Plantillas (`/documentos/plantillas`)
 
-- Listar y descargar: personal. Subir: **solo ADMINISTRADOR**, porque `docx-templates` ejecuta expresiones contenidas en la plantilla.
-- Subida: clave generable, fichero `.docx` (extensión **y** MIME DOCX, `application/zip` u `octet-stream`), ≤ 10 MB. En transacción: siguiente `version`, desactiva la anterior e inserta la nueva activa.
+- Listar y descargar: personal. Subir: **solo ADMINISTRADOR** (las plantillas ya no ejecutan código, pero definen el contenido legal de los documentos).
+- Subida: clave generable, fichero `.docx` (extensión, MIME DOCX, `application/zip` u `octet-stream`, **y** firma ZIP en los primeros bytes, SEC-012), ≤ 10 MB. El nombre original se limpia y solo se muestra en las listas. En transacción: siguiente `version`, desactiva la anterior e inserta la nueva activa.
+- Descarga: el servidor fija el tipo DOCX y el nombre `plantilla-<clave>-v<versión>.docx` (SEC-012), como `attachment`.
 - No hay borrado ni reactivación de versiones antiguas (se vuelve a subir el fichero). Las plantillas de `backend/required_documents/` son de referencia; el código no las lee 🔶.
 
 ## 8. Descargar — `GET /documentos/:id/descargar`
@@ -122,7 +123,7 @@ El PDF refleja los datos **del momento**: cambios posteriores (tutor, datos de e
 | EMPRESA | Documentos de sus solicitudes y de reservas de su empresa; además el **CV** (tipos visibles para empresa) de un alumno si tiene con él una reserva no cancelada, o si el alumno es candidato visible (VALIDADO, convocatoria activa, ciclo de sus ofertas VALIDADO, sin confirmada) |
 | ALUMNO | Documentos visibles para alumno de su solicitud y de sus reservas; el **convenio** de una empresa con la que tenga **cualquier** reserva (incluidas canceladas) |
 
-Respuesta `application/pdf`, `Content-Disposition: inline; filename="documento_<id>.pdf"`. Sin fichero → 404.
+Respuesta `application/pdf`, `Content-Disposition: attachment; filename="documento_<id>.pdf"` (SEC-008: una visita directa a la URL no lo abre en el origen de la API). El visor de la aplicación lo pide como *blob* y lo muestra igual. Sin fichero → 404.
 
 ## 9. Listas por rol
 

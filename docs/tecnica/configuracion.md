@@ -6,8 +6,12 @@
 
 | Variable | Obligatoria | Por defecto | Uso |
 | --- | --- | --- | --- |
-| `DBHOST`, `DBUSER`, `DBPASS`, `DBNAME` | Sí | — (`.env.example` sugiere `localhost` y `proyecto_dual`) | Pool de la aplicación y scripts |
+| `DBHOST`, `DBUSER`, `DBPASS`, `DBNAME` | Sí | — (`.env.example` sugiere `localhost` y `proyecto_dual`) | Pool de la aplicación y scripts. Usar una cuenta con los privilegios mínimos, no `root` |
+| `DBSSL`, `DBSSL_CA` | No | `false`, vacío | TLS hacia MySQL (SEC-010); obligatorio si la BD está en otra máquina. `DBSSL_CA` = ruta del certificado de la CA si no es de confianza pública |
 | `PORT` | No | `3001` | Puerto HTTP. El *proxy* del frontend espera 3001 |
+| `TRUST_PROXY` | No | vacío | Número de proxies inversos delante de la API (p. ej. `1` detrás de nginx); nunca `true`. Los límites por IP usan la IP que resulta |
+| `SIGNUP_MAX_PER_IP_HOUR`, `SIGNUP_MAX_PER_DAY` | No | `10`, `300` | Límite de altas públicas (alumno y empresa) por IP y hora, y total al día (SEC-003) |
+| `MAX_PLAZAS_POR_CICLO` | No | `20` | Máximo de plazas que una empresa puede ofrecer por ciclo (SEC-002) |
 | `JWT_SECRET` | **Sí** | — | Firma de sesiones (y, derivada, de los enlaces de recuperación). ≥ 32 caracteres; el servidor no arranca sin él. **Cambiarlo cierra todas las sesiones e invalida los enlaces de recuperación pendientes** |
 | `NODE_ENV` | No | — | `production` cambia el modo de correo por defecto a `smtp`, exige `APP_URL` para los enlaces de recuperación y bloquea los scripts que escriben (salvo `--allow-production`) |
 | `MAIL_MODE` | No | `smtp` en producción, `log` en otro caso | Ver [correo](api-e-integraciones/correo-electronico.md) |
@@ -17,8 +21,9 @@
 | `MYSQL_BIN` | No | `C:/Program Files/MySQL/MySQL Server 8.0/bin` | Ruta de `mysqldump`/`mysql` para `backup.js` y `verifyDb.js` |
 | `DB_INTEGRATION`, `KEEP_VERIFY` | No | — | Activan las pruebas contra BD y conservan la BD de verificación |
 | `PRUEBA_ESPECIALIDAD` | No | `5` | Especialidad de los datos de prueba |
+| `DEMO_ADMIN_EMAIL`, `DEMO_COORD_EMAIL` | No | `admin.demo@fpdual.test`, `coord.demo@fpdual.test` | Usuarios de personal de `scripts/seedDemo.js` |
 
-Constantes en código (no configurables): caducidad del JWT 8 h; enlace de recuperación 30 min; sincronización de convocatorias 15 min; límites de intentos (5/30 en login, 3/20 en recuperación, ventana 15 min); tamaño máximo de PDF y plantillas 10 MB; pool de 10 conexiones; tamaños de página de Seguimiento 10/20/50.
+Constantes en código (no configurables): caducidad del JWT 8 h (HS256); enlace de recuperación 30 min; sincronización de convocatorias 15 min; límites de intentos (5/30 en login, 3/20 en recuperación, ventana 15 min); tamaño máximo de PDF y plantillas 10 MB; cuerpos JSON y URL-encoded de 100 KB como máximo; pool de 10 conexiones; reintentos por interbloqueo en `inTransaction` 2; tamaños de página de Seguimiento 10/20/50.
 
 `backend/src/db/config.js` está en `.gitignore` como «unused legacy DB config»; el código actual no lo importa.
 
@@ -47,4 +52,4 @@ npm install
 npm start
 ```
 
-Con `backend/.env` relleno a partir de `.env.example` y la BD creada/migrada. Datos de prueba opcionales: `node scripts/seedPruebas.js --yes`.
+Con `backend/.env` relleno a partir de `.env.example` y la BD creada/migrada. Datos de prueba opcionales: `node scripts/seedPruebas.js --yes` (crea cuentas «PRUEBA»; sus contraseñas aleatorias quedan solo en `backend/.pruebas.local.json`). `node scripts/seedDemo.js --yes` **borra todos los datos** y carga una demostración ficticia (contraseñas en `backend/.demo.local.json`); solo para una BD de desarrollo desechable.

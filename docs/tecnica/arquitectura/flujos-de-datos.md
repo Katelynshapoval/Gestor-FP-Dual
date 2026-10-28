@@ -57,14 +57,16 @@ sequenceDiagram
   participant MAIL as transporter
   F->>M: multipart (datos + cv + anexoDga + password)
   M->>S: req.files, req.body
-  S->>S: campos obligatorios, contraseña ≥ 8
+  Note over M: signupRateLimit (429) y firma %PDF- de cada fichero
+  S->>S: campos obligatorios, DNI/NIE válido, contraseña ≥ 8
   S->>DB: getActiveConvocatoria (activa = 1)
   S->>DB: BEGIN; SELECT gf_alumnosfct WHERE dni = ? FOR UPDATE
   alt DNI existente con cuenta
     S->>S: bcrypt.compare(password, hash) + limitador
     S->>DB: UPDATE gf_alumnosfct (todos los datos)
   else DNI existente sin cuenta
-    S->>DB: UPDATE solo campos vacíos (COALESCE)
+    S->>DB: ROLLBACK
+    S-->>F: 401 IDENTIDAD_NO_VERIFICADA (no se escribe nada)
   else DNI nuevo
     S->>DB: INSERT gf_alumnosfct
   end
@@ -123,9 +125,8 @@ sequenceDiagram
   participant DB as MySQL
   E->>RS: POST /reservas {id_solicitud_alumno, id_oferta}
   RS->>DB: comprobaciones (oferta propia, activa, VALIDADO)
-  RS->>DB: CALL sp_reservar_alumno (transacción y bloqueos propios)
-  RS->>DB: evento RESERVAR (después del commit)
-  RS-)A: correo «Una empresa ha reservado tu candidatura»
+  RS->>DB: inTransaction: CALL sp_reservar_alumno (bloqueos) + evento RESERVAR · COMMIT
+  RS-)A: correo «Una empresa ha reservado tu candidatura» (tras el commit)
   C->>RS: POST /reservas/:id/tipo-contrato
   RS->>DB: BEGIN … UPDATE id_tipo_contrato + evento TIPO_CONTRATO … COMMIT
   alt subida
@@ -139,8 +140,7 @@ sequenceDiagram
   A->>DS: POST /documentos/:id/firmar (ALUMNO)
   C->>DS: POST /documentos/:id/validar (exige todas las firmas)
   C->>RS: POST /reservas/:id/confirmar
-  RS->>DB: CALL sp_confirmar_reserva → CONFIRMADA; otras PENDIENTE del alumno → CANCELADA
-  RS->>DB: eventos CONFIRMAR + CANCELAR (después del commit)
+  RS->>DB: inTransaction: bloqueos, firmas y anexo comprobados, CALL sp_confirmar_reserva → CONFIRMADA; otras PENDIENTE del alumno → CANCELADA; eventos CONFIRMAR + CANCELAR · COMMIT
   RS-)A: «Tu plaza está confirmada»
   RS-)E: «Reserva confirmada» (y aviso a cada empresa que perdió al alumno)
 ```
@@ -171,17 +171,16 @@ sequenceDiagram
   participant BJ as bajaService.darDeBaja
   participant DB as MySQL
   AD->>BJ: POST /solicitudes/{alumno|empresa}/:id/baja {motivo}
-  BJ->>DB: BEGIN; SELECT … FOR UPDATE
+  BJ->>DB: inTransaction; SELECT … FOR UPDATE
   BJ->>DB: estado = BAJA, motivo = NULL
   BJ->>DB: dual_usuarios.activo = 0 (alumno o todos los usuarios EMPRESA de la empresa)
   BJ->>DB: evento BAJA (estado anterior, cuentas, reservas a cancelar)
-  BJ->>DB: COMMIT
   loop cada reserva PENDIENTE/CONFIRMADA
-    BJ->>DB: CALL sp_cancelar_reserva_admin (transacción propia)
-    BJ->>DB: evento CANCELAR (después del commit)
-    BJ-)BJ: aviso a la otra parte
+    BJ->>DB: CALL sp_cancelar_reserva_admin + evento CANCELAR
   end
-  BJ-->>AD: {canceladas, pendientes}
+  BJ->>DB: COMMIT (todo o nada)
+  BJ-)BJ: aviso a la otra parte de cada reserva cancelada
+  BJ-->>AD: {canceladas, pendientes: []}
 ```
 
 ## 8. Procesos síncronos y asíncronos
@@ -191,6 +190,6 @@ sequenceDiagram
 | Sincronización de convocatoria activa | Asíncrono (temporizador 15 min) + síncrono en `GET /convocatorias*` y al crear/editar | Arranque, intervalo, lecturas | Se registra en consola; el indicador `activa` queda como estaba |
 | Correos de notificación | Asíncrono, no esperado | Tras cada *commit* relevante | Se registra; no hay reintento ni cola |
 | Generación de PDF | Síncrono dentro de la petición (o tras el *commit* del alta de empresa) | `POST /documentos/generar`, alta y reaplicación de empresa | Petición de generación: error HTTP. Alta de empresa: solo consola |
-| Auditoría tras procedimientos | Síncrono tras el *commit* | Reservas | Se registra en consola; el evento se pierde |
+| Auditoría | Síncrona, dentro de la misma transacción que el cambio | Toda transición auditada | Se deshace el cambio y la petición responde con error |
 
 Detalle de cada proceso en [procesos](../procesos/README.md).

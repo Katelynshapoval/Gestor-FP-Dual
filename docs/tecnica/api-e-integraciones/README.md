@@ -5,7 +5,8 @@
 ## 1. Convenciones de la API
 
 - **Base**: la API se sirve en la raíz del servidor Node (sin prefijo `/api`). En desarrollo el frontend llama a rutas relativas y el *proxy* de CRA las reenvía a `http://localhost:3001`.
-- **Formato**: JSON (`express.json`), salvo subidas `multipart/form-data` (`multer` en memoria) y descargas binarias (PDF/DOCX).
+- **Formato**: JSON (`express.json`, cuerpos de 100 KB como máximo), salvo subidas `multipart/form-data` (`multer` en memoria, 10 MB por fichero) y descargas binarias (PDF/DOCX, siempre como `attachment`).
+- **Cabeceras de seguridad** en todas las respuestas: `X-Content-Type-Options: nosniff`, `X-Frame-Options`, `Referrer-Policy`, CSP restrictiva y HSTS cuando la petición llega por HTTPS; sin `X-Powered-By` (SEC-007).
 - **Autenticación**: `Authorization: Bearer <JWT>`. Ver [seguridad y permisos](../seguridad-y-permisos.md).
 - **Identificadores** en la URL: enteros; `parseInt` inválido suele dar 400 «… no válido/a».
 - **Fechas**: columnas `DATE` como `'AAAA-MM-DD'`; `DATETIME` como ISO 8601 UTC.
@@ -26,12 +27,12 @@
 | --- | --- |
 | 200 / 201 | Éxito (201 en creaciones) |
 | 400 | Validación, regla de negocio (incluidos los `SIGNAL 45000` de BD), `CHECK` |
-| 401 | Sin token, token inválido, cuenta desactivada, sesión obsoleta, credenciales incorrectas, contraseña actual incorrecta, `CUENTA_EXISTENTE` |
-| 403 | Rol no permitido, recurso de otra empresa/alumno, cambio de contraseña obligatorio, cuenta desactivada al hacer login |
+| 401 | Sin token, token inválido, cuenta desactivada, sesión obsoleta (rol o contraseña cambiados), credenciales incorrectas, contraseña actual incorrecta, `IDENTIDAD_NO_VERIFICADA` |
+| 403 | Rol no permitido, recurso de otra empresa/alumno, cambio de contraseña obligatorio, cuenta desactivada al hacer login, `REQUIERE_CENTRO` (empresa validada que intenta ampliar) |
 | 404 | No existe (o no hay convocatoria activa en `/convocatorias/activa`) |
-| 409 | Duplicados, concurrencia, conflictos de datos, selección requerida, ya validado/de baja, sin plantilla, convocatoria cerrada en altas |
-| 429 | Limitador de login o de recuperación (`Retry-After`) |
-| 500 | Error no previsto (`INTERNAL` o sin código) |
+| 409 | Duplicados, concurrencia, conflictos de datos, selección requerida, ya validado/de baja, sin plantilla, convocatoria cerrada en altas, `RESERVAS_ACTIVAS` |
+| 429 | Limitador de login, de recuperación o de altas públicas (`Retry-After`) |
+| 500 | Error no previsto (`INTERNAL` o sin código); procedimiento de reservas llamado sin transacción (`SQLSTATE 45001`) |
 | 503 | Baja sin la migración 016 |
 
 ### Mapeo de errores SQL
@@ -68,9 +69,9 @@ Varios servicios capturan antes casos concretos (p. ej. CIF duplicado en el alta
 
 | Integración | Uso | Configuración | Reintentos / timeouts | Si falla |
 | --- | --- | --- | --- | --- |
-| **MySQL 8** | Persistencia | `DBHOST`, `DBUSER`, `DBPASS`, `DBNAME` | Pool sin reintentos; espera de bloqueo de InnoDB (50 s en desarrollo); `queueLimit: 0` (cola ilimitada de peticiones de conexión) | Errores mapeados (§ 2); con la BD caída, 500 |
+| **MySQL 8** | Persistencia | `DBHOST`, `DBUSER`, `DBPASS`, `DBNAME`, `DBSSL`, `DBSSL_CA` | Pool sin reintentos de conexión; `inTransaction` repite la operación tras un interbloqueo (máx. 2); espera de bloqueo de InnoDB (50 s en desarrollo); `queueLimit: 0` (cola ilimitada de peticiones de conexión) | Errores mapeados (§ 2); con la BD caída, 500 |
 | **Gmail SMTP** (`nodemailer`, `service: 'gmail'`) | Notificaciones, confirmaciones, convenio adjunto, recuperación | `MAIL_MODE`, `EMAIL_USER`, `EMAIL_PASS`, `MAIL_REDIRECT_TO`, `APP_URL` | Ninguno | Se registra y se pierde ([correo](correo-electronico.md)) |
-| **Chromium** (`puppeteer`) | DOCX→HTML→PDF | Navegador descargado por `puppeteer` | Ninguno; `waitUntil: 'networkidle0'` sin timeout propio | Error en la petición de generación; consola en el alta de empresa |
+| **Chromium** (`puppeteer`) | DOCX→HTML→PDF | Navegador descargado por `puppeteer`; sin JavaScript y sin red (solo `data:`) | Ninguno; `waitUntil: 'load'` sin timeout propio | Error en la petición de generación; consola en el alta de empresa |
 | **`docx-templates` / `mammoth`** | Relleno de plantillas y conversión | Plantilla activa en BD | — | Ídem |
 
-No hay integraciones con servicios externos del centro (secretaría, Gobierno de Aragón u otros): los documentos oficiales (Anexo DGA, Anexo XIV…) se intercambian como PDF subidos por los usuarios 🔶. Las dependencias de Google (`google-auth-library`, `@react-oauth/google`) están instaladas pero **no se usan**.
+No hay integraciones con servicios externos del centro (secretaría, Gobierno de Aragón u otros): los documentos oficiales (Anexo DGA, Anexo XIV…) se intercambian como PDF subidos por los usuarios 🔶. `google-auth-library` se quitó del backend (SEC-005); `@react-oauth/google` sigue instalado en el frontend pero **no se usa**.

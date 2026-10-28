@@ -41,9 +41,13 @@ El modo se decide al cargar el módulo y se escribe en consola al arrancar (`[co
 | Reducción de cupo | `updateCupoEspecialidad` | ✔ (aviso de cancelación) | ✔ (resumen con la lista) |
 | Baja de alumno | `bajaService` | | ✔ (cada reserva cancelada) |
 | Baja de empresa | `bajaService` | ✔ (cada reserva cancelada) | |
+| Ciclo de la solicitud corregido por el centro | Edición directa o petición aprobada que cambia el ciclo | ✔ «Hemos corregido el ciclo de tu solicitud de FP Dual» | |
+| Petición de corrección de datos aprobada / rechazada | `alumnoCambiosService` | ✔ (rechazo con motivo) | |
 | Recuperación de contraseña | `/auth/forgotPassword` | Personal, alumno o coordinador (según la cuenta) | |
 
-Eventos **sin** correo: reabrir, reactivar, cambio de tipo de contrato, firmas, validación de documentos (salvo la cascada del convenio), subidas, solicitudes de cambio de datos y su resolución, asignación de tutor, contraseña temporal del administrador.
+Todos se envían **después del commit**: si la operación se deshace, no sale ningún correo.
+
+Eventos **sin** correo: reabrir, reactivar, cambio de tipo de contrato, firmas, validación de documentos (salvo la cascada del convenio), subidas, la petición de corrección del alumno (al enviarla), las solicitudes de cambio de datos de **empresa** y su resolución, la edición directa de datos del alumno que no cambia el ciclo, asignación de tutor, contraseña temporal del administrador.
 
 ## 4. Verificación manual
 

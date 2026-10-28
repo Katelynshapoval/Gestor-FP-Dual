@@ -57,9 +57,9 @@
 ### La empresa ve el CV de candidatos, no su Anexo DGA
 - **Comportamiento**: `empresaMayViewStudentDocument` solo permite tipos con `actor.EMPRESA` visible (CV) y solo de alumnos con reserva activa con la empresa o candidatos visibles en ese momento (VALIDADO, convocatoria activa, ciclo de sus ofertas validadas, sin confirmada). Un candidato confirmado en otra empresa deja de ser descargable.
 
-### Tipo MIME declarado por el cliente
-- **Comportamiento**: `multer` acepta el fichero si el cliente declara `application/pdf`; no se inspecciona el contenido. Las descargas se sirven siempre como `application/pdf` `inline`.
-- **Consecuencias**: la verificación del contenido y las cabeceras de descarga están planificadas.
+### Fichero que no es un PDF de verdad
+- **Comportamiento** (SEC-008): además del tipo MIME declarado, el contenido tiene que empezar por `%PDF-`; si no, 400 «Solo se aceptan archivos PDF.». No se analiza el resto del fichero. Las descargas se sirven como `application/pdf` `attachment`.
+- **Referencia**: [`middleware/pdfUpload.js`](../../../backend/src/middleware/pdfUpload.js).
 
 ### Subidas simultáneas del mismo documento
 - **Comportamiento**: se serializan por el bloqueo del padre; el segundo fichero sustituye al primero (que queda en versiones). Si dos transacciones llegaran a insertar a la vez, `uq_dd_actual` lo impide → 409 `DOCUMENTO_CONCURRENTE` «Este documento se acaba de guardar desde otra sesión…».

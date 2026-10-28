@@ -40,7 +40,7 @@
 ### Reducción de plazas con reservas pendientes
 - **Condición**: nueva cantidad < reservas activas (pendientes + confirmadas) y ≥ confirmadas.
 - **Comportamiento**: primera llamada → 409 `requires_selection` con las pendientes y cuántas hay que cancelar. Segunda llamada con `confirmar_cancelaciones: true` e `ids_reservas_cancelar` con **exactamente** ese número de pendientes → se cancelan (motivo «Cupo reducido por la empresa.» o «…por administración.») y se cambia la cantidad, todo en una transacción. Si se envían más, menos o ids que no son pendientes de esa oferta → vuelve a 409.
-- **Consecuencias**: esas cancelaciones **no tienen evento de auditoría**; el coordinador recibe un resumen (con nombre y DNI de cada alumno) y cada alumno un aviso de cancelación.
+- **Consecuencias**: cada cancelación tiene su evento `CANCELAR` y el cambio de cupo su evento `OFERTA/CUPO` (desde la 018). El coordinador recibe un resumen (con nombre y DNI de cada alumno) y cada alumno un aviso de cancelación.
 - **Referencia**: `solicitudesEmpresaService.updateCupoEspecialidad`; `CupoReductionDialog.jsx`.
 
 ### Reducción por debajo de las confirmadas
@@ -49,8 +49,10 @@
 ### Plazas a cero
 - **Comportamiento**: permitido en la edición (`cantidad ≥ 0`), no en el alta. La oferta sigue existiendo (no hay borrado de ofertas) y cuenta para «≥ 1 especialidad» al validar 🔶.
 
-### Las empresas suben plazas y añaden ciclos sin revisión
-- **Comportamiento**: tanto la empresa como el centro pueden aumentar plazas o añadir ciclos activos en la convocatoria activa, sin aprobación ni auditoría, incluso con la solicitud ya VALIDADO.
+### Ampliar plazas o añadir ciclos con la solicitud validada
+- **Comportamiento** (SEC-002): mientras la solicitud **no** está VALIDADO, la empresa puede subir plazas y añadir ciclos activos en la convocatoria activa, sin aprobación. Una vez validada, solo puede **reducir**: subir plazas o añadir un ciclo → 403 `REQUIERE_CENTRO`, y la pantalla oculta «Añadir ciclo» y lo explica. El personal puede ampliar siempre. Nadie puede pasar de `MAX_PLAZAS_POR_CICLO` (20) por ciclo.
+- **Motivo**: con la solicitud validada, ampliar le daría acceso a alumnos que el centro no le ofreció.
+- **Auditoría**: `OFERTA/ALTA` y `OFERTA/CUPO`.
 
 ### Cupos de solicitudes no validadas
 - **Comportamiento**: `updateCupoEspecialidad` y `addEspecialidad` no comprueban el estado de la solicitud; solo que sea de la convocatoria activa. El personal podría modificar cupos de una solicitud RECHAZADO o en BAJA 🔶.

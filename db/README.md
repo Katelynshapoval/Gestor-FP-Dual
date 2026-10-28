@@ -61,8 +61,11 @@ Migrations 015, 017 and 018 start with a guard procedure that checks the data an
 
 ## Rolling back
 
-Run the `.down.sql` file in MySQL Workbench (it uses `DELIMITER` like the migrations), then delete the row: `DELETE FROM schema_migrations WHERE version = 'NNN';`. Roll back in reverse order (018 → 012). Read the warnings at the top of each file first:
+Run the `.down.sql` file in MySQL Workbench (it uses `DELIMITER` like the migrations), then delete the row: `DELETE FROM schema_migrations WHERE version = 'NNN';`. Roll back in reverse order (021 → 012). Read the warnings at the top of each file first:
 
+- 021 recreates the two preference tables empty; only useful together with the backend that still had preferences.
+- 020 stops, changing nothing, while `dual_alumno_cambios` has any row (student requests and their history are not deleted by the script). Deploy a backend without student change requests first.
+- 019 stops while any `USUARIO` audit event exists.
 - 013 drops the audit trail.
 - 013 and 014 need the previous backend to be deployed first.
 - 018 can only be rolled back while no student/offer pair has a second reservation attempt and no OFERTA/TUTOR audit event exists; its guard stops otherwise, and the only way back is the backup taken before 018. It drops `dual_reservas.id_reserva_origen` (the audit trail keeps the links). Deploy the previous backend first.
@@ -73,6 +76,8 @@ Run the `.down.sql` file in MySQL Workbench (it uses `DELIMITER` like the migrat
 The Phase 2 backend reads `dual_eventos`, `dual_documentos.firmas_exentas_legacy`, `dual_documento_firmas.metodo/firmado_por`, `dual_solicitud_empresa_transportes` and `dual_solicitudes_empresa.transportes_conocidos`. **Apply 012–015 before starting the Phase 2 backend.**
 
 Migration 018 and the Stage 2 backend also go together: from 018 the reservation procedures (`sp_reservar_alumno`, `sp_confirmar_reserva`, `sp_reasignar_reserva`, `sp_cancelar_reserva`, `sp_cancelar_reserva_admin`) only run inside a transaction opened by the caller with `SET autocommit = 0` (the backend's `src/db/transaction.js`); called from Workbench in autocommit mode they stop with SQLSTATE 45001. To try one by hand: `SET autocommit = 0; CALL …; COMMIT; SET autocommit = 1;`.
+
+Migration 020 must be applied before the backend that has student change requests: the student list reads `dual_alumno_cambios`.
 
 Migration 017 and the Stage 1 backend (database improvement plan) go together: the backend inserts `dual_solicitudes_alumno.id_especialidad`, which only exists after 017. Stop the backend, take and verify a backup, apply 017, start the new backend.
 

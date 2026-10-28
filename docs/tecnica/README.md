@@ -1,6 +1,6 @@
 # Documentación técnica de FP Dual
 
-Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, reglas de negocio, comportamientos especiales, API y operación. Describe **cómo funciona realmente** el sistema según el código, las migraciones y las pruebas del repositorio, en el estado posterior a la migración 017.
+Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, reglas de negocio, comportamientos especiales, API y operación. Describe **cómo funciona realmente** el sistema según el código, las migraciones y las pruebas del repositorio, en el estado posterior a la migración 021 y a las correcciones de la auditoría de seguridad (SEC-001 a SEC-013, [informe](../security/security-audit.md) y [corrección](../security/remediation.md)).
 
 ## Cómo leer esta documentación
 
@@ -21,7 +21,7 @@ Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, r
 - [Modelo de datos](base-de-datos/modelo-de-datos.md): tablas y columnas con su significado.
 - [Relaciones](base-de-datos/relaciones.md): diagramas ER, cardinalidades, relaciones implícitas, copia en escritura, borrado e impacto de cambios.
 - [Integridad y transacciones](base-de-datos/integridad-y-transacciones.md): restricciones, funciones, procedimientos, triggers, transacciones, bloqueos y consultas clave.
-- [Migraciones](base-de-datos/migraciones.md): sistema, historia 012–017, compatibilidad y despliegue.
+- [Migraciones](base-de-datos/migraciones.md): sistema, historia 012–021, compatibilidad y despliegue.
 
 ### Lógica de negocio
 - [Resumen, máquinas de estado y reglas transversales](logica-de-negocio/README.md)

@@ -107,10 +107,10 @@ Consecuencia práctica: una misma regla puede rechazarse con mensajes distintos 
 
 | Rol (`dual_roles.nombre`) | Identificador de acceso | Ámbito |
 | --- | --- | --- |
-| `ADMINISTRADOR` | email (`dual_usuarios.email`) | Todo lo de coordinación + plantillas, bajas/reactivaciones, gestión de contraseñas, `/usuarios`, crear/editar convocatorias |
+| `ADMINISTRADOR` | email (`dual_usuarios.email`) | Todo lo de coordinación + plantillas, bajas/reactivaciones, gestión de contraseñas, personal del centro, `/usuarios`, crear/editar convocatorias, editar datos de alumnos y resolver sus peticiones de corrección |
 | `COORDINADOR` | email | Revisión de solicitudes y documentos, reservas, datos de empresa, seguimiento, panel |
-| `EMPRESA` | CIF de la empresa | Su solicitud, ofertas y cupos, tutores, reservas propias, documentos propios, alumnos disponibles |
-| `ALUMNO` | DNI/NIE | Su solicitud más reciente, sus reservas y documentos (solo consulta y firma) |
+| `EMPRESA` | CIF de la empresa | Su solicitud, ofertas y cupos (solo reducir una vez validada), tutores, reservas propias, documentos propios, alumnos disponibles, peticiones de cambio de datos |
+| `ALUMNO` | DNI/NIE | Su solicitud más reciente, sus reservas y documentos (consulta, subida de CV y Anexo DGA y firma) y peticiones de corrección de sus datos |
 
 En el catálogo de documentos los dos roles de personal actúan como un único firmante/revisor llamado **`GESTOR`** («Centro»). Detalle en [seguridad y permisos](../seguridad-y-permisos.md).
 

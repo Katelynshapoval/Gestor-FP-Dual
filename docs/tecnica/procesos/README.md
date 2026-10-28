@@ -21,22 +21,23 @@ No hay colas, *workers*, eventos de MySQL (0 `EVENT`) ni cron externo. Si se eje
 | [`backup.js`](../../../backend/scripts/backup.js) | `mysqldump --single-transaction --routines --triggers --events --hex-blob` a `backups/`; `verify` restaura en `<DBNAME>_backupcheck` y compara | Contraseña por `MYSQL_PWD` (no en `argv`); `backups/` ignorado por Git (contiene datos personales). `MYSQL_BIN` para la ruta de los binarios (por defecto la de Windows) |
 | [`verifyDb.js`](../../../backend/scripts/verifyDb.js) | BD aislada `<DBNAME>_verify`: `create`, `migrate`, `rollback`, `drop` | Rechaza cualquier nombre que no termine en `_verify`; nunca copia filas de la BD real |
 | [`seedPruebas.js`](../../../backend/scripts/seedPruebas.js) | Cuentas de personal, dos empresas, un alumno y solicitudes VALIDADO marcadas «PRUEBA» | Rechaza producción; no borra nada; contraseñas solo en `backend/.pruebas.local.json` (ignorado por Git); especialidad configurable con `PRUEBA_ESPECIALIDAD` (5 por defecto) |
+| [`seedDemo.js`](../../../backend/scripts/seedDemo.js) | Conjunto de demostración ficticio (Salesianos Zaragoza, grado superior): personal, empresas, alumnos, solicitudes, reservas | **Borra todos los datos** (conserva catálogos, convocatorias, plantillas y `schema_migrations`); `--dry-run` lo deshace al final; `--yes` para escribir; rechaza producción; contraseñas aleatorias solo en `backend/.demo.local.json`; correos `example.com` |
 | [`probarCorreos.js`](../../../backend/scripts/probarCorreos.js) | Envía cada plantilla de notificación | Exige `MAIL_MODE=smtp` y `MAIL_REDIRECT_TO`; rechaza producción; solo lectura |
 
 ## 3. Pruebas automatizadas
 
 | Conjunto | Ejecución | Qué cubre |
 | --- | --- | --- |
-| Backend unitarias (`backend/test/*.test.js`) | `npm test` en `backend/` (`node --test`) | Servicios con BD simulada (`fakePool` del [arnés](../../../backend/test/helpers/harness.js)): autenticación, autorización, reglas de estado, transacciones de documentos, flujos de reservas y ficha, panel, notificaciones, bajas, recuperación de contraseña |
-| Backend contra BD (`backend/test/db/*.db.test.js`) | `DB_INTEGRATION=1 node --test test/db/…` | Migraciones, triggers, auditoría inmutable, DNI único, cancelar y volver a reservar, guardas y reglas de 017, concurrencia de documentos, reversión. Se omiten sin `DB_INTEGRATION` |
-| Frontend (`frontend/src/**/*.test.*`) | `npm test` en `frontend/` | Navegación, búsqueda, `Tabs` accesibles, formularios por pasos, «Qué tienes pendiente», cliente HTTP, etiquetas, insignias de reserva, `Modal`/`MotivoDialog`, división y búsqueda del manual de la página Ayuda |
+| Backend unitarias (`backend/test/*.test.js`) | `npm test` en `backend/` (`node --test`) | Servicios con BD simulada (`fakePool` del [arnés](../../../backend/test/helpers/harness.js)): autenticación, autorización, reglas de estado, transacciones de documentos, flujos de reservas y ficha, `inTransaction` (`stage2.test.js`), panel, notificaciones, bajas, recuperación de contraseña, corrección de datos de alumno (`alumnoDatos`, `alumnoCambios`) y las correcciones de seguridad (`security.test.js`) |
+| Backend contra BD (`backend/test/db/*.db.test.js`) | `DB_INTEGRATION=1 node --test test/db/…` | Migraciones, triggers, auditoría inmutable, DNI único, cancelar y volver a reservar, guardas y reglas de 017, 018 con sesiones concurrentes reales, inyección de fallos y prueba de carga (`stage2.db.test.js`), concurrencia de documentos, reversión. Se omiten sin `DB_INTEGRATION` |
+| Frontend (`frontend/src/**/*.test.*`) | `npm test` en `frontend/` | Navegación, búsqueda, `Tabs` accesibles, formularios por pasos, «Qué tienes pendiente», cliente HTTP, etiquetas, insignias de reserva, `Modal`/`MotivoDialog`, división y búsqueda del manual de la página Ayuda, formulario de datos del alumno (`AlumnoEditForm.test.jsx`) |
 
-Estado conocido (28/10/2026): 96 pruebas backend correctas, 20 omitidas sin BD, 1 fallo preexistente (`mail/config: development defaults to log mode`, porque el módulo vuelve a cargar `MAIL_MODE` del `.env` local); frontend 33/33. No hay CI configurada.
+Estado conocido (28/10/2026, tras SEC-001…013): 135 pruebas backend correctas, 41 omitidas sin BD (suites `test/db/`), 1 fallo preexistente (`mail/config: development defaults to log mode`, porque el módulo vuelve a cargar `MAIL_MODE` del `.env` local); frontend 38/38. No hay CI configurada.
 
 ## 4. Operación habitual
 
 1. Copia de seguridad verificada antes de cualquier migración (`npm run db:backup` + `verify`).
-2. Migraciones con el backend detenido cuando cambian columnas que el backend escribe (017).
+2. Migraciones con el backend detenido cuando cambian lo que el backend lee o escribe (017, 018, 020, 021); rama y BD siempre a la par.
 3. Carga de `dual_especialidades` en cada entorno nuevo.
 4. Subida de plantillas activas (CONVENIO, ANEXO_II, ANEXO_III) por un administrador para poder generar documentos.
 5. Creación de convocatorias con fechas sin solapes; la activación es automática.
