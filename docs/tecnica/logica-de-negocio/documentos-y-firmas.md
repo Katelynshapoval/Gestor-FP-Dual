@@ -1,6 +1,6 @@
 # Documentos y firmas
 
-> Código: [`documentCatalogue.js`](../../../backend/src/services/documentCatalogue.js), [`documentosService.js`](../../../backend/src/services/documentosService.js), [`documentosStore.js`](../../../backend/src/services/documentosStore.js), [`documentosWorkflow.js`](../../../backend/src/services/documentosWorkflow.js), [`estadoReglas.js`](../../../backend/src/services/estadoReglas.js), [`documentGenerationService.js`](../../../backend/src/services/documentGenerationService.js), [`documentGenerationConfig.js`](../../../backend/src/services/documentGenerationConfig.js), [`plantillasService.js`](../../../backend/src/services/plantillasService.js). Pruebas: `authorization.test.js` (SEC-5, SEC-6), `phase2.test.js` (D1, WF-6/7, PM-6), `test/db/stage1.db.test.js` (DB-03).
+> Código: [`documentCatalogue.js`](../../../backend/src/services/documentCatalogue.js), [`documentosService.js`](../../../backend/src/services/documentosService.js), [`documentosStore.js`](../../../backend/src/services/documentosStore.js), [`documentosWorkflow.js`](../../../backend/src/services/documentosWorkflow.js), [`estadoReglas.js`](../../../backend/src/services/estadoReglas.js), [`documentGenerationService.js`](../../../backend/src/services/documentGenerationService.js), [`documentGenerationConfig.js`](../../../backend/src/services/documentGenerationConfig.js), [`plantillasService.js`](../../../backend/src/services/plantillasService.js). Pruebas: `authorization.test.js`, `phase2.test.js`, `test/db/stage1.db.test.js`.
 
 ## 1. Catálogo
 
@@ -55,7 +55,7 @@ Endpoints (todos `multipart`, campo `archivo`, PDF ≤ 10 MB por tipo MIME):
 | `POST /documentos/reserva/:idReserva/anexo` | Personal, EMPRESA | El anexo de la **familia del tipo guardado** (sin tipo → 400) |
 | `POST /documentos/subir { clave, id_solicitud_alumno | id_solicitud_empresa | id_reserva }` | Todos | Genérico (se usa para Calendario, Anexo XIV, Anexo G, Excel…) |
 
-### 3.1 Guarda única (SEC-5) — `assertCanUpload`
+### 3.1 Guarda única — `assertCanUpload`
 En este orden:
 1. Tipo válido, no histórico → si no, 400.
 2. El catálogo permite subir a ese rol (`canUpload`) → si no, **403**. Ejemplo: el centro **no** sube Anexo II/III (los revisa); sí sube Calendario, Anexo G y Excel.
@@ -65,14 +65,14 @@ En este orden:
 
 No se comprueba la convocatoria ni el estado de la solicitud.
 
-### 3.2 Guardado — `saveByClave` (una transacción, PM-6)
+### 3.2 Guardado — `saveByClave` (una transacción)
 1. `SELECT … FOR UPDATE` del **padre** (antes de cualquier otra lectura, para no fijar una instantánea antigua bajo REPEATABLE READ).
 2. `CALL sp_guardar_documento`: si hay documento actual, copia la fila a `dual_documento_versiones` y la reemplaza (PENDIENTE, sin motivo); si no, inserta.
 3. Procedencia: `estado_workflow` del catálogo, usuario, `origen_documento` (`SUBIDA`/`GENERADO`), plantilla, `registrado_en`, y `firmas_exentas_legacy = 0` (un fichero nuevo nunca está exento).
-4. **Firmas**: para cada firmante del tipo, si el que sube es ese firmante y es una subida, `FIRMADO` con método **`SUBIDA_FIRMADA`** (declara que el fichero lleva su firma, D1); el resto, `SIN_FIRMAR`. Un fichero **generado** queda sin ninguna firma.
+4. **Firmas**: para cada firmante del tipo, si el que sube es ese firmante y es una subida, `FIRMADO` con método **`SUBIDA_FIRMADA`** (declara que el fichero lleva su firma); el resto, `SIN_FIRMAR`. Un fichero **generado** queda sin ninguna firma.
 5. Evento `SUBIR` o `GENERAR` (con `firma_declarada` si procede).
 
-Consecuencias: cada fichero nuevo **reinicia la revisión y todas las firmas**; la versión anterior se archiva sin sus firmas (DB-02). Ejemplo: la empresa sube el Anexo II → firma EMPRESA declarada, GESTOR y ALUMNO pendientes.
+Consecuencias: cada fichero nuevo **reinicia la revisión y todas las firmas**; la versión anterior se archiva sin sus firmas. Ejemplo: la empresa sube el Anexo II → firma EMPRESA declarada, GESTOR y ALUMNO pendientes.
 
 ## 4. Firmar
 
@@ -84,14 +84,14 @@ Reglas (`documentoFirmable` + permisos), con el documento bloqueado:
 - el usuario podría descargarlo (propiedad) → si no, 403;
 - si ya estaba firmado por ese rol → **200 «La firma ya estaba registrada.»** sin cambios ni evento (idempotente).
 
-Registra `FIRMADO`, `firmado_en`, `firmado_por`, método **`CONFIRMACION_APP`** y evento `FIRMAR`. **Ninguna firma es criptográfica**: el centro revisa el fichero antes de validar (la verificación de firmas PDF está planificada, SEC-9).
+Registra `FIRMADO`, `firmado_en`, `firmado_por`, método **`CONFIRMACION_APP`** y evento `FIRMAR`. **Ninguna firma es criptográfica**: el centro revisa el fichero antes de validar (la verificación de firmas PDF está planificada).
 
 ## 5. Validar y rechazar (personal)
 
 ### `POST /documentos/:id/validar`
 Con el documento bloqueado, `documentoValidable` exige: documento existente (404); tipo actual que se revisa (400 `TIPO_NO_VALIDABLE` / `SIN_REVISION`); versión actual (409); con fichero (400); reserva no cancelada (400); no VALIDADO ya (409 `YA_VALIDADO`); no RECHAZADO (400: debe sustituirse antes); **todas las firmas aplicables** (400 `FIRMAS_PENDIENTES` con los que faltan).
 
-Efecto: `sp_validar_documento` + evento. Si es un **CONVENIO** y la solicitud de empresa está **PENDIENTE**, en la misma transacción valida también la solicitud (`sp_validar_solicitud_empresa`, que además exige ≥ 1 oferta) y avisa a la empresa (WF-7).
+Efecto: `sp_validar_documento` + evento. Si es un **CONVENIO** y la solicitud de empresa está **PENDIENTE**, en la misma transacción valida también la solicitud (`sp_validar_solicitud_empresa`, que además exige ≥ 1 oferta) y avisa a la empresa.
 
 ### `POST /documentos/:id/rechazar { motivo }`
 `documentoRechazable`: existe, versión actual, con fichero, reserva no cancelada, no RECHAZADO ya. **Se puede rechazar un documento VALIDADO** (también el anexo de una reserva confirmada o el CV de un alumno validado), sin efecto sobre la solicitud o la reserva. Evento con motivo; correo a quien debe sustituirlo (alumno, coordinador de la empresa o, en reservas, coordinador de la empresa).
@@ -110,7 +110,7 @@ El PDF refleja los datos **del momento**: cambios posteriores (tutor, datos de e
 
 ## 7. Plantillas (`/documentos/plantillas`)
 
-- Listar y descargar: personal. Subir: **solo ADMINISTRADOR** (SEC-6), porque `docx-templates` ejecuta expresiones contenidas en la plantilla.
+- Listar y descargar: personal. Subir: **solo ADMINISTRADOR**, porque `docx-templates` ejecuta expresiones contenidas en la plantilla.
 - Subida: clave generable, fichero `.docx` (extensión **y** MIME DOCX, `application/zip` u `octet-stream`), ≤ 10 MB. En transacción: siguiente `version`, desactiva la anterior e inserta la nueva activa.
 - No hay borrado ni reactivación de versiones antiguas (se vuelve a subir el fichero). Las plantillas de `backend/required_documents/` son de referencia; el código no las lee 🔶.
 

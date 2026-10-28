@@ -1,6 +1,6 @@
 # Solicitudes de empresa
 
-> Código: [`solicitudesEmpresaService.js`](../../../backend/src/services/solicitudesEmpresaService.js), [`empresaDatos.js`](../../../backend/src/services/empresaDatos.js), [`solicitudTransiciones.js`](../../../backend/src/services/solicitudTransiciones.js), `sp_validar_solicitud_empresa`, `trg_dse_*`, `trg_dsee_bu_cupo`. Frontend: [`AddCompanyRequest`](../../../frontend/src/pages/AddCompanyRequest/index.js), [`CompanyView`](../../../frontend/src/pages/CompanyView/index.js), [`AdminCompanyView`](../../../frontend/src/pages/AdminCompanyView/AdminCompanyView.jsx). Pruebas: `phase2.test.js` (WF-11, D4, D7), `phase3.test.js` (WF-2, WF-12), `stage1.test.js` (DB-08).
+> Código: [`solicitudesEmpresaService.js`](../../../backend/src/services/solicitudesEmpresaService.js), [`empresaDatos.js`](../../../backend/src/services/empresaDatos.js), [`solicitudTransiciones.js`](../../../backend/src/services/solicitudTransiciones.js), `sp_validar_solicitud_empresa`, `trg_dse_*`, `trg_dsee_bu_cupo`. Frontend: [`AddCompanyRequest`](../../../frontend/src/pages/AddCompanyRequest/index.js), [`CompanyView`](../../../frontend/src/pages/CompanyView/index.js), [`AdminCompanyView`](../../../frontend/src/pages/AdminCompanyView/AdminCompanyView.jsx). Pruebas: `phase2.test.js`, `phase3.test.js`, `stage1.test.js`.
 
 ## 1. Alta pública — `POST /solicitudes/empresa`
 
@@ -11,9 +11,9 @@
 | Paso | Detalle |
 | --- | --- |
 | Obligatorios | Empresa (`cif`, `empresa`, domicilio legal completo), representante (`dni, nombre, email, telefono`), coordinador (ídem), `descripcion_puesto`, `especialidades[]` no vacío, `passwordCoordinador` → 400 |
-| Formatos (WF-12) | `cifValido` (letra + 7 dígitos + control) → 400 `CIF_INVALIDO`; `dniNieValido` de representante y coordinador → 400 `DNI_INVALIDO`; contraseña ≥ 8 → 400 `PASSWORD_CORTA` |
+| Formatos | `cifValido` (letra + 7 dígitos + control) → 400 `CIF_INVALIDO`; `dniNieValido` de representante y coordinador → 400 `DNI_INVALIDO`; contraseña ≥ 8 → 400 `PASSWORD_CORTA` |
 | Convocatoria | Debe haber una activa → si no, 409 |
-| CIF existente | `SELECT … WHERE cif = ? FOR UPDATE` (índice único, DB-08) → **409** «Esta empresa ya está registrada. Inicia sesión con el CIF…». El alta pública nunca actualiza una empresa existente |
+| CIF existente | `SELECT … WHERE cif = ? FOR UPDATE` (índice único) → **409** «Esta empresa ya está registrada. Inicia sesión con el CIF…». El alta pública nunca actualiza una empresa existente |
 | Inserciones | `ge_empresas` (CIF normalizado) → domicilio legal → domicilio de trabajo (o el mismo id si `mismoLugarTrabajo`; si no, sus campos son obligatorios → 400) → representante (en el domicilio legal) → coordinador (en el de trabajo) → `dual_solicitudes_empresa` PENDIENTE → ofertas (cada una con id válido y `cantidadAlumnos ≥ 1`, si no 400) → transportes → usuario EMPRESA (contraseña elegida, `must_change_password = 0`) → `dual_empresa_tutores` (coordinador, activo) |
 | Después del commit | `generateDocument(CONVENIO)`; si hay plantilla activa, se guarda el PDF (evento `GENERAR` sin usuario) y se envía al email del coordinador con el PDF adjunto. **Si no hay plantilla o falla la generación, no se envía ningún correo** y solo se registra en consola |
 | Resultado | 201 `{ id_solicitud_empresa }` |
@@ -24,7 +24,7 @@ Los DNI de representante y coordinador se validan pero **se guardan tal como lle
 
 **Qué hace**: crea la solicitud de la empresa para la convocatoria activa reutilizando sus datos base.
 
-**Desde dónde**: portal de empresa; `GET /solicitudes/empresa/mia?incluir_anteriores=1` devuelve la última solicitud y `puede_reaplicar = hay convocatoria activa && la última no es de la activa` (WF-2).
+**Desde dónde**: portal de empresa; `GET /solicitudes/empresa/mia?incluir_anteriores=1` devuelve la última solicitud y `puede_reaplicar = hay convocatoria activa && la última no es de la activa`.
 
 | Paso | Detalle |
 | --- | --- |
@@ -44,7 +44,7 @@ La razón social, CIF, domicilios y representante no se cambian al reaplicar: se
 | Validar mediante el convenio | `POST /documentos/:id/validar` sobre el CONVENIO | La solicitud de empresa está PENDIENTE | En **la misma transacción** valida el convenio y la solicitud (eventos `VALIDAR` de ambos, `detalle.por_convenio`) |
 | Rechazar | `…/rechazar {motivo}` | PENDIENTE (una empresa VALIDADO no se puede rechazar: 400) | RECHAZADO; evento; correo con motivo |
 | Reabrir | `…/reabrir` | RECHAZADO y convocatoria activa | PENDIENTE |
-| Rechazar el convenio de una empresa VALIDADO | `POST /documentos/:id/rechazar` | — | El convenio pasa a RECHAZADO pero **la empresa sigue VALIDADO** (decisión D6 abierta); el evento lleva `empresa_validada_sin_cambios` |
+| Rechazar el convenio de una empresa VALIDADO | `POST /documentos/:id/rechazar` | — | El convenio pasa a RECHAZADO pero **la empresa sigue VALIDADO** (pendiente de decidir); el evento lleva `empresa_validada_sin_cambios` |
 
 ## 4. Datos de la empresa
 
@@ -87,7 +87,7 @@ Motivo obligatorio; debe estar PENDIENTE; marca RECHAZADO. Se hace sin transacci
 
 ### 5.1 Añadir un ciclo — `POST /solicitudes/empresa/:id/especialidades` (personal o empresa propietaria)
 
-Convocatoria activa; `id_especialidad` de un ciclo **activo**; `cantidad ≥ 1`; que no esté ya en la solicitud (409). Sin revisión del centro y sin auditoría (D3 aplazada).
+Convocatoria activa; `id_especialidad` de un ciclo **activo**; `cantidad ≥ 1`; que no esté ya en la solicitud (409). Sin revisión del centro y sin auditoría.
 
 ### 5.2 Cambiar plazas — `PUT /solicitudes/empresa/:id/especialidades/:idOferta/cantidad` (personal o empresa propietaria)
 
@@ -107,8 +107,8 @@ flowchart TD
   G --> K[correo resumen al coordinador + aviso a cada alumno afectado]
 ```
 
-- Subir plazas no tiene límite ni revisión (D3).
-- Las cancelaciones de este camino se hacen con un `UPDATE` propio (no con `sp_cancelar_reserva`) y **no generan evento de auditoría** (DB-10).
+- Subir plazas no tiene límite ni revisión.
+- Las cancelaciones de este camino se hacen con un `UPDATE` propio (no con `sp_cancelar_reserva`) y **no generan evento de auditoría**.
 - Si entre la consulta y la cancelación una reserva elegida dejó de estar PENDIENTE → 409 y no se cambia nada.
 - `trg_dsee_bu_cupo` impide en BD bajar por debajo de las reservas activas (respaldo).
 - No se comprueba el estado de la solicitud (también se pueden cambiar plazas de una solicitud PENDIENTE o RECHAZADO; una empresa en BAJA no puede entrar, pero el personal sí podría) 🔶.

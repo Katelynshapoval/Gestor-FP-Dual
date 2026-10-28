@@ -8,8 +8,7 @@
 - **Contexto**: `empresaDatos.applyEmpresaDatos` (edición del centro y aprobación de cambios).
 - **Condición**: el domicilio o el representante que se edita lo usa también otra solicitud (normalmente de un año anterior, porque la reaplicación reutiliza los ids).
 - **Comportamiento**: se **clona** la fila y la solicitud actual pasa a apuntar al clon antes de editarla; las demás conservan los valores antiguos. Si legal y trabajo eran la misma fila: se independiza la del año actual y, si los nuevos valores de trabajo difieren de los legales, se crea una segunda fila para el trabajo.
-- **Motivo**: WF-11, que las convocatorias pasadas y sus convenios sigan mostrando lo que era cierto entonces.
-- **Referencia**: `ensureExclusiveDomicilio`, `cloneDomicilio`; prueba «WF-11: editing the coordinator freezes a copy…».
+- **Referencia**: `ensureExclusiveDomicilio`, `cloneDomicilio`.
 
 ### Copia inversa del coordinador
 - **Comportamiento**: al editar el coordinador, primero se mueven **las otras** solicitudes a un clon congelado y luego se edita la fila original.
@@ -18,7 +17,6 @@
 
 ### Datos sin historial
 - **Comportamiento**: `ge_empresas` (razón social, CIF, web, teléfono, email, observaciones) y los tutores se editan en el sitio. Las pantallas de años anteriores muestran los valores nuevos; los PDF ya generados conservan los del día.
-- **Referencia**: hallazgo DB-12 en `docs/DATABASE_AUDIT.md`.
 
 ### Cambio de CIF
 - **Comportamiento**: solo el personal (`PUT …/datos`). Se valida el formato y que no lo use otra empresa (409). La empresa no puede pedirlo (403 si `cif` viene en el cuerpo). Tras el cambio, **el login de la empresa pasa a ser el nuevo CIF**.
@@ -53,7 +51,6 @@
 
 ### Las empresas suben plazas y añaden ciclos sin revisión
 - **Comportamiento**: tanto la empresa como el centro pueden aumentar plazas o añadir ciclos activos en la convocatoria activa, sin aprobación ni auditoría, incluso con la solicitud ya VALIDADO.
-- **Motivo**: decisión D3 (fase 2) aplazada: «Do not change company quota and ciclo permissions».
 
 ### Cupos de solicitudes no validadas
 - **Comportamiento**: `updateCupoEspecialidad` y `addEspecialidad` no comprueban el estado de la solicitud; solo que sea de la convocatoria activa. El personal podría modificar cupos de una solicitud RECHAZADO o en BAJA 🔶.
@@ -68,8 +65,6 @@
 
 ### El coordinador principal no se gestiona desde Tutores (para la empresa)
 - **Comportamiento**: editar o desactivar al coordinador desde Tutores con rol EMPRESA → 403 `COORDINADOR_PRINCIPAL`. Se considera coordinador si lo es de **cualquier** solicitud de la empresa. Debe cambiarse con una solicitud de cambio de datos.
-- **Motivo**: SEC-4.
-- **Referencia**: prueba «SEC-4: a company cannot edit or deactivate its principal coordinator via Tutores».
 
 ### Asignar tutor no regenera el anexo
 - **Comportamiento**: el Anexo II/III generado lleva el tutor del momento de la generación; asignarlo después no lo cambia. Ver [documentos](documentos.md#generar-o-regenerar).

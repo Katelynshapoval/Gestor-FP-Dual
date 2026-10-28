@@ -15,24 +15,21 @@
 ### Reactivación de una fila cancelada
 - **Condición**: se vuelve a reservar un par cancelado, o una reasignación tiene como destino una oferta en la que el alumno ya estuvo y fue cancelado.
 - **Comportamiento**: se reutiliza la **misma fila** (`id_reserva`): pasa a PENDIENTE sin tipo de contrato, sin tutor ni motivo, y sus documentos se marcan `es_actual = 0` (siguen visibles en el historial del personal).
-- **Motivo**: la clave única `(alumno, oferta)` obliga a reutilizar la fila (DB-04); WF-4 asegura que no se hereden anexos ni tutor del intento anterior. La etapa 2 del plan propone una fila por intento.
-- **Consecuencias**: los documentos de varios intentos comparten `id_reserva` y solo se distinguen por fecha y `es_actual`. La reactivación no vuelve a comprobar en BD que las solicitudes sigan VALIDADO (lo hace Node antes, fuera del bloqueo: DB-05).
-- **Referencia**: `sp_reservar_alumno`, `sp_reasignar_reserva`; prueba «WF-4 / WF-5: cancel and re-book retires the old annex…».
+- **Motivo**: la clave única `(alumno, oferta)` obliga a reutilizar la fila; por eso no se heredan anexos ni tutor del intento anterior.
+- **Consecuencias**: los documentos de varios intentos comparten `id_reserva` y solo se distinguen por fecha y `es_actual`. La reactivación no vuelve a comprobar en BD que las solicitudes sigan VALIDADO (lo hace Node antes, fuera del bloqueo).
+- **Referencia**: `sp_reservar_alumno`, `sp_reasignar_reserva`.
 
 ### El tipo de contrato se pierde al cancelar
 - **Comportamiento**: todos los caminos de cancelación ponen `id_tipo_contrato = NULL` porque `trg_dr_bu_reglas` lo prohíbe en CANCELADA. La ficha de una reserva cancelada ya no sabe qué anexo correspondía y **solo lista el Calendario**.
-- **Motivo**: regla del trigger; la propuesta D5 del plan de BD lo cambiaría.
 - **Consecuencias**: el anexo de una reserva cancelada sigue con `es_actual = 1` (hasta una reactivación), pero no aparece ni en `documentos` (se elige por familia y ya no hay familia) ni en `historial` (que solo muestra `es_actual = 0` y tipos heredados). Sigue en la BD y es descargable por id.
 
 ### Cambio de familia de contrato con anexo existente
 - **Condición**: Beca ↔ (Contrato, Convenio, Otro) con un anexo de la familia actual subido o generado.
 - **Comportamiento**: si ese anexo está PENDIENTE o VALIDADO → 409 `ANEXO_EXISTENTE` (hay que rechazarlo antes). Si está RECHAZADO → el cambio se acepta y el anexo pasa a historial. Cambiar dentro de la misma familia siempre se permite, aunque haya anexo.
-- **Motivo**: decisión D2 (fase 2).
-- **Referencia**: `estadoReglas.tipoContratoCambiable`; pruebas «WF-5: changing Beca → Contrato is refused…» y «…a rejected Anexo III is retired…».
+- **Referencia**: `estadoReglas.tipoContratoCambiable`.
 
 ### Confirmar enviando otro tipo de contrato
 - **Comportamiento**: 400 `TIPO_DISTINTO`. Enviar el mismo tipo o ninguno es equivalente.
-- **Motivo**: D2: la confirmación usa el tipo **guardado**.
 
 ### Confirmación concurrente del mismo alumno
 - **Condición**: dos miembros del centro confirman a la vez dos reservas distintas del mismo alumno.
@@ -42,8 +39,7 @@
 - **Comportamiento**: los eventos `CONFIRMAR` y `CANCELAR` de las hermanas se calculan **antes** de llamar al procedimiento (consulta `otras`) y se escriben después. Si otra reserva pendiente se creara entre esa consulta y el procedimiento, se cancelaría sin evento ni aviso 🔶 (ventana muy estrecha).
 
 ### Reasignación desde una reserva confirmada
-- **Comportamiento**: se permite (WF-8). El origen pasa a CANCELADA y el destino queda **PENDIENTE**: el alumno deja de tener plaza confirmada hasta que se confirme el destino (con su propio anexo, firmas y validación). Las demás reservas pendientes del alumno no se tocan.
-- **Referencia**: prueba «WF-8: reassignment destinations include confirmed students…».
+- **Comportamiento**: se permite. El origen pasa a CANCELADA y el destino queda **PENDIENTE**: el alumno deja de tener plaza confirmada hasta que se confirme el destino (con su propio anexo, firmas y validación). Las demás reservas pendientes del alumno no se tocan.
 
 ### Reservas del centro en convocatorias pasadas
 - **Comportamiento**: `/reservas/admin` y `/reservas/:id/reasignar` no exigen convocatoria activa; basta que ambas solicitudes sigan VALIDADO y compartan convocatoria y ciclo. La empresa, en cambio, solo reserva en la activa.
@@ -59,7 +55,6 @@
 
 ### Motivo de cancelación oculto al alumno
 - **Comportamiento**: `GET /reservas/alumno` devuelve `motivo = NULL` y la ficha lo oculta al rol ALUMNO; el correo al alumno no incluye el motivo.
-- **Motivo**: SEC-11 (minimización de datos).
 
 ### Tutor en una reserva confirmada
 - **Comportamiento**: se puede asignar o cambiar (el trigger permite CONFIRMADA → CONFIRMADA). En CANCELADA, no (400).

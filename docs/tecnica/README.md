@@ -1,15 +1,13 @@
 # Documentación técnica de FP Dual
 
-Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, reglas de negocio, comportamientos especiales, API y operación. Describe **cómo funciona realmente** el sistema según el código, las migraciones y las pruebas del repositorio, en el estado posterior a la **migración 017** y la etapa 1 del plan de mejora de la base de datos (28/10/2026).
+Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, reglas de negocio, comportamientos especiales, API y operación. Describe **cómo funciona realmente** el sistema según el código, las migraciones y las pruebas del repositorio, en el estado posterior a la migración 017.
 
 ## Cómo leer esta documentación
 
 - Salvo indicación contraria, cada afirmación está **confirmada** por el código o por pruebas, con referencia al fichero o función.
 - 🔶 **Inferido**: deducido razonablemente del código, pero no verificado por completo (p. ej. comportamiento de MySQL o de un despliegue que no existe).
 - ❓ **Pendiente de confirmar**: no puede determinarse con la información del repositorio.
-- Las referencias al código usan rutas reales y nombres de funciones, sin números de línea.
-- Los nombres de tablas, columnas, endpoints, estados y códigos se mantienen tal como están en el código.
-- Si esta documentación contradice el código, **prevalece el código**; las discrepancias detectadas con la documentación anterior están en [limitaciones § 6](limitaciones-y-pendientes.md#6-discrepancias-entre-documentación-existente-y-código).
+- Si esta documentación contradice el código, **prevalece el código**; las discrepancias entre comentarios del código y comportamiento están en [limitaciones § 6](limitaciones-y-pendientes.md#6-discrepancias-entre-comentarios-del-código-y-comportamiento).
 
 ## Índice
 
@@ -30,8 +28,8 @@ Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, r
 - [Autenticación y cuentas](logica-de-negocio/autenticacion-y-cuentas.md) · [Convocatorias](logica-de-negocio/convocatorias.md) · [Solicitudes de alumno](logica-de-negocio/solicitudes-alumno.md) · [Solicitudes de empresa](logica-de-negocio/solicitudes-empresa.md) · [Tutores](logica-de-negocio/tutores-empresa.md) · [Reservas](logica-de-negocio/reservas.md) · [Documentos y firmas](logica-de-negocio/documentos-y-firmas.md) · [Baja y reactivación](logica-de-negocio/baja-y-reactivacion.md) · [Panel y seguimiento](logica-de-negocio/panel-y-seguimiento.md)
 
 ### Comportamientos especiales
-- [Índice de casos y preguntas frecuentes](comportamientos-especiales/README.md)
-- [Autenticación](comportamientos-especiales/autenticacion.md) · [Convocatorias](comportamientos-especiales/convocatorias.md) · [Solicitudes](comportamientos-especiales/solicitudes.md) · [Empresas, cupos y tutores](comportamientos-especiales/empresas.md) · [Reservas](comportamientos-especiales/reservas.md) · [Documentos](comportamientos-especiales/documentos.md) · [Bajas](comportamientos-especiales/bajas.md) · [Fallos y concurrencia](comportamientos-especiales/fallos-y-concurrencia.md)
+- [Índice](comportamientos-especiales/README.md)
+- [Solicitudes](comportamientos-especiales/solicitudes.md) · [Empresas, cupos y tutores](comportamientos-especiales/empresas.md) · [Reservas](comportamientos-especiales/reservas.md) · [Documentos](comportamientos-especiales/documentos.md) · [Fallos y concurrencia](comportamientos-especiales/fallos-y-concurrencia.md)
 
 ### API e integraciones
 - [Convenciones, errores e integraciones externas](api-e-integraciones/README.md)
@@ -78,18 +76,11 @@ Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, r
 | Baja | Retirada del programa por Administración (estado `BAJA`) |
 | Tablas protegidas | `ge_empresas`, `ge_domicilios`, `ge_contactos`, `gf_alumnosfct` (estructura intocable) |
 | Copia en escritura | Clonar datos compartidos entre convocatorias antes de editarlos |
-| D1–D8 (fase 2) / D1–D9 (plan de BD) | Decisiones de negocio y de BD de los informes ([lógica de negocio](logica-de-negocio/README.md#decisiones-de-negocio-vigentes)) |
-| SEC-, WF-, PM-, V-, DB- | Identificadores de hallazgos de [`AUDIT.md`](../AUDIT.md) y [`DATABASE_AUDIT.md`](../DATABASE_AUDIT.md) |
 
-## Otra documentación del repositorio
+## Otra documentación
 
-| Documento | Contenido |
-| --- | --- |
-| [`docs/MANUAL_DE_USUARIO.md`](../MANUAL_DE_USUARIO.md) | Manual de uso por rol (es-ES) |
-| [`docs/STATE_TRANSITIONS.md`](../STATE_TRANSITIONS.md) | Tablas de transiciones (en inglés) |
-| [`docs/AUDIT.md`](../AUDIT.md), [`docs/ROADMAP.md`](../ROADMAP.md), `docs/PHASE_*_REPORT.md` | Auditoría funcional, hoja de ruta e informes de fase (en inglés) |
-| [`docs/DATABASE_AUDIT.md`](../DATABASE_AUDIT.md), [`docs/DATABASE_IMPROVEMENT_PLAN.md`](../DATABASE_IMPROVEMENT_PLAN.md), [`docs/DATABASE_STAGE_1_REPORT.md`](../DATABASE_STAGE_1_REPORT.md) | Auditoría y plan de la base de datos (en inglés) |
-| [`db/README.md`](../../db/README.md) | Operación de migraciones, copias y verificación (en inglés) |
+- [`docs/MANUAL_DE_USUARIO.md`](../MANUAL_DE_USUARIO.md): manual de uso por rol.
+- [`db/README.md`](../../db/README.md): operación de migraciones, copias y verificación (en inglés).
 
 ## Mantenimiento de esta documentación
 

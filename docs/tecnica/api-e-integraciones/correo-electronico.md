@@ -18,8 +18,8 @@ El modo se decide al cargar el módulo y se escribe en consola al arrancar (`[co
 - Siempre **después del commit**, sin `await` en el camino de la respuesta: un fallo nunca cambia la respuesta HTTP.
 - `notificaciones.safe` captura cualquier excepción y la registra.
 - Cada función **relee** de la BD los datos que necesita, para no enviar valores de una transacción deshecha.
-- Todo valor interpolado se escapa como HTML (`html` *tagged template*, SEC-10).
-- **No** incluyen DNI/NIE, teléfonos ni el motivo libre de cancelación (SEC-11). Los motivos de **rechazo** sí se envían a quien debe corregir. Excepción: el correo de reducción de cupo a la empresa incluye nombre y **DNI** de cada alumno cancelado.
+- Todo valor interpolado se escapa como HTML (`html` *tagged template*).
+- **No** incluyen DNI/NIE, teléfonos ni el motivo libre de cancelación. Los motivos de **rechazo** sí se envían a quien debe corregir. Excepción: el correo de reducción de cupo a la empresa incluye nombre y **DNI** de cada alumno cancelado.
 - Sin dirección de destino → aviso en consola, no se envía.
 - No hay cola, reintentos ni registro persistente de envíos.
 

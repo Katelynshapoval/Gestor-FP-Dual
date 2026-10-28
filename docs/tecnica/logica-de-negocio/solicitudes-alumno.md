@@ -1,6 +1,6 @@
 # Solicitudes de alumno
 
-> Código: [`solicitudesAlumnoService.js`](../../../backend/src/services/solicitudesAlumnoService.js), [`solicitudTransiciones.js`](../../../backend/src/services/solicitudTransiciones.js), [`estadoReglas.solicitudTransicion`](../../../backend/src/services/estadoReglas.js), `sp_validar_solicitud_alumno`, `trg_dsa_*`. Frontend: [`AddDualStudent`](../../../frontend/src/pages/AddDualStudent/index.js), [`LinkStudents`](../../../frontend/src/pages/LinkStudents/index.js), [`StudentMain`](../../../frontend/src/pages/StudentMain/index.js). Pruebas: `authorization.test.js` (SEC-3), `stage1.test.js` (DB-01), `phase2.test.js` (D7).
+> Código: [`solicitudesAlumnoService.js`](../../../backend/src/services/solicitudesAlumnoService.js), [`solicitudTransiciones.js`](../../../backend/src/services/solicitudTransiciones.js), [`estadoReglas.solicitudTransicion`](../../../backend/src/services/estadoReglas.js), `sp_validar_solicitud_alumno`, `trg_dsa_*`. Frontend: [`AddDualStudent`](../../../frontend/src/pages/AddDualStudent/index.js), [`LinkStudents`](../../../frontend/src/pages/LinkStudents/index.js), [`StudentMain`](../../../frontend/src/pages/StudentMain/index.js). Pruebas: `authorization.test.js`, `stage1.test.js`, `phase2.test.js`.
 
 ## 1. Envío público — `POST /solicitudes/alumno`
 
@@ -23,7 +23,7 @@ El backend **solo normaliza** el DNI (trim + mayúsculas); la letra de control d
 ### 1.2 Transacción
 
 1. `SELECT idalumno FROM gf_alumnosfct WHERE dni = ? FOR UPDATE` (usa el índice único; bloquea solo esa fila o el hueco).
-2. Según el caso (SEC-3: un formulario público no debe sobrescribir datos de nadie):
+2. Según el caso:
 
 | Caso | Comprobación | Efecto en `gf_alumnosfct` |
 | --- | --- | --- |

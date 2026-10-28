@@ -66,9 +66,9 @@ Orden de bloqueo: oferta (`FOR UPDATE`) → reservas de la oferta → solicitud 
 3. **Par inexistente**: si ya hay confirmada o no hay plazas → error; si no, `INSERT` PENDIENTE (dispara `trg_dr_bi_reglas`).
 4. **Par existente PENDIENTE**: devuelve su id **sin cambiar nada** (idempotente en BD).
 5. **Par existente CONFIRMADA**: error «ya tiene una reserva confirmada con esta oferta».
-6. **Par existente CANCELADA** (reactivación, WF-4): mismas comprobaciones de confirmada y plazas; `UPDATE` a PENDIENTE con `id_tipo_contrato`, `id_empresa_tutor` y `motivo` a NULL; los documentos de la reserva pasan a `es_actual = 0` (historial).
+6. **Par existente CANCELADA** (reactivación): mismas comprobaciones de confirmada y plazas; `UPDATE` a PENDIENTE con `id_tipo_contrato`, `id_empresa_tutor` y `motivo` a NULL; los documentos de la reserva pasan a `es_actual = 0` (historial).
 
-No comprueba el estado VALIDADO de las solicitudes en la reactivación (ni el trigger de UPDATE): lo hace Node antes, fuera del bloqueo (DB-05).
+No comprueba el estado VALIDADO de las solicitudes en la reactivación (ni el trigger de UPDATE): lo hace Node antes, fuera del bloqueo.
 
 ### 3.2 `sp_confirmar_reserva`
 1. Bloquea la reserva; debe existir y estar PENDIENTE.
@@ -111,7 +111,7 @@ Todos señalan con `SQLSTATE '45000'`, que el backend traduce a **400 `REGLA_NEG
 
 - **Motivos sincronizados con el estado**: un `UPDATE` que cambie el estado debe poner o quitar el motivo en la misma sentencia. Por eso `REABRIR`, `BAJA` y `VALIDAR` escriben `motivo = NULL` y `REACTIVAR` a RECHAZADO repone el motivo del último evento `RECHAZAR`.
 - **El motivo de la baja no cabe en la fila** (solo se admite en RECHAZADO): se guarda en `dual_eventos` (migración 016).
-- **El tipo de contrato se pierde al cancelar** porque `trg_dr_bu_reglas` lo prohíbe en CANCELADA; todos los caminos de cancelación lo ponen a NULL (DB-04, propuesta D5 del plan de BD).
+- **El tipo de contrato se pierde al cancelar** porque `trg_dr_bu_reglas` lo prohíbe en CANCELADA; todos los caminos de cancelación lo ponen a NULL.
 
 ## 5. Transacciones
 
@@ -131,7 +131,7 @@ Todos señalan con `SQLSTATE '45000'`, que el backend traduce a **400 `REGLA_NEG
 | Cancelar (empresa) | Sentencia única en autocommit | Después |
 | Alta pública de alumno/empresa | Backend | Ninguna (el convenio generado sí registra `GENERAR`) |
 
-Un `START TRANSACTION` dentro de una transacción abierta la **confirma implícitamente** en MySQL; por eso los procedimientos con transacción propia se llaman siempre sobre el *pool* y nunca dentro de una transacción del backend (hallazgo DB-06; la etapa 2 del plan propone invertirlo).
+Un `START TRANSACTION` dentro de una transacción abierta la **confirma implícitamente** en MySQL; por eso los procedimientos con transacción propia se llaman siempre sobre el *pool* y nunca dentro de una transacción del backend.
 
 ### 5.2 Requisitos de atomicidad y lo que no es atómico
 
@@ -158,8 +158,8 @@ Atómico (todo o nada):
 | Dos subidas simultáneas del mismo documento | `SELECT padre FOR UPDATE` al inicio de `saveByClave` + `FOR UPDATE` en el procedimiento + `uq_dd_actual` | Se serializan: un documento actual y el otro archivado; si aun así colisionan → 409 `DOCUMENTO_CONCURRENTE` |
 | Dos altas públicas del mismo CIF o DNI | `SELECT … FOR UPDATE` (bloqueo de hueco) + índice único | 409 (`EMPRESA_YA_REGISTRADA` / `DUPLICADO`) o interbloqueo → 409 `CONCURRENCIA` |
 | Interbloqueo o espera de bloqueo agotada (50 s) | `mapSqlError` (017) | 409 `CONCURRENCIA`; **no hay reintento automático** |
-| Órdenes de bloqueo distintos entre procedimientos | — | Posibles interbloqueos bajo concurrencia (DB-07, sospechado, no reproducido) |
-| Comprobaciones previas en Node fuera del bloqueo (`validateReservaTargets`, guardas de subida, `missingStudentValidation`) | Repetidas en procedimiento/trigger cuando es crítico | Ventana estrecha en la reactivación de reservas (DB-05) |
+| Órdenes de bloqueo distintos entre procedimientos | — | Posibles interbloqueos bajo concurrencia |
+| Comprobaciones previas en Node fuera del bloqueo (`validateReservaTargets`, guardas de subida, `missingStudentValidation`) | Repetidas en procedimiento/trigger cuando es crítico | Ventana estrecha en la reactivación de reservas |
 | Subida de dos plantillas a la vez | `MAX(version) … FOR UPDATE` + `uq_plantilla_tipo_version` | La segunda puede fallar con `ER_DUP_ENTRY`; `plantillasService.upload` relanza el error → **500** 🔶 |
 
 ## 6. Consultas y patrones de acceso importantes

@@ -9,7 +9,7 @@ No hay registro de usuarios como tal. Las cuentas nacen así:
 | Rol | Cómo se crea | `email` | `must_change_password` |
 | --- | --- | --- | --- |
 | ALUMNO | Primer envío del formulario público de solicitud (la contraseña la elige el alumno) | NULL | 0 |
-| EMPRESA | Alta pública de la empresa (contraseña elegida; ligada al **coordinador principal**) | NULL | 0 (decisión de fase 4) |
+| EMPRESA | Alta pública de la empresa (contraseña elegida; ligada al **coordinador principal**) | NULL | 0 |
 | ADMINISTRADOR, COORDINADOR | **Fuera de la aplicación** (no hay endpoint): inserción manual en BD o `scripts/seedPruebas.js` en desarrollo | obligatorio (trigger) | según se cree |
 
 Una empresa tiene, en la práctica, **un único usuario EMPRESA** (el del coordinador del alta). No hay endpoint para crear más usuarios de empresa.
@@ -38,7 +38,7 @@ En el frontend, si `must_change_password` es verdadero, el token se guarda solo 
    - `must_change_password = 1` → 403 `PASSWORD_CHANGE_REQUIRED`, salvo en `/auth/me` y `/auth/changePassword` (`requireAuthAllowPasswordChange`).
 4. `req.user` = carga útil del token con el **rol de BD**.
 
-Efecto: desactivar una cuenta (p. ej. por una baja) o cambiar su rol expulsa al usuario en su siguiente petición, aunque su token siga sin caducar. **Cambiar la contraseña no invalida los tokens ya emitidos** (no hay versión de sesión): siguen siendo válidos hasta su caducidad ([comportamientos especiales](../comportamientos-especiales/autenticacion.md#el-cambio-de-contraseña-no-cierra-otras-sesiones)).
+Efecto: desactivar una cuenta (p. ej. por una baja) o cambiar su rol expulsa al usuario en su siguiente petición, aunque su token siga sin caducar. **Cambiar la contraseña no invalida los tokens ya emitidos** (no hay versión de sesión): siguen siendo válidos hasta su caducidad (salvo tras una contraseña temporal, que deja `must_change_password = 1` y bloquea las sesiones abiertas con 403 `PASSWORD_CHANGE_REQUIRED`). Para expulsar a alguien de inmediato hay que desactivar la cuenta; rotar `JWT_SECRET` expulsa a todos.
 
 ## 4. Cambio de contraseña — `POST /auth/changePassword`
 
@@ -72,7 +72,7 @@ Efecto: desactivar una cuenta (p. ej. por una baja) o cambiar su rol expulsa al 
 
 ## 7. Listado de usuarios — `GET /usuarios` (ADMINISTRADOR)
 
-Devuelve todos los usuarios sin hash. Ninguna pantalla lo usa (SEC-11 lo restringió a administradores). El comentario del servicio dice «admin/coordinador», pero la ruta exige ADMINISTRADOR.
+Devuelve todos los usuarios sin hash. Ninguna pantalla lo usa. El comentario del servicio dice «admin/coordinador», pero la ruta exige ADMINISTRADOR.
 
 ## 8. Sesión en el navegador
 
@@ -81,3 +81,10 @@ Devuelve todos los usuarios sin hash. Ninguna pantalla lo usa (SEC-11 lo restrin
 - Cualquier 401 de una llamada autenticada (excepto login y cambio de contraseña) emite `fpdual:session-expired`; `UserContext` borra la sesión y la página de login muestra el motivo (`ACCOUNT_DISABLED`, `SESSION_STALE` o caducada).
 - Iniciar o cerrar sesión en una pestaña se refleja en las demás (evento `storage`).
 - `RequireRole` solo redirige: sin sesión → `/login`; con rol no permitido → la página de inicio de su rol.
+
+## 9. Casos límite
+
+- **Limitador en memoria**: los contadores viven en un `Map` del proceso; se pierden al reiniciar y no se comparten entre procesos. La clave usa `req.ip` y Express no tiene `trust proxy`, así que detrás de un proxy inverso todas las peticiones compartirían IP y el límite por IP se alcanzaría entre todos los usuarios 🔶.
+- **Formulario público de alumno**: un alumno con cuenta que reenvía la solicitud con contraseña incorrecta cuenta como login fallido (clave IP + DNI); tras 5 fallos, 429. Un acierto borra el contador.
+- **Recuperación sin envío**: sin `APP_URL` en producción, o con una cuenta sin email, no se manda enlace pero la respuesta es la genérica de éxito; solo queda un aviso en consola.
+- **Emails**: `dual_usuarios.email` es NULL para EMPRESA y ALUMNO. Las notificaciones y la recuperación usan el email del coordinador (`ge_contactos`) o de la ficha del alumno (`gf_alumnosfct`); cambiar el del coordinador cambia también dónde llega la recuperación de la empresa.

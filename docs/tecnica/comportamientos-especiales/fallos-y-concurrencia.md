@@ -7,7 +7,7 @@
 - **Condición**: el `INSERT` en `dual_eventos` falla después de que el procedimiento confirmó.
 - **Comportamiento**: `recordEventAfterCommit` captura el error, escribe «[auditoría] no se pudo registrar el evento …» en consola y la petición responde con éxito.
 - **Motivo**: «the change is already durable, so a failure to log must not turn a successful request into an error» (comentario en `auditLog.js`).
-- **Consecuencias**: el historial puede tener huecos. La etapa 2 del plan propone transacciones del backend para evitarlo.
+- **Consecuencias**: el historial puede tener huecos.
 
 ### Interbloqueo o espera de bloqueo agotada
 - **Comportamiento**: `ER_LOCK_DEADLOCK` / `ER_LOCK_WAIT_TIMEOUT` → 409 `CONCURRENCIA` «Otra operación estaba modificando los mismos datos. Inténtalo de nuevo.». InnoDB ya deshizo la transacción. No hay reintento automático.
@@ -25,7 +25,7 @@
 ### El servidor de correo falla
 - **Comportamiento**: los correos se envían después del commit y sin esperar la respuesta. `notificaciones.safe` captura cualquier error y lo registra («[notificación] …: no se pudo enviar.»); los correos directos (confirmación de solicitud, convenio, reducción de cupo) tienen su propio `try/catch`. **No hay cola ni reintento**: el correo se pierde. En modo `smtp` sin `EMAIL_USER/EMAIL_PASS`, `sendMail` lanza «El correo no está configurado» y se registra igual.
 - **Consecuencias**: la operación de negocio nunca falla por el correo.
-- **Referencia**: [`notificaciones.js`](../../../backend/src/services/notificaciones.js), [`mail/config.js`](../../../backend/src/mail/config.js); prueba «notifications never throw».
+- **Referencia**: [`notificaciones.js`](../../../backend/src/services/notificaciones.js), [`mail/config.js`](../../../backend/src/mail/config.js).
 
 ### Modo de correo por defecto
 - **Comportamiento**: sin `MAIL_MODE`, el modo es `smtp` solo si `NODE_ENV=production`; en cualquier otro caso `log` (no se envía nada; se escribe una línea con el destinatario enmascarado).
@@ -34,10 +34,10 @@
 ### Generación de PDF: Chromium, plantilla o datos
 - **Condición**: Chromium no arranca (no instalado por `puppeteer`, falta de memoria), plantilla DOCX con sintaxis errónea, datos inexistentes.
 - **Comportamiento**: en `POST /documentos/generar` el error llega a `sendSqlError` → normalmente 500 (o el `status` del error: 400/404/409). En el alta y la reaplicación de empresa solo se registra en consola y la solicitud queda creada sin convenio. Se lanza **un navegador por documento** y se cierra en `finally`.
-- **Consecuencias**: generaciones simultáneas multiplican el consumo de memoria (PM-3, pendiente).
+- **Consecuencias**: generaciones simultáneas multiplican el consumo de memoria.
 
 ### Ventanas entre comprobación y bloqueo
-- **Comportamiento**: varias comprobaciones de Node se hacen con lecturas simples antes del bloqueo: `validateReservaTargets` (elegibilidad de reservas), `assertCanUpload` (estado del documento actual), `missingStudentValidation`, la carga previa de `confirmar` y el estado previo de `cancelarAdmin` (solo para el evento). Las reglas críticas se repiten bajo bloqueo en procedimientos o triggers, salvo la elegibilidad en la reactivación de reservas (DB-05) y el «documento validado no se reemplaza» (que solo comprueba Node) 🔶.
+- **Comportamiento**: varias comprobaciones de Node se hacen con lecturas simples antes del bloqueo: `validateReservaTargets` (elegibilidad de reservas), `assertCanUpload` (estado del documento actual), `missingStudentValidation`, la carga previa de `confirmar` y el estado previo de `cancelarAdmin` (solo para el evento). Las reglas críticas se repiten bajo bloqueo en procedimientos o triggers, salvo la elegibilidad en la reactivación de reservas y el «documento validado no se reemplaza» (que solo comprueba Node) 🔶.
 - **Ejemplo**: el centro valida el anexo mientras la empresa sube uno nuevo; si la subida pasa la guarda justo antes de la validación, el fichero nuevo sustituye al validado y lo devuelve a PENDIENTE 🔶.
 
 ### Alta pública y datos a medio enviar

@@ -10,7 +10,7 @@
 - **Identificadores** en la URL: enteros; `parseInt` inválido suele dar 400 «… no válido/a».
 - **Fechas**: columnas `DATE` como `'AAAA-MM-DD'`; `DATETIME` como ISO 8601 UTC.
 - **Booleanos de BD** (`activa`, `activo`, `tiene_archivo`…) llegan como `0/1` salvo donde el servicio los convierte (`convocatoria_activa`, `transportes_conocidos`).
-- **Nombres de campo heterogéneos**: algunas respuestas mezclan `snake_case` y `camelCase` y alias para compatibilidad del frontend (p. ej. `razonSocial`/`empresa`, `idAuxEmpresa`, `fechaPeticion` en `/solicitudes/empresa/todas`; PM-9 en la hoja de ruta).
+- **Nombres de campo heterogéneos**: algunas respuestas mezclan `snake_case` y `camelCase` y alias para compatibilidad del frontend (p. ej. `razonSocial`/`empresa`, `idAuxEmpresa`, `fechaPeticion` en `/solicitudes/empresa/todas`).
 
 ## 2. Formato de error
 

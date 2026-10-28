@@ -1,6 +1,6 @@
 # Reservas
 
-> Código: [`reservasService.js`](../../../backend/src/services/reservasService.js), [`estadoReglas.js`](../../../backend/src/services/estadoReglas.js) (`tipoContratoCambiable`, `reservaConfirmable`), procedimientos `sp_reservar_alumno`, `sp_cancelar_reserva`, `sp_cancelar_reserva_admin`, `sp_reasignar_reserva`, `sp_confirmar_reserva`, triggers `trg_dr_*`. Frontend: [`ReservaDetalle.jsx`](../../../frontend/src/components/reservas/ReservaDetalle.jsx), [`Reservas.jsx`](../../../frontend/src/pages/Reservas/Reservas.jsx), [`LinkStudents`](../../../frontend/src/pages/LinkStudents/index.js). Pruebas: `phase2.test.js` (WF-4, WF-5, D2), `phase3.test.js` (WF-1), `phase4.test.js` (detalle, WF-8, WF-15), `test/db/phase2.db.test.js`.
+> Código: [`reservasService.js`](../../../backend/src/services/reservasService.js), [`estadoReglas.js`](../../../backend/src/services/estadoReglas.js) (`tipoContratoCambiable`, `reservaConfirmable`), procedimientos `sp_reservar_alumno`, `sp_cancelar_reserva`, `sp_cancelar_reserva_admin`, `sp_reasignar_reserva`, `sp_confirmar_reserva`, triggers `trg_dr_*`. Frontend: [`ReservaDetalle.jsx`](../../../frontend/src/components/reservas/ReservaDetalle.jsx), [`Reservas.jsx`](../../../frontend/src/pages/Reservas/Reservas.jsx), [`LinkStudents`](../../../frontend/src/pages/LinkStudents/index.js). Pruebas: `phase2.test.js`, `phase3.test.js`, `phase4.test.js` (detalle), `test/db/phase2.db.test.js`.
 
 ## 1. Concepto
 
@@ -31,7 +31,7 @@ Igual pero **sin exigir convocatoria activa** (puede reservar en convocatorias p
 ### 2.3 Repetir y reactivar
 
 - Reservar un par que ya está **PENDIENTE** devuelve la misma reserva sin cambios en BD, pero el backend **vuelve a registrar el evento y a enviar el correo** ([comportamientos especiales](../comportamientos-especiales/reservas.md#reservar-dos-veces-el-mismo-par)).
-- Reservar un par **CANCELADA** reactiva la misma fila: PENDIENTE, sin tipo de contrato, sin tutor, sin motivo, y sus documentos pasan a historial (`es_actual = 0`) (WF-4).
+- Reservar un par **CANCELADA** reactiva la misma fila: PENDIENTE, sin tipo de contrato, sin tutor, sin motivo, y sus documentos pasan a historial (`es_actual = 0`).
 
 ## 3. Cancelar
 
@@ -49,7 +49,7 @@ En ambos casos: motivo obligatorio; `id_tipo_contrato` pasa a NULL (lo exige el 
 3. `CALL sp_reasignar_reserva` (atómico): origen → CANCELADA con el motivo; destino → PENDIENTE (fila nueva o reactivada limpia).
 4. Eventos `REASIGNAR` (origen, con `id_reserva_destino`) y `RESERVAR` (destino, con `reasignada_desde`); avisos de cancelación (alumno y empresa de origen) y de creación por el centro (alumno y empresa de destino).
 
-Funciona desde **CONFIRMADA** (WF-8): el alumno pasa a tener una reserva **PENDIENTE** en el destino y pierde la confirmación. Las destinaciones se listan con `GET /reservas/ofertas-elegibles?id_solicitud_alumno=&reasignar_desde=<id>`, que no excluye al alumno confirmado.
+Funciona desde **CONFIRMADA**: el alumno pasa a tener una reserva **PENDIENTE** en el destino y pierde la confirmación. Las destinaciones se listan con `GET /reservas/ofertas-elegibles?id_solicitud_alumno=&reasignar_desde=<id>`, que no excluye al alumno confirmado.
 
 ## 5. Tipo de contrato — `POST /reservas/:id/tipo-contrato { id_tipo_contrato }` (personal)
 

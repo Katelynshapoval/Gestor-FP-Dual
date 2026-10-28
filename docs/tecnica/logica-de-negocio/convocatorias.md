@@ -1,6 +1,6 @@
 # Convocatorias
 
-> Código: [`convocatoriasService.js`](../../../backend/src/services/convocatoriasService.js), triggers `trg_convocatorias_bi/bu_una_activa`. Pruebas: `backend/test/phase3.test.js` (WF-3), `phase4.test.js` (estado público).
+> Código: [`convocatoriasService.js`](../../../backend/src/services/convocatoriasService.js), triggers `trg_convocatorias_bi/bu_una_activa`. Pruebas: `backend/test/phase3.test.js`, `phase4.test.js` (estado público).
 
 ## 1. Activación automática por fechas — `syncConvocatoriaActiva`
 
@@ -36,7 +36,7 @@ Las operaciones de escritura leen la convocatoria activa con `getActiveConvocato
 - Mismas validaciones de fechas y solapamiento (excluyéndose a sí misma).
 - Tras guardar, sincroniza: si las nuevas fechas incluyen hoy, pasa a activa.
 
-**Discrepancia con el comentario del código**: el comentario dice «updates a future (not yet active) convocatoria», pero la única condición es no estar activa; **también se pueden editar convocatorias pasadas**, y si sus nuevas fechas incluyen hoy, se reactivan ([comportamientos especiales](../comportamientos-especiales/convocatorias.md)).
+**Discrepancia con el comentario del código**: el comentario dice «updates a future (not yet active) convocatoria», pero la única condición es no estar activa; **también se pueden editar convocatorias pasadas**, y si sus nuevas fechas incluyen hoy, se reactivan.
 
 ## 5. Lo que no existe
 

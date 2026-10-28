@@ -6,13 +6,13 @@
 
 | Elemento | Valor | Fuente |
 | --- | --- | --- |
-| Motor | MySQL 8.0 (8.0.44 en desarrollo), InnoDB en todas las tablas | [`docs/DATABASE_AUDIT.md`](../../DATABASE_AUDIT.md) § 2, `000_baseline.sql` |
+| Motor | MySQL 8.0 (8.0.44 en desarrollo), InnoDB en todas las tablas | `000_baseline.sql` |
 | Juego de caracteres | `utf8mb4` / `utf8mb4_0900_ai_ci` (comparaciones **insensibles a mayúsculas y acentos**) | `000_baseline.sql` |
 | Aislamiento | `REPEATABLE READ` (valor por defecto de InnoDB; verificado en desarrollo) | Auditoría § 2 |
 | `sql_mode` | Incluye `STRICT_TRANS_TABLES` y `ONLY_FULL_GROUP_BY` (verificado en desarrollo) | Auditoría § 2 |
 | Zona horaria | `SYSTEM` del servidor. `CURDATE()` decide qué convocatoria está activa | `convocatoriasService.syncConvocatoriaActiva` |
 | Conexión de la aplicación | Pool `mysql2` de 10 conexiones, `dateStrings: ['DATE']` | [`backend/src/db/pool.js`](../../../backend/src/db/pool.js) |
-| Cuenta usada | `root@localhost` en desarrollo (hallazgo DB-13 de la auditoría) ❓ en cualquier otro entorno | Auditoría § 10 |
+| Cuenta usada | `root@localhost` en desarrollo (de la auditoría) ❓ en cualquier otro entorno | Auditoría § 10 |
 
 `dateStrings: ['DATE']` hace que las columnas `DATE` (fechas de convocatoria, `fechaNacimiento`, `fechaconvenio`) lleguen al backend como texto `'AAAA-MM-DD'`, evitando el desplazamiento de un día al serializar a JSON en UTC. Las columnas `DATETIME` (`fecha_solicitud`, `creado_en`, `registrado_en`…) siguen llegando como `Date` de JavaScript y se serializan en ISO UTC.
 
@@ -59,7 +59,7 @@ flowchart TB
 
 - `ge_contactos` **no tiene columna de empresa**: la empresa de un contacto se deduce por `ge_contactos.iddomicilio → ge_domicilios.idempresa`. Los triggers `trg_dse_*` y la tabla `dual_empresa_tutores` compensan esta carencia ([relaciones](relaciones.md#4-relaciones-implícitas)).
 - Columnas heredadas de FCT en `gf_alumnosfct` (`idempresa`, `iddomicilio`, `idrepresentante`, `idtutorempresa`, `mesFCT`) no las usa el portal.
-- **Excepción aceptada**: la migración 015 cambió un índice de `gf_alumnosfct` (índice simple de `dni` → clave única `uq_gf_alumnosfct_dni`). El plan de mejora (decisión D1 del plan de BD) propone mantenerla porque el backend depende de ella.
+- **Excepción aceptada**: la migración 015 cambió un índice de `gf_alumnosfct` (índice simple de `dni` → clave única `uq_gf_alumnosfct_dni`). Se mantiene porque el backend depende de ella.
 
 ### 2.2 Separación identidad / participación
 
@@ -85,7 +85,7 @@ El código resuelve los estados **por nombre** (funciones `fn_id_estado_*` en BD
 | Tipo | Cantidad | Detalle |
 | --- | --- | --- |
 | Tablas | 30 (incluida `schema_migrations`) | [modelo de datos](modelo-de-datos.md) |
-| Vistas | 3: `vw_alumnos_disponibles`, `vw_cupos_empresa_disponibles`, `vw_reservas_detalle` | **Ninguna se usa** desde el backend, pruebas o scripts. Usan ids fijos (`= 2`). Su eliminación está planificada (etapa 4 del plan). |
+| Vistas | 3: `vw_alumnos_disponibles`, `vw_cupos_empresa_disponibles`, `vw_reservas_detalle` | **Ninguna se usa** desde el backend, pruebas o scripts. Usan ids fijos (`= 2`). Pendientes de eliminar. |
 | Funciones | `fn_id_estado_reserva`, `fn_id_estado_validacion`, `fn_id_tipo_documento` (nombre → id, error si no existe); `fn_reservas_activas`, `fn_cupos_disponibles` | [integridad](integridad-y-transacciones.md#2-funciones) |
 | Procedimientos | 14 en uso o heredados | [integridad](integridad-y-transacciones.md#3-procedimientos-almacenados) |
 | Triggers | 15 (14 de la auditoría + `trg_dsee_bu_cupo` de la 017) | [integridad](integridad-y-transacciones.md#4-triggers) |
@@ -97,7 +97,7 @@ Objetos obsoletos que siguen en el esquema: tabla `calendario` (2 filas con fich
 
 - El baseline carga con **ids fijos**: roles (1–4), estados de validación (1–3), estados de reserva (1–3), 13 tipos de documento, 4 tipos de contrato y 6 transportes. La migración 016 añade `BAJA`.
 - **`dual_especialidades` no está en el baseline**: son datos del centro y deben cargarse en cada entorno. Sin ellas, ninguna solicitud de alumno ni de empresa puede crearse ([`db/README.md`](../../../db/README.md)).
-- `dual_preferencias` existe pero está **vacía** en desarrollo; el formulario de alumno solo muestra preferencias si hay filas (decisión D9 del plan de BD, pendiente).
+- `dual_preferencias` existe pero está **vacía** en desarrollo; el formulario de alumno solo muestra preferencias si hay filas.
 - `dual_documento_plantillas` puede estar vacía: sin plantilla activa no se generan convenios ni anexos (los documentos deben subirse).
 
 ## 5. Cómo usa la aplicación la base de datos

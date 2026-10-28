@@ -39,7 +39,7 @@ Ciclos formativos. **No están en el baseline** (datos del centro).
 | `activa` | `GET /especialidades` solo devuelve las activas; `addEspecialidad` exige activa. El alta de solicitudes **no** comprueba `activa` (solo que exista) |
 
 ### `dual_preferencias` y `dual_solicitud_preferencias`
-Catálogo de preferencias por especialidad y elecciones del alumno (orden 1–3, PK `(id_solicitud_alumno, orden)`, `CHECK orden BETWEEN 1 AND 3`). **Únicas FK con `ON DELETE/UPDATE CASCADE`** del esquema. Catálogo vacío en desarrollo (decisión D9 del plan de BD pendiente).
+Catálogo de preferencias por especialidad y elecciones del alumno (orden 1–3, PK `(id_solicitud_alumno, orden)`, `CHECK orden BETWEEN 1 AND 3`). **Únicas FK con `ON DELETE/UPDATE CASCADE`** del esquema. Catálogo vacío en desarrollo.
 
 ## 2. Alumnos
 
@@ -54,7 +54,7 @@ Persona alumno (identidad estable entre convocatorias).
 | `telfamilia`, `observaciones` | |
 | `especialidad` VARCHAR(20) | Código de la última especialidad solicitada (campo heredado mantenido en paralelo) |
 | `id_especialidad_dual` INT FK → `dual_especialidades` | **Última** especialidad solicitada. Desde la 017 **no** es la fuente de verdad: lo es `dual_solicitudes_alumno.id_especialidad` |
-| `nacionalidad`, `fechaNacimiento` (DATE), `sexo`, `emailColegio`, `carnetDeConducir`, `tieneCoche`, `numeroSS`, `situacionLaboral`, `idiomasConocidos`, `tutorLegal`, `dniTutorLegal` | Datos personales del formulario. `numeroSS` y `dniTutorLegal` son datos sensibles en claro (hallazgo DB-14); el backend no los devuelve en listados |
+| `nacionalidad`, `fechaNacimiento` (DATE), `sexo`, `emailColegio`, `carnetDeConducir`, `tieneCoche`, `numeroSS`, `situacionLaboral`, `idiomasConocidos`, `tutorLegal`, `dniTutorLegal` | Datos personales del formulario. `numeroSS` y `dniTutorLegal` son datos sensibles en claro (); el backend no los devuelve en listados |
 | `idempresa`, `iddomicilio`, `idrepresentante`, `idtutorempresa`, `mesFCT` | Heredados de FCT, sin uso en el portal |
 
 ### `dual_solicitudes_alumno`
@@ -179,7 +179,7 @@ Documento **actual** (o histórico, si `es_actual = 0`) de un padre y tipo.
 | `padre_actual` VARCHAR(16) (generada, 017) | `'A'|'E'|'R' + id` si `es_actual = 1`, si no NULL; **UQ `uq_dd_actual (padre_actual, id_tipo_documento)`** → como mucho un documento actual por padre y tipo |
 
 ### `dual_documento_versiones`
-Copia de un fichero anterior cada vez que se sustituye (`sp_guardar_documento`): `archivo`, estado, motivo, `estado_workflow`, procedencia, `archivado_en`. **Ningún código la lee** todavía. No guarda las firmas del fichero sustituido, ni tiene FK sobre estado/usuario/plantilla, y su `id_estado_validacion` es `INT` (hallazgo DB-02).
+Copia de un fichero anterior cada vez que se sustituye (`sp_guardar_documento`): `archivo`, estado, motivo, `estado_workflow`, procedencia, `archivado_en`. **Ningún código la lee** todavía. No guarda las firmas del fichero sustituido, ni tiene FK sobre estado/usuario/plantilla, y su `id_estado_validacion` es `INT` ().
 
 ### `dual_documento_firmas`
 Una fila por documento y rol firmante.
@@ -232,7 +232,7 @@ Registro de auditoría **solo de inserción**: los triggers `trg_de_bu_inmutable
 | `motivo`, `detalle` JSON | Ids y metadatos; nunca nombres, DNI, emails ni ficheros |
 | `creado_en` DATETIME(3) | |
 
-Lo que **no** se audita: cambios de datos de empresa, cupos y ofertas, tutores y su asignación, convocatorias, plantillas, contraseñas y activación de cuentas fuera de la baja, y las cancelaciones por reducción de cupo (hallazgos DB-10/DB-11).
+Lo que **no** se audita: cambios de datos de empresa, cupos y ofertas, tutores y su asignación, convocatorias, plantillas, contraseñas y activación de cuentas fuera de la baja, y las cancelaciones por reducción de cupo ().
 
 ### `schema_migrations`
 Historial del ejecutor de migraciones: `version` CHAR(3) PK, `name`, `checksum` (SHA-256 del fichero con saltos de línea normalizados), `applied_at`, `applied_by`, `mode` (`RUN` o `MARK`).

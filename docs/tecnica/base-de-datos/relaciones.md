@@ -83,10 +83,10 @@ Relaciones que la aplicación da por hechas pero **no están declaradas** como F
 | Usuario EMPRESA → empresa | `dual_usuarios.id_contacto → ge_contactos → ge_domicilios.idempresa` ([`getCompanyIdFromUser`](../../../backend/src/helpers/dbHelpers.js)) | Toda comprobación de propiedad de una empresa depende de esta cadena |
 | Login de empresa por CIF | `ge_empresas.cif` → cualquier `dual_usuarios` EMPRESA de esa empresa (`LIMIT 1`) | Si una empresa tuviera varios usuarios EMPRESA, el elegido no es determinista 🔶 (el código solo crea uno por empresa) |
 | Tutor de la reserva ∈ empresa de la reserva | `dual_empresa_tutores.id_empresa = solicitud_empresa.id_empresa` | Solo Node (`empresaTutoresService.assignToReserva`); sin comprobación en BD |
-| Alumno y oferta de la misma convocatoria y ciclo | `sa.id_convocatoria = se.id_convocatoria`, `sa.id_especialidad = ee.id_especialidad` | `trg_dr_bi_reglas` al insertar; **no** se recomprueba al reactivar una fila cancelada (DB-05) |
+| Alumno y oferta de la misma convocatoria y ciclo | `sa.id_convocatoria = se.id_convocatoria`, `sa.id_especialidad = ee.id_especialidad` | `trg_dr_bi_reglas` al insertar; **no** se recomprueba al reactivar una fila cancelada |
 | Coordinador principal ↔ tutor | El mismo `id_contacto` en `dual_solicitudes_empresa.id_coordinador_empresa` y en `dual_empresa_tutores` | Alta de empresa y reaplicación; `es_coordinador` se calcula con `EXISTS` |
 | Evento → entidad auditada | `(entidad, id_entidad)` | `CHECK` sobre `entidad`; sin FK |
-| Familia de anexo ↔ tipo de contrato | Nombre del tipo de contrato contiene «beca» | Código (Node + `sp_confirmar_reserva`), no hay columna (DB-09) |
+| Familia de anexo ↔ tipo de contrato | Nombre del tipo de contrato contiene «beca» | Código (Node + `sp_confirmar_reserva`), no hay columna |
 | Tipo de documento ↔ padre permitido | Lista en `documentCatalogue.js` (`ambito`) | Duplicada en `trg_dd_bi/bu_reglas` |
 
 ## 5. Dependencias entre datos y efectos de las operaciones
@@ -103,8 +103,8 @@ Relaciones que la aplicación da por hechas pero **no están declaradas** como F
 | Domicilios de la empresa | Sí: la reaplicación reutiliza los ids de la solicitud anterior | **Copia en escritura**: si otra solicitud apunta al domicilio, se clona antes de editar ([`empresaDatos.ensureExclusiveDomicilio`](../../../backend/src/services/empresaDatos.js)) |
 | Representante legal | Sí | Copia en escritura (clon en el domicilio legal) |
 | Coordinador principal | Sí | **Copia inversa**: las otras solicitudes pasan a un clon congelado y el contacto original se edita en el sitio, para no romper el usuario EMPRESA ni la fila de tutor (`freezeCoordinadorForOtherSolicitudes`) |
-| `ge_empresas` (razón social, CIF, web, teléfono) | Sí | **Ninguna**: se edita en el sitio (DB-12) |
-| Tutores | Sí (por empresa) | **Ninguna**: `PATCH /tutores/:id` edita el contacto en el sitio; reservas de años anteriores muestran los datos nuevos (DB-12) |
+| `ge_empresas` (razón social, CIF, web, teléfono) | Sí | **Ninguna**: se edita en el sitio |
+| Tutores | Sí (por empresa) | **Ninguna**: `PATCH /tutores/:id` edita el contacto en el sitio; reservas de años anteriores muestran los datos nuevos |
 | Datos personales del alumno | Sí | Ninguna (una ficha por persona); los PDF ya generados conservan los datos del día |
 | Ciclo del alumno | Antes de 017 sí; ahora por solicitud | `dual_solicitudes_alumno.id_especialidad` |
 | Transportes | Por solicitud desde 014 | Solicitudes anteriores a 014 con `transportes_conocidos = 0` |
@@ -115,7 +115,7 @@ Relaciones que la aplicación da por hechas pero **no están declaradas** como F
 - La aplicación **no borra** filas de negocio: el único `DELETE` del backend es el de `dual_solicitud_empresa_transportes` al reescribir los transportes de una solicitud. No hay endpoints de borrado de alumnos, empresas, solicitudes, reservas, documentos, usuarios ni convocatorias.
 - `dual_eventos` es inmutable, y como tiene FK a `dual_usuarios`, **un usuario con eventos no puede borrarse** ni siquiera manualmente.
 - La «eliminación» funcional se expresa con estados: reserva `CANCELADA`, solicitud `RECHAZADO`/`BAJA`, documento `es_actual = 0`, tutor/usuario `activo = 0`.
-- No existe procedimiento de retención ni anonimización (hallazgo DB-14, decisión D7 del plan de BD pendiente).
+- No existe procedimiento de retención ni anonimización.
 
 ### 5.4 Impacto de los cambios más comunes
 

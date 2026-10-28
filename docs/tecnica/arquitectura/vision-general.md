@@ -46,10 +46,10 @@ flowchart LR
   EXP -- "nodemailer" --> SMTP
 ```
 
-- **Un solo proceso Node** sirve la API en `PORT` (3001 por defecto). No sirve el frontend compilado ni configura CORS: en desarrollo el *proxy* de CRA (`"proxy": "http://localhost:3001"` en `frontend/package.json`) reenvía las llamadas; en un despliegue real hace falta un proxy inverso que publique `frontend/build` y la API bajo el mismo origen 🔶 (no hay guía de despliegue en el repositorio; [`docs/ROADMAP.md`](../../ROADMAP.md) lo deja para la fase 5).
+- **Un solo proceso Node** sirve la API en `PORT` (3001 por defecto). No sirve el frontend compilado ni configura CORS: en desarrollo el *proxy* de CRA (`"proxy": "http://localhost:3001"` en `frontend/package.json`) reenvía las llamadas; en un despliegue real hace falta un proxy inverso que publique `frontend/build` y la API bajo el mismo origen 🔶 (no hay guía de despliegue en el repositorio).
 - **Sin colas ni workers.** Lo asíncrono se limita a: el programador de convocatorias (`setInterval`), el envío de correos «disparar y olvidar» tras el *commit* y la generación de PDF dentro de la propia petición. Ver [procesos](../procesos/README.md).
 - **Estado en memoria del proceso:** el limitador de intentos de login y de recuperación de contraseña ([`loginRateLimit.js`](../../../backend/src/middleware/loginRateLimit.js)). Se pierde al reiniciar y no se comparte entre procesos.
-- **No existe entorno de producción** a fecha de esta documentación (lo indica [`docs/DATABASE_IMPROVEMENT_PLAN.md`](../../DATABASE_IMPROVEMENT_PLAN.md) § 11). Todo lo verificado contra datos se hizo en la base de desarrollo local `proyecto_dual`.
+- **No existe entorno de producción** a fecha de esta documentación. Todo lo verificado contra datos se hizo en la base de desarrollo local `proyecto_dual`.
 
 ## 4. Organización del repositorio
 
@@ -78,7 +78,7 @@ db/
   migrations/NNN_*.sql       cambios posteriores (012–017)
   rollback/NNN_*.down.sql    reversión manual de cada migración
   legacy_migrations/         scripts retirados (002–011): solo historia, no ejecutar
-docs/                        auditorías, informes de fase, manual de usuario y esta documentación
+docs/                        manual de usuario y esta documentación
 ```
 
 ## 5. Arquitectura lógica
@@ -95,7 +95,7 @@ flowchart TB
   S --> DB[("MySQL<br/>tablas · procedimientos · triggers")]
 ```
 
-Las reglas de negocio se aplican **en tres niveles a la vez** (decisión de diseño documentada en [`docs/DATABASE_AUDIT.md`](../../DATABASE_AUDIT.md) § 2):
+Las reglas de negocio se aplican **en tres niveles a la vez**:
 
 1. **Node** (servicios + funciones puras de [`estadoReglas.js`](../../../backend/src/services/estadoReglas.js) y el catálogo [`documentCatalogue.js`](../../../backend/src/services/documentCatalogue.js)): devuelven errores legibles con `code` estable.
 2. **Procedimientos almacenados** (`sp_reservar_alumno`, `sp_confirmar_reserva`…): repiten las comprobaciones críticas bajo bloqueo de filas.

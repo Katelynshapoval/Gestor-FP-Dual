@@ -6,12 +6,11 @@
 - **Contexto**: `documentosStore.saveByClave` (todas las subidas y generaciones).
 - **Comportamiento**: el documento vuelve a PENDIENTE sin motivo; todas las firmas pasan a `SIN_FIRMAR` salvo la del que sube si es firmante; el fichero anterior se archiva en `dual_documento_versiones` **sin** sus firmas.
 - **Motivo**: «Signatures belong to a file: a new file starts unsigned» (comentario); impide que firmas antiguas validen un fichero nuevo.
-- **Consecuencias**: se pierde quién firmó la versión anterior (DB-02). Sustituir un Anexo firmado por dos partes obliga a recoger otra vez las tres firmas.
+- **Consecuencias**: se pierde quién firmó la versión anterior. Sustituir un Anexo firmado por dos partes obliga a recoger otra vez las tres firmas.
 
 ### Firma declarada al subir
 - **Condición**: quien sube un documento con firmantes es uno de ellos (empresa que sube Anexo II/III, Convenio o Calendario; centro que sube Calendario).
 - **Comportamiento**: su firma queda `FIRMADO` con método `SUBIDA_FIRMADA` («Declarada al subir el documento firmado»).
-- **Motivo**: decisión D1 (fase 2): la subida cuenta como atestación de quien sube, distinta de una verificación criptográfica.
 - **Ejemplo**: la empresa sube el convenio firmado → como el único firmante es EMPRESA, queda directamente «Pendiente de validar».
 
 ### Documentos generados sin firmas
@@ -20,7 +19,7 @@
 ### Exención heredada de firmas
 - **Condición**: documentos marcados con `firmas_exentas_legacy = 1` por la migración 013 (6 convenios en desarrollo).
 - **Comportamiento**: no se les exigen ni muestran firmas; al validar, el evento lo indica. **Cualquier fichero nuevo** sobre ese documento elimina la exención.
-- **Referencia**: migración 013, `documentCatalogue.signatureApplies`; prueba «D1: only rows explicitly exempted by migration 013 skip signatures».
+- **Referencia**: migración 013, `documentCatalogue.signatureApplies`.
 
 ### Firma repetida
 - **Comportamiento**: firmar algo ya firmado por el mismo rol devuelve 200 «La firma ya estaba registrada.» sin cambios ni evento.
@@ -31,12 +30,10 @@
 
 ### Validar sin todas las firmas, o un rechazado
 - **Comportamiento**: 400 `FIRMAS_PENDIENTES` con la lista («empresa, centro, alumno»), sin tocar la fila. Un documento RECHAZADO no se puede validar directamente: debe subirse otro fichero.
-- **Referencia**: prueba «WF-6: POST /documentos/:id/validar refuses missing signatures without touching the row».
 
 ### Rechazar un documento ya validado
 - **Condición**: el centro rechaza un CV/Anexo DGA de un alumno VALIDADO, el convenio de una empresa VALIDADO o el anexo de una reserva CONFIRMADA.
 - **Comportamiento**: se permite. El documento pasa a RECHAZADO y se avisa a quien debe sustituirlo, pero **la solicitud o la reserva no cambian de estado** (siguen validadas o confirmadas).
-- **Motivo**: para el convenio, decisión D6 abierta; para el resto no documentado.
 - **Consecuencias**: puede existir una reserva CONFIRMADA cuyo anexo está RECHAZADO; el frontend lo trata explícitamente (prueba «a confirmed reservation whose annex is not validated does not show a validated annex»).
 
 ### Sustituir un documento validado
@@ -44,7 +41,7 @@
 
 ### Documentos de reservas canceladas
 - **Comportamiento**: no se puede subir, generar, firmar, validar ni rechazar (400). La ficha los muestra **solo para consulta**, sin acción pendiente.
-- **Referencia**: `assertCanUpload`, `estadoReglas`, `documentosWorkflow.soloConsulta`; `docs/manual/INCIDENCIAS_DETECTADAS.md` (incidencia 1).
+- **Referencia**: `assertCanUpload`, `estadoReglas`, `documentosWorkflow.soloConsulta`.
 
 ### Anexo de la familia equivocada
 - **Comportamiento**: subir o generar el Anexo II en una reserva de beca (o al revés) → 400 «Para el tipo de contrato de esta reserva corresponde el Anexo III.». Sin tipo de contrato → 400 «El anexo II o III aparece cuando el centro indica el tipo de contrato.».
@@ -62,11 +59,11 @@
 
 ### Tipo MIME declarado por el cliente
 - **Comportamiento**: `multer` acepta el fichero si el cliente declara `application/pdf`; no se inspecciona el contenido. Las descargas se sirven siempre como `application/pdf` `inline`.
-- **Consecuencias**: la verificación del contenido y las cabeceras de descarga están planificadas (SEC-9).
+- **Consecuencias**: la verificación del contenido y las cabeceras de descarga están planificadas.
 
 ### Subidas simultáneas del mismo documento
 - **Comportamiento**: se serializan por el bloqueo del padre; el segundo fichero sustituye al primero (que queda en versiones). Si dos transacciones llegaran a insertar a la vez, `uq_dd_actual` lo impide → 409 `DOCUMENTO_CONCURRENTE` «Este documento se acaba de guardar desde otra sesión…».
-- **Referencia**: migración 017; pruebas DB-03 en `stage1.db.test.js`.
+- **Referencia**: migración 017.
 
 ### Documentos del alta pública sin evento de subida
 - **Comportamiento**: CV y Anexo DGA del formulario se guardan llamando al procedimiento directamente: tienen procedencia (`SUBIDA`, usuario, fecha) pero **no** evento `SUBIR` en `dual_eventos`. Las sustituciones posteriores sí lo tienen.

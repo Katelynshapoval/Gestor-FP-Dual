@@ -44,36 +44,36 @@
 
 | Medida | Detalle | Referencia |
 | --- | --- | --- |
-| Secreto JWT obligatorio | ≥ 32 caracteres; se rechaza el antiguo secreto del repositorio; sin él el servidor no arranca (SEC-1) | `middleware/auth.js`, `index.js` |
-| Estado de cuenta por petición | Desactivación y cambio de rol efectivos en la siguiente petición (SEC-8) | `requireAuth` |
-| Cambio de contraseña seguro | Contraseña actual obligatoria salvo cambio forzado leído de BD (SEC-2) | `authService.changePassword` |
+| Secreto JWT obligatorio | ≥ 32 caracteres; se rechaza el antiguo secreto del repositorio; sin él el servidor no arranca | `middleware/auth.js`, `index.js` |
+| Estado de cuenta por petición | Desactivación y cambio de rol efectivos en la siguiente petición | `requireAuth` |
+| Cambio de contraseña seguro | Contraseña actual obligatoria salvo cambio forzado leído de BD | `authService.changePassword` |
 | Contraseñas | bcrypt coste 10; mínimo 8 caracteres en todos los caminos | `authService`, altas, recuperación |
 | Limitación de intentos | Login, formulario de alumno con cuenta, recuperación | `loginRateLimit.js` |
 | Recuperación sin enumeración | Respuesta única, enlace de un solo uso ligado al hash, clave derivada distinta de la de sesión | `passwordResetService.js` |
-| Formulario público sin sobrescritura (SEC-3) | Alumno existente: o prueba su contraseña o solo se rellenan campos vacíos; empresa existente: 409 | `solicitudesAlumnoService`, `solicitudesEmpresaService` |
-| Coordinador protegido (SEC-4) | La empresa no lo edita desde Tutores | `empresaTutoresService` |
-| Guarda única de subidas (SEC-5) | Tipo, rol, propiedad, estado de reserva, familia, no reemplazar validados | `documentosService.assertCanUpload` |
-| Plantillas solo ADMINISTRADOR (SEC-6) | `docx-templates` ejecuta código de la plantilla | `documentosRoute` |
-| Escapado en correos (SEC-10) | `escapeHtml` en todas las interpolaciones | `notificaciones.js` |
-| Minimización (SEC-11) | Sin DNI, teléfonos ni motivo de cancelación en correos; alumnos sin motivo libre; `/usuarios` solo admin | varios |
+| Formulario público sin sobrescritura | Alumno existente: o prueba su contraseña o solo se rellenan campos vacíos; empresa existente: 409 | `solicitudesAlumnoService`, `solicitudesEmpresaService` |
+| Coordinador protegido | La empresa no lo edita desde Tutores | `empresaTutoresService` |
+| Guarda única de subidas | Tipo, rol, propiedad, estado de reserva, familia, no reemplazar validados | `documentosService.assertCanUpload` |
+| Plantillas solo ADMINISTRADOR | `docx-templates` ejecuta código de la plantilla | `documentosRoute` |
+| Escapado en correos | `escapeHtml` en todas las interpolaciones | `notificaciones.js` |
+| Minimización | Sin DNI, teléfonos ni motivo de cancelación en correos; alumnos sin motivo libre; `/usuarios` solo admin | varios |
 | SQL parametrizado | En todos los servicios | — |
 | Auditoría inmutable | `dual_eventos` con triggers que impiden modificarla | migración 013 |
-| Credenciales fuera del repositorio | `.env` ignorado; `mail/config.js` lee del entorno (V-5); `backups/` y `.pruebas.local.json` ignorados | `.gitignore` |
+| Credenciales fuera del repositorio | `.env` ignorado; `mail/config.js` lee del entorno; `backups/` y `.pruebas.local.json` ignorados | `.gitignore` |
 
 ## 4. Riesgos y limitaciones conocidos
 
-| Riesgo | Situación | Fuente |
+| Riesgo | Situación | Dónde |
 | --- | --- | --- |
-| Conexión a MySQL como `root` | Confirmado en desarrollo; rutinas y vistas `SQL SECURITY DEFINER` con `root` | DB-13 |
-| Datos personales sensibles en claro | `numeroSS`, fecha de nacimiento, DNI del tutor legal en `gf_alumnosfct` (tabla protegida); ficheros con DNI y firmas como BLOB sin cifrado a nivel de aplicación | DB-14 |
-| Sin retención ni anonimización | No se puede borrar a nadie (FK `RESTRICT` + auditoría inmutable) | DB-14, D7 del plan de BD |
+| Conexión a MySQL como `root` | Confirmado en desarrollo; rutinas y vistas `SQL SECURITY DEFINER` con `root` | BD |
+| Datos personales sensibles en claro | `numeroSS`, fecha de nacimiento, DNI del tutor legal en `gf_alumnosfct` (tabla protegida); ficheros con DNI y firmas como BLOB sin cifrado a nivel de aplicación | BD |
+| Sin retención ni anonimización | No se puede borrar a nadie (FK `RESTRICT` + auditoría inmutable) | BD |
 | Tokens en `localStorage` | Accesibles a cualquier script de la página (riesgo XSS) 🔶 | `UserContext.js` |
-| Tokens no revocables por cambio de contraseña | Ver [comportamientos especiales](comportamientos-especiales/autenticacion.md#el-cambio-de-contraseña-no-cierra-otras-sesiones) | `requireAuth` |
-| Sin límite de envíos en formularios públicos | El alta de empresa y el alta de alumno nuevo no tienen limitador ni anti-automatización (resto de SEC-7) | ROADMAP fase 5 |
-| Validación de PDF por MIME declarado | Sin inspección de contenido ni verificación de firmas (SEC-9) | `multer` |
+| Tokens no revocables por cambio de contraseña | Ver [autenticación § 3](logica-de-negocio/autenticacion-y-cuentas.md#3-validación-de-cada-petición--requireauth) | `requireAuth` |
+| Sin límite de envíos en formularios públicos | El alta de empresa y el alta de alumno nuevo no tienen limitador ni anti-automatización | formularios públicos |
+| Validación de PDF por MIME declarado | Sin inspección de contenido ni verificación de firmas | `multer` |
 | Sin cabeceras de seguridad ni CORS explícito | No hay `helmet`, CSP ni configuración CORS; depende del proxy de despliegue 🔶 | `index.js` |
 | `trust proxy` sin configurar | Afecta a la IP del limitador detrás de un proxy 🔶 | `index.js` |
-| Contraseña temporal sin auditoría | Ver [comportamientos especiales](comportamientos-especiales/autenticacion.md#contraseña-temporal-del-administrador) | `authService.resetPassword` |
+| Contraseña temporal sin auditoría | Ver [autenticación § 6](logica-de-negocio/autenticacion-y-cuentas.md#6-contraseña-temporal--post-usuariosidresetpassword-administrador) | `authService.resetPassword` |
 | Firmas no criptográficas | `CONFIRMACION_APP` / `SUBIDA_FIRMADA` son atestaciones | migración 013 |
 
 No se han encontrado credenciales en el código versionado; `backend/.env.example` solo contiene nombres de variables.
