@@ -35,19 +35,40 @@ npm run db:schema -- diff <otherSchema>
 
 Compares the schema in `.env` with another schema on the same server (DEFINER and AUTO_INCREMENT ignored). Exit code 2 when they differ.
 
+```bash
+npm run db:backup
+npm run db:backup -- verify ../backups/<file>.sql
+```
+
+Full backup of the database in `.env` with `mysqldump` (structure, data with files as hex, routines, triggers; one consistent snapshot) into `backups/` at the repository root, which Git ignores because it contains personal data. `verify` restores the file into a scratch schema `<DBNAME>_backupcheck`, compares schema, row counts and `CHECKSUM TABLE` with the live database, and drops the scratch schema. **Take and verify a backup before every migration.**
+
+```bash
+node scripts/verifyDb.js create --to NNN
+node scripts/verifyDb.js migrate --to NNN
+node scripts/verifyDb.js rollback NNN
+node scripts/verifyDb.js drop
+```
+
+Isolated verification database `<DBNAME>_verify`, built only from this folder (baseline + migrations) and filled with synthetic data by the DB tests; it never copies rows from the real database. `npm run db:schema -- diff <DBNAME>_verify` then checks that a clean install equals the development database. `DB_INTEGRATION=1 node --test test/db/stage1.db.test.js` rebuilds it, tests migration 017 (guards, rules, rollback, re-apply) and drops it again (`KEEP_VERIFY=1` keeps it).
+
 Every writing command needs `--yes`, prints the target database first, records each file in `schema_migrations` (version, checksum, user, time) and refuses to run when `NODE_ENV=production` unless `--allow-production` is also given.
 
 ## If a migration fails
 
 MySQL commits DDL statement by statement, so a failing file can be half applied. The runner stops at the failing statement, prints it and records nothing for that file. Read the error, run the matching `rollback/NNN_*.down.sql` (or only its steps for the objects that were created), fix the cause and run `up` again.
 
+Migrations 015 and 017 start with a guard procedure that checks the data and stops **before changing anything** when a new rule would be violated. When a guard stops the run, only the guard procedure itself is left behind (`sp_015_comprobar_dni`, `sp_017_comprobar`): drop it, fix the rows with the audit queries at the end of the migration file, and run `up` again.
+
 ## Rolling back
 
-Run the `.down.sql` file in MySQL Workbench (it uses `DELIMITER` like the migrations), then delete the row: `DELETE FROM schema_migrations WHERE version = 'NNN';`. Roll back in reverse order (015 → 012). Read the warnings at the top of each file first:
+Run the `.down.sql` file in MySQL Workbench (it uses `DELIMITER` like the migrations), then delete the row: `DELETE FROM schema_migrations WHERE version = 'NNN';`. Roll back in reverse order (017 → 012). Read the warnings at the top of each file first:
 
 - 013 drops the audit trail.
 - 013 and 014 need the previous backend to be deployed first.
+- 017 drops `dual_solicitudes_alumno.id_especialidad`: an application whose ciclo differs from its student's latest one loses that information (export it first), and the previous backend must be deployed first. Re-applying 017 afterwards stops at its guard until those rows are corrected by hand.
 
 ## Order of deployment
 
 The Phase 2 backend reads `dual_eventos`, `dual_documentos.firmas_exentas_legacy`, `dual_documento_firmas.metodo/firmado_por`, `dual_solicitud_empresa_transportes` and `dual_solicitudes_empresa.transportes_conocidos`. **Apply 012–015 before starting the Phase 2 backend.**
+
+Migration 017 and the Stage 1 backend (database improvement plan) go together: the backend inserts `dual_solicitudes_alumno.id_especialidad`, which only exists after 017. Stop the backend, take and verify a backup, apply 017, start the new backend.

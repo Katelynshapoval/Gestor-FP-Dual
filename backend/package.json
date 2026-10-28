@@ -7,7 +7,8 @@
     "dev": "nodemon src/index.js",
     "test": "node --test",
     "db:migrate": "node scripts/migrate.js",
-    "db:schema": "node scripts/schema.js"
+    "db:schema": "node scripts/schema.js",
+    "db:backup": "node scripts/backup.js"
   },
   "keywords": [],
   "author": "",

@@ -26,7 +26,10 @@ async function dumpSchema(conn, schema, { exclude = [] } = {}) {
       if (exclude.includes(t.name)) continue;
       if (t.type === 'VIEW') {
         const [[r]] = await conn.query(`SHOW CREATE VIEW \`${schema}\`.\`${t.name}\``);
-        objects.push({ kind: 'VIEW', name: t.name, sql: normalise(r['Create View']) });
+        // MySQL qualifies the names with the schema unless it is the connection's
+        // default one; strip it so the same view compares equal across schemas.
+        const sql = r['Create View'].split(`\`${schema}\`.`).join('');
+        objects.push({ kind: 'VIEW', name: t.name, sql: normalise(sql) });
       } else {
         const [[r]] = await conn.query(`SHOW CREATE TABLE \`${schema}\`.\`${t.name}\``);
         objects.push({ kind: 'TABLE', name: t.name, sql: normalise(r['Create Table']) });
