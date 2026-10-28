@@ -7,7 +7,7 @@ _FP Dual · 2026-10-28 · Companion document: [DATABASE_AUDIT.md](DATABASE_AUDIT
 | Stage | Status |
 | --- | --- |
 | 1 — Integrity fixes (017) | **Complete.** Verified on the isolated database, then applied to `proyecto_dual` on 2026-10-28 with your approval and verified there (branch `database-improvements`, not committed). Report: [DATABASE_STAGE_1_REPORT.md](DATABASE_STAGE_1_REPORT.md). |
-| 2 — Reservation model and transactions (018) | **Implemented and verified on the isolated database** (branch `database-improvements-stage-2`, based on the committed Stage 1). **018 is NOT applied to `proyecto_dual`**: it needs your approval. Report: [DATABASE_STAGE_2_REPORT.md](DATABASE_STAGE_2_REPORT.md). |
+| 2 — Reservation model and transactions (018) | **Complete.** Verified on the isolated database, then applied to `proyecto_dual` on 2026-10-28 with your approval and verified there (branch `database-improvements-stage-2`, not pushed). Report: [DATABASE_STAGE_2_REPORT.md](DATABASE_STAGE_2_REPORT.md). |
 | 3 — Document history and audit | Not started. |
 | 4 — Cleanup, performance, security | Not started. |
 
@@ -314,7 +314,7 @@ GRANT ALL PRIVILEGES ON proyecto_dual.* TO 'fpdual_migrator'@'localhost';
   - Eligibility is checked before places.
   - Tutor assignment and document review now lock in the same order.
 
-  On the isolated database: 21/21 real-MySQL tests, in 8 consecutive clean runs with no deadlock and no retry. Stage 1 14/14, Phase 2 6/6, mocked 94 pass (1 failure that predates Stage 1), frontend 28/28, ESLint 0, build OK, browser check OK. The rollback is exact only before any second attempt or OFERTA/TUTOR event; after that its guard refuses and only the backup restore remains. **018 not applied to `proyecto_dual` (awaiting approval).**
+  On the isolated database: 21/21 real-MySQL tests, in 8 consecutive clean runs with no deadlock and no retry. Stage 1 14/14, Phase 2 6/6, mocked 94 pass (1 failure that predates Stage 1), frontend 28/28, ESLint 0, build OK, browser check OK. The rollback is exact only before any second attempt or OFERTA/TUTOR event; after that its guard refuses and only the backup restore remains. **018 applied to `proyecto_dual` on 2026-10-28 and verified there** (clean-install diff empty, protected tables unchanged, rows unchanged, DB and read-only smoke tests pass).
 
 ### Stage 3 — Document history and audit coverage (migration 019)
 

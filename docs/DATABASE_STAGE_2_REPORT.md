@@ -2,7 +2,7 @@
 
 _FP Dual · 2026-10-28 · branch `database-improvements-stage-2` (based on the committed Stage 1, not pushed). Plan: [DATABASE_IMPROVEMENT_PLAN.md](DATABASE_IMPROVEMENT_PLAN.md). Findings: [DATABASE_AUDIT.md](DATABASE_AUDIT.md). Previous stage: [DATABASE_STAGE_1_REPORT.md](DATABASE_STAGE_1_REPORT.md)._
 
-**Status: implemented and verified on the isolated MySQL database; NOT active in `proyecto_dual`.** Migration 018 has not been applied to `proyecto_dual`, which is still at 017. Applying it needs your approval (§10). Until then the Stage 2 backend on this branch must not run against `proyecto_dual` (§9).
+**Status: complete. Migration 018 was applied to `proyecto_dual` on 2026-10-28 at 15:57 with your approval and verified (§12).** Nothing is pushed or merged; Stage 3 has not started.
 
 ## 1. Summary
 
@@ -153,7 +153,7 @@ The fix is the "offer before state change" rule plus pinned indexes and READ COM
 
 ## 9. Known limitations and risks
 
-1. **Your running dev backend.** Your `npm run dev` (nodemon on port 3001) reloads this branch's code, which needs 018, while `proyecto_dual` is at 017. Until 018 is applied, reservation screens can fail: the detail panel queries `id_reserva_origen`, and the old procedures' own transactions mix with the new helper. Options: switch the working tree back to `database-improvements` until you approve 018, or approve 018.
+1. **Branch and database must match.** `proyecto_dual` now has 018, so the backend must run from `database-improvements-stage-2` (or a branch that contains it). The Stage 1 branch `database-improvements` alone would call the new procedures without a transaction and get SQLSTATE 45001.
 2. **Manual procedure calls.** Calls from Workbench need `SET autocommit = 0; … COMMIT;` (documented in `db/README.md`).
 3. **SQLSTATE 45001** (procedure called without a transaction) surfaces as HTTP 500 by design: it is a programming error, not a user error.
 4. **Wider responses.** The detail endpoint returns `relacionadas`, and the lists return cancelled attempts as separate rows (they already did). No API field was removed; `pendientes` in the *baja* response is always empty.
@@ -161,7 +161,7 @@ The fix is the "offer before state change" rule plus pinned indexes and READ COM
 6. **Lookup ids.** The generated keys depend on PENDIENTE=1 and CONFIRMADA=2. The 018 guard checks this, and so did the pre-existing confirmed-placement key.
 7. **Hard-coded ids in Node.** `bloquearParaConfirmar` and `bajaService` use state ids 1/2 in two queries, consistent with the generated keys. A future lookup reseed must keep the ids.
 
-## 10. To activate 018 in `proyecto_dual` (needs your approval)
+## 10. Procedure to activate 018 in `proyecto_dual` (approved and carried out, see §12)
 
 - **Database identity (read-only, just now):** `proyecto_dual`, migrations 000, 012–017.
 - **Pre-flight of the 018 guards:** lookup ids 1/2/3; 0 duplicate active pairs; 0 offers over quota → 018 would apply.
@@ -176,8 +176,22 @@ The fix is the "offer before state change" rule plus pinned indexes and READ COM
 
 ## 11. Items requiring your approval
 
-1. Applying migration 018 to `proyecto_dual` (§10).
-2. What to do with your running dev backend until then (§9.1).
-3. Merging, pushing or opening a PR for `database-improvements` / `database-improvements-stage-2`: nothing has been pushed.
+1. Merging, pushing or opening a PR for `database-improvements` / `database-improvements-stage-2`: nothing has been pushed.
+2. Starting Stage 3.
 
-Stage 3 has not been started.
+## 12. Application to `proyecto_dual` (2026-10-28)
+
+| Step | Result |
+| --- | --- |
+| Identity | `proyecto_dual` @ localhost, migrations 000, 012–017, 018 pending; working tree clean on `database-improvements-stage-2`. |
+| 1. Stop the backend | Your `npm run dev` (nodemon) on 3001 stopped; the frontend dev server on 3000 left running. **The backend is not running now: start it with `npm run dev` in `backend/` (this branch).** |
+| 2. Backup | `backups/proyecto_dual_20261028_145704.sql` (896,808 bytes, timestamp UTC). Verified by restore: 30 tables, schema, row counts and checksums identical. |
+| 3. Apply | `npm run db:migrate -- up --yes --to 018`: 22 statements; recorded at 15:57:16; no pending migrations. |
+| 4. Schema | Identical to a clean install of the repository at 018 (`schema.js diff`: no differences). Guard procedure not left behind. |
+| 4. Protected tables | `ge_contactos`, `ge_domicilios`, `ge_empresas`, `gf_alumnosfct`: definitions byte-identical to the audit-time dump. |
+| 4. Post-migration queries | Old pair key absent. `id_alumno_activo` set exactly on the 9 active reservations. `id_reserva_origen` NULL on all 16. Calling a procedure with autocommit on fails with SQLSTATE 45001. |
+| 4. Data | Unchanged: 16 reservations (7 pending, 2 confirmed, 7 cancelled), 46 documents, 22 audit events, 18 + 11 applications. |
+| 4. DB tests | Phase 2 suite on `proyecto_dual`: 6/6, including re-booking as a new attempt; its temporary rows were removed and every count is identical afterwards. Stage 2 suite on a fresh isolated database: 21/21. |
+| 5. Smoke test (Stage 2 backend on port 3002 against `proyecto_dual`, seeded test accounts, read-only) | Logins 200 for staff, company (by CIF) and student. Staff lists 200 (applications 18, companies 11, reservations 16, Seguimiento, panel). Detail endpoint 200 with `relacionadas` and `id_reserva_origen` for all 16 reservations. Company and student portals 200. No error in the server log. No row or event written. |
+
+**Deliberately not exercised on `proyecto_dual`:** bookings, cancellations, quota changes and tutor changes. Each would write permanent audit events or new attempts, and the first OFERTA/TUTOR event or second attempt for a pair makes the 018 rollback impossible (§8). They are covered by the isolated tests. From the first such action onwards, the only way back is restoring `proyecto_dual_20261028_145704.sql`.
