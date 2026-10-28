@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { getJSON, postJSON, putJSON } from "../../../utils/api.js";
 import CompanyEditForm, {
+  COMPANY_SECTIONS,
   datosToForm,
 } from "../../CompanyView/CompanyEditForm.jsx";
 import CambioDiff from "../../CompanyView/CambioDiff.jsx";
 import { useToast } from "../../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../../components/ui/InlineNotice.jsx";
-import Modal from "../../../components/ui/Modal.jsx";
+import EditDialog, { countChanges } from "../../../components/forms/EditDialog.jsx";
 
 const EmpresaDatosActions = ({
   empresa,
@@ -22,6 +23,7 @@ const EmpresaDatosActions = ({
   const [cambio, setCambio] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
+  const [inicial, setInicial] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [conflict, setConflict] = useState(null);
@@ -50,7 +52,9 @@ const EmpresaDatosActions = ({
 
     try {
       const datos = await getJSON(`/solicitudes/empresa/${id}/datos`);
-      setForm(datosToForm(datos));
+      const f = datosToForm(datos);
+      setInicial(f);
+      setForm(f);
       setEditing(true);
 
       if (onEditingChange) {
@@ -221,39 +225,33 @@ const EmpresaDatosActions = ({
         </div>
       )}
 
-      <Modal
+      <EditDialog
         open={editing && Boolean(form)}
         onClose={() => {
           setEditing(false);
           setForm(null);
           if (onEditingChange) onEditingChange(false);
         }}
-        title={`Editar datos · ${empresa.empresa || "empresa"}`}
-        description="Edición directa (sin aprobación)."
-        size="xl"
-        busy={submitting}
+        subject={empresa.empresa}
+        mode="direct"
+        sections={COMPANY_SECTIONS}
+        formId={`editar-empresa-${id}`}
+        submitLabel="Guardar cambios"
+        submitting={submitting}
+        changes={countChanges(inicial, form)}
       >
         {editing && form && (
           <CompanyEditForm
             key={`admin-${id}`}
+            formId={`editar-empresa-${id}`}
             values={form}
             onChange={setForm}
             allowCif
             transports={transports}
-            submitting={submitting}
-            submitLabel="Guardar cambios"
             onSubmit={handleDirectSave}
-            onCancel={() => {
-              setEditing(false);
-              setForm(null);
-
-              if (onEditingChange) {
-                onEditingChange(false);
-              }
-            }}
           />
         )}
-      </Modal>
+      </EditDialog>
     </div>
   );
 };

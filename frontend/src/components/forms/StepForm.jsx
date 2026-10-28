@@ -271,11 +271,13 @@ export const SelectField = ({ name, label, value, onChange, error, hint, require
   );
 };
 
-export const RadioField = ({ name, label, value, onChange, error, hint, required, options }) => {
+// variant="segmented" shows the options side by side as one control (Sí / No).
+export const RadioField = ({ name, label, value, onChange, error, hint, required, options, variant, className = "" }) => {
   const id = `campo-${name}`;
   const groupId = useId();
+  const segmented = variant === "segmented";
   return (
-    <fieldset className="field" aria-describedby={describedBy(id, hint, error)} aria-invalid={error ? true : undefined}>
+    <fieldset className={`field ${className}`} aria-describedby={describedBy(id, hint, error)} aria-invalid={error ? true : undefined}>
       <legend id={groupId} className="mb-2 block text-sm font-semibold text-charcoal-800">
         {label}
         {required && <RequiredMark />}
@@ -285,9 +287,12 @@ export const RadioField = ({ name, label, value, onChange, error, hint, required
           {hint}
         </p>
       )}
-      <div className="radio-group">
+      <div className={segmented ? "segmented" : "radio-group"}>
         {options.map((o, i) => (
-          <label key={o.value} className="radio-option">
+          <label
+            key={o.value}
+            className={segmented ? `segmented-option ${value === o.value ? "checked" : ""}` : "radio-option"}
+          >
             <input
               id={i === 0 ? id : undefined}
               type="radio"
@@ -295,6 +300,7 @@ export const RadioField = ({ name, label, value, onChange, error, hint, required
               value={o.value}
               checked={value === o.value}
               onChange={(e) => onChange(name, e.target.value)}
+              className={segmented ? "sr-only" : undefined}
             />
             <span>{o.label}</span>
           </label>

@@ -4,8 +4,10 @@ import ReadField from "../../components/ui/ReadField.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
 import { getJSON, postJSON } from "../../utils/api.js";
 import { formatFecha as formatDate } from "../../utils/fechas.js";
+import InlineNotice from "../../components/ui/InlineNotice.jsx";
+import EditDialog, { countChanges } from "../../components/forms/EditDialog.jsx";
 import CambioDiff from "../CompanyView/CambioDiff.jsx";
-import AlumnoEditForm, { applyPropuesta, datosToAlumnoForm } from "./AlumnoEditForm.jsx";
+import AlumnoEditForm, { ALUMNO_SECTIONS, applyPropuesta, datosToAlumnoForm } from "./AlumnoEditForm.jsx";
 
 // The student's application and data. Corrections are sent to the centre for
 // review (same flow as companies): nothing changes until Administración
@@ -15,6 +17,8 @@ export default function MisDatos({ solicitud, onChanged }) {
   const [misDatos, setMisDatos] = useState(null);
   const [form, setForm] = useState(null);
   const [inicial, setInicial] = useState(null);
+  // What the dialog opened with (the pending request, if any), to count changes.
+  const [base, setBase] = useState(null);
   const [errores, setErrores] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,8 +39,10 @@ export default function MisDatos({ solicitud, onChanged }) {
   const editing = Boolean(form);
 
   const startEdit = () => {
+    const f = pending ? applyPropuesta(misDatos.datos, pending.propuesta) : datosToAlumnoForm(misDatos.datos);
     setInicial(datosToAlumnoForm(misDatos.datos));
-    setForm(pending ? applyPropuesta(misDatos.datos, pending.propuesta) : datosToAlumnoForm(misDatos.datos));
+    setBase(f);
+    setForm(f);
     setErrores({});
   };
 
@@ -121,21 +127,39 @@ export default function MisDatos({ solicitud, onChanged }) {
         </div>
       )}
 
-      {editing && (
-        <AlumnoEditForm
-          key={pending?.id_cambio || "new"}
-          values={form}
-          onChange={setForm}
-          inicial={inicial}
-          dni={misDatos.dni}
-          errores={errores}
-          cicloActualNombre={solicitud.especialidad}
-          submitting={submitting}
-          submitLabel={pending ? "Actualizar petición" : "Enviar para revisión"}
-          onSubmit={enviar}
-          onCancel={() => setForm(null)}
-        />
-      )}
+      <EditDialog
+        open={editing}
+        onClose={() => setForm(null)}
+        title={pending ? "Modificar petición de corrección" : "Solicitar corrección de datos"}
+        subject={solicitud.nombre}
+        mode="review"
+        sections={ALUMNO_SECTIONS}
+        notice={
+          <InlineNotice tone={pending ? "warning" : "info"}>
+            {pending
+              ? "Estás modificando tu petición pendiente. Se sustituirá por la nueva."
+              : "Cambia solo lo que sea incorrecto. Tus datos no cambian hasta que el centro revise la petición."}
+          </InlineNotice>
+        }
+        formId="corregir-mis-datos"
+        submitLabel={pending ? "Actualizar petición" : "Enviar para revisión"}
+        submitting={submitting}
+        changes={countChanges(base, form)}
+      >
+        {editing && (
+          <AlumnoEditForm
+            key={pending?.id_cambio || "new"}
+            formId="corregir-mis-datos"
+            values={form}
+            onChange={setForm}
+            inicial={inicial}
+            dni={misDatos.dni}
+            errores={errores}
+            cicloActualNombre={solicitud.especialidad}
+            onSubmit={enviar}
+          />
+        )}
+      </EditDialog>
     </>
   );
 }

@@ -70,6 +70,23 @@ test("direct edit: the DNI is read-only and the ciclo is locked by active reserv
   expect(screen.getByRole("button", { name: "Cancelar reserva" })).toBeInTheDocument();
 });
 
+test("edit dialog: saving needs a change, and closing with changes asks first", async () => {
+  adminPanel();
+  await screen.findByRole("dialog");
+  const guardar = screen.getByRole("button", { name: "Guardar cambios" });
+  expect(guardar).toBeDisabled();
+  expect(screen.getByText("Sin cambios")).toBeInTheDocument();
+  fireEvent.change(document.getElementById("campo-cp"), { target: { value: "50002" } });
+  expect(guardar).toBeEnabled();
+  expect(screen.getByText("1 campo modificado")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Seguir editando" }));
+  expect(document.getElementById("campo-cp")).toHaveValue("50002");
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Descartar" }));
+  await waitFor(() => expect(document.getElementById("campo-cp")).toBeNull());
+});
+
 test("direct edit: a new ciclo clears the preferences and the DNI is never sent", async () => {
   adminPanel();
   putJSON.mockResolvedValue({});

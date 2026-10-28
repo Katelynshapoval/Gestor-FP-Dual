@@ -9,9 +9,11 @@ import SpecialitySelector from "../AddCompanyRequest/SpecialitySelector.jsx";
 import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import CompanyEditForm, {
+  COMPANY_SECTIONS,
   applyProposed,
   datosToForm,
 } from "./CompanyEditForm.jsx";
+import EditDialog, { countChanges } from "../../components/forms/EditDialog.jsx";
 import CambioDiff from "./CambioDiff.jsx";
 import EspecialidadCuposEditor from "./EspecialidadCuposEditor.jsx";
 import TutoresEmpresa from "./TutoresEmpresa.jsx";
@@ -134,6 +136,8 @@ const MisDatos = ({
   const [reapplyDone, setReapplyDone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(() => datosToForm(solicitud));
+  // What the dialog opened with (the pending request, if any), to count changes.
+  const [base, setBase] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   if (!solicitud) {
@@ -167,11 +171,11 @@ const MisDatos = ({
     !pending && cambio?.ultimo?.estado === "RECHAZADO" ? cambio.ultimo : null;
 
   const startEdit = () => {
-    setForm(
-      pending
-        ? applyProposed(solicitud, pending.proposed)
-        : datosToForm(solicitud),
-    );
+    const f = pending
+      ? applyProposed(solicitud, pending.proposed)
+      : datosToForm(solicitud);
+    setBase(f);
+    setForm(f);
     setEditing(true);
   };
 
@@ -245,20 +249,36 @@ const MisDatos = ({
         </div>
       )}
 
-      {editing && (
-        <CompanyEditForm
-          key={pending?.id_cambio || "new"}
-          values={form}
-          onChange={setForm}
-          transports={transports}
-          submitting={submitting}
-          submitLabel={
-            pending ? "Actualizar solicitud de cambios" : "Enviar para revisión"
-          }
-          onSubmit={handleSubmitCambio}
-          onCancel={() => setEditing(false)}
-        />
-      )}
+      <EditDialog
+        open={editing}
+        onClose={() => setEditing(false)}
+        title={pending ? "Modificar solicitud de cambios" : "Editar datos"}
+        subject={solicitud.empresa || solicitud.razonSocial}
+        mode="review"
+        sections={COMPANY_SECTIONS}
+        notice={
+          <InlineNotice tone={pending ? "warning" : "info"}>
+            {pending
+              ? "Estás modificando vuestra solicitud pendiente. Se sustituirá por la nueva."
+              : "Los datos vigentes no cambian hasta que el centro apruebe la solicitud."}
+          </InlineNotice>
+        }
+        formId="editar-datos-empresa"
+        submitLabel={pending ? "Actualizar solicitud de cambios" : "Enviar para revisión"}
+        submitting={submitting}
+        changes={countChanges(base, form)}
+      >
+        {editing && (
+          <CompanyEditForm
+            key={pending?.id_cambio || "new"}
+            formId="editar-datos-empresa"
+            values={form}
+            onChange={setForm}
+            transports={transports}
+            onSubmit={handleSubmitCambio}
+          />
+        )}
+      </EditDialog>
 
       {/* Principal coordinator section */}
       <div className="form-card">

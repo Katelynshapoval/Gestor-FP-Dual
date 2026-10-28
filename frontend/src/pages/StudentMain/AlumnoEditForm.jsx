@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
+import { MdContactMail, MdDirectionsCar, MdPersonOutline, MdSchool } from "react-icons/md";
 import { publicJSON } from "../../utils/api.js";
-import ReadField from "../../components/ui/ReadField.jsx";
 import { RadioField, SelectField, TextField } from "../../components/forms/StepForm.jsx";
+import { EditGrid, EditSection, LockedField, W, focusFirstError } from "../../components/forms/EditDialog.jsx";
 
-// Student data form, shared like CompanyEditForm: Administración edits directly
-// (AlumnoDatosActions) and the student sends it for review (MisDatos).
+// Student data form, shown inside EditDialog like CompanyEditForm: Administración
+// edits directly (AlumnoDatosActions) and the student sends it for review (MisDatos).
 // The DNI/NIE is shown read-only: it is never editable. A new ciclo clears the
 // preferences, which belong to a ciclo.
+
+export const ALUMNO_SECTIONS = [
+  { id: "alu-ciclo", label: "Ciclo" },
+  { id: "alu-personales", label: "Datos personales" },
+  { id: "alu-contacto", label: "Contacto" },
+  { id: "alu-otros", label: "Movilidad y otros" },
+];
 
 export const LABELS = {
   id_especialidad: "Ciclo",
@@ -36,6 +44,10 @@ const TEXT_FIELDS = [
   "idiomasConocidos", "numeroSS", "situacionLaboral",
 ];
 const BOOL_FIELDS = ["carnetDeConducir", "tieneCoche"];
+// Order on screen, to move to the first field with an error.
+const ORDER = ["id_especialidad", "pref1", ...TEXT_FIELDS, ...BOOL_FIELDS];
+// The preferences error is shown on the first preference.
+const conPref = (e) => ({ ...e, pref1: e.preferencias });
 const REQUIRED = ["nombre", "email", "telalumno", "domicilio", "cp", "localidad"];
 const SI_NO = [
   { value: "true", label: "Sí" },
@@ -84,10 +96,8 @@ const AlumnoEditForm = ({
   cicloBloqueado = false,
   cicloAviso = null,
   cicloActualNombre,
-  submitting = false,
-  submitLabel,
+  formId,
   onSubmit,
-  onCancel,
 }) => {
   const [especialidades, setEspecialidades] = useState([]);
   const [preferencias, setPreferencias] = useState({});
@@ -148,27 +158,38 @@ const AlumnoEditForm = ({
     required: REQUIRED.includes(name),
   });
 
-  const submit = () => {
+  // Server-side errors (after saving) also move to the first wrong field.
+  useEffect(() => {
+    if (Object.keys(errores).some((k) => errores[k])) focusFirstError(conPref(errores), ORDER);
+  }, [errores]);
+
+  const submit = (event) => {
+    event.preventDefault();
     const e = requiredErrors(values);
     setFaltan(e);
-    if (!Object.keys(e).length) onSubmit(payload(values));
+    if (Object.keys(e).length) focusFirstError(conPref(e), ORDER);
+    else onSubmit(payload(values));
   };
 
   return (
-    <div className="space-y-6">
-      <div className="form-card">
-        <h2 className="form-section-title">Ciclo</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+    <form id={formId} noValidate onSubmit={submit}>
+      <EditSection
+        id="alu-ciclo"
+        icon={MdSchool}
+        title="Ciclo y preferencias"
+        description={cicloBloqueado ? undefined : "Al cambiar el ciclo se sustituyen las preferencias."}
+      >
+        <EditGrid>
           <SelectField
             {...field("id_especialidad")}
             required
             disabled={cicloBloqueado}
             options={cicloOptions}
-            hint={cicloBloqueado ? undefined : "Al cambiar el ciclo se sustituyen las preferencias."}
+            className={W.full}
           />
-        </div>
+        </EditGrid>
         {cicloAviso}
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <EditGrid className="edit-grid-3 mt-4">
           {["pref1", "pref2", "pref3"].map((p, i) => (
             <SelectField
               key={p}
@@ -181,16 +202,15 @@ const AlumnoEditForm = ({
               error={i === 0 ? errors.preferencias : undefined}
             />
           ))}
-        </div>
-      </div>
+        </EditGrid>
+      </EditSection>
 
-      <div className="form-card">
-        <h2 className="form-section-title">Datos personales</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <ReadField label="DNI / NIE" value={dni} />
-          <TextField {...field("nombre")} maxLength={100} />
-          <TextField {...field("fechaNacimiento")} type="date" />
-          <TextField {...field("nacionalidad")} maxLength={50} />
+      <EditSection id="alu-personales" icon={MdPersonOutline} title="Datos personales">
+        <EditGrid>
+          <TextField {...field("nombre")} maxLength={100} className={W.full} />
+          <LockedField label="DNI / NIE" value={dni} hint="El DNI/NIE no se puede modificar." className={W.half} />
+          <TextField {...field("fechaNacimiento")} type="date" className={W.half} />
+          <TextField {...field("nacionalidad")} maxLength={50} className={W.half} />
           <SelectField
             {...field("sexo")}
             options={[
@@ -200,53 +220,40 @@ const AlumnoEditForm = ({
                 ? [{ value: values.sexo, label: values.sexo }]
                 : []),
             ]}
+            className={W.half}
           />
-          <TextField {...field("tutorLegal")} maxLength={100} />
-          <TextField {...field("dniTutorLegal")} maxLength={15} onChange={(n, v) => set(n, v.toUpperCase())} />
-        </div>
-        <p className="field-hint mb-0 mt-2">El DNI/NIE no se puede modificar.</p>
-      </div>
+          <TextField {...field("tutorLegal")} maxLength={100} className={W.half} />
+          <TextField
+            {...field("dniTutorLegal")}
+            maxLength={15}
+            onChange={(n, v) => set(n, v.toUpperCase())}
+            className={W.half}
+          />
+        </EditGrid>
+      </EditSection>
 
-      <div className="form-card">
-        <h2 className="form-section-title">Contacto</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <TextField {...field("email")} type="email" maxLength={100} />
-          <TextField {...field("emailColegio")} type="email" maxLength={100} />
-          <TextField {...field("telalumno")} type="tel" inputMode="numeric" maxLength={9} />
-          <TextField {...field("telfamilia")} type="tel" maxLength={20} />
-          <TextField {...field("domicilio")} maxLength={255} className="md:col-span-2" />
-          <TextField {...field("cp")} inputMode="numeric" maxLength={5} />
-          <TextField {...field("localidad")} maxLength={100} />
-        </div>
-      </div>
+      <EditSection id="alu-contacto" icon={MdContactMail} title="Contacto" description="Dónde te escriben el centro y la empresa.">
+        <EditGrid>
+          <TextField {...field("email")} type="email" maxLength={100} className={W.half} />
+          <TextField {...field("emailColegio")} type="email" maxLength={100} className={W.half} />
+          <TextField {...field("telalumno")} type="tel" inputMode="numeric" maxLength={9} className={W.half} />
+          <TextField {...field("telfamilia")} type="tel" maxLength={20} className={W.half} />
+          <TextField {...field("domicilio")} maxLength={255} className={W.full} />
+          <TextField {...field("cp")} inputMode="numeric" maxLength={5} className={W.half} />
+          <TextField {...field("localidad")} maxLength={100} className={W.half} />
+        </EditGrid>
+      </EditSection>
 
-      <div className="form-card">
-        <h2 className="form-section-title">Movilidad y otros datos</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <RadioField {...field("carnetDeConducir")} options={SI_NO} />
-          <RadioField {...field("tieneCoche")} options={SI_NO} />
-          <TextField {...field("idiomasConocidos")} maxLength={255} />
-          <TextField {...field("numeroSS")} inputMode="numeric" maxLength={30} />
-          <TextField {...field("situacionLaboral")} maxLength={30} />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        {onCancel && (
-          <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={submitting}>
-            Cancelar
-          </button>
-        )}
-        <button
-          type="button"
-          className={`btn btn-primary ${submitting ? "btn-disabled" : ""}`}
-          disabled={submitting}
-          onClick={submit}
-        >
-          {submitting ? "Enviando…" : submitLabel}
-        </button>
-      </div>
-    </div>
+      <EditSection id="alu-otros" icon={MdDirectionsCar} title="Movilidad y otros datos">
+        <EditGrid>
+          <RadioField {...field("carnetDeConducir")} options={SI_NO} variant="segmented" className={W.half} />
+          <RadioField {...field("tieneCoche")} options={SI_NO} variant="segmented" className={W.half} />
+          <TextField {...field("idiomasConocidos")} maxLength={255} placeholder="Ej.: Inglés B2" className={W.full} />
+          <TextField {...field("numeroSS")} inputMode="numeric" maxLength={30} className={W.half} />
+          <TextField {...field("situacionLaboral")} maxLength={30} className={W.half} />
+        </EditGrid>
+      </EditSection>
+    </form>
   );
 };
 

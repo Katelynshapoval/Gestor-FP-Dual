@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { getJSON, postJSON, putJSON } from "../../../../utils/api.js";
-import AlumnoEditForm, { datosToAlumnoForm } from "../../../StudentMain/AlumnoEditForm.jsx";
+import AlumnoEditForm, { ALUMNO_SECTIONS, datosToAlumnoForm } from "../../../StudentMain/AlumnoEditForm.jsx";
 import CambioDiff from "../../../CompanyView/CambioDiff.jsx";
-import Modal from "../../../../components/ui/Modal.jsx";
+import EditDialog, { countChanges } from "../../../../components/forms/EditDialog.jsx";
 import MotivoDialog from "../../../../components/ui/MotivoDialog.jsx";
 import InlineNotice from "../../../../components/ui/InlineNotice.jsx";
 import { useConfirm, useToast } from "../../../../components/feedback/ToastProvider.jsx";
@@ -230,22 +230,27 @@ const AlumnoDatosActions = ({ r, onUpdated, editSignal = 0, onEditHandled, onEdi
         </div>
       )}
 
-      <Modal
+      <EditDialog
         open={editing && Boolean(info)}
         onClose={() => setEditing(false)}
-        title={`Editar datos · ${r.nombre}`}
-        description="Edición directa (sin aprobación). El DNI/NIE no se puede modificar."
-        size="xl"
-        busy={submitting}
-      >
-        {editing && info && (
-          <>
-          <InlineNotice tone="info" className="mb-6">
+        subject={r.nombre}
+        mode="direct"
+        sections={ALUMNO_SECTIONS}
+        notice={
+          <InlineNotice tone="info">
             Los documentos ya generados (convenio, anexos) conservan los datos anteriores. Si alguno depende de estos
             datos, vuelve a generarlo.
           </InlineNotice>
+        }
+        formId={`editar-alumno-${id}`}
+        submitLabel="Guardar cambios"
+        submitting={submitting}
+        changes={countChanges(inicial, form)}
+      >
+        {editing && info && (
           <AlumnoEditForm
             key={`admin-${id}`}
+            formId={`editar-alumno-${id}`}
             values={form}
             onChange={setForm}
             inicial={inicial}
@@ -255,15 +260,18 @@ const AlumnoDatosActions = ({ r, onUpdated, editSignal = 0, onEditHandled, onEdi
             cicloBloqueado={reservas.length > 0}
             cicloAviso={
               reservas.length > 0 && (
-                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                  <p className="mb-3 font-semibold">
+                <div className="mt-4 overflow-hidden rounded-lg border border-amber-200 text-sm">
+                  <p className="m-0 bg-amber-50 px-4 py-3 font-medium text-amber-950">
                     El ciclo no se puede cambiar mientras el alumno tenga reservas pendientes o confirmadas.
                   </p>
-                  <ul className="space-y-2">
+                  <ul className="m-0 list-none divide-y divide-surface-200 p-0">
                     {reservas.map((rv) => (
-                      <li key={rv.id_reserva} className="flex flex-wrap items-center justify-between gap-2">
-                        <span>
-                          {rv.empresa} · {rv.especialidad} · {label("reserva", rv.estado_reserva)}
+                      <li key={rv.id_reserva} className="flex flex-wrap items-center justify-between gap-2 bg-white px-4 py-2.5">
+                        <span className="min-w-0">
+                          <span className="font-medium text-charcoal-900">{rv.empresa}</span>
+                          <span className="text-muted">
+                            {" "}· {rv.especialidad} · {label("reserva", rv.estado_reserva)}
+                          </span>
                         </span>
                         <button type="button" className="btn btn-danger btn-sm" onClick={() => setCancelando(rv)}>
                           Cancelar reserva
@@ -274,14 +282,10 @@ const AlumnoDatosActions = ({ r, onUpdated, editSignal = 0, onEditHandled, onEdi
                 </div>
               )
             }
-            submitting={submitting}
-            submitLabel="Guardar cambios"
             onSubmit={handleDirectSave}
-            onCancel={() => setEditing(false)}
           />
-          </>
         )}
-      </Modal>
+      </EditDialog>
 
       <MotivoDialog
         open={Boolean(cancelando)}

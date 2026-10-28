@@ -1,6 +1,6 @@
 // Ways the student can reach the workplace (optional; helps preselection).
-const TransportSelector = ({ dataTransports, metodosTransporte, onToggle }) => (
-  <fieldset className="field">
+const TransportSelector = ({ dataTransports, metodosTransporte, onToggle, className = "" }) => (
+  <fieldset className={`field ${className}`}>
     <legend className="mb-1 block text-sm font-semibold text-charcoal-800">Transporte para llegar al puesto</legend>
     <p className="mb-3 text-xs leading-5 text-muted">Opcional. Ayuda al centro a proponer alumnos que puedan llegar.</p>
     <div className="checkbox-grid">
