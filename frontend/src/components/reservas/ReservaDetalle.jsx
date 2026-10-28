@@ -3,6 +3,7 @@ import {
   FaBuilding,
   FaCalendarDays,
   FaClockRotateLeft,
+  FaCodeBranch,
   FaFileContract,
   FaFileSignature,
   FaGraduationCap,
@@ -30,7 +31,11 @@ import { formatDocumentDate } from "../../utils/documentos.js";
 // Everything shown comes from GET /reservas/:id/detalle, which projects the
 // document catalogue and the Phase 2 rules for the caller's role, so a role
 // never sees an action it cannot take. The endpoints check the rules again.
-export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) {
+//
+// Since migration 018 every booking attempt is its own reservation: a cancelled
+// one stays as history and a reassignment creates a new one linked to it. The
+// panel lists those linked attempts and can switch to them.
+export default function ReservaDetalle({ idReserva: idInicial, open, onClose, onChanged }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [data, setData] = useState(null);
@@ -39,6 +44,11 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState(null); // "cancelar" | "reasignar"
   const [viewingHist, setViewingHist] = useState(null);
+  const [idReserva, setIdReserva] = useState(idInicial);
+
+  useEffect(() => {
+    setIdReserva(idInicial);
+  }, [idInicial, open]);
 
   const load = useCallback(async () => {
     if (!idReserva) return;
@@ -232,6 +242,32 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
                   )}
                 </Card>
 
+                {data.relacionadas?.length > 0 && (
+                  <Card title="Intentos relacionados" Icon={FaCodeBranch}>
+                    <ul className="m-0 list-none space-y-2 p-0">
+                      {data.relacionadas.map((x) => (
+                        <li key={x.id_reserva} className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 text-sm">
+                            <p className="m-0 text-xs font-semibold text-muted">{RELACION_LABEL[x.relacion] || "Otro intento"}</p>
+                            <p className="m-0 break-words font-medium text-charcoal-950">{x.empresa}</p>
+                            <div className="mt-1">
+                              <EstadoBadge kind="reserva" value={x.estado_reserva} />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm shrink-0"
+                            onClick={() => setIdReserva(x.id_reserva)}
+                            aria-label={`Ver la reserva de ${x.empresa} (${RELACION_LABEL[x.relacion] || "otro intento"})`}
+                          >
+                            Ver
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                )}
+
                 <Card title="Tutor de empresa" Icon={FaUserTie}>
                   {acciones.asignar_tutor?.permitido ? (
                     <TutorAssignSelect
@@ -271,9 +307,11 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
           open={dialog === "reasignar"}
           reserva={r}
           onClose={() => setDialog(null)}
-          onDone={async () => {
+          onDone={async (idNueva) => {
             setDialog(null);
-            await changed();
+            if (idNueva) setIdReserva(idNueva); // show the new attempt; the effect reloads it
+            else await load();
+            if (onChanged) await onChanged();
           }}
         />
       )}
@@ -319,7 +357,7 @@ function ReasignarDialog({ open, reserva, onClose, onDone }) {
       motivo,
     });
     toast.success(res.message || "Alumno reasignado.");
-    await onDone();
+    await onDone(res.id_reserva);
   };
 
   const confirmed = reserva.estado_reserva === "CONFIRMADA";
@@ -367,6 +405,13 @@ function ReasignarDialog({ open, reserva, onClose, onDone }) {
     </MotivoDialog>
   );
 }
+
+const RELACION_LABEL = {
+  REASIGNADA_DESDE: "Reasignada desde",
+  REASIGNADA_A: "Reasignada a",
+  INTENTO_ANTERIOR: "Intento anterior con esta oferta",
+  INTENTO_POSTERIOR: "Intento posterior con esta oferta",
+};
 
 // Header strip: who and where, with the reservation state on the right.
 function Resumen({ r }) {
