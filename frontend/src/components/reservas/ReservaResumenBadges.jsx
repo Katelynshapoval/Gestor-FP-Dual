@@ -1,16 +1,60 @@
-import { FaCalendarDays, FaFileSignature, FaHandshake } from "react-icons/fa6";
+import { FaCalendarDays, FaCheck, FaExclamation, FaFileSignature, FaHandshake, FaMinus, FaXmark } from "react-icons/fa6";
 import EstadoBadge from "../ui/EstadoBadge.jsx";
 import Tooltip from "../ui/Tooltip.jsx";
 import { anexoNombre, badge } from "../../utils/labels.js";
 
-const ICON_TONES = {
-  success: "border-green-200 bg-green-50 text-green-700",
-  warning: "border-amber-200 bg-amber-50 text-amber-700",
-  danger: "border-red-200 bg-red-50 text-red-700",
-  info: "border-blue-200 bg-blue-50 text-blue-700",
-  neutral: "border-surface-200 bg-surface-50 text-muted",
-  brand: "border-brand-200 bg-brand-50 text-brand-800",
+// Every circle looks the same; only the corner mark carries the state.
+const ICON_CLASS = "border-surface-300 bg-white text-charcoal-700";
+
+// The mark repeats the state as a shape, so it does not depend on telling
+// green, amber and red apart. "Pending" and "pending signature" share amber.
+const STATE_MARKS = {
+  success: { Icon: FaCheck, className: "bg-green-600" },
+  warning: { Icon: FaExclamation, className: "bg-amber-500" },
+  info: { Icon: FaExclamation, className: "bg-amber-500" },
+  danger: { Icon: FaXmark, className: "bg-red-600" },
+  neutral: { Icon: FaMinus, className: "bg-charcoal-300" },
 };
+
+const StateMark = ({ variant, inline = false }) => {
+  const mark = STATE_MARKS[variant] || STATE_MARKS.neutral;
+  const position = inline ? "inline-flex" : "absolute -bottom-1 -right-1 flex ring-2 ring-white";
+  return (
+    <span className={`${position} h-3.5 w-3.5 items-center justify-center rounded-full text-white ${mark.className}`}>
+      <mark.Icon className="h-2 w-2" />
+    </span>
+  );
+};
+
+// Key for the compact icons, shown once above the staff lists that use them.
+export function ReservaIconLegend({ className = "" }) {
+  const items = [
+    [FaHandshake, "Reserva"],
+    [FaFileSignature, "Anexo"],
+    [FaCalendarDays, "Calendario"],
+  ];
+  const marks = [
+    ["success", "hecho"],
+    ["warning", "pendiente"],
+    ["danger", "rechazado"],
+    ["neutral", "no aplica"],
+  ];
+  return (
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted ${className}`} aria-hidden="true">
+      {items.map(([Icon, text]) => (
+        <span key={text} className="inline-flex items-center gap-1.5">
+          <Icon className="h-3.5 w-3.5 text-charcoal-700" /> {text}
+        </span>
+      ))}
+      <span className="hidden h-3 border-l border-surface-300 sm:inline" />
+      {marks.map(([variant, text]) => (
+        <span key={variant} className="inline-flex items-center gap-1.5">
+          <StateMark variant={variant} inline /> {text}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 // Reservation state plus the REAL state of its annex and calendar (WF-15):
 // a CONFIRMADA reservation does not imply its documents exist or are signed.
@@ -71,9 +115,10 @@ export default function ReservaResumenBadges({ estado, resumen, showEstado = tru
           <Tooltip
             key={key}
             text={text}
-            className={`flex h-7 w-7 cursor-help items-center justify-center rounded-full border ${ICON_TONES[variant] || ICON_TONES.neutral}`}
+            className={`relative flex h-7 w-7 cursor-help items-center justify-center rounded-full border ${ICON_CLASS}`}
           >
             <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+            <StateMark variant={variant} />
           </Tooltip>
         ))}
       </div>

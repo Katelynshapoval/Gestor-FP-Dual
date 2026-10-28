@@ -158,7 +158,8 @@ const Panel = () => {
   const c = data?.contadores;
 
   const lista = conv && c ? tareas(c, conv) : [];
-  const grupos = conv && c ? reservas(c.reservas, conv) : [];
+  // Groups with reservations come first; empty ones stay listed but quiet.
+  const grupos = conv && c ? [...reservas(c.reservas, conv)].sort((a, b) => (b.n > 0) - (a.n > 0)) : [];
   const nadaPendiente = lista.every((t) => t.n === 0) && grupos.filter((g) => g.centro).every((g) => g.n === 0);
 
   return (
@@ -258,12 +259,14 @@ const Panel = () => {
                 <li key={g.key} className="border-b border-surface-200 last:border-b-0">
                   <Link
                     to={g.to}
-                    className="flex items-center justify-between gap-4 px-5 py-3.5 outline-none transition-colors duration-150 hover:bg-surface-50 focus-visible:bg-surface-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/30"
+                    className={`flex items-center justify-between gap-4 px-5 outline-none transition-colors duration-150 hover:bg-surface-50 focus-visible:bg-surface-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/30 ${
+                      g.n > 0 ? "py-3.5" : "bg-surface-50/60 py-2.5"
+                    }`}
                   >
                     <span className="flex min-w-0 items-center gap-3">
-                      <FaClipboardList aria-hidden="true" className="h-4 w-4 shrink-0 text-muted" />
+                      <FaClipboardList aria-hidden="true" className={`h-4 w-4 shrink-0 ${g.n > 0 ? "text-muted" : "text-charcoal-300"}`} />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-charcoal-950">{g.label}</span>
+                        <span className={`block text-sm ${g.n > 0 ? "font-semibold text-charcoal-950" : "font-medium text-muted"}`}>{g.label}</span>
                         <span className="block text-xs text-muted">
                           {g.centro ? "Acción del centro" : "Esperando a la empresa o al alumno"}
                         </span>
@@ -273,7 +276,9 @@ const Panel = () => {
                       className={`inline-flex min-w-10 items-center justify-center rounded-md border px-2.5 py-1 text-sm font-semibold ${
                         g.n > 0 && g.centro
                           ? "border-amber-200 bg-amber-50 text-amber-900"
-                          : "border-surface-200 bg-surface-50 text-charcoal-700"
+                          : g.n > 0
+                          ? "border-surface-200 bg-surface-50 text-charcoal-700"
+                          : "border-transparent text-charcoal-400"
                       }`}
                     >
                       {g.n}

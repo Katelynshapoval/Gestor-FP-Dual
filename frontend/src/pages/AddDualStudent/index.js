@@ -255,7 +255,7 @@ function AddDualStudent() {
                   autoComplete="email"
                   maxLength={60}
                   hint="El correo que te da el centro: termina en @zaragoza.salesianos.edu."
-                  placeholder="nombre.apellido@zaragoza.salesianos.edu"
+                  placeholder="Ej.: nombre.apellido@zaragoza.salesianos.edu"
                 />
                 {especialidades.status === "error" ? (
                   <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -286,12 +286,12 @@ function AddDualStudent() {
                     maxLength={10}
                     autoComplete="off"
                     hint="Con letra, sin espacios ni guiones. Es tu usuario para entrar al portal."
-                    placeholder="12345678Z"
+                    placeholder="Ej.: 12345678Z"
                     onChange={(n, val) => set(n, val.toUpperCase())}
                   />
-                  <TextField {...field("nombre")} placeholder="Nombre Apellido Apellido" required maxLength={100} autoComplete="name" />
+                  <TextField {...field("nombre")} placeholder="Nombre y dos apellidos" required maxLength={100} autoComplete="name" />
                   <TextField {...field("fechaNacimiento")} type="date" required autoComplete="bday" />
-                  <TextField {...field("nacionalidad")} required maxLength={50} placeholder="Española" />
+                  <TextField {...field("nacionalidad")} required maxLength={50} placeholder="Ej.: Española" />
                 </div>
                 <RadioField
                   {...field("sexo")}
@@ -309,7 +309,7 @@ function AddDualStudent() {
                     <div className="grid gap-x-6 md:grid-cols-2">
                       <TextField {...field("tutorLegal")} placeholder="Nombre y apellidos" required maxLength={45} />
                       <TextField
-                        {...field("dniTutorLegal")} placeholder="12345678Z"
+                        {...field("dniTutorLegal")} placeholder="Ej.: 12345678Z"
                         required
                         maxLength={10}
                         onChange={(n, val) => set(n, val.toUpperCase())}
@@ -328,9 +328,9 @@ function AddDualStudent() {
                   description="Usaremos tu email personal para avisarte de cambios en tu solicitud."
                 />
                 <div className="grid gap-x-6 md:grid-cols-2">
-                  <TextField {...field("email")} placeholder="tu.correo@gmail.com" type="email" required maxLength={100} autoComplete="email" />
+                  <TextField {...field("email")} placeholder="Ej.: tu.correo@gmail.com" type="email" required maxLength={100} autoComplete="email" />
                   <TextField
-                    {...field("telefono")} placeholder="600123456"
+                    {...field("telefono")} placeholder="Ej.: 600123456"
                     type="tel"
                     required
                     inputMode="numeric"
@@ -341,8 +341,8 @@ function AddDualStudent() {
                 </div>
                 <TextField {...field("domicilio")} required maxLength={255} autoComplete="street-address" placeholder="Calle, número, piso" />
                 <div className="grid gap-x-6 md:grid-cols-2">
-                  <TextField {...field("cp")} placeholder="50001" required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
-                  <TextField {...field("localidad")} placeholder="Zaragoza" required maxLength={100} autoComplete="address-level2" />
+                  <TextField {...field("cp")} placeholder="Ej.: 50001" required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
+                  <TextField {...field("localidad")} placeholder="Ej.: Zaragoza" required maxLength={100} autoComplete="address-level2" />
                 </div>
                 <div className="grid gap-x-6 md:grid-cols-2">
                   <RadioField
@@ -365,9 +365,9 @@ function AddDualStudent() {
                   />
                 </div>
                 <div className="grid gap-x-6 md:grid-cols-2">
-                  <TextField {...field("idiomas")} label="Idiomas y nivel" required maxLength={255} placeholder="Inglés B2, francés A2" />
+                  <TextField {...field("idiomas")} label="Idiomas y nivel" required maxLength={255} placeholder="Ej.: Inglés B2, francés A2" />
                   <TextField
-                    {...field("numeroSS")} placeholder="501234567890"
+                    {...field("numeroSS")} placeholder="Ej.: 501234567890"
                     label="Nº de la Seguridad Social (si lo tienes)"
                     inputMode="numeric"
                     maxLength={14}

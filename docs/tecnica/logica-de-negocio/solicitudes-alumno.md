@@ -105,7 +105,7 @@ Campos: ciclo, nombre y apellidos, fecha de nacimiento, nacionalidad, sexo, tuto
 **Petición del alumno** — `GET /solicitudes/alumno/mia/datos`, `POST /solicitudes/alumno/mia/cambios` (ALUMNO)
 
 1. El alumno abre «Solicitar corrección», cambia lo que esté mal y envía. Se guarda en `dual_alumno_cambios` solo lo que cambia (`payload`) y el valor que tenían esos campos (`snapshot`). Evento `CAMBIO_SOLICITADO`.
-2. Solo hay **una petición pendiente** por solicitud: mientras lo está, el alumno la modifica («Modificar petición pendiente») y se sustituye en la misma fila.
+2. Solo hay **una petición pendiente** por solicitud: mientras lo está, el alumno la modifica («Cambiar mi corrección») y se sustituye en la misma fila.
 3. Sus datos no cambian hasta que se resuelve. El portal muestra «Corrección enviada para revisión» con la tabla de cambios, o «Petición de corrección rechazada» con el motivo.
 
 **Resolución** — `GET /solicitudes/alumno/:id/cambios`, `POST …/cambios/:idCambio/aprobar { confirmar_conflicto? }`, `POST …/cambios/:idCambio/rechazar { motivo }` (ADMINISTRADOR)

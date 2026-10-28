@@ -272,22 +272,22 @@ const AddCompanyRequest = () => {
               <>
                 <StepHeading headingRef={headingRef} title="Datos de la empresa" />
                 <div className="grid gap-x-6 md:grid-cols-2">
-                  <TextField {...field("razonSocial")} placeholder="Talleres García S.L." required maxLength={100} autoComplete="organization" />
+                  <TextField {...field("razonSocial")} placeholder="Ej.: Talleres García S.L." required maxLength={100} autoComplete="organization" />
                   <TextField
                     {...field("cif")}
                     required
                     maxLength={9}
                     hint="Será el usuario para entrar al portal."
-                    placeholder="B12345678"
+                    placeholder="Ej.: B12345678"
                     onChange={(n, val) => set(n, val.toUpperCase().replace(/\s/g, ""))}
                   />
-                  <TextField {...field("telEmpresa")} placeholder="976 123 456" type="tel" maxLength={20} autoComplete="tel" />
+                  <TextField {...field("telEmpresa")} placeholder="Ej.: 976 123 456" type="tel" maxLength={20} autoComplete="tel" />
                 </div>
-                <TextField {...field("dirRazSocial")} placeholder="Calle Mayor, 12" required maxLength={255} autoComplete="street-address" />
+                <TextField {...field("dirRazSocial")} placeholder="Ej.: Calle Mayor, 12" required maxLength={255} autoComplete="street-address" />
                 <div className="grid gap-x-6 md:grid-cols-3">
-                  <TextField {...field("municipio")} placeholder="Zaragoza" required maxLength={100} autoComplete="address-level2" />
-                  <TextField {...field("provincia")} placeholder="Zaragoza" required maxLength={50} autoComplete="address-level1" />
-                  <TextField {...field("cpRazSoc")} placeholder="50001" required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
+                  <TextField {...field("municipio")} placeholder="Ej.: Zaragoza" required maxLength={100} autoComplete="address-level2" />
+                  <TextField {...field("provincia")} placeholder="Ej.: Zaragoza" required maxLength={50} autoComplete="address-level1" />
+                  <TextField {...field("cpRazSoc")} placeholder="Ej.: 50001" required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
                 </div>
               </>
             )}
@@ -300,11 +300,11 @@ const AddCompanyRequest = () => {
                   description="La persona que firma el convenio en nombre de la empresa."
                 />
                 <div className="grid gap-x-6 md:grid-cols-2">
-                  <TextField {...field("responsableLegal")} placeholder="María López García" required maxLength={100} />
-                  <TextField {...field("dniRl")} placeholder="12345678Z" required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
-                  <TextField {...field("cargo")} required maxLength={100} placeholder="Administrador único" />
-                  <TextField {...field("emailRepresentante")} placeholder="nombre@empresa.com" type="email" required maxLength={100} />
-                  <TextField {...field("telefonoRepresentante")} placeholder="600 123 456" type="tel" required maxLength={20} />
+                  <TextField {...field("responsableLegal")} placeholder="Ej.: María López García" required maxLength={100} />
+                  <TextField {...field("dniRl")} placeholder="Ej.: 12345678Z" required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
+                  <TextField {...field("cargo")} required maxLength={100} placeholder="Ej.: Administrador único" />
+                  <TextField {...field("emailRepresentante")} placeholder="Ej.: nombre@empresa.com" type="email" required maxLength={100} />
+                  <TextField {...field("telefonoRepresentante")} placeholder="Ej.: 600 123 456" type="tel" required maxLength={20} />
                 </div>
               </>
             )}
@@ -317,17 +317,17 @@ const AddCompanyRequest = () => {
                   description="Recibe los avisos y documentos del programa, gestiona el portal y queda como primer tutor de la empresa. Podréis añadir más tutores desde el portal."
                 />
                 <div className="grid gap-x-6 md:grid-cols-2">
-                  <TextField {...field("nombreCoordinador")} placeholder="Juan Pérez Martín" required maxLength={100} autoComplete="name" />
-                  <TextField {...field("dniCoordinador")} placeholder="12345678Z" required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
+                  <TextField {...field("nombreCoordinador")} placeholder="Ej.: Juan Pérez Martín" required maxLength={100} autoComplete="name" />
+                  <TextField {...field("dniCoordinador")} placeholder="Ej.: 12345678Z" required maxLength={10} onChange={(n, val) => set(n, val.toUpperCase())} />
                   <TextField
-                    {...field("emailCoordinador")} placeholder="coordinacion@empresa.com"
+                    {...field("emailCoordinador")} placeholder="Ej.: coordinacion@empresa.com"
                     type="email"
                     required
                     maxLength={100}
                     autoComplete="email"
                     hint="Aquí recibiréis el convenio y los avisos."
                   />
-                  <TextField {...field("telefonoCoordinador")} placeholder="600 123 456" type="tel" required maxLength={20} autoComplete="tel" />
+                  <TextField {...field("telefonoCoordinador")} placeholder="Ej.: 600 123 456" type="tel" required maxLength={20} autoComplete="tel" />
                 </div>
               </>
             )}
@@ -347,7 +347,7 @@ const AddCompanyRequest = () => {
                     value={v.descripcionPuesto}
                     onChange={(e) => set("descripcionPuesto", e.target.value)}
                     maxLength={500}
-                    placeholder="Montaje y mantenimiento de equipos, atención al cliente…"
+                    placeholder="Ej.: Montaje y mantenimiento de equipos, atención al cliente…"
                     aria-invalid={errors.descripcionPuesto ? true : undefined}
                     aria-describedby={`campo-descripcionPuesto-ayuda${errors.descripcionPuesto ? " campo-descripcionPuesto-error" : ""}`}
                   />
@@ -376,9 +376,9 @@ const AddCompanyRequest = () => {
                   {!v.mismoLugarTrabajo && (
                     <div className="mt-4 grid gap-x-6 md:grid-cols-2">
                       <TextField {...field("direccionLugarTrabajo")} placeholder="Calle, número, nave…" required maxLength={255} className="md:col-span-2" />
-                      <TextField {...field("municipioTrabajo")} placeholder="Zaragoza" required maxLength={100} />
-                      <TextField {...field("provinciaTrabajo")} placeholder="Zaragoza" required maxLength={50} />
-                      <TextField {...field("cpTrabajo")} placeholder="50001" required inputMode="numeric" maxLength={5} />
+                      <TextField {...field("municipioTrabajo")} placeholder="Ej.: Zaragoza" required maxLength={100} />
+                      <TextField {...field("provinciaTrabajo")} placeholder="Ej.: Zaragoza" required maxLength={50} />
+                      <TextField {...field("cpTrabajo")} placeholder="Ej.: 50001" required inputMode="numeric" maxLength={5} />
                     </div>
                   )}
                 </fieldset>

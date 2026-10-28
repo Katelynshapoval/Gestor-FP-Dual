@@ -177,12 +177,22 @@ const AdminCompanyView = () => {
     setPage(1);
   }, [q, filterEsp, filterConvenio, filterCourse, filterCambios, filterEstado, sortBy]);
 
-  const totalValidado = companies.filter((c) => c.convenio_validado).length;
-  const totalPendiente = companies.filter(
-    (c) => c.tieneConvenio && !c.convenio_validado,
-  ).length;
-  const totalSin = companies.filter((c) => !c.tieneConvenio).length;
-  const totalCambios = companies.filter((c) => c.cambio_pendiente).length;
+  // Counted within the selected convocatoria, so clicking a chip shows exactly that many.
+  const enCurso = companies.filter((c) => !filterCourse || c.convocatoria === filterCourse);
+  const totalValidado = enCurso.filter((c) => c.convenio_validado).length;
+  const totalPendiente = enCurso.filter((c) => c.tieneConvenio && !c.convenio_validado).length;
+  const totalSin = enCurso.filter((c) => !c.tieneConvenio).length;
+  const totalCambios = enCurso.filter((c) => c.cambio_pendiente).length;
+  const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+  // Each chip toggles its filter; clicking the active one clears it.
+  const chips = [
+    { key: "convenio", value: "validado", tone: "bg-green-500/10 text-green-800", Icon: IoIosCheckmarkCircleOutline, text: plural(totalValidado, "validado", "validados") },
+    { key: "convenio", value: "pendiente", tone: "bg-yellow-400/15 text-yellow-800", Icon: MdPendingActions, text: plural(totalPendiente, "pendiente", "pendientes") },
+    { key: "convenio", value: "sin_convenio", tone: "bg-red-500/10 text-red-800", Icon: MdOutlineCancel, text: `${totalSin} sin convenio` },
+    ...(totalCambios
+      ? [{ key: "cambios", value: "pendiente", tone: "bg-amber-100 text-amber-800", Icon: MdPendingActions, text: plural(totalCambios, "cambio pendiente", "cambios pendientes") }]
+      : []),
+  ];
 
   if (loading)
     return (
@@ -213,30 +223,23 @@ const AdminCompanyView = () => {
         subtitle="Solicitudes de empresa, convenios, ciclos y plazas, tutores y cambios de datos."
         actions={
           <div className="flex flex-wrap gap-2 text-xs">
-            <span
-              className={`${signedBadgeClass} bg-green-500/10 text-green-800`}
-            >
-              <IoIosCheckmarkCircleOutline /> {totalValidado} validado
-              {totalValidado !== 1 ? "s" : ""}
-            </span>
-            <span
-              className={`${signedBadgeClass} bg-yellow-400/15 text-yellow-800`}
-            >
-              <MdPendingActions /> {totalPendiente} pendiente
-              {totalPendiente !== 1 ? "s" : ""}
-            </span>
-            <span className={`${signedBadgeClass} bg-red-500/10 text-red-800`}>
-              <MdOutlineCancel /> {totalSin} sin convenio
-            </span>
-            {totalCambios ? (
-              <span
-                className={`${signedBadgeClass} bg-amber-100 text-amber-800`}
-              >
-                <MdPendingActions /> {totalCambios} cambio
-                {totalCambios !== 1 ? "s" : ""} pendiente
-                {totalCambios !== 1 ? "s" : ""}
-              </span>
-            ) : null}
+            {chips.map(({ key, value, tone, Icon, text }) => {
+              const on = filters[key] === value;
+              return (
+                <button
+                  key={`${key}-${value}`}
+                  type="button"
+                  aria-pressed={on}
+                  title={on ? "Quitar este filtro" : "Filtrar la lista"}
+                  onClick={() => setFilter(key, on ? "" : value)}
+                  className={`${signedBadgeClass} ${tone} cursor-pointer transition-shadow hover:ring-1 hover:ring-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
+                    on ? "ring-2 ring-current" : ""
+                  }`}
+                >
+                  <Icon aria-hidden="true" /> {text}
+                </button>
+              );
+            })}
           </div>
         }
       />

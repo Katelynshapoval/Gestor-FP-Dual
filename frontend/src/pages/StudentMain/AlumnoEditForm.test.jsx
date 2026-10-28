@@ -138,5 +138,5 @@ test("student: sends a correction for review and sees it pending", async () => {
   expect(body.cp).toBe("50002");
   expect(body.dni).toBeUndefined();
   expect(await screen.findByText("Corrección enviada para revisión")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Modificar petición pendiente" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Cambiar mi corrección" })).toBeInTheDocument();
 });

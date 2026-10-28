@@ -1101,7 +1101,7 @@ Si algún dato tuyo es incorrecto (teléfono, domicilio, email, ciclo…), puede
 2. Se abre la [ventana de edición](#botones) con tus datos, marcada «Se envía al centro para revisión». Cambia **solo** lo que esté mal.
 3. Pulsa **«Enviar para revisión»**. Verás el aviso «Hemos recibido tu petición. El centro la revisará.»
 
-Mientras está pendiente, aparece el recuadro **«Corrección enviada para revisión»** con la tabla de lo que has pedido. Si te has equivocado, pulsa **«Modificar petición pendiente»**, cambia lo necesario y pulsa **«Actualizar petición»**: la nueva sustituye a la anterior.
+Mientras está pendiente, aparece el recuadro **«Corrección enviada para revisión»** con la tabla de lo que has pedido. Si te has equivocado, pulsa **«Cambiar mi corrección»**, cambia lo necesario y pulsa **«Actualizar petición»**: la nueva sustituye a la anterior.
 
 Cuando el centro la revisa, te llega un correo. Si la aprueba, tus datos ya aparecen corregidos. Si la rechaza, verás **«Petición de corrección rechazada»** con el motivo.
 

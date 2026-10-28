@@ -153,7 +153,6 @@ export default function EditDialog({
       size="lg"
       bodyClassName="bg-surface-50"
       busy={submitting}
-      closeOnOverlay={false}
       initialFocusRef={firstField}
       footer={
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

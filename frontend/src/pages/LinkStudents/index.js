@@ -5,6 +5,7 @@ import StudentCard from "./components/StudentCard";
 import { useLinkStudents } from "./hooks/useLinkStudents";
 import PageHeader from "../../components/ui/PageHeader";
 import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
+import { ReservaIconLegend } from "../../components/reservas/ReservaResumenBadges.jsx";
 
 // What a company sees instead of the list when it cannot reserve yet (WF-14).
 const COMPANY_STATE = {
@@ -179,6 +180,7 @@ const LinkStudents = () => {
             </StateCard>
           ) : (
             <>
+              {!isEmpresa && <ReservaIconLegend className="px-1" />}
               {pageItems.map((r) => (
                 <StudentCard
                   key={r.id_solicitud_alumno}

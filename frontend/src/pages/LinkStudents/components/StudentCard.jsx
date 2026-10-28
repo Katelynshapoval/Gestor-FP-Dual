@@ -44,16 +44,19 @@ function reservaDeReferencia(reservas = []) {
   );
 }
 
-// Compact chips showing which companies have reserved this student (with status icons)
-const ReservasChips = ({ reservas }) => {
-  if (!reservas || reservas.length === 0) return null;
+// Compact chips showing which companies have reserved this student (with status icons).
+// The confirmed reservation already has its own badge, so it is left out here.
+const ReservasChips = ({ reservas, excludeId }) => {
+  const visibles = (reservas || []).filter((rv) => rv.id_reserva !== excludeId);
+  if (visibles.length === 0) return null;
+  const extra = visibles.length - 3;
   return (
     <>
-      {reservas.slice(0, 3).map((rv) => (
+      {visibles.slice(0, 3).map((rv) => (
         <span
           key={rv.id_reserva}
-          className={empresaChipClass}
-          title={label("reserva", rv.estado_reserva)}
+          className={`${empresaChipClass} max-w-[11rem]`}
+          title={`${rv.empresa} · ${label("reserva", rv.estado_reserva)}`}
         >
           {isConfirmedReserva(rv.estado_reserva) && (
             <IoIosCheckmarkCircleOutline className="text-green-600 text-[11px]" />
@@ -64,9 +67,14 @@ const ReservasChips = ({ reservas }) => {
           {isCancelledReserva(rv.estado_reserva) && (
             <MdOutlineCancel className="text-red-500 text-[11px]" />
           )}
-          {rv.empresa?.substring(0, 14)}
+          <span className="truncate">{rv.empresa}</span>
         </span>
       ))}
+      {extra > 0 && (
+        <span className={empresaChipClass} title={`${extra} reservas más`}>
+          +{extra}
+        </span>
+      )}
     </>
   );
 };
@@ -216,7 +224,7 @@ const StudentCard = ({
                 />
               )}
 
-              <ReservasChips reservas={r.reservas} />
+              <ReservasChips reservas={r.reservas} excludeId={confirmedReserva?.id_reserva} />
             </div>
           ) : (
             <ReservaButton

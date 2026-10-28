@@ -83,9 +83,6 @@ const DrawerLink = ({ item, active, onNavigate }) => {
   );
 };
 
-const accountBtn =
-  "group relative flex h-11 w-full items-center overflow-hidden rounded-lg border border-white/10 bg-white/5 px-3 text-white/85 outline-none transition-[background-color,border-color,color] duration-150 ease-out hover:border-brand-400/50 hover:bg-brand-500/15 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-300/70 motion-reduce:transition-none";
-
 function Header({ sidebarCollapsed = false, onSidebarToggle }) {
   const { user, logout } = useUser();
   const { pathname } = useLocation();
@@ -192,6 +189,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
           </ul>
         </nav>
 
+        {/* Logging out lives in the top bar ("Salir"), so it appears once on desktop. */}
         {showAccount && (
           <div className="mt-5 flex flex-col gap-1.5 border-t border-white/10 pt-4">
             <SidebarLink
@@ -199,25 +197,6 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
               active={pathname === "/cambiarPassword"}
               collapsed={sidebarCollapsed}
             />
-            <button
-              type="button"
-              onClick={handleLogout}
-              aria-label="Cerrar sesión"
-              title={sidebarCollapsed ? "Cerrar sesión" : undefined}
-              className={accountBtn}
-            >
-              <FaRightFromBracket
-                aria-hidden="true"
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/55 group-hover:text-white"
-              />
-              <span
-                className={`pointer-events-none absolute left-10 right-3 truncate whitespace-nowrap text-left text-sm font-semibold transition-opacity duration-200 motion-reduce:transition-none ${
-                  sidebarCollapsed ? "opacity-0" : "opacity-100"
-                }`}
-              >
-                Cerrar sesión
-              </span>
-            </button>
           </div>
         )}
       </aside>

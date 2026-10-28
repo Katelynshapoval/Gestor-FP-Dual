@@ -100,12 +100,14 @@ export default function MisDatos({ solicitud, onChanged }) {
           <p className="text-sm text-muted">
             {misDatos?.editable === false
               ? misDatos.motivo_no_editable
-              : "Si algún dato es incorrecto, pide la corrección. El centro la revisará antes de aplicarla."}
+              : pending
+                ? "Ya enviaste una corrección. Puedes cambiarla mientras el centro no la haya revisado."
+                : "Si algún dato es incorrecto, pide la corrección. El centro la revisará antes de aplicarla."}
           </p>
         </div>
         {misDatos?.editable && !editing && (
-          <button type="button" className="btn btn-primary" onClick={startEdit}>
-            {pending ? "Modificar petición pendiente" : "Solicitar corrección"}
+          <button type="button" className="btn btn-secondary" onClick={startEdit}>
+            {pending ? "Cambiar mi corrección" : "Solicitar corrección"}
           </button>
         )}
       </div>

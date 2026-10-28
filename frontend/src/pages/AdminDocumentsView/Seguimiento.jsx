@@ -580,61 +580,58 @@ function DocumentRow({
   const date = shortDate(item.fecha);
   const firmas = item.firmas || [];
 
+  // When the responsible party is also the one the document waits on, say it once.
+  const responsable = item.responsable_label;
+  const mismoActor = responsable && pending.length === 1 && pending[0].toLowerCase() === responsable.toLowerCase();
+  const meta = [
+    responsable && !mismoActor && `Responsable: ${responsable}`,
+    origin,
+    date,
+  ].filter(Boolean);
+
   return (
-    <article className="rounded-xl2 border border-surface-200 bg-white px-4 py-3.5 shadow-card">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-display text-base font-semibold text-charcoal-950">{item.nombre}</h3>
-          <p className="mt-0.5 break-words text-sm text-charcoal-800">{lines.title}</p>
-          {lines.detail && <p className="break-words text-sm text-charcoal-800">{lines.detail}</p>}
-          {lines.context && <p className="mt-0.5 text-xs text-muted">{lines.context}</p>}
+    <article className="rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <h3 className="font-display text-base font-semibold text-charcoal-950">{item.nombre}</h3>
+            <EstadoBadge kind="documento" value={item.estado_operativo} labelOverride={item.estado_operativo_label} />
+          </div>
+          <p className="mt-0.5 break-words text-sm text-charcoal-800">
+            {[lines.title, lines.detail].filter(Boolean).join(" · ")}
+          </p>
+          <p className="mt-0.5 break-words text-xs text-muted">
+            {pending.length > 0 && (
+              <span className="font-semibold text-amber-800">Pendiente de {pending.join(", ")}</span>
+            )}
+            {pending.length > 0 && (lines.context || meta.length > 0) && " · "}
+            {[lines.context, ...meta].filter(Boolean).join(" · ")}
+          </p>
+          {firmas.length > 0 && (
+            <p className="mt-1 text-xs text-muted">
+              {firmas.map((firma) => `${firma.rol_label}: ${firma.estado_label}`).join(" · ")}
+            </p>
+          )}
+          {item.estado_operativo === "RECHAZADO" && item.motivo && (
+            <p className="mt-1 text-xs text-red-700">Motivo: {item.motivo}</p>
+          )}
+          {item.falta_plantilla && <p className="mt-1 text-xs font-medium text-amber-800">No hay plantilla activa</p>}
         </div>
-        <EstadoBadge kind="documento" value={item.estado_operativo} labelOverride={item.estado_operativo_label} className="shrink-0" />
-      </div>
 
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
-        {item.responsable_label && <Meta label="Responsable" value={item.responsable_label} />}
-        {origin && <Meta label="Origen" value={origin} />}
-        {date && <Meta label="Fecha" value={date} />}
-        <Meta
-          label="Pendiente de"
-          value={pending.length ? pending.join(", ") : "—"}
-          emphasize={pending.length > 0}
+        <DocumentActions
+          item={item}
+          busy={busy}
+          onView={onView}
+          onOpenReserva={onOpenReserva}
+          onValidate={onValidate}
+          onReject={onReject}
+          onGenerate={onGenerate}
+          onRegenerate={onRegenerate}
+          onSign={onSign}
+          onOpenTemplates={onOpenTemplates}
         />
-      </dl>
-
-      {firmas.length > 0 && (
-        <p className="mt-2 text-xs text-muted">
-          {firmas.map((firma) => `${firma.rol_label}: ${firma.estado_label}`).join(" · ")}
-        </p>
-      )}
-      {item.estado_operativo === "RECHAZADO" && item.motivo && (
-        <p className="mt-2 text-xs text-red-700">Motivo: {item.motivo}</p>
-      )}
-      {item.falta_plantilla && <p className="mt-2 text-xs font-medium text-amber-800">No hay plantilla activa</p>}
-
-      <DocumentActions
-        item={item}
-        busy={busy}
-        onView={onView}
-        onOpenReserva={onOpenReserva}
-        onValidate={onValidate}
-        onReject={onReject}
-        onGenerate={onGenerate}
-        onRegenerate={onRegenerate}
-        onSign={onSign}
-        onOpenTemplates={onOpenTemplates}
-      />
+      </div>
     </article>
-  );
-}
-
-function Meta({ label, value, emphasize = false }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-[0.68rem] font-semibold uppercase tracking-wide text-muted">{label}</dt>
-      <dd className={`break-words text-sm ${emphasize ? "font-semibold text-amber-800" : "text-charcoal-800"}`}>{value}</dd>
-    </div>
   );
 }
 
@@ -697,14 +694,14 @@ function DocumentActions({ item, busy, onView, onOpenReserva, onValidate, onReje
     );
   }
   if (!buttons.length) return null;
-  return <div className="mt-3 flex flex-wrap items-center justify-end gap-2">{buttons}</div>;
+  return <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">{buttons}</div>;
 }
 
 function SkeletonList() {
   return (
     <div className="space-y-3" aria-hidden="true">
       {Array.from({ length: 4 }, (_, index) => (
-        <div key={index} className="animate-pulse rounded-xl2 border border-surface-200 bg-white px-4 py-3.5 shadow-card">
+        <div key={index} className="animate-pulse rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <div className="h-4 w-36 rounded bg-surface-200" />
@@ -712,12 +709,6 @@ function SkeletonList() {
               <div className="h-3 w-40 rounded bg-surface-100" />
             </div>
             <div className="h-7 w-28 rounded-md bg-surface-200" />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="h-8 rounded bg-surface-100" />
-            <div className="h-8 rounded bg-surface-100" />
-            <div className="h-8 rounded bg-surface-100" />
-            <div className="h-8 rounded bg-surface-100" />
           </div>
         </div>
       ))}

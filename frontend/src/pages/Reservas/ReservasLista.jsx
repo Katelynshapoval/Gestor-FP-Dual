@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
-import ReservaResumenBadges from "../../components/reservas/ReservaResumenBadges.jsx";
+import ReservaResumenBadges, { ReservaIconLegend } from "../../components/reservas/ReservaResumenBadges.jsx";
 import FilterBar, { FilterSelect, SearchField, countLabel } from "../../components/ui/FilterBar.jsx";
 import { useUrlFilters } from "../../hooks/useUrlFilters.js";
 import { coincide } from "../../utils/busqueda.js";
@@ -154,6 +154,7 @@ const ReservasLista = ({ reservations, onReservationUpdate, activaNombre }) => {
         </div>
       ) : (
         <div className="space-y-6">
+          <ReservaIconLegend className="px-1" />
           {GRUPOS.map(([key, titulo]) =>
             grupos[key]?.length ? (
               <section key={key} className="space-y-2" aria-label={titulo}>
