@@ -11,7 +11,7 @@
 | Procedimientos con transacción propia: la auditoría se escribe tras el commit y la baja no es atómica | Abierta |
 | Órdenes de bloqueo distintos entre procedimientos (posibles interbloqueos) | Sospechada, no reproducida |
 | Firmas de versiones anteriores perdidas; `dual_documento_versiones` incompleta y sin lectores | Abierta |
-| Auditoría limitada a solicitudes, reservas, documentos y bajas (sin empresa, tutores, cupos, convocatorias, cuentas ni plantillas); las cancelaciones por reducción de cupo no generan evento | Abierta |
+| Auditoría limitada a solicitudes, reservas, documentos, bajas y cuentas de personal (`USUARIO`); no cubre empresa, tutores, cupos, convocatorias, plantillas ni la contraseña de alumnos y empresas. Las cancelaciones por reducción de cupo no generan evento | Abierta |
 | Las ediciones de `ge_empresas` y de tutores no guardan historial | Abierta |
 | Familia de anexo deducida del nombre del tipo de contrato | Baja prioridad |
 | Objetos obsoletos: `calendario`, `dual_empresa_transportes`, `sp_activar_convocatoria`, `sp_asignar_transporte_empresa`, 3 vistas, índices `ix_dual_empresa_tutores_empresa` e `ix_plantilla_tipo` | Pendiente de exportar y borrar |
@@ -34,7 +34,6 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | Rechazo del convenio de una empresa ya validada | La empresa sigue VALIDADO; sin decidir |
 | Las empresas suben cupos y añaden ciclos sin aprobación del centro | Comportamiento actual |
 | Preferencias del alumno | El catálogo está vacío, así que el formulario no las muestra |
-| Alta de usuarios de personal y gestión de roles | Solo por inserción manual en BD |
 | Reactivar un tutor desactivado | Sin endpoint |
 | Borrado de convocatorias, ofertas o plantillas | No existe |
 | Edición de datos del alumno desde el portal | Sin endpoint |

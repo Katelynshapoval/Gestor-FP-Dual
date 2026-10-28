@@ -1,7 +1,7 @@
 # Manual de usuario de FP Dual
 
 _Gestor FP Dual · Centro Salesiano Ntra. Sra. del Pilar (Salesianos Zaragoza)_
-_Versión del manual: 27/10/2026. Describe la aplicación tal y como funciona en esta fecha._
+_Versión del manual: 28/10/2026. Describe la aplicación tal y como funciona en esta fecha._
 
 > Las capturas de este manual se han hecho con **datos de prueba** (empresas, alumnos y correos inventados). Algunos estados que aparecen en ellas solo sirven de ejemplo.
 
@@ -19,7 +19,7 @@ _Versión del manual: 27/10/2026. Describe la aplicación tal y como funciona en
 4. [Solicitudes públicas (alumnos y empresas nuevos)](#solicitudes-publicas)
    - [Comprobar si el plazo está abierto](#plazo) · [Solicitud de alumno](#solicitud-alumno) · [Solicitud de empresa](#solicitud-empresa) · [Después de enviar](#despues-enviar)
 5. [Manual del administrador](#administrador)
-   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja)
+   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Personal](#personal-centro) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja)
 6. [Manual del coordinador](#coordinador)
 7. [Manual de empresa](#empresa)
    - [Portal de la empresa](#portal-empresa) · [Datos y cambios](#empresa-datos) · [Ciclos y plazas](#empresa-plazas) · [Tutores](#empresa-tutores) · [Alumnos disponibles y reservas](#empresa-reservar) · [Documentos y firmas](#empresa-documentos) · [Nueva convocatoria](#empresa-reaplicar)
@@ -39,7 +39,7 @@ FP Dual es la aplicación del centro para gestionar la Formación Profesional Du
 
 | Perfil | Qué hace |
 | --- | --- |
-| **Administración** (ADMINISTRADOR) | Gestiona todo el proceso, las convocatorias, las plantillas de documentos y las contraseñas de las empresas. |
+| **Administración** (ADMINISTRADOR) | Gestiona todo el proceso, las convocatorias, el personal del centro, las plantillas de documentos y las contraseñas. |
 | **Coordinación** (COORDINADOR) | Revisa solicitudes y documentos, gestiona reservas y empresas. Tiene casi los mismos permisos que Administración ([diferencias](#coordinador)). |
 | **Empresa** | Presenta su solicitud, firma el convenio, reserva alumnos y firma los anexos. |
 | **Alumno** | Presenta su candidatura, sube su documentación y firma el anexo de su plaza. |
@@ -174,7 +174,8 @@ El menú está a la izquierda. Cada perfil ve solo sus secciones:
 
 | Perfil | Secciones del menú |
 | --- | --- |
-| Administración y Coordinación | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias |
+| Administración | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias · Personal |
+| Coordinación | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias |
 | Empresa | Mi empresa · Alumnos disponibles |
 | Alumno | Mi proceso Dual |
 | Visitante | Inicio · Solicitud de alumno · Solicitud de empresa · Acceder |
@@ -408,9 +409,33 @@ Solo se pueden editar las convocatorias **próximas** (que todavía no han empez
 ![Gestión de convocatorias con el formulario Nueva convocatoria y la lista de convocatorias activa, próxima y cerrada](manual/imagenes/convocatorias-admin.png)
 _Vista de Administración. Coordinación ve solo la lista, sin el formulario ni el botón «Editar»._
 
+<a id="personal-centro"></a>
+
+### 5.3 Personal del centro — 🔒 Solo Administración
+
+Menú **«Personal»**. Aquí se crean y se retiran las cuentas de **Administración** y de **Coordinación**. Coordinación no ve este menú.
+
+**Dar de alta**
+
+1. En **«Nueva cuenta»**, escribe el **Nombre**, el **Email** (será el usuario para entrar) y el **Rol**: Coordinador o Administrador.
+2. Pulsa **«Dar de alta»**.
+3. La aplicación muestra una **contraseña temporal**, una sola vez y durante 2 minutos. Cópiala y comunícasela a la persona por un medio seguro. Al entrar tendrá que [cambiarla](#contrasena-temporal).
+
+El email no puede estar ya usado. La contraseña no se envía por correo. Esa persona también puede usar [«¿Has olvidado tu contraseña?»](#recuperar) con ese email.
+
+**Editar**
+
+Pulsa **«Editar»** para cambiar el nombre, el email o el rol (de coordinador a administrador, o al revés). No puedes cambiar tu propio rol.
+
+**Dar de baja y reactivar**
+
+**«Dar de baja»** desactiva la cuenta: esa persona deja de poder entrar y, si tenía la sesión abierta, se cierra en la siguiente acción. **«Reactivar»** vuelve a activarla. No puedes darte de baja a ti mismo, y tiene que quedar siempre al menos un administrador activo. Las cuentas no se borran.
+
+**«Resetear contraseña»** funciona igual que en las [cuentas de alumnos y empresas](#cuentas).
+
 <a id="staff-alumnos"></a>
 
-### 5.3 Alumnos: revisar y validar solicitudes
+### 5.4 Alumnos: revisar y validar solicitudes
 
 Menú **«Alumnos»**. Cada tarjeta muestra el nombre, el DNI/NIE, el ciclo, el estado de la solicitud y un resumen de sus reservas. Filtros disponibles: convocatoria, especialidad, estado de la solicitud y situación de la reserva.
 
@@ -469,7 +494,7 @@ _Pestaña «Reservas» de un alumno. Si no hay ofertas, se explica por qué._
 
 <a id="staff-empresas"></a>
 
-### 5.4 Empresas
+### 5.5 Empresas
 
 Menú **«Empresas»**. Arriba se resume cuántas empresas tienen el convenio validado, pendiente o sin convenio. Filtros: convocatoria, estado de la solicitud, convenio, especialidad, cambios de datos pendientes y orden.
 
@@ -547,7 +572,7 @@ _Pestaña «Cuenta» de una empresa, vista por Administración._
 
 <a id="staff-reservas"></a>
 
-### 5.5 Reservas
+### 5.6 Reservas
 
 Menú **«Reservas»**. Las reservas aparecen **agrupadas por lo que necesitan a continuación**:
 
@@ -638,7 +663,7 @@ En **«Historial de documentos»** se pueden consultar las versiones anteriores 
 
 <a id="staff-documentos"></a>
 
-### 5.6 Documentos: seguimiento
+### 5.7 Documentos: seguimiento
 
 Menú **«Documentos»**, pestaña **«Seguimiento»**. Reúne **todos los documentos** del proceso: CV y Anexo DGA de los alumnos, convenio y Anexo XIV de las empresas, y anexos y calendarios de las reservas.
 
@@ -661,7 +686,7 @@ _Un documento pendiente de validar, con sus acciones._
 
 <a id="plantillas"></a>
 
-### 5.7 Plantillas de documentos
+### 5.8 Plantillas de documentos
 
 Pestaña **«Plantillas»** dentro de Documentos. Aquí están las plantillas **DOCX** con las que se generan el **Convenio**, el **Anexo II** y el **Anexo III**. Cada una aparece como «Activa» o «Sin plantilla».
 
@@ -675,17 +700,16 @@ _Plantillas vistas por Administración (en este ejemplo todavía no hay ninguna 
 
 <a id="cuentas"></a>
 
-### 5.8 Cuentas y contraseñas
+### 5.9 Cuentas y contraseñas
 
-- Las **cuentas de alumnos y empresas se crean solas** al enviar la solicitud pública. No hay una pantalla para crear cuentas a mano.
+- Las **cuentas de alumnos y empresas se crean solas** al enviar la solicitud pública. Las de **personal del centro** se crean en [Personal](#personal-centro).
 - **Cualquier persona** con una cuenta activa puede recuperar su contraseña ella misma con un enlace por correo, desde **«¿Has olvidado tu contraseña?»** en la pantalla de acceso ([cómo](#recuperar)). Es la opción recomendada: nadie más llega a ver la contraseña.
-- 🔒 **Solo Administración** puede, además, restablecer la contraseña de un **alumno** o de una **empresa** desde la pestaña **«Cuenta»** de su tarjeta, con **«Resetear contraseña»**. Sirve cuando el correo no llega. La contraseña temporal se muestra **una sola vez y durante 2 minutos**: cópiala y comunícasela a la persona por un medio seguro. Al entrar tendrá que [cambiarla](#contrasena-temporal).
-- La contraseña del personal del centro solo se recupera con el enlace por correo; no hay botón para restablecerla.
+- 🔒 **Solo Administración** puede, además, restablecer la contraseña de un **alumno** o de una **empresa** desde la pestaña **«Cuenta»** de su tarjeta, con **«Resetear contraseña»**. La de un administrador o un coordinador se restablece en [Personal](#personal-centro). Sirve cuando el correo no llega. La contraseña temporal se muestra **una sola vez y durante 2 minutos**: cópiala y comunícasela a la persona por un medio seguro. Al entrar tendrá que [cambiarla](#contrasena-temporal).
 - Cada persona puede [cambiar su propia contraseña](#cambiar-contrasena).
 
 <a id="baja"></a>
 
-### 5.9 Dar de baja a un alumno o a una empresa — 🔒 Solo Administración
+### 5.10 Dar de baja a un alumno o a una empresa — 🔒 Solo Administración
 
 Sirve para **retirar del programa** a un alumno o a una empresa en una convocatoria: por ejemplo, un alumno que abandona el ciclo o una empresa que ya no puede acoger alumnos.
 
@@ -734,6 +758,7 @@ El perfil de Coordinación hace **el mismo trabajo diario** que Administración:
 | Rechazar y reabrir solicitudes de empresa | ✅ | ✅ |
 | Consultar convocatorias | ✅ | ✅ |
 | **Crear y editar convocatorias** | ✅ | ❌ |
+| **Gestionar el personal del centro** (alta, edición, baja, reactivación y contraseñas) | ✅ | ❌ |
 | Consultar y descargar plantillas | ✅ | ✅ |
 | **Subir o reemplazar plantillas** | ✅ | ❌ |
 | **Restablecer contraseñas de empresas y alumnos** | ✅ | ❌ |
@@ -742,6 +767,7 @@ El perfil de Coordinación hace **el mismo trabajo diario** que Administración:
 En la práctica, el coordinador:
 
 - En **Convocatorias** solo ve la lista, sin el formulario «Nueva convocatoria» ni el botón «Editar».
+- No tiene el menú **«Personal»**.
 - En **Documentos › Plantillas** no tiene el botón «Subir plantilla».
 - En la pestaña **«Cuenta»** de alumnos y empresas ve el usuario y el estado de la cuenta, pero no los botones «Resetear contraseña» ni «Dar de baja».
 

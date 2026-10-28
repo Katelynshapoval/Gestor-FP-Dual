@@ -30,7 +30,7 @@ Constantes en código (no configurables): caducidad del JWT 8 h; enlace de recup
 ## 3. Base de datos
 
 - Esquema creado con `npm run db:migrate -- up --yes` sobre una BD vacía (baseline + migraciones).
-- Datos de entorno: `dual_especialidades` (obligatorio), `dual_preferencias` (opcional), plantillas activas (para generar), cuentas de personal (inserción manual) y convocatorias.
+- Datos de entorno: `dual_especialidades` (obligatorio), `dual_preferencias` (opcional), plantillas activas (para generar), cuentas de personal (pantalla Personal, solo Administración; en desarrollo también `scripts/seedPruebas.js`) y convocatorias.
 - Zona horaria del servidor MySQL: determina el cambio de convocatoria activa.
 
 ## 4. Puesta en marcha en desarrollo (resumen)

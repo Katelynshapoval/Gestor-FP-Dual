@@ -1,7 +1,8 @@
 const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
 const { signToken } = require('../middleware/auth');
-const { normalizeCif, normalizeDni } = require('../helpers/dbHelpers');
+const { normalizeCif, normalizeDni, sendSqlError } = require('../helpers/dbHelpers');
+const { recordEvent } = require('./auditLog');
 const { loginRateLimiter } = require('../middleware/loginRateLimit');
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -207,20 +208,63 @@ exports.getAll = async function (req, res) {
   return res.json(rows);
 };
 
-// POST /usuarios/:id/resetPassword — generates a temporary password returned once to the admin
+// POST /usuarios/:id/resetPassword — generates a temporary password returned once to the admin.
+// Staff resets are audited (entidad USUARIO). Student and company resets are not.
 exports.resetPassword = async function (req, res) {
   const idUsuario = parseInt(req.params.id, 10);
+  if (!Number.isInteger(idUsuario) || idUsuario <= 0) {
+    return res.status(400).json({ error: 'Identificador no válido.', code: 'ID_INVALIDO' });
+  }
 
   const crypto = require('crypto');
   const tempPassword = crypto.randomBytes(8).toString('hex');
-
   const hash = await bcrypt.hash(tempPassword, 10);
-  const [result] = await pool.query(
-    'UPDATE dual_usuarios SET password_hash = ?, must_change_password = 1 WHERE id_usuario = ?',
-    [hash, idUsuario]
-  );
-  if (result.affectedRows === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
 
-  // The temporary password is returned only once and never stored in plaintext
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.query(
+      `SELECT u.id_usuario, u.activo, r.nombre AS rol
+         FROM dual_usuarios u
+         JOIN dual_roles r ON r.id_rol = u.id_rol
+        WHERE u.id_usuario = ?
+        FOR UPDATE`,
+      [idUsuario],
+    );
+    const target = rows[0];
+    if (!target) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Usuario no encontrado.', code: 'NOT_FOUND' });
+    }
+    await conn.query(
+      'UPDATE dual_usuarios SET password_hash = ?, must_change_password = 1 WHERE id_usuario = ?',
+      [hash, idUsuario],
+    );
+    if (target.rol === 'ADMINISTRADOR' || target.rol === 'COORDINADOR') {
+      await recordEvent(conn, {
+        entidad: 'USUARIO',
+        id: idUsuario,
+        accion: 'RESETEAR_PASSWORD',
+        antes: target.rol,
+        despues: target.rol,
+        user: req.user,
+        detalle: { activo: Number(target.activo) === 1 ? 1 : 0 },
+      });
+    }
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    if (err.code === 'ER_CHECK_CONSTRAINT_VIOLATED') {
+      return res.status(503).json({
+        error: 'La gestión de personal no está disponible: falta aplicar la migración 019 de la base de datos.',
+        code: 'MIGRACION_PENDIENTE',
+      });
+    }
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+
+  // The temporary password is returned only once and never stored in plaintext.
   return res.json({ message: 'Contraseña restablecida.', newPassword: tempPassword });
 };

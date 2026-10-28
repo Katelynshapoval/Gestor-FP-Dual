@@ -1,6 +1,6 @@
 # Autenticación y cuentas
 
-> Código: [`authService.js`](../../../backend/src/services/authService.js), [`passwordResetService.js`](../../../backend/src/services/passwordResetService.js), [`middleware/auth.js`](../../../backend/src/middleware/auth.js), [`middleware/loginRateLimit.js`](../../../backend/src/middleware/loginRateLimit.js). Frontend: [`Login.js`](../../../frontend/src/pages/Login.js), [`UserContext.js`](../../../frontend/src/context/UserContext.js). Pruebas: `backend/test/auth.test.js`, `phase5.test.js`.
+> Código: [`authService.js`](../../../backend/src/services/authService.js), [`personalService.js`](../../../backend/src/services/personalService.js), [`passwordResetService.js`](../../../backend/src/services/passwordResetService.js), [`middleware/auth.js`](../../../backend/src/middleware/auth.js), [`middleware/loginRateLimit.js`](../../../backend/src/middleware/loginRateLimit.js). Frontend: [`Login.js`](../../../frontend/src/pages/Login.js), [`Personal.jsx`](../../../frontend/src/pages/Personal/Personal.jsx), [`UserContext.js`](../../../frontend/src/context/UserContext.js). Pruebas: `backend/test/auth.test.js`, `personal.test.js`, `phase5.test.js`.
 
 ## 1. Creación de cuentas
 
@@ -10,7 +10,7 @@ No hay registro de usuarios como tal. Las cuentas nacen así:
 | --- | --- | --- | --- |
 | ALUMNO | Primer envío del formulario público de solicitud (la contraseña la elige el alumno) | NULL | 0 |
 | EMPRESA | Alta pública de la empresa (contraseña elegida; ligada al **coordinador principal**) | NULL | 0 |
-| ADMINISTRADOR, COORDINADOR | **Fuera de la aplicación** (no hay endpoint): inserción manual en BD o `scripts/seedPruebas.js` en desarrollo | obligatorio (trigger) | según se cree |
+| ADMINISTRADOR, COORDINADOR | `POST /usuarios/personal` (solo ADMINISTRADOR). En desarrollo también `scripts/seedPruebas.js` | obligatorio (trigger); es el usuario de acceso | 1 (contraseña temporal) |
 
 Una empresa tiene, en la práctica, **un único usuario EMPRESA** (el del coordinador del alta). No hay endpoint para crear más usuarios de empresa.
 
@@ -67,14 +67,35 @@ Efecto: desactivar una cuenta (p. ej. por una baja) o cambiar su rol expulsa al 
 
 - Genera 16 caracteres hexadecimales aleatorios, guarda el hash y pone `must_change_password = 1`.
 - Devuelve la contraseña **una sola vez** en la respuesta (`newPassword`); no se guarda en claro ni se envía por correo.
-- No comprueba el rol ni el estado de la cuenta destino (puede aplicarse a cualquier usuario, incluido otro administrador) y **no se audita**.
-- Desde la interfaz se usa en la pestaña «Cuenta» de las tarjetas de alumno y empresa (`ResetPasswordButton`).
+- No comprueba el rol ni el estado de la cuenta destino (puede aplicarse a cualquier usuario, incluido otro administrador).
+- Si el destino es ADMINISTRADOR o COORDINADOR, el reseteo se audita (`USUARIO` / `RESETEAR_PASSWORD`) en la misma transacción. El de un alumno o una empresa **no** se audita.
+- Desde la interfaz se usa en la pestaña «Cuenta» de las tarjetas de alumno y empresa y en la pantalla Personal (`ResetPasswordButton`).
 
-## 7. Listado de usuarios — `GET /usuarios` (ADMINISTRADOR)
+## 7. Personal del centro — solo ADMINISTRADOR
 
-Devuelve todos los usuarios sin hash. Ninguna pantalla lo usa. El comentario del servicio dice «admin/coordinador», pero la ruta exige ADMINISTRADOR.
+Pantalla **Personal** (`/personal`). Coordinación no ve el menú y las rutas responden 403. No crea alumnos ni empresas, y no borra cuentas.
 
-## 8. Sesión en el navegador
+| Acción | Ruta | Efecto |
+| --- | --- | --- |
+| Listar | `GET /usuarios/personal` | Solo ADMINISTRADOR y COORDINADOR, activos y de baja. Sin hash |
+| Alta | `POST /usuarios/personal` `{ nombre, email, rol }` | 201 `{ usuario, newPassword }`. Email recortado, en minúsculas y único (409 `EMAIL_DUPLICADO`). Rol solo esos dos (400 `ROL_INVALIDO`). `id_contacto` e `id_alumno` quedan NULL. Contraseña temporal de 16 hex y `must_change_password = 1`. Evento `ALTA` |
+| Editar | `PATCH /usuarios/personal/:id` `{ nombre?, email?, rol? }` | Cambia nombre, email o rol entre administrador y coordinador. Evento `CAMBIAR_ROL` o `CAMBIAR_DATOS` |
+| Baja | `POST /usuarios/personal/:id/baja` | `activo = 0`. La sesión abierta cae en la siguiente petición (`ACCOUNT_DISABLED`). Evento `BAJA` |
+| Reactivar | `POST /usuarios/personal/:id/reactivar` | `activo = 1`. Evento `REACTIVAR` |
+
+Protecciones, dentro de una transacción:
+
+- No puedes darte de baja (400 `BAJA_PROPIA`) ni cambiar tu propio rol (400 `ROL_PROPIO`). Sí puedes cambiar tu nombre y tu email.
+- No se puede dejar el centro sin ningún administrador activo (400 `ULTIMO_ADMINISTRADOR`), ni por baja ni por cambio de rol. Antes de decidir se bloquean las filas de los administradores activos, en orden de id, para que dos cambios simultáneos no dejen cero.
+- Un id que no es personal responde 404 `NOT_FOUND`.
+- El evento guarda el id, el rol y `activo`. Puede anotar que el nombre o el email cambiaron, pero no guarda el valor. Nunca la contraseña.
+- Sin la migración 019 el `INSERT` del evento incumple el `CHECK` y la operación se deshace (503 `MIGRACION_PENDIENTE`).
+
+## 8. Listado de usuarios — `GET /usuarios` (ADMINISTRADOR)
+
+Devuelve todos los usuarios sin hash, alumnos y empresas incluidos. Ninguna pantalla lo usa: Personal llama a `GET /usuarios/personal`. El comentario del servicio dice «admin/coordinador», pero la ruta exige ADMINISTRADOR.
+
+## 9. Sesión en el navegador
 
 - `localStorage["user"] = { data: {…usuario, token}, expires }`, con `expires` = `exp` del JWT.
 - Al cargar, si la sesión ha caducado se borra. Un temporizador cierra la sesión exactamente al caducar.
@@ -82,7 +103,7 @@ Devuelve todos los usuarios sin hash. Ninguna pantalla lo usa. El comentario del
 - Iniciar o cerrar sesión en una pestaña se refleja en las demás (evento `storage`).
 - `RequireRole` solo redirige: sin sesión → `/login`; con rol no permitido → la página de inicio de su rol.
 
-## 9. Casos límite
+## 10. Casos límite
 
 - **Limitador en memoria**: los contadores viven en un `Map` del proceso; se pierden al reiniciar y no se comparten entre procesos. La clave usa `req.ip` y Express no tiene `trust proxy`, así que detrás de un proxy inverso todas las peticiones compartirían IP y el límite por IP se alcanzaría entre todos los usuarios 🔶.
 - **Formulario público de alumno**: un alumno con cuenta que reenvía la solicitud con contraseña incorrecta cuenta como login fallido (clave IP + DNI); tras 5 fallos, 429. Un acierto borra el contador.

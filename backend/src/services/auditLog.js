@@ -4,7 +4,7 @@
 // rolls back with the change it describes.
 const pool = require("../db/pool");
 
-const ENTIDADES = ["SOLICITUD_ALUMNO", "SOLICITUD_EMPRESA", "RESERVA", "DOCUMENTO"];
+const ENTIDADES = ["SOLICITUD_ALUMNO", "SOLICITUD_EMPRESA", "RESERVA", "DOCUMENTO", "USUARIO"];
 
 function actorFrom(user) {
   return { id: user?.id || null, rol: user?.rol || null };

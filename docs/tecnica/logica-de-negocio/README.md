@@ -6,7 +6,7 @@
 
 | Documento | Contenido |
 | --- | --- |
-| [Autenticación y cuentas](autenticacion-y-cuentas.md) | Login por rol, sesión JWT, cambio forzado y recuperación de contraseña, contraseñas temporales |
+| [Autenticación y cuentas](autenticacion-y-cuentas.md) | Login por rol, sesión JWT, cambio forzado y recuperación de contraseña, contraseñas temporales, alta y baja de personal del centro |
 | [Convocatorias](convocatorias.md) | Activación automática por fechas, creación y edición |
 | [Solicitudes de alumno](solicitudes-alumno.md) | Formulario público, alumnos que repiten, revisión (validar, rechazar, reabrir) |
 | [Solicitudes de empresa](solicitudes-empresa.md) | Alta pública, reaplicación, revisión, datos y cambios, ofertas y cupos |

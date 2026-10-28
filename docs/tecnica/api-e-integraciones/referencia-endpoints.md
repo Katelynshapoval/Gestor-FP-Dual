@@ -11,8 +11,13 @@
 | `POST /auth/resetPassword` | Público | `{ token, newPassword }` | 200 · 400 `ENLACE_NO_VALIDO` |
 | `GET /auth/me` | Autenticado (aunque deba cambiar contraseña) | — | Usuario con `cif`/`dni` |
 | `POST /auth/changePassword` | Autenticado (ídem) | `{ currentPassword?, newPassword }` | 200 · 400 · 401 |
-| `GET /usuarios` | ADMINISTRADOR | — | Lista de usuarios (sin hash) |
-| `POST /usuarios/:id/resetPassword` | ADMINISTRADOR | — | `{ newPassword }` temporal · `must_change_password = 1` |
+| `GET /usuarios` | ADMINISTRADOR | — | Lista de todos los usuarios (sin hash). Ninguna pantalla la usa |
+| `GET /usuarios/personal` | ADMINISTRADOR | — | Solo administradores y coordinadores |
+| `POST /usuarios/personal` | ADMINISTRADOR | `{ nombre, email, rol }` | 201 `{ usuario, newPassword }` · 400 · 409 `EMAIL_DUPLICADO` |
+| `PATCH /usuarios/personal/:id` | ADMINISTRADOR | `{ nombre?, email?, rol? }` | 400 `ROL_PROPIO`, `ULTIMO_ADMINISTRADOR` |
+| `POST /usuarios/personal/:id/baja` | ADMINISTRADOR | — | `activo = 0` · 400 `BAJA_PROPIA`, `ULTIMO_ADMINISTRADOR` |
+| `POST /usuarios/personal/:id/reactivar` | ADMINISTRADOR | — | `activo = 1` |
+| `POST /usuarios/:id/resetPassword` | ADMINISTRADOR | — | `{ newPassword }` temporal · `must_change_password = 1`. Si el destino es personal, evento `USUARIO` |
 
 ## Convocatorias — `convocatoriasRoute`
 

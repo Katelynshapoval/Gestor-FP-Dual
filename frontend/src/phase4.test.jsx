@@ -14,7 +14,11 @@ describe("navigation (D.1)", () => {
   test("staff get management areas, never the public forms", () => {
     const staff = navForUser({ rol: "COORDINADOR" }).map((i) => i.to);
     expect(staff).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias"]);
+    expect(staff).not.toContain("/personal");
     expect(staff).not.toContain("/addDualStudent");
+    const admin = navForUser({ rol: "ADMINISTRADOR" }).map((i) => i.to);
+    expect(admin).toEqual([...staff, "/personal"]);
+    expect(pageTitle("/personal")).toBe("Personal");
   });
   test("visitors, companies and students get their own menus and homes", () => {
     expect(navForUser(null).map((i) => i.to)).toContain("/addCompanyRequest");

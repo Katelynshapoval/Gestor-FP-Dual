@@ -10,6 +10,7 @@ import {
   FaHouse,
   FaRightToBracket,
   FaUserGraduate,
+  FaUserShield,
   FaUsers,
 } from "react-icons/fa6";
 
@@ -30,6 +31,7 @@ const STAFF_NAV = [
   { to: "/reservas", label: "Reservas", Icon: FaClipboardList },
   { to: "/documentos", label: "Documentos", Icon: FaFileLines },
   { to: "/convocatorias", label: "Convocatorias", Icon: FaCalendarDays },
+  { to: "/personal", label: "Personal", Icon: FaUserShield, roles: ["ADMINISTRADOR"] },
 ];
 
 const EMPRESA_NAV = [
@@ -41,7 +43,9 @@ const ALUMNO_NAV = [{ to: "/studentMain", label: "Mi proceso Dual", Icon: FaUser
 
 export function navForUser(user) {
   if (!user) return PUBLIC_NAV;
-  if (isStaff(user)) return STAFF_NAV;
+  if (isStaff(user)) {
+    return STAFF_NAV.filter((item) => !item.roles || item.roles.includes(user.rol));
+  }
   if (user.rol === "EMPRESA") return EMPRESA_NAV;
   if (user.rol === "ALUMNO") return ALUMNO_NAV;
   return [];
@@ -73,6 +77,7 @@ const TITLES = {
   "/reservas": "Reservas",
   "/documentos": "Documentos",
   "/convocatorias": "Convocatorias",
+  "/personal": "Personal",
   "/companyMain": "Mi empresa",
   "/studentMain": "Mi proceso Dual",
   "/cambiarPassword": "Cambiar contraseña",

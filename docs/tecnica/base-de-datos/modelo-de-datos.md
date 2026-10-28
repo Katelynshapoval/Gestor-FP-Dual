@@ -225,14 +225,14 @@ Registro de auditoría **solo de inserción**: los triggers `trg_de_bu_inmutable
 | Columna | Notas |
 | --- | --- |
 | `id_evento` BIGINT PK | |
-| `entidad` | `CHECK IN ('SOLICITUD_ALUMNO','SOLICITUD_EMPRESA','RESERVA','DOCUMENTO')` |
-| `id_entidad`, `accion` (VARCHAR 40) | Acciones usadas: `VALIDAR`, `RECHAZAR`, `REABRIR`, `BAJA`, `REACTIVAR`, `RESERVAR`, `CANCELAR`, `REASIGNAR`, `CONFIRMAR`, `TIPO_CONTRATO`, `SUBIR`, `GENERAR`, `FIRMAR`, `EXENCION_FIRMA_LEGACY` |
+| `entidad` | Desde la 019: `SOLICITUD_ALUMNO`, `SOLICITUD_EMPRESA`, `RESERVA`, `DOCUMENTO`, `OFERTA`, `TUTOR`, `USUARIO`. `OFERTA` y `TUTOR` los aporta la migración de reservas 018; la 019 los conserva y añade `USUARIO` |
+| `id_entidad`, `accion` (VARCHAR 40) | Acciones usadas: `VALIDAR`, `RECHAZAR`, `REABRIR`, `BAJA`, `REACTIVAR`, `RESERVAR`, `CANCELAR`, `REASIGNAR`, `CONFIRMAR`, `TIPO_CONTRATO`, `SUBIR`, `GENERAR`, `FIRMAR`, `EXENCION_FIRMA_LEGACY`. En `USUARIO`: `ALTA`, `BAJA`, `REACTIVAR`, `CAMBIAR_ROL`, `CAMBIAR_DATOS`, `RESETEAR_PASSWORD` |
 | `estado_anterior`, `estado_nuevo` VARCHAR(30) | En `TIPO_CONTRATO` se guardan **ids** (algún nombre supera 30 caracteres) y los nombres en `detalle` |
 | `id_usuario` FK NULL, `rol_usuario` | NULL en acciones públicas (p. ej. generación del convenio en el alta) |
 | `motivo`, `detalle` JSON | Ids y metadatos; nunca nombres, DNI, emails ni ficheros |
 | `creado_en` DATETIME(3) | |
 
-Lo que **no** se audita: cambios de datos de empresa, cupos y ofertas, tutores y su asignación, convocatorias, plantillas, contraseñas y activación de cuentas fuera de la baja, y las cancelaciones por reducción de cupo ().
+Lo que **no** se audita: cambios de datos de empresa, cupos y ofertas, tutores y su asignación, convocatorias, plantillas, la contraseña de alumnos y empresas, y las cancelaciones por reducción de cupo. Las cuentas de personal sí: alta, edición, baja, reactivación y reseteo de contraseña, con entidad `USUARIO` (ids, rol y `activo`; nunca el email ni la contraseña).
 
 ### `schema_migrations`
 Historial del ejecutor de migraciones: `version` CHAR(3) PK, `name`, `checksum` (SHA-256 del fichero con saltos de línea normalizados), `applied_at`, `applied_by`, `mode` (`RUN` o `MARK`).
