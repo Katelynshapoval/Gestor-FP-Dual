@@ -12,6 +12,7 @@ const TutorAssignSelect = ({
   idEmpresaTutor,
   tutorNombre,
   onAssigned,
+  bare = false, // no grey box: the caller already frames it (ReservaDetalle)
   className = "",
 }) => {
   const toast = useToast();
@@ -79,11 +80,11 @@ const TutorAssignSelect = ({
   };
 
   return (
-    <div className={`rounded-lg border border-surface-200 bg-surface-50 px-3 py-2.5 ${className}`}>
+    <div className={bare ? className : `rounded-lg border border-surface-200 bg-surface-50 px-3 py-2.5 ${className}`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label
           htmlFor={`tutor-reserva-${idReserva}`}
-          className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted"
+          className={bare ? "sr-only" : "shrink-0 text-xs font-semibold uppercase tracking-widest text-muted"}
         >
           Tutor de empresa
         </label>

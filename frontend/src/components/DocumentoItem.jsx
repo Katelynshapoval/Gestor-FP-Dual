@@ -173,7 +173,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
         </p>
       )}
 
-      {doc.falta_plantilla && (
+      {doc.falta_plantilla && !/plantilla/i.test(doc.accion_pendiente || "") && (
         <p className="mt-2 text-xs font-medium text-amber-800">No hay plantilla activa para generarlo.</p>
       )}
 

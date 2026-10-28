@@ -26,7 +26,8 @@ const familia = (t) => (/beca/i.test(`${t.nombre || ""} ${t.nombre_mostrar || ""
 
 // `familiaFija` (D2): once an annex of one family is under review or validated,
 // types of the other family are shown disabled (the backend refuses them too).
-const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = null, labelOculto = false, className = "" }) => {
+// `bare` drops the grey box when the caller already frames it (ReservaDetalle).
+const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = null, labelOculto = false, bare = false, className = "" }) => {
   const toast = useToast();
   const [tipos, setTipos] = useState([]);
   const [value, setValue] = useState(idTipoContrato != null ? String(idTipoContrato) : "");
@@ -72,7 +73,7 @@ const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = 
   const selectId = `tipo-contrato-${idReserva}`;
 
   return (
-    <div className={`rounded-lg border border-surface-200 bg-surface-50 px-3 py-2.5 ${className}`}>
+    <div className={bare ? className : `rounded-lg border border-surface-200 bg-surface-50 px-3 py-2.5 ${className}`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label
           htmlFor={selectId}

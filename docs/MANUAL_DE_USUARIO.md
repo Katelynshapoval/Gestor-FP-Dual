@@ -566,10 +566,15 @@ _Lista de reservas. Pasa el ratón por un icono para ver qué significa._
 
 #### El panel de la reserva
 
-**«Gestionar reserva»** abre una ventana con todo lo de esa reserva. Es la misma ventana desde Alumnos, Empresas, Reservas o Documentos.
+**«Gestionar reserva»** abre una ventana con todo lo de esa reserva. Es la misma ventana desde Alumnos, Empresas, Reservas o Documentos:
+
+- **Arriba**, el alumno, la empresa, la especialidad, la convocatoria y el estado de la reserva (y el motivo, si está cancelada).
+- **A la izquierda**, los documentos de la reserva (Anexo II o III y Calendario) y, si los hay, el historial de versiones anteriores.
+- **A la derecha**, el tipo de contrato, el tutor de empresa y la lista **«Confirmación»**, con una barra que indica cuántos requisitos se cumplen.
+- **Abajo**, «Cerrar», «Reasignar» y «Cancelar reserva».
 
 ![Ventana de una reserva pendiente con el tipo de contrato, los documentos, el tutor y la lista de confirmación](manual/imagenes/reserva-detalle.png)
-_Panel de una reserva pendiente sin tipo de contrato. Abajo están «Reasignar» y «Cancelar reserva»._
+_Panel de una reserva pendiente con tipo de contrato «Beca»: el Anexo III está pendiente de generar y se cumple 1 de los 4 requisitos para confirmar._
 
 El trabajo normal con una reserva sigue este orden:
 

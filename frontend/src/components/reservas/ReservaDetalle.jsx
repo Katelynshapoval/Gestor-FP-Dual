@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-import { MdOutlineRadioButtonUnchecked } from "react-icons/md";
+import {
+  FaBuilding,
+  FaCalendarDays,
+  FaCheck,
+  FaClockRotateLeft,
+  FaFileContract,
+  FaFileSignature,
+  FaGraduationCap,
+  FaListCheck,
+  FaUserGraduate,
+  FaUserTie,
+} from "react-icons/fa6";
 import Modal from "../ui/Modal.jsx";
 import MotivoDialog from "../ui/MotivoDialog.jsx";
 import EstadoBadge from "../ui/EstadoBadge.jsx";
@@ -101,7 +111,7 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
         onClose={onClose}
         title={title}
         description={description}
-        size="lg"
+        size="xl"
         busy={busy}
         footer={
           r && (
@@ -138,127 +148,110 @@ export default function ReservaDetalle({ idReserva, open, onClose, onChanged }) 
             )}
           </PanelState>
         ) : r ? (
-          <div className="space-y-5" aria-busy={loading}>
+          <div className="space-y-6" aria-busy={loading}>
             <Resumen r={r} />
 
-            <Section title="Tipo de contrato">
-              {acciones.cambiar_tipo?.permitido ? (
-                <>
-                  <TipoContratoSelect
-                    idReserva={r.id_reserva}
-                    idTipoContrato={r.id_tipo_contrato}
-                    onSaved={changed}
-                    labelOculto
-                    familiaFija={r.anexo_clave && acciones.cambio_familia && !acciones.cambio_familia.permitido ? r.anexo_clave : null}
-                  />
-                  {r.anexo_clave && !acciones.cambio_familia?.permitido && (
-                    <p className="mt-2 text-xs text-amber-800">{acciones.cambio_familia.motivo}</p>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+              {/* Main column: the documents of the reservation */}
+              <div className="min-w-0 space-y-6">
+                <Section title="Documentos de la reserva" Icon={FaFileSignature}>
+                  {r.estado_reserva === "CANCELADA" ? (
+                    <Hint>La reserva está cancelada: sus documentos solo se pueden consultar.</Hint>
+                  ) : (
+                    !r.anexo_clave && <Hint>El Anexo II o III aparece cuando se indica el tipo de contrato.</Hint>
                   )}
-                </>
-              ) : (
-                <p className="text-sm text-charcoal-800">
-                  {tipoContratoLabel(r.tipo_contrato) || "Sin indicar"}
-                  {!r.tipo_contrato && r.estado_reserva === "PENDIENTE" && (
-                    <span className="block text-xs text-muted">
-                      El centro indicará el tipo de contrato; entonces aparecerá el Anexo II o III.
-                    </span>
+                  {data.documentos.length === 0 ? (
+                    <p className="m-0 text-sm text-muted">No hay documentos visibles para tu perfil.</p>
+                  ) : (
+                    <div className="divide-y divide-surface-200 overflow-hidden rounded-lg border border-surface-200">
+                      {data.documentos.map((doc) => (
+                        <div key={doc.clave} className="px-4">
+                          <DocumentoItem doc={doc} onRefresh={changed} compact />
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </p>
-              )}
-            </Section>
+                </Section>
 
-            <Section title="Documentos de la reserva">
-              {r.estado_reserva === "CANCELADA" && (
-                <p className="mb-2 text-xs text-muted">La reserva está cancelada: sus documentos solo se pueden consultar.</p>
-              )}
-              {!r.anexo_clave && r.estado_reserva !== "CANCELADA" && (
-                <p className="mb-2 text-xs text-muted">El Anexo II o III aparece cuando se indica el tipo de contrato.</p>
-              )}
-              {data.documentos.length === 0 ? (
-                <p className="text-sm text-muted">No hay documentos visibles para tu perfil.</p>
-              ) : (
-                <div className="divide-y divide-surface-200 rounded-lg border border-surface-200 bg-white px-3">
-                  {data.documentos.map((doc) => (
-                    <DocumentoItem key={doc.clave} doc={doc} onRefresh={changed} compact />
-                  ))}
-                </div>
-              )}
-            </Section>
-
-            <Section title="Tutor de empresa">
-              {acciones.asignar_tutor?.permitido ? (
-                <TutorAssignSelect
-                  idReserva={r.id_reserva}
-                  idEmpresa={r.id_empresa}
-                  idEmpresaTutor={r.id_empresa_tutor}
-                  tutorNombre={r.tutor_nombre}
-                  onAssigned={changed}
-                />
-              ) : (
-                <p className="text-sm text-charcoal-800">
-                  {r.tutor_nombre || "Sin tutor asignado"}
-                  {r.tutor_email && <span className="block text-xs text-muted">{r.tutor_email}</span>}
-                </p>
-              )}
-            </Section>
-
-            {r.estado_reserva === "PENDIENTE" && (
-              <Section title="Confirmación">
-                <ul className="space-y-1.5" aria-label="Requisitos para confirmar">
-                  {data.confirmacion.requisitos.map((req) => (
-                    <li key={req.clave} className="flex items-start gap-2 text-sm">
-                      {req.ok ? (
-                        <IoIosCheckmarkCircleOutline className="mt-0.5 shrink-0 text-green-600" aria-hidden="true" />
-                      ) : (
-                        <MdOutlineRadioButtonUnchecked className="mt-0.5 shrink-0 text-muted" aria-hidden="true" />
-                      )}
-                      <span className={req.ok ? "text-charcoal-800" : "text-muted"}>
-                        {req.texto}
-                        <span className="sr-only">{req.ok ? " (cumplido)" : " (pendiente)"}</span>
-                        {!req.ok && req.pendientes?.length > 0 && (
-                          <span className="block text-xs text-amber-800">
-                            Falta: {req.pendientes.map((p) => ACTOR[p === "GESTOR" ? "CENTRO" : p] || p).join(", ")}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {acciones.confirmar?.permitido ? (
-                  <button type="button" className="btn btn-primary btn-sm mt-3" onClick={confirmar} disabled={busy}>
-                    Confirmar reserva
-                  </button>
-                ) : (
-                  <p className="mt-3 text-xs text-muted">{acciones.confirmar?.motivo}</p>
+                {data.historial.length > 0 && (
+                  <Section title="Historial de documentos" Icon={FaClockRotateLeft}>
+                    <ul className="m-0 list-none divide-y divide-surface-200 overflow-hidden rounded-lg border border-surface-200 p-0">
+                      {data.historial.map((h) => (
+                        <li key={h.id_documento} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0 text-sm">
+                            <p className="m-0 font-medium text-charcoal-950">{h.nombre}</p>
+                            <p className="m-0 mt-0.5 text-xs text-muted">
+                              {h.motivo_historial === "LEGACY" ? "Documento del procedimiento anterior" : "Versión anterior, ya no vigente"}
+                              {h.registrado_en ? ` · ${formatDocumentDate(h.registrado_en)}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <EstadoBadge kind="validacion" value={h.estado_validacion} />
+                            {h.tiene_archivo && (
+                              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setViewingHist(h)}>
+                                Ver
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </Section>
                 )}
-              </Section>
-            )}
+              </div>
 
-            {data.historial.length > 0 && (
-              <Section title="Historial de documentos">
-                <ul className="divide-y divide-surface-200 rounded-lg border border-surface-200 bg-white">
-                  {data.historial.map((h) => (
-                    <li key={h.id_documento} className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0 text-sm">
-                        <p className="font-medium text-charcoal-950">{h.nombre}</p>
-                        <p className="text-xs text-muted">
-                          {h.motivo_historial === "LEGACY" ? "Documento del procedimiento anterior" : "Versión anterior, ya no vigente"}
-                          {h.registrado_en ? ` · ${formatDocumentDate(h.registrado_en)}` : ""}
+              {/* Side column: what the centre decides and the confirmation checklist */}
+              <aside className="space-y-4" aria-label="Datos y confirmación de la reserva">
+                <Card title="Tipo de contrato" Icon={FaFileContract}>
+                  {acciones.cambiar_tipo?.permitido ? (
+                    <>
+                      <TipoContratoSelect
+                        idReserva={r.id_reserva}
+                        idTipoContrato={r.id_tipo_contrato}
+                        onSaved={changed}
+                        labelOculto
+                        bare
+                        familiaFija={r.anexo_clave && acciones.cambio_familia && !acciones.cambio_familia.permitido ? r.anexo_clave : null}
+                      />
+                      {r.anexo_clave && !acciones.cambio_familia?.permitido && (
+                        <p className="mb-0 mt-2 text-xs leading-5 text-amber-800">{acciones.cambio_familia.motivo}</p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="m-0 text-sm font-medium text-charcoal-950">{tipoContratoLabel(r.tipo_contrato) || "Sin indicar"}</p>
+                      {!r.tipo_contrato && r.estado_reserva === "PENDIENTE" && (
+                        <p className="mb-0 mt-1 text-xs leading-5 text-muted">
+                          El centro indicará el tipo de contrato; entonces aparecerá el Anexo II o III.
                         </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <EstadoBadge kind="validacion" value={h.estado_validacion} />
-                        {h.tiene_archivo && (
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setViewingHist(h)}>
-                            Ver
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </Section>
-            )}
+                      )}
+                    </>
+                  )}
+                </Card>
+
+                <Card title="Tutor de empresa" Icon={FaUserTie}>
+                  {acciones.asignar_tutor?.permitido ? (
+                    <TutorAssignSelect
+                      idReserva={r.id_reserva}
+                      idEmpresa={r.id_empresa}
+                      idEmpresaTutor={r.id_empresa_tutor}
+                      tutorNombre={r.tutor_nombre}
+                      onAssigned={changed}
+                      bare
+                    />
+                  ) : (
+                    <>
+                      <p className="m-0 text-sm font-medium text-charcoal-950">{r.tutor_nombre || "Sin tutor asignado"}</p>
+                      {r.tutor_email && <p className="mb-0 mt-0.5 text-xs text-muted">{r.tutor_email}</p>}
+                    </>
+                  )}
+                </Card>
+
+                {r.estado_reserva === "PENDIENTE" && (
+                  <Confirmacion requisitos={data.confirmacion.requisitos} accion={acciones.confirmar} onConfirmar={confirmar} busy={busy} />
+                )}
+              </aside>
+            </div>
           </div>
         ) : null}
       </Modal>
@@ -356,9 +349,7 @@ function ReasignarDialog({ open, reserva, onClose, onDone }) {
         ) : ofertas === null ? (
           <p className="text-sm text-muted">Cargando ofertas…</p>
         ) : ofertas.length === 0 ? (
-          <p className="text-sm text-muted">
-            No hay otras ofertas de la misma especialidad y convocatoria con plazas libres.
-          </p>
+          <p className="text-sm text-muted">No hay otras ofertas de la misma especialidad y convocatoria con plazas libres.</p>
         ) : (
           <select
             id="reasignar-oferta"
@@ -378,44 +369,130 @@ function ReasignarDialog({ open, reserva, onClose, onDone }) {
   );
 }
 
+// Header strip: who and where, with the reservation state on the right.
 function Resumen({ r }) {
+  const items = [
+    { Icon: FaUserGraduate, term: "Alumno", value: r.alumno, extra: r.dni },
+    { Icon: FaBuilding, term: "Empresa", value: r.empresa },
+    { Icon: FaGraduationCap, term: "Especialidad", value: r.especialidad },
+    {
+      Icon: FaCalendarDays,
+      term: "Convocatoria",
+      value: r.convocatoria,
+      extra: r.convocatoria_activa ? "Activa" : null,
+    },
+  ];
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-      <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-        <Item term="Alumno" value={[r.alumno, r.dni].filter(Boolean).join(" · ")} />
-        <Item term="Empresa" value={r.empresa} />
-        <Item term="Especialidad" value={r.especialidad} />
-        <Item term="Convocatoria" value={`${r.convocatoria}${r.convocatoria_activa ? " (activa)" : ""}`} />
-      </dl>
-      <div className="flex flex-col items-start gap-1 sm:items-end">
-        <EstadoBadge kind="reserva" value={r.estado_reserva} />
-        {r.estado_reserva === "CANCELADA" && r.motivo && (
-          <p className="max-w-xs text-xs text-muted sm:text-right">Motivo: {r.motivo}</p>
+    <div className="rounded-xl2 border border-surface-200 bg-surface-50 p-4 sm:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row-reverse lg:items-start">
+        <div className="shrink-0">
+          <EstadoBadge kind="reserva" value={r.estado_reserva} />
+        </div>
+        <dl className="m-0 grid min-w-0 flex-1 grid-cols-2 gap-4 lg:grid-cols-4">
+          {items.map(({ Icon, term, value, extra }) => (
+            <div key={term} className="flex min-w-0 items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-surface-200 bg-white text-charcoal-600">
+                <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0">
+                <dt className="text-[0.68rem] font-semibold uppercase tracking-wide text-muted">{term}</dt>
+                <dd className="m-0 break-words text-sm font-medium text-charcoal-950">{value || "—"}</dd>
+                {extra && <dd className="m-0 text-xs text-muted">{extra}</dd>}
+              </div>
+            </div>
+          ))}
+        </dl>
+      </div>
+      {r.estado_reserva === "CANCELADA" && r.motivo && (
+        <p className="mb-0 mt-4 border-t border-surface-200 pt-3 text-xs leading-5 text-charcoal-700">
+          <span className="font-semibold">Motivo de la cancelación:</span> {r.motivo}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Confirmation checklist with progress, in the side column.
+function Confirmacion({ requisitos, accion, onConfirmar, busy }) {
+  const hechos = requisitos.filter((q) => q.ok).length;
+  const pct = requisitos.length ? Math.round((hechos / requisitos.length) * 100) : 0;
+  return (
+    <Card title="Confirmación" Icon={FaListCheck}>
+      <div className="mb-3 flex items-center justify-between text-xs">
+        <span className="text-muted">Requisitos</span>
+        <span className="font-semibold text-charcoal-900">
+          {hechos} de {requisitos.length}
+        </span>
+      </div>
+      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-surface-100" aria-hidden="true">
+        <div className="h-full rounded-full bg-green-600 transition-[width] duration-300" style={{ width: `${pct}%` }} />
+      </div>
+      <ul className="m-0 list-none space-y-3 p-0" aria-label="Requisitos para confirmar">
+        {requisitos.map((req) => (
+          <li key={req.clave} className="flex items-start gap-2.5 text-sm">
+            <span
+              aria-hidden="true"
+              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                req.ok ? "border-green-600 bg-green-600 text-white" : "border-surface-300 bg-white"
+              }`}
+            >
+              {req.ok && <FaCheck className="h-2 w-2" />}
+            </span>
+            <span className={`leading-5 ${req.ok ? "text-charcoal-800" : "text-muted"}`}>
+              {req.texto}
+              <span className="sr-only">{req.ok ? " (cumplido)" : " (pendiente)"}</span>
+              {!req.ok && req.pendientes?.length > 0 && (
+                <span className="block text-xs text-amber-800">
+                  Falta: {req.pendientes.map((p) => ACTOR[p === "GESTOR" ? "CENTRO" : p] || p).join(", ")}
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 border-t border-surface-200 pt-4">
+        {accion?.permitido ? (
+          <button type="button" className="btn btn-primary w-full" onClick={onConfirmar} disabled={busy}>
+            Confirmar reserva
+          </button>
+        ) : (
+          <p className="m-0 text-xs leading-5 text-muted">{accion?.motivo}</p>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
-function Item({ term, value }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-[0.68rem] font-semibold uppercase tracking-wide text-muted">{term}</dt>
-      <dd className="break-words text-charcoal-900">{value || "—"}</dd>
-    </div>
-  );
-}
-
-function Section({ title, children }) {
+// Main-column section: a heading with an icon, then its content.
+function Section({ title, Icon, children }) {
   return (
     <section>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">{title}</h3>
+      <h3 className="mb-3 mt-0 flex items-center gap-2 text-sm font-semibold text-charcoal-950">
+        {Icon && <Icon aria-hidden="true" className="h-3.5 w-3.5 text-brand-700" />}
+        {title}
+      </h3>
       {children}
     </section>
   );
 }
 
+// Side-column card.
+function Card({ title, Icon, children }) {
+  return (
+    <section className="rounded-xl2 border border-surface-200 bg-white p-4">
+      <h3 className="mb-3 mt-0 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted">
+        {Icon && <Icon aria-hidden="true" className="h-3 w-3 text-brand-700" />}
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function Hint({ children }) {
+  return <p className="mb-3 mt-0 text-xs leading-5 text-muted">{children}</p>;
+}
+
 function PanelState({ children }) {
   return <div className="py-10 text-center text-sm text-muted">{children}</div>;
 }
-
