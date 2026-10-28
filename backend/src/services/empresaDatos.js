@@ -420,7 +420,7 @@ async function applyEmpresaDatos(conn, ctx, proposed, { allowCif = false } = {})
 
   if (allowCif && 'cif' in fields) {
     const [dup] = await conn.query(
-      'SELECT idempresa FROM ge_empresas WHERE UPPER(TRIM(cif)) = ? AND idempresa <> ? LIMIT 1',
+      'SELECT idempresa FROM ge_empresas WHERE cif = ? AND idempresa <> ? LIMIT 1',
       [fields.cif, live.id_empresa]
     );
     if (dup[0]) {

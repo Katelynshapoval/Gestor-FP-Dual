@@ -141,8 +141,8 @@ async function ensureAlumno(conn, idConvocatoria, secrets) {
   );
   const idAlumno = a.insertId;
   const [s] = await conn.query(
-    'INSERT INTO dual_solicitudes_alumno (id_alumno, id_convocatoria, id_estado_validacion) VALUES (?, ?, 1)',
-    [idAlumno, idConvocatoria],
+    'INSERT INTO dual_solicitudes_alumno (id_alumno, id_convocatoria, id_especialidad, id_estado_validacion) VALUES (?, ?, ?, 1)',
+    [idAlumno, idConvocatoria, ESPECIALIDAD],
   );
   await conn.query('UPDATE dual_solicitudes_alumno SET id_estado_validacion = ? WHERE id_solicitud_alumno = ?', [await validado(conn), s.insertId]);
   const pw = password();

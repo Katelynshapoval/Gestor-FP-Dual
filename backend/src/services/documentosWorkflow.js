@@ -224,7 +224,7 @@ async function buildAlumnoList(idAlumno) {
        FROM dual_solicitudes_alumno sa
        JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
-       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = sa.id_especialidad
       WHERE sa.id_alumno = ?
       ORDER BY c.activa DESC, sa.fecha_solicitud DESC
       LIMIT 1`,
@@ -450,12 +450,12 @@ async function buildEmpresaList(idEmpresa) {
 async function buildStaffList() {
   const [alumnos] = await pool.query(
     `SELECT sa.id_solicitud_alumno, sa.id_alumno, sa.id_convocatoria, c.nombre AS convocatoria,
-            a.nombre AS alumno, a.dni, a.id_especialidad_dual AS id_especialidad,
+            a.nombre AS alumno, a.dni, sa.id_especialidad AS id_especialidad,
             esp.nombre AS especialidad
        FROM dual_solicitudes_alumno sa
        JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
-       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = sa.id_especialidad
       ORDER BY a.nombre, sa.id_solicitud_alumno DESC`,
   );
   const [empresas] = await pool.query(

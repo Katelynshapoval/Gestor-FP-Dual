@@ -92,7 +92,7 @@ async function datosSolicitudAlumno(id) {
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
        JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
-       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = sa.id_especialidad
       WHERE sa.id_solicitud_alumno = ?`,
     [id],
   );

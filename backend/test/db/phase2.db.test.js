@@ -93,7 +93,7 @@ async function freePair() {
     `SELECT sa.id_solicitud_alumno, ee.id_solicitud_empresa_especialidad AS id_oferta
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
-       JOIN dual_solicitud_empresa_especialidades ee ON ee.id_especialidad = a.id_especialidad_dual
+       JOIN dual_solicitud_empresa_especialidades ee ON ee.id_especialidad = sa.id_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
                                        AND se.id_convocatoria = sa.id_convocatoria
       WHERE sa.id_estado_validacion = fn_id_estado_validacion('VALIDADO')

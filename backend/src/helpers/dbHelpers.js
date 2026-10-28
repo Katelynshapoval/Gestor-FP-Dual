@@ -127,8 +127,15 @@ function mapSqlError(err) {
   if (err.sqlState === '45000') {
     return { status: 400, message: err.message, code: 'REGLA_NEGOCIO' };
   }
+  if (err.code === 'ER_DUP_ENTRY' && String(err.sqlMessage || err.message).includes('uq_dd_actual')) {
+    return { status: 409, message: 'Este documento se acaba de guardar desde otra sesión. Recarga la página y vuelve a intentarlo.', code: 'DOCUMENTO_CONCURRENTE' };
+  }
   if (err.code === 'ER_DUP_ENTRY') {
     return { status: 409, message: 'Ya existe un registro con esos datos.', code: 'DUPLICADO' };
+  }
+  // InnoDB rolled the statement (deadlock: the whole transaction) back; nothing was saved.
+  if (err.code === 'ER_LOCK_DEADLOCK' || err.code === 'ER_LOCK_WAIT_TIMEOUT') {
+    return { status: 409, message: 'Otra operación estaba modificando los mismos datos. Inténtalo de nuevo.', code: 'CONCURRENCIA' };
   }
   if (err.code === 'ER_CHECK_CONSTRAINT_VIOLATED') {
     return { status: 400, message: err.message, code: 'RESTRICCION' };

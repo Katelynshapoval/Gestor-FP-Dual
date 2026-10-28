@@ -51,6 +51,17 @@ async function withTransaction(conn, fn) {
 async function saveByClave(clave, parents, buffer, provenance = {}, { conn = null } = {}) {
   const def = defByClave(clave);
   return withTransaction(conn, async (tx) => {
+    // DB-03: two simultaneous first uploads for the same parent would both insert.
+    // Locking the parent row serialises them; uq_dd_actual (migration 017) is the
+    // backstop. The lock goes first: under REPEATABLE READ an earlier plain read
+    // would fix the snapshot before the wait, hiding the other upload's row.
+    const [tabla, columna, idPadre] = parents.id_solicitud_alumno
+      ? ["dual_solicitudes_alumno", "id_solicitud_alumno", parents.id_solicitud_alumno]
+      : parents.id_solicitud_empresa
+        ? ["dual_solicitudes_empresa", "id_solicitud_empresa", parents.id_solicitud_empresa]
+        : ["dual_reservas", "id_reserva", parents.id_reserva];
+    await tx.query(`SELECT ${columna} FROM ${tabla} WHERE ${columna} = ? FOR UPDATE`, [idPadre]);
+
     const idTipo = await workflow.tipoIdByNombre(clave, tx);
     if (!idTipo) {
       const err = new Error("Tipo de documento no configurado.");

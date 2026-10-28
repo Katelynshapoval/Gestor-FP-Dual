@@ -47,7 +47,7 @@ async function validateReservaTargets(idSolicitudAlumno, idOferta, { requireActi
     `SELECT
         sa.id_solicitud_alumno,
         sa.id_convocatoria AS conv_alumno,
-        a.id_especialidad_dual,
+        sa.id_especialidad AS id_especialidad_solicitud,
         ev_a.nombre AS estado_alumno,
         ee.id_especialidad AS esp_oferta,
         se.id_convocatoria AS conv_empresa,
@@ -80,7 +80,7 @@ async function validateReservaTargets(idSolicitudAlumno, idOferta, { requireActi
   if (row.conv_alumno !== row.conv_empresa) {
     return { error: 'Alumno y empresa deben pertenecer a la misma convocatoria.', status: 400 };
   }
-  if (row.esp_oferta !== row.id_especialidad_dual) {
+  if (row.esp_oferta !== row.id_especialidad_solicitud) {
     return { error: 'La especialidad del alumno no coincide con la especialidad solicitada por la empresa.', status: 400 };
   }
   return { ok: true, row };
@@ -153,7 +153,7 @@ exports.getAlumnosDisponibles = async function (req, res) {
          LIMIT 1) AS mi_reserva_id
      FROM dual_solicitudes_alumno sa
      JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
-     JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+     JOIN dual_especialidades esp ON esp.id_especialidad = sa.id_especialidad
      JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
      LEFT JOIN dual_reservas r_confirmada
        ON r_confirmada.id_solicitud_alumno = sa.id_solicitud_alumno
@@ -164,7 +164,7 @@ exports.getAlumnosDisponibles = async function (req, res) {
       AND sa.id_estado_validacion = (
             SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'VALIDADO' LIMIT 1
           )
-      AND a.id_especialidad_dual IN (?)
+      AND sa.id_especialidad IN (?)
       AND r_confirmada.id_reserva IS NULL
     ORDER BY a.nombre`,
     [idEmpresa, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, ESTADOS_RESERVA.CONFIRMADA, idEsps]
@@ -433,7 +433,7 @@ exports.getOfertasElegibles = async function (req, res) {
          ON ev_a.id_estado_validacion = sa.id_estado_validacion
         AND ev_a.nombre = 'VALIDADO'
        JOIN dual_solicitud_empresa_especialidades ee
-         ON ee.id_especialidad = a.id_especialidad_dual
+         ON ee.id_especialidad = sa.id_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
         AND se.id_convocatoria = sa.id_convocatoria
        JOIN dual_estados_validacion ev_e
@@ -481,7 +481,7 @@ async function ofertasParaReasignar(res, idSolicitudAlumno, idOrigen) {
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
        JOIN dual_solicitud_empresa_especialidades ee
-         ON ee.id_especialidad = a.id_especialidad_dual
+         ON ee.id_especialidad = sa.id_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
         AND se.id_convocatoria = sa.id_convocatoria
        JOIN dual_estados_validacion ev_e
@@ -554,7 +554,7 @@ exports.getAlumnosElegibles = async function (req, res) {
         AND ev_a.nombre = 'VALIDADO'
        JOIN gf_alumnosfct a
          ON a.idalumno = sa.id_alumno
-        AND a.id_especialidad_dual = ee.id_especialidad
+        AND sa.id_especialidad = ee.id_especialidad
       WHERE ee.id_solicitud_empresa_especialidad = ?
         AND fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) > 0
         ${ACTIVE_PAIR_SQL}

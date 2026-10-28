@@ -217,11 +217,12 @@ exports.create = async function (req, res) {
       });
     }
 
-    // Create solicitud
+    // Create solicitud. DB-01 (migration 017): the ciclo requested in this form
+    // belongs to the application; gf_alumnosfct only keeps the latest one.
     const [solResult] = await conn.query(
-      `INSERT INTO dual_solicitudes_alumno (id_alumno, id_convocatoria, id_estado_validacion)
-       VALUES (?, ?, 1)`,
-      [idAlumno, convocatoria.id_convocatoria]
+      `INSERT INTO dual_solicitudes_alumno (id_alumno, id_convocatoria, id_especialidad, id_estado_validacion)
+       VALUES (?, ?, ?, 1)`,
+      [idAlumno, convocatoria.id_convocatoria, id_especialidad_dual]
     );
     const idSolicitudAlumno = solResult.insertId;
 
@@ -328,7 +329,7 @@ exports.getAll = async function (req, res) {
       JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
       LEFT JOIN dual_usuarios u ON u.id_alumno = a.idalumno
       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = sa.id_estado_validacion
-      LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+      LEFT JOIN dual_especialidades esp ON esp.id_especialidad = sa.id_especialidad
       JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
      WHERE 1=1
   `;
@@ -415,7 +416,7 @@ exports.getMia = async function (req, res) {
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
        JOIN dual_estados_validacion ev ON ev.id_estado_validacion = sa.id_estado_validacion
-       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = sa.id_especialidad
        JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
       WHERE sa.id_alumno = ?
       ORDER BY c.activa DESC, sa.fecha_solicitud DESC
@@ -443,7 +444,7 @@ exports.getById = async function (req, res) {
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
        JOIN dual_estados_validacion ev ON ev.id_estado_validacion = sa.id_estado_validacion
-       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = a.id_especialidad_dual
+       LEFT JOIN dual_especialidades esp ON esp.id_especialidad = sa.id_especialidad
        JOIN dual_convocatorias c ON c.id_convocatoria = sa.id_convocatoria
       WHERE sa.id_solicitud_alumno = ?`,
     [id]

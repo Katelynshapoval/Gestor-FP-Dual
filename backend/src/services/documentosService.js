@@ -271,7 +271,7 @@ async function empresaMayViewStudentDocument(idEmpresa, doc) {
             AND sa.id_estado_validacion = (
                   SELECT id_estado_validacion FROM dual_estados_validacion WHERE nombre = 'VALIDADO' LIMIT 1
                 )
-            AND a.id_especialidad_dual IN (
+            AND sa.id_especialidad IN (
                   SELECT ee.id_especialidad
                     FROM dual_solicitud_empresa_especialidades ee
                     JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa

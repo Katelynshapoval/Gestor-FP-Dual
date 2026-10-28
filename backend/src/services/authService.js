@@ -61,7 +61,7 @@ async function findUserByIdentifier(identifier) {
        JOIN ge_domicilios d ON d.iddomicilio = c.iddomicilio
        JOIN ge_empresas emp ON emp.idempresa = d.idempresa
       WHERE r.nombre = 'EMPRESA'
-        AND UPPER(TRIM(emp.cif)) = ?
+        AND emp.cif = ?
       LIMIT 1`,
     [cifNorm]
   );

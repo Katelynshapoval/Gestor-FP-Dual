@@ -202,8 +202,10 @@ exports.create = async function (req, res) {
     await conn.beginTransaction();
 
     // Public registration must not upsert: an existing CIF is a duplicate company.
+    // CIFs are stored normalised, so `cif = ?` uses uq_ge_empresas_cif and locks one
+    // row (UPPER(TRIM(cif)) scanned and locked the whole table, DB-08).
     const [empExist] = await conn.query(
-      "SELECT idempresa FROM ge_empresas WHERE UPPER(TRIM(cif)) = ? FOR UPDATE",
+      "SELECT idempresa FROM ge_empresas WHERE cif = ? FOR UPDATE",
       [cifNorm],
     );
 
