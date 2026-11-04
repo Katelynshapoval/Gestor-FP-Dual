@@ -60,9 +60,9 @@
 
 ### Alta de empresa sin plantilla de convenio
 - **Condición**: no hay plantilla activa de CONVENIO, o la generación (Chromium, plantilla) falla.
-- **Comportamiento**: la solicitud queda creada (201), sin convenio, y **no se envía ningún correo de confirmación** (el correo solo sale si hay PDF). En consola: «…no hay plantilla activa de convenio. La solicitud se ha guardado.» o el error.
-- **Consecuencias**: el convenio aparece en Seguimiento como «Pendiente de generar» (o «No hay plantilla activa»). El centro puede generarlo después (`POST /documentos/generar`) o la empresa subirlo.
-- **Referencia**: `safelyGenerateAndSendConvenio`.
+- **Comportamiento**: la solicitud queda creada (201), sin convenio. El correo de confirmación «Solicitud Dual Empresa recibida» se envía igualmente, **sin adjunto**, diciendo que el convenio estará en el portal cuando el centro lo genere. En consola: «…no hay plantilla activa de convenio. La solicitud se ha guardado.» o el error. Igual en la reaplicación.
+- **Consecuencias**: el convenio aparece en Seguimiento como «Pendiente de generar» (o «No hay plantilla activa»). Sin plantilla, la pestaña Plantillas y el Panel muestran un aviso con el número de solicitudes que esperan su convenio. La empresa ve «Convenio: en preparación por el centro» y no tiene opción de subirlo hasta que exista (solo se oculta en el portal; el endpoint de subida no lo impide). Con la plantilla ya subida, el centro lo genera con «Generar convenios pendientes» o uno a uno (`POST /documentos/generar`), y la empresa recibe «Tu convenio está disponible» con el PDF.
+- **Referencia**: `safelyGenerateAndSendConvenio`, `notificaciones.solicitudEmpresaRecibida`, `conveniosPendientes`.
 
 ### DNI de representante y coordinador
 - **Comportamiento**: se validan con `dniNieValido` pero se guardan **sin normalizar** en el alta; las ediciones (`empresaDatos`) los guardan normalizados. Comparaciones posteriores (`valuesEqual`) normalizan, así que no generan cambios espurios.

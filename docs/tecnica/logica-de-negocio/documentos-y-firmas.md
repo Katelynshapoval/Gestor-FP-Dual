@@ -34,7 +34,7 @@ Modos por actor (`actor`): `upload` (sube), `sign` (firma), `review` (revisa), `
 
 | Estado operativo | Condición | Pendiente de |
 | --- | --- | --- |
-| `PENDIENTE_GENERACION` | Sin fichero y el tipo es generable (si no hay plantilla activa: `falta_plantilla`) | Centro |
+| `PENDIENTE_GENERACION` | Sin fichero y el tipo es generable (si no hay plantilla activa: `falta_plantilla`). Para la empresa, el CONVENIO sin fichero se muestra como «En preparación por el centro», sin `falta_plantilla` y sin `puede_subir` | Centro |
 | `PENDIENTE_SUBIDA` | Sin fichero y no generable | Quien sube (`primaryUploader`) |
 | `VALIDADO` | Revisión VALIDADO | — |
 | `RECHAZADO` | Revisión RECHAZADO | Quien sube («sustituir») |

@@ -47,6 +47,8 @@ function canUpload(def, rol) {
   return false;
 }
 
+const EN_PREPARACION_LABEL = "En preparación por el centro";
+
 function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
   const actor = actorOf(rol);
   const mode = def.actor[actor] || "hidden";
@@ -62,7 +64,11 @@ function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
   const signRole = actor;
   const ownSignature = derived.firmas.find((f) => f.rol === signRole);
 
-  const puedeSubir = ownsUpload && !file;
+  // The company signs the convenio the centre generates: until that file exists
+  // it sees "en preparación" and has nothing to upload. The centre's own detail
+  // (missing template) stays out of the company's view.
+  const enPreparacion = def.clave === "CONVENIO" && actor === "EMPRESA" && !file;
+  const puedeSubir = ownsUpload && !file && !enPreparacion;
   const puedeReemplazar = ownsUpload && file && (def.replaceIfValidated || !validated);
   const puedeRevisar = isStaff && derived.estado_operativo === "PENDIENTE_VALIDACION" && Boolean(row?.id_documento);
   const puedeFirmar = Boolean(
@@ -84,16 +90,16 @@ function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
     generado: Boolean(def.generated),
     id_documento: row?.id_documento || null,
     estado_workflow: file ? row?.estado_workflow || def.workflowOnUpload || "SUBIDO" : "NO_SUBIDO",
-    estado_workflow_label: derived.estado_operativo_label,
+    estado_workflow_label: enPreparacion ? EN_PREPARACION_LABEL : derived.estado_operativo_label,
     estado_operativo: derived.estado_operativo,
-    estado_operativo_label: derived.estado_operativo_label,
+    estado_operativo_label: enPreparacion ? EN_PREPARACION_LABEL : derived.estado_operativo_label,
     estado_validacion: derived.estado_validacion,
     estado_validacion_label: reviewLabel(derived.estado_validacion),
     motivo: derived.estado_operativo === "RECHAZADO" ? row?.motivo || null : null,
-    accion_pendiente: derived.accion_pendiente,
+    accion_pendiente: enPreparacion ? `${def.nombre}: en preparación por el centro` : derived.accion_pendiente,
     accion_pendiente_de: derived.accion_pendiente_de,
     requiere_accion_actual: derived.accion_pendiente_de.includes(viewer),
-    falta_plantilla: derived.falta_plantilla,
+    falta_plantilla: enPreparacion ? false : derived.falta_plantilla,
     responsable: derived.responsable,
     responsable_label: derived.responsable_label,
     puede_ver: Boolean(row?.id_documento && file),

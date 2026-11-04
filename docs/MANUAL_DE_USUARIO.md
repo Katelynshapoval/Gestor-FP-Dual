@@ -383,7 +383,8 @@ Al terminar aparece el mensaje **«Solicitud enviada»** con un botón **«Acced
 **Empresas**
 
 - Entrad en el portal con el **CIF** y la contraseña elegida.
-- El centro prepara el **convenio**, que se envía al correo del coordinador y aparece en el portal. Hay que firmarlo y subirlo firmado ([cómo](#empresa-documentos)).
+- Al enviar la solicitud, el coordinador recibe un correo de confirmación. Si el centro ya tiene preparado el modelo de **convenio**, el convenio va adjunto; si no, el correo avisa de que estará en el portal cuando el centro lo genere, y entonces llega otro correo, «Tu convenio está disponible», con el convenio adjunto.
+- Mientras tanto, en el portal el convenio aparece como **«Convenio: en preparación por el centro»**. Cuando ya está, hay que firmarlo y subirlo firmado ([cómo](#empresa-documentos)).
 - La solicitud queda **validada cuando el centro valida el convenio firmado**. Hasta entonces no podéis reservar alumnos.
 
 > **Correos.** La aplicación envía avisos por correo electrónico (validaciones, rechazos, reservas, confirmaciones…) cuando el centro tiene activado el envío. Lo que cuenta siempre es lo que aparece en el portal: si esperas un aviso y no llega, consulta el portal.
@@ -410,6 +411,8 @@ Es la primera pantalla al entrar. Arriba eliges la **convocatoria** (por defecto
 - **Reservas pendientes**: cuántas reservas hay en cada situación (Anexo pendiente de validar, Listas para confirmar, Sin tipo de contrato, Anexo pendiente de firmas, Falta el anexo o fue rechazado).
 
 Cada tarjeta tiene **«Ver lista»**, que abre la lista correspondiente **ya filtrada**. Una tarjeta con la etiqueta «Al día» no tiene nada pendiente.
+
+Si no hay **plantilla activa de Convenio**, arriba aparece un aviso con el número de solicitudes de empresa que esperan su convenio y el botón **«Ir a Plantillas»**. Las empresas siguen pudiendo presentar su solicitud y reciben el correo de confirmación, pero sin convenio.
 
 Las peticiones de corrección de datos de los **alumnos** no tienen tarjeta en el Panel: se ven en la lista de [Alumnos](#alumno-correcciones), con la etiqueta **«Cambios pendientes»**.
 
@@ -578,7 +581,7 @@ La solicitud de una empresa **se valida al validar su convenio firmado**: es el 
 3. Revisa el documento y pulsa **«Validar convenio»**. Si la solicitud estaba pendiente, queda **Validada** y la empresa ya puede reservar alumnos.
 4. Si no es correcto, pulsa **«Rechazar convenio»** y escribe el motivo. La empresa tendrá que subir uno nuevo. **La solicitud de la empresa no cambia de estado.**
 
-Si aparece «Convenio pendiente de generar», hay que generarlo desde [Documentos](#staff-documentos) (necesita una [plantilla](#plantillas) activa).
+Si aparece «Convenio pendiente de generar», hay que generarlo desde [Documentos](#staff-documentos) (necesita una [plantilla](#plantillas) activa). Si son varios, es más rápido **«Generar convenios pendientes»** en la pestaña [Plantillas](#plantillas). Al generarlo, la empresa recibe el convenio por correo.
 
 #### Estado de la solicitud: rechazar, reabrir o validar
 
@@ -767,8 +770,18 @@ Pestaña **«Plantillas»** dentro de Documentos. Aquí están las plantillas **
 
 Sin plantilla activa, el documento correspondiente no se puede generar.
 
-![Pestaña Plantillas con Convenio, Anexo II y Anexo III y el botón Subir plantilla](manual/imagenes/plantillas.png)
-_Plantillas vistas por Administración (en este ejemplo todavía no hay ninguna configurada)._
+**Convenios que esperan plantilla.** Si no hay plantilla activa de **Convenio**, arriba aparece un aviso con el número de solicitudes de empresa de la convocatoria activa que esperan su convenio. Esas empresas ya han recibido el correo de confirmación, sin convenio, y en su portal ven «Convenio: en preparación por el centro».
+
+Cuando hay plantilla activa y alguna solicitud de empresa sigue sin convenio, aparece el botón **«Generar convenios pendientes»**:
+
+1. Púlsalo y confirma. Se generan uno a uno los convenios que faltan en la convocatoria activa; puede tardar unos minutos.
+2. Cada empresa recibe por correo «Tu convenio está disponible», con el convenio adjunto, y lo ve en su portal.
+3. Al terminar se indica cuántos se han generado. Si alguno ha fallado, aparece la lista con el motivo; esos se pueden generar después uno a uno desde [Documentos](#staff-documentos).
+
+No se toca ningún convenio que ya exista (generado o subido por la empresa), ni los de solicitudes rechazadas. Lo pueden usar Administración y Coordinación.
+
+![Pestaña Plantillas con el aviso de que no hay plantilla de Convenio, y Convenio, Anexo II y Anexo III con el botón Subir plantilla](manual/imagenes/plantillas.png)
+_Plantillas vistas por Administración. En este ejemplo todavía no hay ninguna configurada, así que arriba aparece el aviso de que falta la plantilla de Convenio._
 
 <a id="cuentas"></a>
 
@@ -978,8 +991,8 @@ _Pestaña «Reservas». Las canceladas se muestran con su motivo y el botón «V
 
 En la pestaña **«Documentos»** («Mis documentos») están los documentos de la empresa: **Convenio** y **Anexo XIV**. Los de cada reserva (Anexo II o III y Calendario) están dentro del panel de la reserva.
 
-![Pestaña Documentos de la empresa con el Convenio y el Anexo XIV](manual/imagenes/portal-empresa-documentos.png)
-_Documentos de la empresa. Cada uno indica quién tiene que actuar._
+![Pestaña Documentos de la empresa con el Convenio pendiente de validar y el Anexo XIV pendiente de subir](manual/imagenes/portal-empresa-documentos.png)
+_Documentos de la empresa. Cada uno indica quién tiene que actuar: aquí el convenio firmado espera a que el centro lo valide. Si el centro todavía no lo ha generado, en su lugar aparece «Convenio: en preparación por el centro», sin opción de subirlo._
 
 **Subir un documento firmado**
 
@@ -991,7 +1004,7 @@ Al subir un documento que lleva vuestra firma, **declaráis que el archivo está
 
 | Documento | Qué hacer |
 | --- | --- |
-| **Convenio** | Lo genera el centro y os llega por correo y al portal. Firmadlo y subidlo. Cuando el centro lo valida, vuestra solicitud queda validada. |
+| **Convenio** | Lo genera el centro y os llega por correo y al portal. Mientras tanto aparece como «Convenio: en preparación por el centro» y todavía no hay nada que subir. Cuando esté, descargadlo, firmadlo y subidlo. Cuando el centro lo valida, vuestra solicitud queda validada. |
 | **Anexo XIV** | Subidlo firmado. El centro lo revisa. |
 | **Anexo II o III** (en cada reserva) | Aparece cuando el centro indica el tipo de contrato. Si el centro lo ha generado, descargadlo, firmadlo y subidlo; también podéis subirlo vosotros. Después firman el alumno y el centro. |
 | **Calendario** (en cada reserva) | Subidlo y firmadlo. Firman los tres. |
@@ -1231,6 +1244,7 @@ Pulsa **«¿Has olvidado tu contraseña?»** en la pantalla de acceso y sigue el
 
 - **¿Puedo usar la aplicación en el móvil?** Sí. Para leer PDFs en el móvil es mejor abrirlos en una pestaña nueva.
 - **Solo se admiten PDF** en los documentos (máximo 10 MB). Las plantillas son DOCX.
+- **He presentado la solicitud de empresa y el correo no traía el convenio.** El centro todavía no lo ha generado. En el portal aparece «Convenio: en preparación por el centro»; cuando esté listo recibiréis otro correo, «Tu convenio está disponible», con el convenio adjunto.
 - **Mi solicitud de empresa sigue pendiente aunque he subido el convenio.** Se valida cuando el centro **valida** el convenio, no al subirlo. Si el centro lo rechaza, veréis el motivo y tendréis que subir uno nuevo.
 - **El alumno es menor de edad.** El formulario pide los datos del tutor o tutora legal en el paso «Datos personales».
 - **Han regenerado un anexo que ya había firmado.** Al regenerarlo se crea una versión nueva y hay que volver a firmarla.

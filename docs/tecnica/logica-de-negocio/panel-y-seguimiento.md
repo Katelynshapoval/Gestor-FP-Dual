@@ -30,6 +30,7 @@ Convocatoria: la pedida; si no se pide, la activa o, si no hay, la más reciente
 | `solicitudes_alumno_pendientes` / `solicitudes_empresa_pendientes` | Solicitudes PENDIENTE de la convocatoria |
 | `cambios_empresa_pendientes` | `dual_empresa_cambios` PENDIENTE de solicitudes de la convocatoria |
 | `documentos_accion_centro` | Total de Seguimiento con `convocatoria` y `accionPendiente = CENTRO` (reconstruye toda la lista) |
+| `convenio` | `{ plantilla_activa, solicitudes_sin_convenio }`: si hay plantilla activa de CONVENIO y cuántas solicitudes de empresa de la convocatoria (no rechazadas) no tienen fichero de convenio. Sin plantilla, el panel muestra un aviso con enlace a Plantillas |
 | `reservas` | Reservas PENDIENTE de la convocatoria agrupadas por su anexo: `sinTipo` (sin tipo de contrato), `listas` (anexo VALIDADO), `revisar` (PENDIENTE_VALIDACION), `firmas` (PENDIENTE_FIRMA), `documento` (resto: falta subir/generar o rechazado) |
 
 Cada tarjeta del panel abre el listado correspondiente con los filtros ya aplicados en la URL.

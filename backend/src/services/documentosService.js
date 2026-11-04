@@ -707,6 +707,8 @@ exports.generar = async function (req, res) {
         code: result.code,
       });
     }
+    // The company gets the new convenio by email (not awaited, never fails the request).
+    if (clave === "CONVENIO") notificar.convenioDisponible(parents.id_solicitud_empresa, result.pdf);
     return res.json({
       message: `${def.nombre} generado correctamente.`,
       id_documento: result.id_documento,

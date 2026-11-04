@@ -33,7 +33,7 @@
 
 ### Generación de PDF: Chromium, plantilla o datos
 - **Condición**: Chromium no arranca (no instalado por `puppeteer`, falta de memoria), plantilla DOCX con sintaxis errónea, datos inexistentes.
-- **Comportamiento**: en `POST /documentos/generar` el error llega a `sendSqlError` → normalmente 500 (o el `status` del error: 400/404/409). En el alta y la reaplicación de empresa solo se registra en consola y la solicitud queda creada sin convenio. Se lanza **un navegador por documento** y se cierra en `finally`.
+- **Comportamiento**: en `POST /documentos/generar` el error llega a `sendSqlError` → normalmente 500 (o el `status` del error: 400/404/409). En el alta y la reaplicación de empresa solo se registra en consola, la solicitud queda creada sin convenio y el correo de confirmación se envía sin adjunto. En «Generar convenios pendientes» el error de una empresa se devuelve en `fallidos` y se sigue con la siguiente. Se lanza **un navegador por documento** y se cierra en `finally`.
 - **Consecuencias**: generaciones simultáneas multiplican el consumo de memoria.
 
 ### Ventanas entre comprobación y bloqueo

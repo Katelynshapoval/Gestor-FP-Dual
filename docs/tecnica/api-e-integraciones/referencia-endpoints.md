@@ -128,7 +128,8 @@
 | `GET /documentos/alumno/mios` | ALUMNO | Lista proyectada |
 | `GET /documentos/empresa` | EMPRESA | Lista proyectada |
 | `GET /documentos/seguimiento?page=&pageSize=&search=&convocatoria=&documento=&estado=&accionPendiente=&alumno=&empresa=&especialidad=&contexto=` | Personal | Página + resumen + opciones de filtro |
-| `POST /documentos/generar` | Personal | `{ clave, id_solicitud_empresa | id_reserva, regenerar? }` · 409 `SIN_PLANTILLA` |
+| `POST /documentos/generar` | Personal | `{ clave, id_solicitud_empresa | id_reserva, regenerar? }` · 409 `SIN_PLANTILLA`. Un CONVENIO generado se envía por correo a la empresa |
+| `POST /documentos/convenios/generar-pendientes` | Personal | Sin cuerpo. Genera, uno a uno, el convenio de cada solicitud de empresa de la convocatoria activa (no rechazada) que no tiene fichero de convenio, y lo envía por correo → `{ message, convocatoria, generados[], fallidos[{ id_solicitud_empresa, empresa, error }] }` · 409 `SIN_PLANTILLA` · 409 si ya hay otra ejecución en curso · 400 sin convocatoria activa |
 | `POST /documentos/subir` | Todos (catálogo + propiedad) | `multipart`: `archivo`, `clave`, id del padre |
 | `POST /documentos/firmar` | Todos (catálogo + propiedad) | `{ clave, id_reserva }` |
 | `POST /documentos/:id/firmar` | Todos (catálogo + propiedad) | |
@@ -137,7 +138,7 @@
 | `GET /documentos/:id/descargar` | Autenticado (permisos por rol y propiedad) | PDF `attachment` |
 | `POST /documentos/:id/validar` | Personal | Cascada a empresa si es convenio |
 | `POST /documentos/:id/rechazar` | Personal | `{ motivo }` |
-| `GET /documentos/plantillas` | Personal | Plantillas por tipo y versiones |
+| `GET /documentos/plantillas` | Personal | Plantillas por tipo y versiones · `convenio: { convocatoria, plantilla_activa, solicitudes_sin_convenio }` de la convocatoria activa |
 | `POST /documentos/plantillas` | ADMINISTRADOR | `multipart`: `archivo` (.docx con firma ZIP), `clave` |
 | `GET /documentos/plantillas/:id/descargar` | Personal | DOCX `attachment` `plantilla-<clave>-v<n>.docx` |
 
@@ -147,4 +148,4 @@ Atención al orden de rutas en Express: `GET /solicitudes/alumno/mia` se declara
 
 | Método y ruta | Acceso | Notas |
 | --- | --- | --- |
-| `GET /panel/resumen?convocatoria=` | Personal | Contadores |
+| `GET /panel/resumen?convocatoria=` | Personal | Contadores (incluye `convenio: { plantilla_activa, solicitudes_sin_convenio }`) |

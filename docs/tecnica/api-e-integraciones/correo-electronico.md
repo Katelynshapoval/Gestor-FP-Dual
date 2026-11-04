@@ -29,7 +29,8 @@ El modo se decide al cargar el módulo y se escribe en consola al arrancar (`[co
 | --- | --- | --- | --- |
 | Solicitud de alumno recibida | `POST /solicitudes/alumno` | ✔ (email del formulario) | |
 | Solicitud de alumno validada / rechazada | `aplicarTransicion` | ✔ (rechazo con motivo) | |
-| Solicitud de empresa recibida (+ PDF del convenio) | Alta y reaplicación, **solo si se generó el convenio** | | ✔ |
+| Solicitud de empresa recibida | Alta y reaplicación, **siempre**: con el PDF del convenio si se generó; si no (sin plantilla activa o error al generar), sin adjunto y avisando de que el convenio estará en el portal cuando el centro lo genere | | ✔ |
+| Convenio disponible («Tu convenio está disponible», PDF adjunto) | `POST /documentos/generar` de un CONVENIO (también al regenerar) y «Generar convenios pendientes» | | ✔ |
 | Solicitud de empresa validada / rechazada | `aplicarTransicion`, validación del convenio | | ✔ |
 | Documento rechazado | `POST /documentos/:id/rechazar` | ✔ si es de su solicitud | ✔ si es de la solicitud de empresa **o de una reserva** |
 | Reserva creada por la empresa | `POST /reservas` | ✔ | |

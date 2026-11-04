@@ -1,6 +1,8 @@
 const pool = require("../db/pool");
 const { generatedDefs } = require("./documentCatalogue");
 const workflow = require("./documentosWorkflow");
+const { getActiveConvocatoria } = require("../helpers/dbHelpers");
+const conveniosPendientes = require("./conveniosPendientes");
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -63,7 +65,15 @@ exports.list = async function (req, res) {
     };
   });
 
-  return res.json({ tipos });
+  // Company applications of the active convocatoria still without a convenio,
+  // for the "no template" warning and the catch-up action.
+  const convocatoria = await getActiveConvocatoria();
+  const convenio = {
+    convocatoria: convocatoria?.nombre || null,
+    ...(await conveniosPendientes.resumen(convocatoria?.id_convocatoria || null)),
+  };
+
+  return res.json({ tipos, convenio });
 };
 
 exports.upload = async function (req, res) {

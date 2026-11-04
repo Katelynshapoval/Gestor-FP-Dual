@@ -41,35 +41,6 @@ try {
   /* mail not configured */
 }
 
-async function sendCompanyConfirmationEmail(email, empresa, convocatoria, pdfBuffer) {
-  if (!transporter || !pdfBuffer) {
-    console.warn("Mail not configured or convenio not generated. Confirmation email not sent for", empresa);
-    return;
-  }
-
-  try {
-    await transporter.sendMail({
-      from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Solicitud Dual Empresa recibida",
-      html: `
-        <p>Estimado coordinador de <strong>${escapeHtml(empresa)}</strong>,</p>
-        <p>Hemos recibido vuestra solicitud de participación en la convocatoria <strong>${escapeHtml(convocatoria)}</strong>.</p>
-        <p>Adjuntamos el convenio generado. La firma y la validación se registran en el portal.</p>
-        <p>Salesianos Zaragoza — Departamento Dual</p>
-      `,
-      attachments: [
-        {
-          filename: `CONVENIO_${empresa}_${new Date().getFullYear()}.pdf`,
-          content: pdfBuffer,
-        },
-      ],
-    });
-  } catch (err) {
-    console.error("Error sending company confirmation email:", err.message);
-  }
-}
-
 // POST /solicitudes/empresa — public: create company application
 exports.create = async function (req, res) {
   const {
@@ -2143,7 +2114,12 @@ exports.updateCupoEspecialidad = async function (req, res) {
   });
 };
 
+// Generates the convenio after an application and always sends the company its
+// confirmation: with the PDF attached when an active CONVENIO template exists,
+// without it otherwise (staff catch up later from the Plantillas page). Never
+// throws: the application is already committed.
 async function safelyGenerateAndSendConvenio(idSolicitudEmpresa, errorMessage, userId) {
+  let pdf = null;
   try {
     const result = await generateDocument({
       clave: "CONVENIO",
@@ -2151,12 +2127,12 @@ async function safelyGenerateAndSendConvenio(idSolicitudEmpresa, errorMessage, u
       userId: userId || null,
       regenerar: false,
     });
-    if (!result.ok) {
-      console.warn(`${errorMessage} no hay plantilla activa de convenio. La solicitud se ha guardado.`);
-      return;
-    }
-    await sendCompanyConfirmationEmail(result.email, result.empresa, result.convocatoria, result.pdf);
+    if (result.ok) pdf = result.pdf;
+    else console.warn(`${errorMessage} no hay plantilla activa de convenio. La solicitud se ha guardado.`);
   } catch (err) {
     console.error(errorMessage, err.message);
   }
+  await notificar.solicitudEmpresaRecibida(idSolicitudEmpresa, pdf);
 }
+
+exports._internals = { safelyGenerateAndSendConvenio };

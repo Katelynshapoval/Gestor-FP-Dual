@@ -6,7 +6,10 @@ import Plantillas from "./Plantillas.jsx";
 import "../../styles/forms.css";
 
 export default function AdminDocumentsView() {
-  const [tab, setTab] = useState("seguimiento");
+  // ?vista=plantillas opens the Plantillas tab (link from the panel warning).
+  const [tab, setTab] = useState(() =>
+    new URLSearchParams(window.location.search).get("vista") === "plantillas" ? "plantillas" : "seguimiento",
+  );
   const [summary, setSummary] = useState(null);
 
   const tabCls = (active) =>

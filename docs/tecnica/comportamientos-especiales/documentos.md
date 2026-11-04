@@ -48,7 +48,12 @@
 
 ### Generar o regenerar
 - **Comportamiento**: sin plantilla activa → 409 `SIN_PLANTILLA`; ya hay fichero y no se pide `regenerar: true` → 409; documento VALIDADO → 400. Al regenerar se archiva el anterior y se reinician las firmas.
-- **Consecuencias**: el PDF fija los datos del momento (tutor, datos de empresa). Para reflejar cambios posteriores hay que regenerar antes de validar.
+- **Consecuencias**: el PDF fija los datos del momento (tutor, datos de empresa). Para reflejar cambios posteriores hay que regenerar antes de validar. Generar o regenerar un CONVENIO envía a la empresa «Tu convenio está disponible» con el PDF (sin esperar el envío; un fallo del correo no cambia la respuesta).
+
+### Generar convenios pendientes
+- **Condición**: plantilla activa de CONVENIO y solicitudes de empresa de la convocatoria activa (no rechazadas) sin fichero de convenio actual.
+- **Comportamiento**: `POST /documentos/convenios/generar-pendientes` las genera **una a una** con `regenerar: false` y envía cada convenio por correo. Un convenio ya subido o generado no se toca; si otro proceso lo crea entre la consulta y la generación, `generateDocument` responde 409 y queda en `fallidos`. Un error en una empresa no detiene las demás. Una segunda ejecución mientras hay otra en curso → 409 (bloqueo en memoria, un solo proceso).
+- **Consecuencias**: se ejecuta dentro de la petición HTTP; con muchas solicitudes puede tardar (un Chromium por convenio). Si se cambia la plantilla durante la ejecución, cada convenio usa la activa en su momento.
 
 ### El alumno puede descargar el convenio de empresas con reservas canceladas
 - **Comportamiento**: `alumnoMayDownload` permite el convenio de una solicitud de empresa si el alumno tiene **cualquier** reserva con ella, incluso cancelada. La lista `/documentos/alumno/mios`, en cambio, solo incluye empresas con reservas no canceladas.

@@ -40,6 +40,8 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | Borrado de convocatorias, ofertas o plantillas | No existe |
 | Edición de datos del alumno | Administración la edita directamente; el alumno pide la corrección desde el portal (020). Solo en la convocatoria activa |
 | Aviso por correo al reabrir, reactivar, cambiar el tipo de contrato o resolver cambios de datos de **empresa** | No se envía (los de alumno sí) |
+| Subida del convenio por la empresa antes de que el centro lo genere | El portal ya no lo ofrece («en preparación por el centro»), pero `POST /documentos/subir` y `/documentos/empresa/:id/convenio` lo siguen aceptando |
+| «Generar convenios pendientes» se ejecuta dentro de la petición HTTP | Con muchas solicitudes puede superar el tiempo de espera de un proxy; sin cola ni indicador de progreso |
 | Formato del NSS del alumno | Solo se valida en el formulario. El DNI/NIE se valida también en el backend (SEC-001) |
 
 ## 5. Operación

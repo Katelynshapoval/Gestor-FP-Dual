@@ -5,6 +5,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { pdfUpload, requirePdfSignature, NOT_PDF } = require('../middleware/pdfUpload');
 const svc = require('../services/documentosService');
 const plantillas = require('../services/plantillasService');
+const conveniosPendientes = require('../services/conveniosPendientes');
 
 const router = Router();
 
@@ -22,6 +23,12 @@ router.get('/documentos/alumno/mios', requireAuth, requireRole('ALUMNO'), asyncH
 router.get('/documentos/seguimiento', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.seguimiento));
 
 router.post('/documentos/generar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.generar));
+// Same roles as single generation: convenios of the active convocatoria still without one.
+router.post(
+  '/documentos/convenios/generar-pendientes',
+  requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'),
+  asyncHandler(conveniosPendientes.generarPendientesHandler)
+);
 
 router.post(
   '/documentos/subir',

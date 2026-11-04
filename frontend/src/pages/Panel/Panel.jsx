@@ -224,6 +224,21 @@ const Panel = () => {
               No se pudo actualizar: {error.message}. Se muestran los últimos datos cargados.
             </p>
           )}
+          {c.convenio && !c.convenio.plantilla_activa && (
+            <p role="status" className="m-0 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                No hay plantilla activa de Convenio.{" "}
+                {c.convenio.solicitudes_sin_convenio > 0
+                  ? `${c.convenio.solicitudes_sin_convenio} ${
+                      c.convenio.solicitudes_sin_convenio === 1 ? "solicitud de empresa espera" : "solicitudes de empresa esperan"
+                    } su convenio.`
+                  : "Las empresas no recibirán su convenio hasta que se suba."}
+              </span>
+              <Link to="/documentos?vista=plantillas" className="btn btn-secondary btn-sm shrink-0">
+                Ir a Plantillas
+              </Link>
+            </p>
+          )}
           {/* No grand total: an annex awaiting validation is both a document and a reservation task. */}
           {nadaPendiente && (
             <p role="status" className="m-0 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-900">

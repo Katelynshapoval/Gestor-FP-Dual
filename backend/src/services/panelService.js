@@ -3,6 +3,7 @@
 // default), so the browser never downloads whole lists just to count them.
 const pool = require('../db/pool');
 const { reservaDocSummary, queryStaffPage } = require('./documentosWorkflow');
+const conveniosPendientes = require('./conveniosPendientes');
 
 async function convocatoriasConActiva() {
   const [rows] = await pool.query(
@@ -85,12 +86,13 @@ exports.resumen = async function (req, res) {
     return res.json({ convocatoria: null, convocatorias: opciones, contadores: null });
   }
   const id = convocatoria.id_convocatoria;
-  const [alumnos, empresas, cambios, reservas, documentos] = await Promise.all([
+  const [alumnos, empresas, cambios, reservas, documentos, convenio] = await Promise.all([
     contarSolicitudes('dual_solicitudes_alumno', id),
     contarSolicitudes('dual_solicitudes_empresa', id),
     contarCambiosEmpresa(id),
     contarReservas(id),
     contarDocumentosCentro(id),
+    conveniosPendientes.resumen(id),
   ]);
   return res.json({
     convocatoria: {
@@ -107,6 +109,8 @@ exports.resumen = async function (req, res) {
       cambios_empresa_pendientes: cambios,
       documentos_accion_centro: documentos,
       reservas: reservas,
+      // { plantilla_activa, solicitudes_sin_convenio }: "no CONVENIO template" warning.
+      convenio,
     },
   });
 };

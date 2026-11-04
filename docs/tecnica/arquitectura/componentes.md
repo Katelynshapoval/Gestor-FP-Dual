@@ -20,6 +20,7 @@
 | [`src/mail/config.js`](../../../backend/src/mail/config.js) | Objeto `transporter` único: modo `log` (no envía, registra destinatario enmascarado) o `smtp` (Gmail), con redirección opcional `MAIL_REDIRECT_TO`. |
 | [`src/services/auditLog.js`](../../../backend/src/services/auditLog.js) | `recordEvent(conn, …)` siempre dentro de la transacción del llamante: si falla, se deshace el cambio. Entidades admitidas: `SOLICITUD_ALUMNO`, `SOLICITUD_EMPRESA`, `RESERVA`, `DOCUMENTO`, `OFERTA`, `TUTOR`, `USUARIO`. |
 | [`src/services/notificaciones.js`](../../../backend/src/services/notificaciones.js) | Plantillas de correo por evento; nunca lanzan excepción; releen los datos tras el *commit*. |
+| [`src/services/conveniosPendientes.js`](../../../backend/src/services/conveniosPendientes.js) | Solicitudes de empresa sin convenio, resumen para los avisos del personal y la acción «Generar convenios pendientes» (una ejecución a la vez). |
 
 ### 1.2 Módulos de dominio
 
@@ -32,8 +33,8 @@
 | `solicitudesEmpresaRoute` | `solicitudesEmpresaService`, `empresaDatos`, `solicitudTransiciones`, `bajaService` | Solicitud de empresa, reaplicación, datos, cambios, ofertas y cupos | [solicitudes de empresa](../logica-de-negocio/solicitudes-empresa.md) |
 | `reservasRoute` | `reservasService`, `reservasTx` | Reservas, tipo de contrato, confirmación, reasignación, intentos relacionados | [reservas](../logica-de-negocio/reservas.md) |
 | `empresaTutoresRoute` | `empresaTutoresService` | Tutores de empresa y su asignación a reservas | [tutores](../logica-de-negocio/tutores-empresa.md) |
-| `documentosRoute` | `documentosService`, `documentosStore`, `documentosWorkflow`, `documentCatalogue`, `documentStaffQuery`, `documentGenerationService`, `documentGenerationConfig`, `plantillasService` | Documentos, firmas, revisión, generación, plantillas, seguimiento | [documentos y firmas](../logica-de-negocio/documentos-y-firmas.md) |
-| `panelRoute` | `panelService` | Contadores del panel del personal | [panel](../logica-de-negocio/panel-y-seguimiento.md) |
+| `documentosRoute` | `documentosService`, `documentosStore`, `documentosWorkflow`, `documentCatalogue`, `documentStaffQuery`, `documentGenerationService`, `documentGenerationConfig`, `plantillasService`, `conveniosPendientes` | Documentos, firmas, revisión, generación, plantillas, seguimiento | [documentos y firmas](../logica-de-negocio/documentos-y-firmas.md) |
+| `panelRoute` | `panelService`, `conveniosPendientes` | Contadores del panel del personal | [panel](../logica-de-negocio/panel-y-seguimiento.md) |
 | `ayudaRoute` | — | Manual de usuario (Markdown) y sus capturas, públicos | [componentes § 2.3](#23-componentes-compartidos-relevantes) |
 
 ### 1.3 Grafo de dependencias entre servicios

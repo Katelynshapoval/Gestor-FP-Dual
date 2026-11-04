@@ -104,14 +104,16 @@ sequenceDiagram
     G->>DB: lee plantilla DOCX + datos
     G->>CH: DOCX → HTML (mammoth) → PDF (puppeteer)
     G->>DB: saveByClave (transacción propia, evento GENERAR)
-    S-)S: correo con el PDF adjunto
   else sin plantilla
-    Note over S: aviso en consola; NO se envía ningún correo
+    Note over S: aviso en consola; la solicitud queda sin convenio
   end
+  S-)S: correo «Solicitud Dual Empresa recibida» (con el PDF si se generó)
   S-->>F: 201 {id_solicitud_empresa}
 ```
 
-Un fallo de la generación **no** deshace la solicitud (ya confirmada): se registra en consola y la respuesta sigue siendo 201.
+Un fallo de la generación **no** deshace la solicitud (ya confirmada): se registra en consola, la respuesta sigue siendo 201 y el correo de confirmación sale igualmente, sin adjunto.
+
+Cuando después se sube la plantilla, el personal genera los convenios que faltan desde **Documentos › Plantillas › «Generar convenios pendientes»** (`POST /documentos/convenios/generar-pendientes`) o uno a uno desde Seguimiento. Cada convenio generado se envía a la empresa con el correo «Tu convenio está disponible».
 
 ## 5. De la reserva a la confirmación
 

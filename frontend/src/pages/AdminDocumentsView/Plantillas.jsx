@@ -1,17 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { getBlob, getJSON, postForm } from "../../utils/api.js";
+import { getBlob, getJSON, postForm, postJSON } from "../../utils/api.js";
 import { formatDocumentDate } from "../../utils/documentos.js";
-import { useToast } from "../../components/feedback/ToastProvider.jsx";
+import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
 import InlineNotice from "../../components/ui/InlineNotice.jsx";
 import StatusBadge from "../../components/ui/StatusBadge.jsx";
 import { useUser } from "../../context/UserContext";
 
 export default function Plantillas() {
   const toast = useToast();
+  const confirm = useConfirm();
   const { user } = useUser();
   // Template upload is ADMINISTRADOR-only on the server (SEC-6)
   const canUpload = user?.rol === "ADMINISTRADOR";
   const [tipos, setTipos] = useState([]);
+  // { convocatoria, plantilla_activa, solicitudes_sin_convenio } for the active convocatoria
+  const [convenio, setConvenio] = useState(null);
+  const [generando, setGenerando] = useState(false);
+  const [resultado, setResultado] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -27,6 +32,7 @@ export default function Plantillas() {
       .then((data) => {
         if (!active) return;
         setTipos(Array.isArray(data?.tipos) ? data.tipos : []);
+        setConvenio(data?.convenio || null);
       })
       .catch((err) => {
         if (!active) return;
@@ -66,6 +72,31 @@ export default function Plantillas() {
       toast.error(err.message || "No se pudo subir la plantilla.");
     } finally {
       setBusy("");
+    }
+  };
+
+  // Generates, one by one on the server, every convenio still missing in the
+  // active convocatoria; each company receives its convenio by email.
+  const generarPendientes = async () => {
+    const n = convenio?.solicitudes_sin_convenio || 0;
+    const accepted = await confirm({
+      title: "Generar convenios pendientes",
+      message: `Se generará el convenio de ${n} ${n === 1 ? "solicitud" : "solicitudes"} de empresa y se enviará por correo a cada empresa. Puede tardar unos minutos.`,
+      confirmLabel: "Generar",
+    });
+    if (!accepted) return;
+    setGenerando(true);
+    setResultado(null);
+    try {
+      const data = await postJSON("/documentos/convenios/generar-pendientes", {});
+      setResultado(data);
+      if (data.fallidos?.length) toast.error(data.message);
+      else toast.success(data.message);
+      setReloadToken((value) => value + 1);
+    } catch (err) {
+      toast.error(err.message || "No se pudieron generar los convenios.");
+    } finally {
+      setGenerando(false);
     }
   };
 
@@ -111,6 +142,40 @@ export default function Plantillas() {
   return (
     <div className="space-y-3">
       <InlineNotice tone="error">{notice}</InlineNotice>
+      {convenio && !convenio.plantilla_activa && (
+        <InlineNotice tone="warning">
+          No hay plantilla activa de Convenio.{" "}
+          {convenio.solicitudes_sin_convenio > 0
+            ? `${convenio.solicitudes_sin_convenio} ${
+                convenio.solicitudes_sin_convenio === 1 ? "solicitud de empresa espera" : "solicitudes de empresa esperan"
+              } su convenio${convenio.convocatoria ? ` en la convocatoria ${convenio.convocatoria}` : ""}.`
+            : "Las nuevas solicitudes de empresa no recibirán su convenio hasta que se suba."}
+        </InlineNotice>
+      )}
+      {convenio?.plantilla_activa && convenio.solicitudes_sin_convenio > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <p className="m-0">
+            {convenio.solicitudes_sin_convenio}{" "}
+            {convenio.solicitudes_sin_convenio === 1 ? "solicitud de empresa no tiene" : "solicitudes de empresa no tienen"} convenio
+            {convenio.convocatoria ? ` en la convocatoria ${convenio.convocatoria}` : ""}.
+          </p>
+          <button type="button" className="btn btn-outline-brand btn-sm shrink-0" disabled={generando} onClick={generarPendientes}>
+            {generando ? "Generando…" : "Generar convenios pendientes"}
+          </button>
+        </div>
+      )}
+      {resultado?.fallidos?.length > 0 && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p className="m-0 font-semibold">{resultado.message}</p>
+          <ul className="mt-1 list-disc pl-5">
+            {resultado.fallidos.map((f) => (
+              <li key={f.id_solicitud_empresa}>
+                {f.empresa || `Solicitud ${f.id_solicitud_empresa}`}: {f.error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {!canUpload && (
         <InlineNotice tone="info">
           Solo un administrador puede subir o reemplazar plantillas.

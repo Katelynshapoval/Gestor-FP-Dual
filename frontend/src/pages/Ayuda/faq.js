@@ -26,6 +26,11 @@ export const FAQ = [
     href: "#situaciones-especiales",
   },
   {
+    q: "El correo de confirmación de la empresa no traía el convenio",
+    a: "El centro todavía no lo ha generado. En el portal aparece «Convenio: en preparación por el centro» y aún no hay nada que subir. Cuando esté listo llega otro correo, «Tu convenio está disponible», con el convenio adjunto: descargadlo, firmadlo y subidlo.",
+    href: "#empresa-documentos",
+  },
+  {
     q: "Me han rechazado un documento o el convenio",
     a: "El estado Rechazado incluye el motivo. Hay que corregirlo y subir un archivo nuevo. Un documento rechazado no se puede firmar ni validar hasta que se sustituye. El convenio de la empresa, cuando el centro lo valida, es lo que valida la solicitud.",
     href: "#faq-documentos",
