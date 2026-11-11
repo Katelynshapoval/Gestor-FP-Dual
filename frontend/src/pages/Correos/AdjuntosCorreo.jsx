@@ -14,6 +14,15 @@ import {
 } from "../../components/feedback/ToastProvider.jsx";
 import { getBlob, postForm, postJSON } from "../../utils/api";
 
+// Where a generated document comes from, for the attachment list.
+function origenDocumento(a, disponibles) {
+  const d = disponibles.find((x) => x.documento === a.documento);
+  const de = a.documento === "CONVENIO" ? "de cada empresa" : "de cada reserva";
+  if (!d?.plantilla_activa) return `El ${a.nombre.toLowerCase()} ${de} · sin plantilla activa`;
+  const p = d.plantilla_activa;
+  return `El ${a.nombre.toLowerCase()} ${de}, generado con la plantilla activa (versión ${p.version}${p.nombre_archivo ? `, ${p.nombre_archivo}` : ""}). Si aún no existe, el correo sale sin él.`;
+}
+
 function tamano(bytes) {
   if (bytes === null || bytes === undefined) return "";
   if (bytes < 1024) return `${bytes} B`;
@@ -24,13 +33,19 @@ function tamano(bytes) {
 // Warnings for the draft switch and the saved attachments.
 export function avisos(correo, lleva) {
   const out = [];
-  const permitidos = new Set(
-    (correo.documentos_disponibles || []).map((d) => d.documento),
+  const disponibles = new Map(
+    (correo.documentos_disponibles || []).map((d) => [d.documento, d]),
   );
   for (const a of correo.adjuntos) {
-    if (a.tipo === "DOCUMENTO" && !permitidos.has(a.documento)) {
+    if (a.tipo !== "DOCUMENTO") continue;
+    const d = disponibles.get(a.documento);
+    if (!d) {
       out.push(
-        `«${a.nombre}» no se puede adjuntar a este correo: la aplicación no lo genera para él. Quítalo.`,
+        `«${a.nombre}» no se puede adjuntar a este correo: no pertenece a la solicitud de la que trata. Quítalo.`,
+      );
+    } else if (lleva && !d.plantilla_activa) {
+      out.push(
+        `No hay ninguna plantilla activa de «${a.nombre}»: no se puede generar, así que el correo sale sin él. Súbela en Documentos › Plantillas.`,
       );
     }
   }
@@ -201,8 +216,8 @@ export default function AdjuntosCorreo({ correo, lleva, onLleva, onCambio }) {
                   </div>
                   <div className="text-xs text-muted">
                     {a.tipo === "DOCUMENTO"
-                      ? "Se genera para cada solicitud al enviar el correo"
-                      : `PDF subido · ${tamano(a.tamano)}${a.subido_por ? ` · ${a.subido_por}` : ""}`}
+                      ? origenDocumento(a, correo.documentos_disponibles || [])
+                      : `PDF subido, el mismo para todos · ${tamano(a.tamano)}${a.subido_por ? ` · ${a.subido_por}` : ""}`}
                   </div>
                 </div>
                 {a.tipo === "ARCHIVO" && (
@@ -239,12 +254,16 @@ export default function AdjuntosCorreo({ correo, lleva, onLleva, onCambio }) {
               className="btn btn-secondary btn-sm"
               onClick={() => agregarDocumento(d)}
               disabled={Boolean(ocupado)}
-              title="El documento se genera para cada solicitud y se adjunta al enviar"
+              title={
+                d.plantilla_activa
+                  ? `Se adjunta el de cada solicitud, generado con la plantilla activa (versión ${d.plantilla_activa.version})`
+                  : "Aún no hay plantilla activa de este documento"
+              }
             >
               <FaPlus aria-hidden="true" />
               {ocupado === `doc-${d.documento}`
                 ? "Añadiendo…"
-                : `Adjuntar ${d.nombre.toLowerCase()}`}
+                : `Adjuntar ${d.nombre}`}
             </button>
           ))}
           <button

@@ -41,13 +41,26 @@ const CONTRATO = {
   [PIE]: [],
 };
 
-// clave → generated documents (dual_tipos_documento.nombre) the code can hand
-// over when it sends that email. An administrator can attach only these as
-// DOCUMENTO; fixed PDFs (ARCHIVO) can go on any email except the footer. For
-// each document the email receives `<documento>_adjunto` («sí» when it went).
+// clave → generated documents (dual_tipos_documento.nombre) an administrator
+// may attach to that email as DOCUMENTO. Each one must belong to the request
+// the email is about: the convenio of the company application, the Anexo II or
+// III of the reservation (only the one its contract needs exists). When the
+// email is sent, the request's current document is attached: the one generated
+// with the active template of that type, or the signed copy that replaced it.
+// Fixed PDFs (ARCHIVO) can go on any email except the footer. For each
+// document the email receives `<documento>_adjunto` («sí» when it went).
+const DOC_EMPRESA = ['CONVENIO'];
+const DOC_RESERVA = ['ANEXO_II', 'ANEXO_III'];
 const DOCUMENTOS = {
-  solicitud_empresa_recibida: ['CONVENIO'],
-  convenio_disponible: ['CONVENIO'],
+  solicitud_empresa_recibida: DOC_EMPRESA,
+  convenio_disponible: DOC_EMPRESA,
+  solicitud_empresa_validada: DOC_EMPRESA,
+  documento_rechazado_empresa: DOC_EMPRESA,
+  reserva_creada_alumno: DOC_RESERVA,
+  reserva_creada_empresa: DOC_RESERVA,
+  reserva_confirmada_alumno: DOC_RESERVA,
+  reserva_confirmada_empresa: DOC_RESERVA,
+  documento_rechazado_reserva: DOC_RESERVA,
 };
 
 // Fixed PDFs uploaded by administrators.
@@ -56,6 +69,11 @@ const MAX_ARCHIVOS = 5;
 
 const variableDocumento = (documento) => `${String(documento).toLowerCase()}_adjunto`;
 const nombreDocumento = (documento) => defByClave(documento)?.nombre || documento;
+
+// Every email that may carry a document also receives its `<documento>_adjunto`.
+for (const [clave, docs] of Object.entries(DOCUMENTOS)) {
+  CONTRATO[clave] = [...new Set([...CONTRATO[clave], ...docs.map(variableDocumento)])];
+}
 
 class PlantillaError extends Error {}
 
@@ -116,11 +134,12 @@ function renderPie(pie) {
 }
 
 // The attachments an email really carries, as nodemailer attachments.
-// documentos: what the caller generated for this request,
-//   { CONVENIO: { filename, content } }. A configured document the caller does
-//   not have (not generated yet, generation failed) is left out and logged;
-//   the email still goes, with `<documento>_adjunto` empty.
-function resolverAdjuntos(clave, llevaAdjuntos, adjuntos, documentos = {}) {
+// obtenerDocumento(documento) → { filename, content } | null: the request's
+//   current document of that type (notificaciones.js reads it). A configured
+//   document the request does not have (not generated yet, or Anexo II when
+//   the contract needs the III) is left out; the email still goes, with
+//   `<documento>_adjunto` empty.
+async function resolverAdjuntos(clave, llevaAdjuntos, adjuntos, obtenerDocumento = null) {
   const attachments = [];
   const adjuntados = new Set();
   if (!llevaAdjuntos) return { attachments, adjuntados };
@@ -130,12 +149,12 @@ function resolverAdjuntos(clave, llevaAdjuntos, adjuntos, documentos = {}) {
       continue;
     }
     if (!(DOCUMENTOS[clave] || []).includes(a.documento)) {
-      console.warn(`[correo] ${clave}: la aplicación no genera «${a.documento}» para este correo; no se adjunta.`);
+      console.warn(`[correo] ${clave}: «${a.documento}» no se puede adjuntar a este correo; no se adjunta.`);
       continue;
     }
-    const doc = documentos[a.documento];
+    const doc = obtenerDocumento ? await obtenerDocumento(a.documento) : null;
     if (!doc?.content) {
-      console.warn(`[correo] ${clave}: «${a.documento}» no está disponible para esta solicitud; se envía sin él.`);
+      console.log(`[correo] ${clave}: «${a.documento}» no existe para esta solicitud; se envía sin él.`);
       continue;
     }
     attachments.push({ filename: doc.filename, content: doc.content, contentType: 'application/pdf' });
@@ -152,7 +171,7 @@ function valoresDocumentos(clave, adjuntados) {
 // Builds { asunto, html, attachments } for an email, or null when the
 // administrators switched it off. Throws PlantillaError when the template is
 // missing or invalid: nothing is sent, the caller logs it.
-async function componer(clave, valores = {}, documentos = {}) {
+async function componer(clave, valores = {}, obtenerDocumento = null) {
   if (!CONTRATO[clave]) throw new PlantillaError(`Correo desconocido: ${clave}`);
   const { fila, pie, variables } = await cargar(clave);
   if (!fila) throw new PlantillaError(`Falta la plantilla de correo «${clave}» en la base de datos (migración 022).`);
@@ -161,7 +180,7 @@ async function componer(clave, valores = {}, documentos = {}) {
   if (errores.length) throw new PlantillaError(`La plantilla «${clave}» no es válida: ${errores.join(' ')}`);
   const llevaAdjuntos = Number(fila.lleva_adjuntos) === 1;
   const adjuntos = llevaAdjuntos ? await cargarAdjuntos(clave, pool, { conArchivo: true }) : [];
-  const { attachments, adjuntados } = resolverAdjuntos(clave, llevaAdjuntos, adjuntos, documentos);
+  const { attachments, adjuntados } = await resolverAdjuntos(clave, llevaAdjuntos, adjuntos, obtenerDocumento);
   const todos = { ...valores, ...valoresDocumentos(clave, adjuntados) };
   return {
     asunto: plantilla.renderAsunto(fila.asunto, todos, variables),
@@ -213,7 +232,7 @@ function avisosAdjuntos(clave, llevaAdjuntos, adjuntos) {
   const permitidos = DOCUMENTOS[clave] || [];
   for (const a of adjuntos) {
     if (a.tipo === 'DOCUMENTO' && !permitidos.includes(a.documento)) {
-      out.push(`«${nombreDocumento(a.documento)}» no se puede adjuntar a este correo: la aplicación no lo genera para él. No se adjuntará.`);
+      out.push(`«${nombreDocumento(a.documento)}» no se puede adjuntar a este correo: no pertenece a la solicitud de la que trata. No se adjuntará.`);
     }
   }
   if (llevaAdjuntos && !adjuntos.length) out.push('«Lleva adjuntos» está activado, pero el correo no tiene ningún adjunto.');

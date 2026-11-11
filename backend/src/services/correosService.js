@@ -139,6 +139,17 @@ async function detalle(clave, conn = pool) {
   );
   const adjuntos = await correo.cargarAdjuntos(clave, conn);
   const llevaAdjuntos = bool(fila.lleva_adjuntos);
+  const posibles = correo.DOCUMENTOS[clave] || [];
+  // The active template of each document: what the attached PDFs are generated with.
+  const [activas] = posibles.length
+    ? await conn.query(
+      `SELECT td.nombre AS documento, p.version, p.nombre_archivo
+         FROM dual_documento_plantillas p
+         JOIN dual_tipos_documento td ON td.id_tipo_documento = p.id_tipo_documento
+        WHERE p.es_activa = 1 AND td.nombre IN (?)`,
+      [posibles],
+    )
+    : [[]];
   return {
     clave: fila.clave,
     grupo: fila.grupo,
@@ -165,11 +176,15 @@ async function detalle(clave, conn = pool) {
       obligatoria: bool(v.obligatoria),
     })),
     adjuntos: adjuntos.map(adjuntoPublico),
-    documentos_disponibles: (correo.DOCUMENTOS[clave] || []).map((d) => ({
-      documento: d,
-      nombre: correo.nombreDocumento(d),
-      adjunto: adjuntos.some((a) => a.tipo === 'DOCUMENTO' && a.documento === d),
-    })),
+    documentos_disponibles: posibles.map((d) => {
+      const activa = activas.find((p) => p.documento === d);
+      return {
+        documento: d,
+        nombre: correo.nombreDocumento(d),
+        adjunto: adjuntos.some((a) => a.tipo === 'DOCUMENTO' && a.documento === d),
+        plantilla_activa: activa ? { version: Number(activa.version), nombre_archivo: activa.nombre_archivo } : null,
+      };
+    }),
     limites: { max_archivos: correo.MAX_ARCHIVOS, max_bytes: correo.MAX_ARCHIVO },
     historial: historial.map((h) => ({
       version: Number(h.version),
@@ -525,7 +540,7 @@ exports.prueba = async function (req, res) {
     if (!usuario?.email) throw new HttpError(400, 'Tu cuenta no tiene correo electrónico.');
     if (!mail?.transporter) throw new HttpError(503, 'El envío de correo no está configurado en el servidor.');
     // Uploaded PDFs go as they are; generated documents only exist for a real
-    // request, so the test cannot carry them.
+    // request (made from the active template), so the test cannot carry them.
     const archivos = out.adjuntos.some((a) => a.tipo === 'ARCHIVO')
       ? (await correo.cargarAdjuntos(out.clave, pool, { conArchivo: true })).filter((a) => a.tipo === 'ARCHIVO')
       : [];

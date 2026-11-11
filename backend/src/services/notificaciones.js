@@ -21,9 +21,10 @@
 // 022), edited by the administrators. This file only decides when, to whom and
 // with which values (correoPlantillas.CONTRATO). A template switched off sends
 // nothing; a missing or invalid one sends nothing and logs an error.
-// Attachments (migration 023): whether an email carries any and which ones is
-// stored with the template. This file only offers the generated documents a
-// request has (correoPlantillas.DOCUMENTOS); it never attaches on its own.
+// Attachments (migrations 023 and 024): whether an email carries any and which
+// ones is stored with the template. This file only says which request the
+// email is about (documentosDe), so the configured documents of that request
+// can be read; it never attaches on its own.
 //
 // Rules:
 // - Call only AFTER the transaction committed. Callers do not await: a
@@ -52,10 +53,10 @@ const PORTAL = (process.env.APP_URL || '').replace(/\/$/, '');
 const ENLACE_PORTAL = PORTAL ? `${PORTAL}/login` : '';
 const COORDINADOR = 'coordinador/a';
 
-// documentos: generated documents this request has, offered to the template
-// ({ CONVENIO: { filename, content } }). Whether they go, and which other
-// attachments go, is decided by the administrators (dual_correo_adjuntos).
-async function enviar(clave, to, valores, documentos = {}) {
+// documentos: loader of the generated documents of the request the email is
+// about (documentosDe). Whether any of them go, and which other attachments
+// go, is decided by the administrators (dual_correo_adjuntos).
+async function enviar(clave, to, valores, documentos = null) {
   if (!to) {
     console.warn(`[notificación] ${clave}: sin dirección de correo, no se envía.`);
     return false;
@@ -79,12 +80,36 @@ async function enviar(clave, to, valores, documentos = {}) {
   return true;
 }
 
-// The generated convenio offered to the template; file name with only safe
-// characters. Nothing when it could not be generated.
-function documentosConvenio(empresa, pdf) {
-  if (!pdf) return {};
-  const nombre = String(empresa || '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'empresa';
-  return { CONVENIO: { filename: `CONVENIO_${nombre}_${new Date().getFullYear()}.pdf`, content: pdf } };
+// Loader for the generated documents of one request: the convenio of a company
+// application (id_solicitud_empresa) or the Anexo II/III of a reservation
+// (id_reserva). It reads the request's current document, the one generated
+// with the active template (or the signed copy that replaced it); it never
+// generates one. `generados` passes a PDF the caller has just generated.
+// File name: <DOCUMENTO>_<empresa or alumno>_<year>.pdf, safe characters only.
+function documentosDe({ id_solicitud_empresa = null, id_reserva = null, nombre = '' }, generados = {}) {
+  const seguro = String(nombre || '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'documento';
+  return async (documento) => {
+    const filename = `${documento}_${seguro}_${new Date().getFullYear()}.pdf`;
+    if (generados[documento]) return { filename, content: generados[documento] };
+    const ambito = defByClave(documento)?.ambito;
+    const [columna, id] = ambito === 'solicitud_empresa'
+      ? ['id_solicitud_empresa', id_solicitud_empresa]
+      : ambito === 'reserva'
+        ? ['id_reserva', id_reserva]
+        : [null, null];
+    if (!columna || !id) return null;
+    const [rows] = await pool.query(
+      `SELECT d.archivo
+         FROM dual_documentos d
+         JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+        WHERE d.${columna} = ? AND td.nombre = ? AND d.es_actual = 1 AND d.archivo IS NOT NULL
+        ORDER BY d.id_documento DESC
+        LIMIT 1`,
+      [id, documento],
+    );
+    if (!rows[0]?.archivo) return null;
+    return { filename, content: Buffer.isBuffer(rows[0].archivo) ? rows[0].archivo : Buffer.from(rows[0].archivo) };
+  };
 }
 
 // Never throws: notifications must not affect the request that triggered them.
@@ -206,21 +231,27 @@ const solicitudEmpresa = safe('solicitud_empresa', async (idSolicitud, estado, m
   if (estado !== 'VALIDADO' && estado !== 'RECHAZADO') return false;
   const d = await datosSolicitudEmpresa(idSolicitud);
   if (!d) return false;
-  if (estado === 'VALIDADO') return enviar('solicitud_empresa_validada', d.email, valoresEmpresa(d));
+  if (estado === 'VALIDADO') {
+    return enviar('solicitud_empresa_validada', d.email, valoresEmpresa(d),
+      documentosDe({ id_solicitud_empresa: idSolicitud, nombre: d.empresa }));
+  }
   return enviar('solicitud_empresa_rechazada', d.email, { ...valoresEmpresa(d), motivo });
 });
 
 // Confirmation after the public form or a reapplication. Sent whether or not the
-// convenio could be generated: without an active CONVENIO template the company
-// is told the convenio will appear in the portal once the centre generates it.
+// convenio could be generated: without one the company is told the convenio
+// will appear in the portal once the centre generates it.
 const solicitudEmpresaRecibida = safe('solicitud_empresa_recibida', async (idSolicitud, pdf = null) => {
   const d = await datosSolicitudEmpresa(idSolicitud);
   if (!d) return false;
+  const documentos = documentosDe({ id_solicitud_empresa: idSolicitud, nombre: d.empresa }, pdf ? { CONVENIO: pdf } : {});
+  // A reapplication may already have its convenio from before.
+  const generado = Boolean(pdf) || Boolean(await documentos('CONVENIO'));
   return enviar(
     'solicitud_empresa_recibida',
     d.email,
-    { ...valoresEmpresa(d), convenio_generado: pdf ? 'sí' : '' },
-    documentosConvenio(d.empresa, pdf),
+    { ...valoresEmpresa(d), convenio_generado: generado ? 'sí' : '' },
+    documentos,
   );
 });
 
@@ -228,7 +259,8 @@ const solicitudEmpresaRecibida = safe('solicitud_empresa_recibida', async (idSol
 const convenioDisponible = safe('convenio_disponible', async (idSolicitud, pdf = null) => {
   const d = await datosSolicitudEmpresa(idSolicitud);
   if (!d) return false;
-  return enviar('convenio_disponible', d.email, valoresEmpresa(d), documentosConvenio(d.empresa, pdf));
+  return enviar('convenio_disponible', d.email, valoresEmpresa(d),
+    documentosDe({ id_solicitud_empresa: idSolicitud, nombre: d.empresa }, pdf ? { CONVENIO: pdf } : {}));
 });
 
 const documentoRechazado = safe('documento_rechazado', async (idDocumento, motivo) => {
@@ -243,13 +275,15 @@ const documentoRechazado = safe('documento_rechazado', async (idDocumento, motiv
   if (doc.id_solicitud_empresa) {
     const d = await datosSolicitudEmpresa(doc.id_solicitud_empresa);
     if (!d) return false;
-    return enviar('documento_rechazado_empresa', d.email, { ...valoresEmpresa(d), documento, motivo });
+    return enviar('documento_rechazado_empresa', d.email, { ...valoresEmpresa(d), documento, motivo },
+      documentosDe({ id_solicitud_empresa: doc.id_solicitud_empresa, nombre: d.empresa }));
   }
   if (doc.id_reserva) {
     // Reservation documents (Anexo II/III, Calendario) are uploaded by the company.
     const r = await datosReserva(doc.id_reserva);
     if (!r) return false;
-    return enviar('documento_rechazado_reserva', r.email_empresa, { ...valoresReserva(r), documento, motivo });
+    return enviar('documento_rechazado_reserva', r.email_empresa, { ...valoresReserva(r), documento, motivo },
+      documentosDe({ id_reserva: doc.id_reserva, nombre: r.alumno }));
   }
   return false;
 });
@@ -257,8 +291,9 @@ const documentoRechazado = safe('documento_rechazado', async (idDocumento, motiv
 const reservaCreada = safe('reserva_creada', async (idReserva, { porCentro = false } = {}) => {
   const r = await datosReserva(idReserva);
   if (!r) return false;
-  const envios = [enviar('reserva_creada_alumno', r.email_alumno, valoresReserva(r))];
-  if (porCentro) envios.push(enviar('reserva_creada_empresa', r.email_empresa, valoresReserva(r)));
+  const documentos = documentosDe({ id_reserva: idReserva, nombre: r.alumno });
+  const envios = [enviar('reserva_creada_alumno', r.email_alumno, valoresReserva(r), documentos)];
+  if (porCentro) envios.push(enviar('reserva_creada_empresa', r.email_empresa, valoresReserva(r), documentos));
   await Promise.all(envios);
   return true;
 });
@@ -276,9 +311,10 @@ const reservaCancelada = safe('reserva_cancelada', async (idReserva, { avisarEmp
 const reservaConfirmada = safe('reserva_confirmada', async (idReserva) => {
   const r = await datosReserva(idReserva);
   if (!r) return false;
+  const documentos = documentosDe({ id_reserva: idReserva, nombre: r.alumno });
   await Promise.all([
-    enviar('reserva_confirmada_alumno', r.email_alumno, valoresReserva(r)),
-    enviar('reserva_confirmada_empresa', r.email_empresa, valoresReserva(r)),
+    enviar('reserva_confirmada_alumno', r.email_alumno, valoresReserva(r), documentos),
+    enviar('reserva_confirmada_empresa', r.email_empresa, valoresReserva(r), documentos),
   ]);
   return true;
 });

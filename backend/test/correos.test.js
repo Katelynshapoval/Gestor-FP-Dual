@@ -385,18 +385,34 @@ function empresaDb(seed) {
 }
 
 test('migration 023: one email per event; the merged ones carry the convenio and switch attachments on', () => {
-  const { DOCUMENTOS } = load('src/services/correoPlantillas');
   const seed = correoSeed();
   const claves = seed.plantillas.map((p) => p.clave);
   assert.ok(!claves.includes('solicitud_empresa_recibida_convenio'));
   assert.ok(!claves.includes('convenio_disponible_adjunto'));
-  for (const clave of Object.keys(DOCUMENTOS)) {
+  const fusionados = ['solicitud_empresa_recibida', 'convenio_disponible'];
+  for (const clave of fusionados) {
     const p = seed.plantillas.find((x) => x.clave === clave);
     assert.equal(p.lleva_adjuntos, 1, clave);
     assert.deepEqual(seed.adjuntos.filter((a) => a.clave_plantilla === clave).map((a) => a.documento), ['CONVENIO'], clave);
     assert.equal(seed.historial.find((h) => h.clave_plantilla === clave).adjuntos, 'Convenio');
   }
-  for (const p of seed.plantillas.filter((x) => !DOCUMENTOS[x.clave])) assert.equal(p.lleva_adjuntos, 0, p.clave);
+  for (const p of seed.plantillas.filter((x) => !fusionados.includes(x.clave))) assert.equal(p.lleva_adjuntos, 0, p.clave);
+});
+
+test('migration 024: every email that may carry a document has its «…_adjunto» variable', () => {
+  const { DOCUMENTOS } = load('src/services/correoPlantillas');
+  const seed = correoSeed();
+  for (const [clave, docs] of Object.entries(DOCUMENTOS)) {
+    for (const d of docs) {
+      const v = seed.variables.find((x) => x.clave_plantilla === clave && x.variable === `${d.toLowerCase()}_adjunto`);
+      assert.ok(v, `${clave}: falta ${d.toLowerCase()}_adjunto`);
+      assert.equal(v.opcional, 1);
+    }
+  }
+  // Only reservation emails offer the anexos; the convenio stays with the company emails.
+  assert.deepEqual(DOCUMENTOS.reserva_confirmada_alumno, ['ANEXO_II', 'ANEXO_III']);
+  assert.equal(DOCUMENTOS.reserva_cancelada_alumno, undefined);
+  assert.equal(DOCUMENTOS.solicitud_alumno_validada, undefined);
 });
 
 test('migration 023: the merged texts say whether the convenio is attached, generated or still pending', () => {
@@ -629,13 +645,80 @@ test('preview and detail: the draft switch decides the convenio text; the editor
   const d = await svc._internals.detalle(p.clave);
   assert.equal(d.lleva_adjuntos, true);
   assert.deepEqual(d.adjuntos.map((a) => [a.tipo, a.nombre]), [['DOCUMENTO', 'Convenio']]);
-  assert.deepEqual(d.documentos_disponibles, [{ documento: 'CONVENIO', nombre: 'Convenio', adjunto: true }]);
+  assert.deepEqual(d.documentos_disponibles, [{ documento: 'CONVENIO', nombre: 'Convenio', adjunto: true, plantilla_activa: null }]);
   assert.deepEqual(d.avisos_adjuntos, []);
 
   const { avisosAdjuntos } = load('src/services/correoPlantillas');
   assert.equal(avisosAdjuntos('reserva_creada_alumno', true, []).length, 1);
   assert.equal(avisosAdjuntos('reserva_creada_alumno', false, [{ tipo: 'ARCHIVO', nombre_archivo: 'a.pdf' }]).length, 1);
   assert.match(avisosAdjuntos('reserva_creada_alumno', true, [{ tipo: 'DOCUMENTO', documento: 'CONVENIO' }])[0], /no se puede adjuntar/);
+});
+
+test('notifications: a reservation email attaches that reservation\'s own Anexo, read from its documents', async () => {
+  const seed = correoSeed();
+  seed.plantillas.find((x) => x.clave === 'reserva_confirmada_alumno').lleva_adjuntos = 1;
+  seed.plantillas.find((x) => x.clave === 'reserva_confirmada_alumno').cuerpo = 'Hola {{alumno}}.{{#anexo_ii_adjunto}} Adjuntamos el Anexo II.{{/anexo_ii_adjunto}}';
+  seed.adjuntos.push(
+    { id_adjunto: 50, clave_plantilla: 'reserva_confirmada_alumno', tipo: 'DOCUMENTO', documento: 'ANEXO_II', orden: 1 },
+    { id_adjunto: 51, clave_plantilla: 'reserva_confirmada_alumno', tipo: 'DOCUMENTO', documento: 'ANEXO_III', orden: 2 },
+  );
+  const leidos = [];
+  handler = (sql, params) => {
+    const t = correoDb(sql, params, seed);
+    if (t) return t;
+    if (sql.includes('FROM dual_reservas r')) {
+      return [{ id_reserva: 8, alumno: 'Ana Ruiz', email_alumno: 'ana@example.test', empresa: 'ACME', coordinador: 'Luis', email_empresa: 'l@acme.test', especialidad: 'Joyería', convocatoria: '2026/2027' }];
+    }
+    if (sql.startsWith('SELECT d.archivo FROM dual_documentos d')) {
+      leidos.push(params);
+      // Only the Anexo II exists: the contract of this reservation needs that one.
+      return params[0] === 8 && params[1] === 'ANEXO_II' ? [{ archivo: Buffer.from('%PDF anexo') }] : [];
+    }
+    return [];
+  };
+  const n = load('src/services/notificaciones');
+  sent.length = 0;
+  await n.reservaConfirmada(8);
+  const alumno = sent.find((m) => m.to === 'ana@example.test');
+  assert.deepEqual(alumno.attachments.map((a) => a.filename), [`ANEXO_II_Ana_Ruiz_${new Date().getFullYear()}.pdf`]);
+  assert.match(alumno.html, /Adjuntamos el Anexo II/);
+  assert.deepEqual(leidos, [[8, 'ANEXO_II'], [8, 'ANEXO_III']]);
+  const empresa = sent.find((m) => m.to === 'l@acme.test');
+  assert.equal(empresa.attachments, undefined, 'the company email has no attachments configured');
+});
+
+test('notifications: a reapplication attaches the convenio already stored when none was generated now', async () => {
+  const seed = correoSeed();
+  handler = (sql, params) => {
+    const t = empresaDb(seed)(sql, params);
+    if (sql.startsWith('SELECT d.archivo FROM dual_documentos d')) {
+      return params[0] === 5 && params[1] === 'CONVENIO' ? [{ archivo: Buffer.from('%PDF guardado') }] : [];
+    }
+    return t;
+  };
+  const n = load('src/services/notificaciones');
+  sent.length = 0;
+  await n.solicitudEmpresaRecibida(5, null);
+  assert.equal(sent[0].attachments[0].content.toString(), '%PDF guardado');
+  assert.match(sent[0].html, /Adjuntamos el convenio/);
+});
+
+test('detail: each document shows the active template it is generated with', async () => {
+  const seed = correoSeed();
+  const base = adminDb(seed);
+  handler = (sql, params) => {
+    if (sql.includes('FROM dual_documento_plantillas p') && sql.includes('p.es_activa = 1')) {
+      assert.deepEqual(params, [['ANEXO_II', 'ANEXO_III']]);
+      return [{ documento: 'ANEXO_III', version: 2, nombre_archivo: 'anexo3.docx' }];
+    }
+    return base(sql, params);
+  };
+  const svc = load('src/services/correosService');
+  const d = await svc._internals.detalle('reserva_creada_empresa');
+  assert.deepEqual(d.documentos_disponibles.map((x) => [x.documento, x.plantilla_activa]), [
+    ['ANEXO_II', null],
+    ['ANEXO_III', { version: 2, nombre_archivo: 'anexo3.docx' }],
+  ]);
 });
 
 test('test email: uploaded PDFs go with it; generated documents are named as missing', async () => {

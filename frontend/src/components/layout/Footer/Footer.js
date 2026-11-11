@@ -19,7 +19,7 @@ function Footer() {
             Contacto
           </a>
 
-          <span className="text-muted">© 2026</span>
+          <span className="text-muted">© {new Date().getFullYear()}</span>
         </div>
       </div>
     </footer>

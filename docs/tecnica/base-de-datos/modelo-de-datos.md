@@ -281,7 +281,7 @@ Adjuntos de cada correo, configurados por Administración. FK `clave_plantilla` 
 | --- | --- |
 | `id_adjunto` INT PK | |
 | `tipo` | `DOCUMENTO` (documento que genera la aplicación para cada solicitud) o `ARCHIVO` (PDF fijo subido). `chk_dca_forma` exige las columnas de cada tipo |
-| `id_tipo_documento` FK `RESTRICT` | Solo `DOCUMENTO` (hoy `CONVENIO`). UQ (`clave_plantilla`, `id_tipo_documento`): cada documento una vez por correo. Qué documentos admite cada correo lo fija el código (`correoPlantillas.DOCUMENTOS`) |
+| `id_tipo_documento` FK `RESTRICT` | Solo `DOCUMENTO` (`CONVENIO`, `ANEXO_II`, `ANEXO_III`). Se adjunta el documento actual de la solicitud del correo, generado con la plantilla activa de ese tipo. UQ (`clave_plantilla`, `id_tipo_documento`): cada documento una vez por correo. Qué documentos admite cada correo lo fija el código (`correoPlantillas.DOCUMENTOS`) |
 | `nombre_archivo`, `mime_type`, `tamano`, `archivo` MEDIUMBLOB | Solo `ARCHIVO`: el PDF tal como se envía (≤ 5 MB, máx. 5 por correo, comprobado por el backend) |
 | `orden`, `id_usuario_subida` FK `RESTRICT`, `creado_en` | Orden de los adjuntos en el correo y quién lo añadió |
 

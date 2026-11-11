@@ -10,6 +10,7 @@ const path = require('path');
 
 const FILE = path.join(__dirname, '..', '..', '..', 'db', 'migrations', '022_correo_plantillas.sql');
 const FILE_023 = path.join(__dirname, '..', '..', '..', 'db', 'migrations', '023_correo_adjuntos.sql');
+const FILE_024 = path.join(__dirname, '..', '..', '..', 'db', 'migrations', '024_correo_adjuntos_documentos.sql');
 
 // Parses `INSERT INTO `t` (cols) VALUES (...), (...) AS nueva ...;` as written by
 // the migration: single-quoted strings ('' and \\ \n escapes), integers, NULL.
@@ -67,6 +68,7 @@ function parseInsert(sqlText, table) {
 
 const TEXT = fs.readFileSync(FILE, 'utf8').replace(/\r\n/g, '\n');
 const TEXT_023 = fs.readFileSync(FILE_023, 'utf8').replace(/\r\n/g, '\n');
+const TEXT_024 = fs.readFileSync(FILE_024, 'utf8').replace(/\r\n/g, '\n');
 
 // 022, then what 023 does to an unedited database: the merged emails keep
 // version 1 with the merged text, the other email of each pair disappears,
@@ -104,6 +106,7 @@ function construir() {
     });
   }
   base.variables.push(...parseInsert(TEXT_023, 'dual_correo_variables'));
+  base.variables.push(...parseInsert(TEXT_024, 'dual_correo_variables'));
   return base;
 }
 
