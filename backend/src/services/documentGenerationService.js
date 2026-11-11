@@ -48,7 +48,11 @@ function runTemplateCommand({ sandbox }) {
 
 async function docxBufferToPdf(docxBuffer) {
   const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer });
-  const browser = await puppeteer.launch();
+  // Docker: Chromium's sandbox needs privileges a container does not have.
+  // PUPPETEER_NO_SANDBOX=true (docker-compose.yml) turns it off; the page
+  // below still runs no script and makes no request.
+  const args = process.env.PUPPETEER_NO_SANDBOX === "true" ? ["--no-sandbox", "--disable-setuid-sandbox"] : [];
+  const browser = await puppeteer.launch({ args });
   try {
     const page = await browser.newPage();
     // SEC-004: the HTML comes from a template, so the server's browser runs no

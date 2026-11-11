@@ -1,0 +1,94 @@
+# Production stack: MySQL, API, web (React build + nginx) and Caddy (HTTPS).
+#   cp .env.production.example .env   # fill it in
+#   docker compose up -d --build
+# See docs/DESPLIEGUE.md for the first install, migrations and backups.
+
+name: fpdual
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${DBNAME:-proyecto_dual}
+      MYSQL_USER: ${DBUSER:-fpdual}
+      MYSQL_PASSWORD: ${DBPASS:?Set DBPASS in .env}
+      TZ: Europe/Madrid
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      # The baseline creates functions and triggers with the app user.
+      - --log-bin-trust-function-creators=1
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # Not published: only the backend reaches it.
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: fpdual-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      TZ: Europe/Madrid
+      DBHOST: db
+      DBNAME: ${DBNAME:-proyecto_dual}
+      DBUSER: ${DBUSER:-fpdual}
+      DBPASS: ${DBPASS}
+      DBSSL: "false"
+      # One proxy (nginx in the web container) sits in front of the API.
+      TRUST_PROXY: 1
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      APP_URL: ${APP_URL:?Set APP_URL in .env}
+      MAIL_MODE: ${MAIL_MODE:-smtp}
+      MAIL_REDIRECT_TO: ${MAIL_REDIRECT_TO:-}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASS: ${EMAIL_PASS:-}
+      SIGNUP_MAX_PER_IP_HOUR: ${SIGNUP_MAX_PER_IP_HOUR:-10}
+      SIGNUP_MAX_PER_DAY: ${SIGNUP_MAX_PER_DAY:-300}
+      MAX_PLAZAS_POR_CICLO: ${MAX_PLAZAS_POR_CICLO:-20}
+      # Chromium inside a container cannot use its own sandbox; PDF pages run
+      # with JavaScript off and every network request blocked instead.
+      PUPPETEER_NO_SANDBOX: "true"
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: fpdual-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

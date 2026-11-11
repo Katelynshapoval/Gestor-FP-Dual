@@ -1,0 +1,9 @@
+# Public entry point. With a real domain in SITE_ADDRESS, Caddy gets and
+# renews a Let's Encrypt certificate on its own (ports 80 and 443 must be
+# reachable from the internet and the DNS record must point here).
+{$SITE_ADDRESS} {
+	encode gzip
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	header -Server
+	reverse_proxy web:80
+}

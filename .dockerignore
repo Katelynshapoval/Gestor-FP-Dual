@@ -1,0 +1,17 @@
+# Keep secrets, personal data and local build output out of every image.
+**/node_modules
+**/.env
+**/.env.*
+!backend/.env.example
+**/coverage
+**/*.log
+.git
+.github
+backups
+backend/uploads
+backend/test
+backend/.pruebas.local.json
+backend/.demo.local.json
+frontend/build
+frontend/screenshots
+docs/security
