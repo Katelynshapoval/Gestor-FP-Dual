@@ -144,6 +144,23 @@
 
 Atención al orden de rutas en Express: `GET /solicitudes/alumno/mia` se declara antes que `GET /solicitudes/alumno/:id` (lo indica un comentario en la ruta), y `GET /solicitudes/empresa/mia` y `/todas` antes que `GET /solicitudes/empresa/:id`. Invertir ese orden haría que `mia`/`todas` se interpretaran como ids. En `documentosRoute` y `reservasRoute` no hay colisiones porque las rutas con `:id` tienen un segmento más (`/:id/descargar`, `/:id/detalle`…).
 
+## Correos automáticos — `correosRoute`
+
+Todas: ADMINISTRADOR. `:clave` = `dual_correo_plantillas.clave` (`^[a-z][a-z0-9_]*$`, si no 404).
+
+| Método y ruta | Cuerpo | Respuesta |
+| --- | --- | --- |
+| `GET /correos` | — | `{ correos: [{ clave, grupo, nombre, destinatario, cuando, asunto, activa, lleva_adjuntos, n_adjuntos, desactivable, version, editado, actualizado_en, actualizado_por, problemas }], faltan }` |
+| `GET /correos/:clave` | — | Texto, `lleva_adjuntos`, `admite_adjuntos`, `adjuntos[]` (`id, tipo, documento, nombre, tamano, subido_por`), `documentos_disponibles[]`, `limites`, `variables` (con `fragmento`, `ejemplo`, `obligatoria`…), `historial` (con `lleva_adjuntos` y `adjuntos`), `problemas` y `avisos_adjuntos` · 404 |
+| `PUT /correos/:clave` | `{ asunto, cuerpo, activa, lleva_adjuntos?, version }` | `{ message, correo }` · 400 `PLANTILLA_NO_VALIDA` con `errores[]` · 400 si se desactiva uno no desactivable, si `lleva_adjuntos` no es booleano o si es el pie · 409 `VERSION_CAMBIADA`. Versión nueva + evento `CORREO/EDITAR` en una transacción. Sin `lleva_adjuntos` se mantiene el valor guardado |
+| `POST /correos/:clave/restaurar` | `{ desde, version }` | Copia el **texto** de la versión `desde` como versión nueva (`CORREO/RESTAURAR`); los adjuntos no cambian · 404 · 409 |
+| `POST /correos/:clave/vista-previa` | `{ asunto, cuerpo, lleva_adjuntos? }` | `{ asunto, html, adjuntos[] }` con los valores de ejemplo y los adjuntos que irían, o `{ errores }`. No guarda |
+| `POST /correos/:clave/prueba` | `{ asunto, cuerpo, lleva_adjuntos? }` | Envía ese borrador, con ejemplos y asunto «[Prueba] …», al email del administrador, con los PDF subidos (no los documentos generados). Respeta `MAIL_MODE` (en `log` responde `enviado: false`) · 400 · 503 |
+| `POST /correos/:clave/adjuntos` | `{ documento, version }` | Adjunta un documento generado (`CONVENIO`) si el código lo ofrece a ese correo; activa `lleva_adjuntos`. 201 `{ message, version, correo }` · 400 no permitido · 409 ya adjunto o `VERSION_CAMBIADA`. Evento `CORREO/ADJUNTO_ANADIR` |
+| `POST /correos/:clave/adjuntos/archivo` | multipart: `archivo` (PDF), `version` | Sube un PDF fijo (firma `%PDF-`, ≤ 5 MB, máx. 5 por correo; no en el pie); activa `lleva_adjuntos`. 201 · 400 · 409. Evento `CORREO/ADJUNTO_ANADIR` |
+| `DELETE /correos/:clave/adjuntos/:id?version=` | — | Quita el adjunto (un PDF subido se borra) · 404 si no es de ese correo · 409. Evento `CORREO/ADJUNTO_QUITAR` |
+| `GET /correos/:clave/adjuntos/:id/archivo` | — | Descarga un PDF subido (`application/pdf`, `attachment`) · 404 para documentos generados |
+
 ## Panel — `panelRoute`
 
 | Método y ruta | Acceso | Notas |

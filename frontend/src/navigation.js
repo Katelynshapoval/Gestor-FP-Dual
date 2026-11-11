@@ -13,6 +13,7 @@ import {
   FaUserShield,
   FaUsers,
   FaCircleQuestion,
+  FaEnvelope,
 } from "react-icons/fa6";
 
 export const STAFF = ["ADMINISTRADOR", "COORDINADOR"];
@@ -34,6 +35,7 @@ const STAFF_NAV = [
   { to: "/documentos", label: "Documentos", Icon: FaFileLines },
   { to: "/convocatorias", label: "Convocatorias", Icon: FaCalendarDays },
   { to: "/personal", label: "Personal", Icon: FaUserShield, roles: ["ADMINISTRADOR"] },
+  { to: "/correos", label: "Correos", Icon: FaEnvelope, roles: ["ADMINISTRADOR"] },
   { to: "/ayuda", label: "Ayuda", Icon: FaCircleQuestion },
 ];
 
@@ -85,6 +87,7 @@ const TITLES = {
   "/documentos": "Documentos",
   "/convocatorias": "Convocatorias",
   "/personal": "Personal",
+  "/correos": "Correos",
   "/ayuda": "Ayuda",
   "/companyMain": "Mi empresa",
   "/studentMain": "Mi proceso Dual",

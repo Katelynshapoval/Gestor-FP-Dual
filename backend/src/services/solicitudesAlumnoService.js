@@ -4,7 +4,7 @@ const { getActiveConvocatoria, getStudentIdFromUser, sendSqlError, normalizeDni,
 const { tipoIdByNombre, attachSolicitudDocumentos, missingStudentValidation, reservaDocSummary } = require('./documentosWorkflow');
 const { loginRateLimiter } = require('../middleware/loginRateLimit');
 const { aplicarTransicion } = require('./solicitudTransiciones');
-const { escapeHtml, cicloCorregido } = require('./notificaciones');
+const { cicloCorregido, solicitudAlumnoRecibida } = require('./notificaciones');
 const alumnoDatos = require('./alumnoDatos');
 const { recordEvent } = require('./auditLog');
 const MIN_PASSWORD_LENGTH = 8;
@@ -12,32 +12,6 @@ const MIN_PASSWORD_LENGTH = 8;
 // SEC-001 / SEC-009: one answer for every identity rejection on the public form,
 // so it does not reveal whether a DNI already has an account or only a record.
 const IDENTIDAD_NO_VERIFICADA = 'No se ha podido verificar tu identidad con este DNI/NIE. Si ya tienes cuenta en el portal, escribe en «Contraseña» tu contraseña actual. Si no la tienes o no la recuerdas, contacta con el centro.';
-
-let transporter = null;
-try {
-  const mc = require('../mail/config');
-  transporter = mc.transporter;
-} catch { /* mail not configured */ }
-
-async function sendConfirmationEmail(email, nombre, convocatoria) {
-  if (!transporter) return;
-  try {
-    await transporter.sendMail({
-      from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Solicitud Dual recibida',
-      html: `
-        <p>Hola <strong>${escapeHtml(nombre)}</strong>,</p>
-        <p>Hemos recibido tu solicitud para la convocatoria <strong>${escapeHtml(convocatoria)}</strong>.</p>
-        <p>En los próximos días revisaremos tu documentación y te informaremos del resultado.</p>
-        <p>Puedes consultar el estado de tu solicitud iniciando sesión con tu DNI/NIE.</p>
-        <p>Salesianos Zaragoza — Departamento Dual</p>
-      `,
-    });
-  } catch (err) {
-    console.error('Error sending confirmation email:', err.message);
-  }
-}
 
 // POST /solicitudes/alumno — public: create student application
 exports.create = async function (req, res) {
@@ -257,7 +231,7 @@ exports.create = async function (req, res) {
 
     await conn.commit();
 
-    sendConfirmationEmail(email, nombre, convocatoria.nombre);
+    solicitudAlumnoRecibida(email, nombre, convocatoria.nombre);
 
     return res.status(201).json({
       message: 'Solicitud enviada correctamente. Recibirás un correo de confirmación.',

@@ -19,7 +19,7 @@ _Versión del manual: 28/10/2026. Describe la aplicación tal y como funciona en
 4. [Solicitudes públicas (alumnos y empresas nuevos)](#solicitudes-publicas)
    - [Comprobar si el plazo está abierto](#plazo) · [Solicitud de alumno](#solicitud-alumno) · [Solicitud de empresa](#solicitud-empresa) · [Después de enviar](#despues-enviar)
 5. [Manual del administrador](#administrador)
-   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Personal](#personal-centro) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja)
+   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Personal](#personal-centro) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja) · [Correos automáticos](#correos)
 6. [Manual del coordinador](#coordinador)
 7. [Manual de empresa](#empresa)
    - [Portal de la empresa](#portal-empresa) · [Datos y cambios](#empresa-datos) · [Ciclos y plazas](#empresa-plazas) · [Tutores](#empresa-tutores) · [Alumnos disponibles y reservas](#empresa-reservar) · [Documentos y firmas](#empresa-documentos) · [Nueva convocatoria](#empresa-reaplicar)
@@ -176,7 +176,7 @@ El menú está a la izquierda. Cada perfil ve solo sus secciones:
 
 | Perfil | Secciones del menú |
 | --- | --- |
-| Administración | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias · Personal · Ayuda |
+| Administración | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias · Personal · Correos · Ayuda |
 | Coordinación | Panel · Alumnos · Empresas · Reservas · Documentos · Convocatorias · Ayuda |
 | Empresa | Mi empresa · Alumnos disponibles · Ayuda |
 | Alumno | Mi proceso Dual · Ayuda |
@@ -383,7 +383,7 @@ Al terminar aparece el mensaje **«Solicitud enviada»** con un botón **«Acced
 **Empresas**
 
 - Entrad en el portal con el **CIF** y la contraseña elegida.
-- Al enviar la solicitud, el coordinador recibe un correo de confirmación. Si el centro ya tiene preparado el modelo de **convenio**, el convenio va adjunto; si no, el correo avisa de que estará en el portal cuando el centro lo genere, y entonces llega otro correo, «Tu convenio está disponible», con el convenio adjunto.
+- Al enviar la solicitud, el coordinador recibe un correo de confirmación. Si el centro ya tiene preparado el modelo de **convenio**, el convenio va adjunto (salvo que el centro haya quitado los adjuntos de ese correo; entonces está en el portal); si no, el correo avisa de que estará en el portal cuando el centro lo genere, y entonces llega otro correo, «Tu convenio está disponible», normalmente con el convenio adjunto.
 - Mientras tanto, en el portal el convenio aparece como **«Convenio: en preparación por el centro»**. Cuando ya está, hay que firmarlo y subirlo firmado ([cómo](#empresa-documentos)).
 - La solicitud queda **validada cuando el centro valida el convenio firmado**. Hasta entonces no podéis reservar alumnos.
 
@@ -826,6 +826,55 @@ En una solicitud dada de baja se ven la fecha, el motivo y el botón **«Reactiv
 
 Las solicitudes dadas de baja se encuentran con el filtro **«Solicitud: Dada de baja»** en Alumnos y en Empresas.
 
+<a id="correos"></a>
+
+### 5.11 Correos automáticos — 🔒 Solo Administración
+
+Menú **«Correos»**. Aquí se edita el texto de todos los correos que la aplicación envía sola: confirmaciones de solicitud, validaciones y rechazos, convenios, documentos rechazados, reservas, reducción de plazas y recuperación de contraseña. También el **pie** con la firma, que se añade al final de todos. Coordinación no ve este menú.
+
+La aplicación decide **cuándo** se envía cada correo y **a quién**; aquí cambias **qué dice** y **qué adjuntos lleva**.
+
+**Editar un correo**
+
+1. Elige el correo en la lista de la izquierda (en el móvil, en el desplegable **«Correo»**). Debajo de su nombre se ve a quién va y si está **Editado** o **Desactivado**.
+2. Cambia el **Asunto** y el **Texto del correo**. Deja una línea en blanco para empezar otro párrafo.
+3. Para poner un dato de la persona (nombre, empresa, ciclo…), coloca el cursor donde quieras y pulsa su botón en **«Variables»**. Se inserta algo como `{{alumno}}`, resaltado en color: al enviar se sustituye por el dato real. Pasa el ratón por un botón para ver qué contiene y un ejemplo.
+4. Comprueba el resultado en **«Vista previa»**, con datos de ejemplo. En pantallas grandes está al lado; en las demás, pulsa **«Vista previa»** encima del editor.
+5. Pulsa **«Guardar cambios»**. Desde ese momento se envía el texto nuevo.
+
+**Reglas**
+
+- Las variables con ***** son **obligatorias**: el correo no funciona sin ellas (por ejemplo, el enlace del correo de recuperar contraseña). Si falta alguna, su botón se ve en rojo.
+- Algunas variables pueden venir vacías, como el **Motivo** de un rechazo. Su botón las inserta dentro de un **bloque opcional** (en color ámbar): `{{#motivo}}Motivo indicado por el centro: {{motivo}}{{/motivo}}`. Lo que hay entre `{{#motivo}}` y `{{/motivo}}` solo aparece si hay motivo.
+- **Negrita**: selecciona el texto y pulsa **«Negrita»** (queda entre `**`). **Enlace**: pulsa **«Enlace»** y cambia `https://` por la dirección.
+- Si escribes una variable que no existe en ese correo o te dejas un bloque sin cerrar, aparece en rojo y la lista **«Hay que corregir esto antes de guardar»** explica qué falla. Mientras haya errores no se puede guardar.
+- Pulsa **«Cómo se escribe»** para ver estas reglas en la propia página.
+
+**Desactivar un correo**
+
+Con el interruptor **«Activo»** puedes dejar de enviar un correo (y guardar). Mientras esté desactivado no se envía a nadie. El correo de **recuperar contraseña** y el **pie** no se pueden desactivar.
+
+**Adjuntos**
+
+Debajo del texto, el apartado **«Adjuntos»** dice si el correo se envía con archivos adjuntos y cuáles. En la lista de correos, los que llevan adjuntos tienen un clip 📎.
+
+- **«Lleva adjuntos»**: interruptor para enviar el correo con o sin sus adjuntos. Se guarda con **«Guardar cambios»**. Desactivado, el correo sale sin adjuntos aunque tenga alguno en la lista.
+- **Adjuntar un documento generado**: algunos correos pueden llevar un documento que la aplicación crea para cada solicitud. Hoy es el **convenio**, en «Solicitud recibida» y «Convenio disponible» de las empresas, y viene adjunto de serie. Si lo quitas, vuelve a aparecer el botón **«Adjuntar convenio»**.
+- **«Subir PDF»**: añade un PDF fijo que se envía igual a todos, por ejemplo una guía. Solo PDF, hasta 5 MB y 5 por correo. Con el botón de descarga puedes comprobar cuál es.
+- Para quitar un adjunto, pulsa la papelera. Añadir o quitar un adjunto **se guarda al momento**, como una versión nueva del historial. El primer adjunto que añades activa «Lleva adjuntos».
+- Si un documento generado no existe todavía para esa solicitud (por ejemplo, el convenio aún no se ha generado), el correo se envía igualmente, sin él. Las variables **«Convenio adjunto»** y **«Convenio generado»** sirven para que el texto diga lo que corresponde en cada caso: ya vienen preparadas en esos dos correos.
+- La **vista previa** muestra los adjuntos que llevaría el correo. La **prueba** incluye los PDF subidos, pero no el convenio, porque solo se genera para una solicitud real.
+
+**Probar antes de guardar**
+
+**«Enviarme una prueba»** te manda el texto que estás editando, con datos de ejemplo, a tu propio correo, con el asunto empezado por «[Prueba]». No se envía a ningún alumno ni empresa.
+
+**Historial**
+
+Cada vez que se guarda queda una versión nueva. Pulsa **«Historial»** (junto a la versión, debajo del nombre del correo) para ver quién cambió qué y cuándo, abrir cualquier versión y **«Restaurar»**la. La **versión 1** es el texto original. Restaurar crea una versión nueva con ese texto: no se borra nada. Restaurar solo recupera el texto: los adjuntos se quedan como están.
+
+Si otra persona guarda el mismo correo mientras lo editas, al guardar se avisa y puedes **«Cargar su versión»** antes de seguir, para no pisar sus cambios.
+
 ---
 
 <a id="coordinador"></a>
@@ -848,12 +897,13 @@ El perfil de Coordinación hace **el mismo trabajo diario** que Administración:
 | Consultar y descargar plantillas | ✅ | ✅ |
 | **Subir o reemplazar plantillas** | ✅ | ❌ |
 | **Restablecer contraseñas de empresas y alumnos** | ✅ | ❌ |
+| **Editar los correos automáticos** | ✅ | ❌ |
 | **Dar de baja y reactivar alumnos y empresas** | ✅ | ❌ |
 
 En la práctica, el coordinador:
 
 - En **Convocatorias** solo ve la lista, sin el formulario «Nueva convocatoria» ni el botón «Editar».
-- No tiene el menú **«Personal»**.
+- No tiene los menús **«Personal»** ni **«Correos»**.
 - En **Documentos › Plantillas** no tiene el botón «Subir plantilla».
 - En la pestaña **«Cuenta»** de alumnos y empresas ve el usuario y el estado de la cuenta, pero no los botones «Resetear contraseña» ni «Dar de baja».
 - En **Alumnos** no tiene el lápiz de edición ni el recuadro de las peticiones de corrección (sí ve la etiqueta «Cambios pendientes»).

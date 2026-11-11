@@ -5,6 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { stub, load, fakePool, mockReq, mockRes } = require('./helpers/harness');
+const { correoDb } = require('./helpers/correoSeed');
 
 let handler = () => [];
 const pool = fakePool((sql, params) => handler(sql, params));
@@ -45,6 +46,8 @@ const EMPRESAS = {
 
 function db({ pendientes = [10, 11], activa = { id_convocatoria: 2, nombre: '2026/2027' } } = {}) {
   return (sql, params) => {
+    const plantilla = correoDb(sql, params);
+    if (plantilla) return plantilla;
     if (sql.includes('FROM dual_convocatorias WHERE activa = 1')) return activa ? [activa] : [];
     if (sql.includes('NOT EXISTS')) {
       return pendientes.map((id) => ({ id_solicitud_empresa: id, empresa: EMPRESAS[id].empresa }));
@@ -169,6 +172,8 @@ test('generar: a mail failure does not change the response', async () => {
     res,
   );
   assert.equal(res.statusCode, 200);
+  // The email is fire-and-forget: let it fail here, not leak into the next test.
+  for (let i = 0; i < 50; i++) await new Promise((r) => setImmediate(r));
 });
 
 // ── Catch-up: "Generar convenios pendientes" ────────────────────────────────

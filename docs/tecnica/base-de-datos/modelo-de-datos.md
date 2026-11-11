@@ -238,8 +238,8 @@ Registro de auditoría **solo de inserción**: los triggers `trg_de_bu_inmutable
 | Columna | Notas |
 | --- | --- |
 | `id_evento` BIGINT PK | |
-| `entidad` | Desde la 019: `SOLICITUD_ALUMNO`, `SOLICITUD_EMPRESA`, `RESERVA`, `DOCUMENTO`, `OFERTA`, `TUTOR`, `USUARIO`. `OFERTA` y `TUTOR` los aporta la migración de reservas 018; la 019 los conserva y añade `USUARIO` |
-| `id_entidad`, `accion` (VARCHAR 40) | Acciones usadas: `VALIDAR`, `RECHAZAR`, `REABRIR`, `BAJA`, `REACTIVAR`, `RESERVAR`, `CANCELAR`, `REASIGNAR`, `CONFIRMAR`, `TIPO_CONTRATO`, `TUTOR`, `SUBIR`, `GENERAR`, `FIRMAR`, `EXENCION_FIRMA_LEGACY`. En `SOLICITUD_ALUMNO`, además: `DATOS_CORREGIDOS`, `CAMBIO_SOLICITADO`, `CAMBIO_APROBADO`, `CAMBIO_RECHAZADO`. En `OFERTA`: `ALTA`, `CUPO`. En `TUTOR`: `ALTA`, `EDITAR`, `DESACTIVAR`. En `USUARIO`: `ALTA`, `BAJA`, `REACTIVAR`, `CAMBIAR_ROL`, `CAMBIAR_DATOS`, `RESETEAR_PASSWORD` |
+| `entidad` | Desde la 022: `SOLICITUD_ALUMNO`, `SOLICITUD_EMPRESA`, `RESERVA`, `DOCUMENTO`, `OFERTA`, `TUTOR`, `USUARIO`, `CORREO`. `OFERTA` y `TUTOR` los aporta la migración de reservas 018; la 019 añade `USUARIO` y la 022 `CORREO` |
+| `id_entidad`, `accion` (VARCHAR 40) | Acciones usadas: `VALIDAR`, `RECHAZAR`, `REABRIR`, `BAJA`, `REACTIVAR`, `RESERVAR`, `CANCELAR`, `REASIGNAR`, `CONFIRMAR`, `TIPO_CONTRATO`, `TUTOR`, `SUBIR`, `GENERAR`, `FIRMAR`, `EXENCION_FIRMA_LEGACY`. En `SOLICITUD_ALUMNO`, además: `DATOS_CORREGIDOS`, `CAMBIO_SOLICITADO`, `CAMBIO_APROBADO`, `CAMBIO_RECHAZADO`. En `OFERTA`: `ALTA`, `CUPO`. En `TUTOR`: `ALTA`, `EDITAR`, `DESACTIVAR`. En `USUARIO`: `ALTA`, `BAJA`, `REACTIVAR`, `CAMBIAR_ROL`, `CAMBIAR_DATOS`, `RESETEAR_PASSWORD`. En `CORREO` (`id_entidad` = `id_historial`, `detalle` `{ clave, version, desde_version? }`, estados `ACTIVA`/`INACTIVA`): `EDITAR`, `RESTAURAR` |
 | `estado_anterior`, `estado_nuevo` VARCHAR(40) (018) | En `TIPO_CONTRATO` se guardan **ids** y los nombres en `detalle` |
 | `id_usuario` FK NULL, `rol_usuario` | NULL en acciones públicas (p. ej. generación del convenio en el alta) |
 | `motivo`, `detalle` JSON | Ids y metadatos; nunca nombres, DNI, emails ni ficheros |
@@ -247,7 +247,43 @@ Registro de auditoría **solo de inserción**: los triggers `trg_de_bu_inmutable
 
 Desde la 018 se auditan también los cupos y las ofertas nuevas (`OFERTA`), los tutores y su asignación (`TUTOR`, `RESERVA/TUTOR`) y las cancelaciones por reducción de cupo. Las correcciones de datos de alumno se auditan con los nombres de los campos, nunca sus valores.
 
-Lo que **no** se audita: cambios de datos de empresa, convocatorias, plantillas y la contraseña de alumnos y empresas. Las cuentas de personal sí: alta, edición, baja, reactivación y reseteo de contraseña, con entidad `USUARIO` (ids, rol y `activo`; nunca el email ni la contraseña).
+Lo que **no** se audita: cambios de datos de empresa, convocatorias, plantillas de documentos y la contraseña de alumnos y empresas. Las cuentas de personal sí: alta, edición, baja, reactivación y reseteo de contraseña, con entidad `USUARIO` (ids, rol y `activo`; nunca el email ni la contraseña). Y las ediciones de correos automáticos, con entidad `CORREO`.
+
+### `dual_correo_plantillas` (022)
+Texto de cada correo automático, editable por Administración. Una fila por correo (`clave`, p. ej. `reserva_confirmada_alumno`) más `pie`, que se añade al final de todos. El backend no contiene ningún texto de correo: sin su fila, ese correo no se envía.
+
+| Columna | Notas |
+| --- | --- |
+| `clave` VARCHAR(60) PK | Fija; la usa el código (`correoPlantillas.CONTRATO`) |
+| `grupo`, `nombre`, `destinatario`, `cuando`, `orden` | Solo para la pantalla «Correos». `grupo` con `CHECK` |
+| `asunto` VARCHAR(200), `cuerpo` TEXT | Plantilla con `{{variable}}`, bloques `{{#v}}…{{/v}}` / `{{^v}}…{{/v}}`, `**negrita**` y `[texto](url)` ([sintaxis](../api-e-integraciones/correo-electronico.md#2-plantillas)) |
+| `activa`, `desactivable` | `chk_dcp_siempre_activa`: `activa = 1 OR desactivable = 1`. No desactivables: `restablecer_contrasena`, `pie` |
+| `lleva_adjuntos` (023) | Interruptor «Lleva adjuntos». 0 = se envía sin adjuntos aunque tenga alguno en `dual_correo_adjuntos` |
+| `version`, `id_usuario_actualiza` FK `RESTRICT`, `actualizado_en` | `version` = la última del historial; sirve de control de concurrencia (409) |
+
+### `dual_correo_variables` (022)
+Variables que admite cada correo, con lo que muestra el editor en sus botones. PK (`clave_plantilla`, `variable`); FK a `dual_correo_plantillas` `ON DELETE CASCADE`.
+
+| Columna | Notas |
+| --- | --- |
+| `tipo` | `TEXTO` (escapado), `ENLACE` (solo http/https), `LISTA` (una línea por elemento; sola en su párrafo se ve como lista) |
+| `etiqueta`, `descripcion`, `ejemplo` | Texto del botón, ayuda y valor de la vista previa y del correo de prueba |
+| `fragmento` | Lo que inserta el botón; NULL = `{{variable}}`. Las opcionales traen su bloque (`{{#motivo}}Motivo: {{motivo}}{{/motivo}}`) |
+| `opcional`, `obligatoria` | Puede venir vacía / la plantilla debe usarla (se valida al guardar) |
+
+### `dual_correo_plantillas_historial` (022)
+Cada versión guardada: `id_historial` PK, `clave_plantilla` FK `RESTRICT`, `version` (UQ con la clave), `asunto`, `cuerpo`, `activa`, `lleva_adjuntos` y `adjuntos` (023: el interruptor y los nombres de los adjuntos en esa versión, solo para mostrar), `id_usuario` FK, `creado_en`. La versión 1 de cada correo es el texto que enviaba el código antes de la 022 («texto original»); para `solicitud_empresa_recibida` y `convenio_disponible` es el texto fusionado de la 023. Restaurar copia el texto de una versión como versión nueva; la aplicación nunca borra ni modifica una fila.
+
+### `dual_correo_adjuntos` (023)
+Adjuntos de cada correo, configurados por Administración. FK `clave_plantilla` a `dual_correo_plantillas` `ON DELETE CASCADE`.
+
+| Columna | Notas |
+| --- | --- |
+| `id_adjunto` INT PK | |
+| `tipo` | `DOCUMENTO` (documento que genera la aplicación para cada solicitud) o `ARCHIVO` (PDF fijo subido). `chk_dca_forma` exige las columnas de cada tipo |
+| `id_tipo_documento` FK `RESTRICT` | Solo `DOCUMENTO` (hoy `CONVENIO`). UQ (`clave_plantilla`, `id_tipo_documento`): cada documento una vez por correo. Qué documentos admite cada correo lo fija el código (`correoPlantillas.DOCUMENTOS`) |
+| `nombre_archivo`, `mime_type`, `tamano`, `archivo` MEDIUMBLOB | Solo `ARCHIVO`: el PDF tal como se envía (≤ 5 MB, máx. 5 por correo, comprobado por el backend) |
+| `orden`, `id_usuario_subida` FK `RESTRICT`, `creado_en` | Orden de los adjuntos en el correo y quién lo añadió |
 
 ### `schema_migrations`
 Historial del ejecutor de migraciones: `version` CHAR(3) PK, `name`, `checksum` (SHA-256 del fichero con saltos de línea normalizados), `applied_at`, `applied_by`, `mode` (`RUN` o `MARK`).

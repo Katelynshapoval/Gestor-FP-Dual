@@ -12,7 +12,6 @@ const empresaDatos = require("./empresaDatos");
 const { generateDocument } = require("./documentGenerationService");
 const { aplicarTransicion } = require("./solicitudTransiciones");
 const notificar = require("./notificaciones");
-const { escapeHtml } = notificar;
 const { inTransaction, HttpError } = require("../db/transaction");
 const { recordEvent } = require("./auditLog");
 const reservasTx = require("./reservasTx");
@@ -32,14 +31,6 @@ function empresaNoPuedeAmpliar(req, datos) {
 
 const EMPRESA_YA_REGISTRADA =
   "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
-
-let transporter = null;
-try {
-  const mc = require("../mail/config");
-  transporter = mc.transporter;
-} catch {
-  /* mail not configured */
-}
 
 // POST /solicitudes/empresa — public: create company application
 exports.create = async function (req, res) {
@@ -1684,51 +1675,6 @@ exports.rechazarCambio = async function (req, res) {
 const ERROR_CUPO_CONFIRMADAS =
   "No se puede reducir el número de plazas por debajo de los alumnos ya confirmados. Cancela o reasigna primero las reservas confirmadas desde administración.";
 
-async function sendCupoReductionEmail({
-  email,
-  empresa,
-  especialidad,
-  cantidadAnterior,
-  cantidadNueva,
-  canceladas,
-}) {
-  if (!transporter || !email) {
-    console.warn(
-      "Mail not configured. Cupo reduction for",
-      empresa,
-      especialidad,
-      canceladas.map((c) => c.id_reserva),
-    );
-
-    return;
-  }
-
-  const list = canceladas
-    .map(
-      (c) =>
-        `<li>Reserva #${c.id_reserva} — ${escapeHtml(c.alumno || "alumno")} (${escapeHtml(c.dni_alumno || "sin DNI")}) · ${escapeHtml(c.especialidad || especialidad)}</li>`,
-    )
-    .join("");
-
-  try {
-    await transporter.sendMail({
-      from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Reservas pendientes canceladas por reducción de plazas",
-      html: `
-        <p>Estimado coordinador de <strong>${escapeHtml(empresa)}</strong>,</p>
-        <p>Se ha reducido el número de plazas de <strong>${escapeHtml(especialidad)}</strong> de ${Number(cantidadAnterior)} a ${Number(cantidadNueva)}.</p>
-        <p>Se han cancelado las siguientes reservas pendientes:</p>
-        <ul>${list}</ul>
-        <p>Las reservas confirmadas no se han modificado.</p>
-        <p>Salesianos Zaragoza — Departamento Dual</p>
-      `,
-    });
-  } catch (err) {
-    console.error("Error sending cupo reduction email:", err.message);
-  }
-}
-
 // POST /solicitudes/empresa/:id/especialidades
 exports.addEspecialidad = async function (req, res) {
   const id = parseInt(req.params.id, 10);
@@ -2059,7 +2005,7 @@ exports.updateCupoEspecialidad = async function (req, res) {
   const { canceladas, cantidadAnterior, especialidadNombre, emailCoordinador, empresaNombre } = out;
 
   if (canceladas.length) {
-    await sendCupoReductionEmail({
+    await notificar.cupoReducido({
       email: emailCoordinador,
       empresa: empresaNombre,
       especialidad: especialidadNombre,

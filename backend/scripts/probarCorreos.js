@@ -1,4 +1,6 @@
 // Sends every notification template once, for reading them in a real inbox.
+// The texts and attachments come from the database (migrations 022 and 023),
+// as edited in «Correos».
 //
 //   node scripts/probarCorreos.js
 //
@@ -11,6 +13,13 @@ require('dotenv').config();
 const { MAIL_MODE, MAIL_REDIRECT_TO, maskEmail } = require('../src/mail/config');
 const pool = require('../src/db/pool');
 const n = require('../src/services/notificaciones');
+
+// Stand-in for a generated convenio: a minimal valid one-page PDF, so the
+// attachment path (migration 023) can be read in a real inbox.
+const PDF_PRUEBA = Buffer.from(
+  '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n'
+  + '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n',
+);
 
 async function idsDePrueba() {
   const [empresas] = await pool.query(
@@ -62,6 +71,19 @@ async function idsDePrueba() {
     ['Reserva cancelada por la empresa (alumno)', () => n.reservaCancelada(ids.reserva)],
     ['Reserva cancelada por el centro (empresa)', () => n.reservaCancelada(ids.reserva, { avisarEmpresa: true, avisarAlumno: false })],
     ['Reserva confirmada (alumno y empresa)', () => n.reservaConfirmada(ids.reserva)],
+    ['Solicitud de alumno recibida', () => n.solicitudAlumnoRecibida(MAIL_REDIRECT_TO, 'Alumno de prueba', '2026/2027')],
+    ['Ciclo corregido', () => n.cicloCorregido(ids.solicitudAlumno)],
+    ['Corrección de datos aprobada', () => n.cambioDatosResuelto(ids.solicitudAlumno, true)],
+    ['Corrección de datos rechazada', () => n.cambioDatosResuelto(ids.solicitudAlumno, false, 'Motivo de prueba: el documento no coincide.')],
+    ['Solicitud de empresa recibida (convenio aún sin generar)', () => n.solicitudEmpresaRecibida(ids.solicitudEmpresa)],
+    ['Solicitud de empresa recibida (con PDF de prueba, si el correo lleva adjuntos)', () => n.solicitudEmpresaRecibida(ids.solicitudEmpresa, PDF_PRUEBA)],
+    ['Convenio disponible (sin PDF)', () => n.convenioDisponible(ids.solicitudEmpresa)],
+    ['Convenio disponible (con PDF de prueba, si el correo lleva adjuntos)', () => n.convenioDisponible(ids.solicitudEmpresa, PDF_PRUEBA)],
+    ['Reducción de plazas (empresa)', () => n.cupoReducido({
+      email: MAIL_REDIRECT_TO, empresa: 'EMPRESA PRUEBA A', especialidad: 'Ciclo de prueba', cantidadAnterior: 3, cantidadNueva: 1,
+      canceladas: [{ id_reserva: 0, alumno: 'Alumno de prueba', dni_alumno: '00000000T' }],
+    })],
+    ['Recuperar contraseña', () => n.restablecerContrasena(MAIL_REDIRECT_TO, 'Prueba', 'https://example.org/restablecer-contrasena?token=prueba')],
   ];
 
   let fallos = 0;

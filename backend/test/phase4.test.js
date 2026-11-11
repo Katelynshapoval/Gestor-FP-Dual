@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { stub, load, fakePool, mockReq, mockRes } = require('./helpers/harness');
+const { correoDb } = require('./helpers/correoSeed');
 
 let handler = () => [];
 const pool = fakePool((sql, params) => handler(sql, params));
@@ -146,7 +147,9 @@ const RESERVA_ROW = {
   especialidad: 'Joyería', convocatoria: '2026/2027',
 };
 
-function notifDb(sql) {
+function notifDb(sql, params) {
+  const plantilla = correoDb(sql, params);
+  if (plantilla) return plantilla;
   if (sql.includes('FROM dual_reservas r') && sql.includes('email_alumno')) return [RESERVA_ROW];
   if (sql.includes('FROM dual_solicitudes_alumno sa') && sql.includes('a.email')) {
     return [{ nombre: 'Ana', email: 'ana@example.test', convocatoria: '2026/2027', especialidad: 'Joyería' }];

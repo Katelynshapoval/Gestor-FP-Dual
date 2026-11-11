@@ -15,9 +15,10 @@ describe("navigation (D.1)", () => {
     const staff = navForUser({ rol: "COORDINADOR" }).map((i) => i.to);
     expect(staff).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias", "/ayuda"]);
     expect(staff).not.toContain("/personal");
+    expect(staff).not.toContain("/correos");
     expect(staff).not.toContain("/addDualStudent");
     const admin = navForUser({ rol: "ADMINISTRADOR" }).map((i) => i.to);
-    expect(admin).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias", "/personal", "/ayuda"]);
+    expect(admin).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias", "/personal", "/correos", "/ayuda"]);
     expect(pageTitle("/personal")).toBe("Personal");
     expect(pageTitle("/ayuda")).toBe("Ayuda");
   });

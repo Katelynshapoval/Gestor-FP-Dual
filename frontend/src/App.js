@@ -12,6 +12,7 @@ import CompanyView from "./pages/CompanyView/";
 import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
 import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
 import Personal from "./pages/Personal/Personal.jsx";
+import Correos from "./pages/Correos/Correos.jsx";
 import StudentMain from "./pages/StudentMain";
 import AdminDocumentsView from "./pages/AdminDocumentsView";
 import Panel from "./pages/Panel/Panel.jsx";
@@ -56,6 +57,7 @@ function App() {
                 <Route path="/documentos" element={guard(STAFF, <AdminDocumentsView />)} />
                 <Route path="/convocatorias" element={guard(STAFF, <Convocatorias />)} />
                 <Route path="/personal" element={guard(["ADMINISTRADOR"], <Personal />)} />
+                <Route path="/correos" element={guard(["ADMINISTRADOR"], <Correos />)} />
 
                 <Route path="/companyMain" element={guard(["EMPRESA"], <CompanyView />)} />
                 <Route path="/studentMain" element={guard(["ALUMNO"], <StudentMain />)} />

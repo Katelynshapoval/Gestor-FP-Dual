@@ -58,4 +58,6 @@ app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   // WF-3: keep dual_convocatorias.activa in line with today's date
   require("./services/convocatoriasService").startConvocatoriaScheduler();
+  // Migration 022: every email the code can send needs a valid template.
+  require("./services/correoPlantillas").verificar();
 });
