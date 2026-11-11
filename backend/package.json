@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=88",
     "db:migrate": "node scripts/migrate.js",
     "db:schema": "node scripts/schema.js",
     "db:backup": "node scripts/backup.js"

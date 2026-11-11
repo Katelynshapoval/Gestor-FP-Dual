@@ -14,9 +14,10 @@ import {
   FaXmark,
 } from "react-icons/fa6";
 import PageHeader from "../../components/ui/PageHeader";
-import { publicJSON } from "../../utils/api";
+import { getJSON } from "../../utils/api";
+import { useUser } from "../../context/UserContext";
 import { coincide } from "../../utils/busqueda";
-import { FAQ, PERFILES } from "./faq.js";
+import { faqParaRol, PERFILES } from "./faq.js";
 import { manualHtml, parseManual, searchManual } from "./manual.js";
 
 const PERFIL_ICONOS = {
@@ -34,10 +35,13 @@ function currentHash() {
   return decodeURIComponent(window.location.hash.slice(1));
 }
 
-function ProfileCards({ onGo }) {
+const COLUMNAS = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-2 xl:grid-cols-3" };
+
+function ProfileCards({ perfiles, onGo }) {
+  if (!perfiles.length) return null;
   return (
-    <ul className="m-0 mb-10 grid list-none grid-cols-2 gap-3 p-0 xl:grid-cols-4">
-      {PERFILES.map((perfil) => {
+    <ul className={`m-0 mb-10 grid list-none gap-3 p-0 ${COLUMNAS[perfiles.length] || "grid-cols-2 xl:grid-cols-4"}`}>
+      {perfiles.map((perfil) => {
         const Icon = PERFIL_ICONOS[perfil.href] || FaBookOpen;
         return (
           <li key={perfil.href}>
@@ -93,7 +97,7 @@ function SearchBox({ value, onChange }) {
   );
 }
 
-function FaqList({ items, onGo }) {
+function FaqList({ items, hasAnchor, onGo }) {
   return (
     <div className="flex flex-col gap-2">
       {items.map((item) => (
@@ -110,14 +114,16 @@ function FaqList({ items, onGo }) {
           </summary>
           <div className="border-t border-surface-200 px-4 pb-4 pt-3 text-sm leading-6 text-charcoal-800">
             <p className="m-0 break-words">{item.a}</p>
-            <a
-              href={item.href}
-              onClick={(event) => onGo(event, item.href.slice(1))}
-              className="mt-3 inline-flex items-center gap-1.5 font-semibold text-brand-700 hover:underline"
-            >
-              Ver en el manual
-              <FaArrowRight aria-hidden="true" className="h-3 w-3" />
-            </a>
+            {hasAnchor(item.href.slice(1)) && (
+              <a
+                href={item.href}
+                onClick={(event) => onGo(event, item.href.slice(1))}
+                className="mt-3 inline-flex items-center gap-1.5 font-semibold text-brand-700 hover:underline"
+              >
+                Ver en el manual
+                <FaArrowRight aria-hidden="true" className="h-3 w-3" />
+              </a>
+            )}
           </div>
         </details>
       ))}
@@ -145,7 +151,7 @@ function ManualHits({ hits, onGo }) {
   );
 }
 
-function SearchResults({ query, preguntas, hits, onGo }) {
+function SearchResults({ query, preguntas, hits, hasAnchor, onGo }) {
   if (!preguntas.length && !hits.length) {
     return (
       <div className="rounded-xl2 border border-dashed border-surface-300 bg-white px-6 py-10 text-center">
@@ -162,7 +168,7 @@ function SearchResults({ query, preguntas, hits, onGo }) {
           <h3 className="m-0 mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
             Preguntas frecuentes · {preguntas.length}
           </h3>
-          <FaqList items={preguntas} onGo={onGo} />
+          <FaqList items={preguntas} hasAnchor={hasAnchor} onGo={onGo} />
         </div>
       )}
       {hits.length > 0 && (
@@ -193,7 +199,7 @@ function ChapterNav({ chapters, active, onGo }) {
       </a>
       <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-widest text-muted">Manual</p>
       <ol className="m-0 flex list-none flex-col gap-0.5 p-0 text-sm">
-        {chapters.map((chapter) => {
+        {chapters.map((chapter, position) => {
           const isActive = chapter.id === active?.id;
           return (
             <li key={chapter.id}>
@@ -209,7 +215,7 @@ function ChapterNav({ chapters, active, onGo }) {
               >
                 {chapter.number && (
                   <span className={`w-4 shrink-0 tabular-nums ${isActive ? "text-brand-700" : "text-charcoal-400"}`}>
-                    {chapter.number}
+                    {position + 1}
                   </span>
                 )}
                 <span className="min-w-0 break-words">{chapter.title}</span>
@@ -263,7 +269,7 @@ function ChapterReader({ intro, chapters, chapter, onGo }) {
     <article className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card">
       <header id={chapter.id} className="scroll-mt-24 border-b border-surface-200 bg-surface-50 px-5 py-5 sm:px-8">
         <p className="m-0 text-xs font-semibold uppercase tracking-widest text-brand-700">
-          Capítulo {chapter.number || index + 1} de {chapters.length}
+          Capítulo {index + 1} de {chapters.length}
         </p>
         <h3 className="m-0 mt-1 font-display text-2xl font-semibold leading-tight text-charcoal-950">{chapter.title}</h3>
       </header>
@@ -310,6 +316,8 @@ function ChapterReader({ intro, chapters, chapter, onGo }) {
 }
 
 export default function Ayuda() {
+  const { user } = useUser();
+  const rol = user?.rol || null;
   const [markdown, setMarkdown] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -320,7 +328,10 @@ export default function Ayuda() {
 
   useEffect(() => {
     let cancelled = false;
-    publicJSON("/ayuda/manual")
+    setLoading(true);
+    setError("");
+    // The server sends only the chapters this visitor may read.
+    getJSON("/ayuda/manual")
       .then((data) => {
         if (!cancelled) setMarkdown(data.markdown || "");
       })
@@ -333,10 +344,13 @@ export default function Ayuda() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [rol]);
 
   const { intro, chapters } = useMemo(() => parseManual(markdown), [markdown]);
   const chapter = chapters.find((item) => item.id === chapterId) || chapters[0] || null;
+  const hasAnchor = useCallback((id) => chapters.some((item) => item.ids.has(id)), [chapters]);
+  const perfiles = useMemo(() => PERFILES.filter((perfil) => hasAnchor(perfil.href.slice(1))), [hasAnchor]);
+  const faq = useMemo(() => faqParaRol(rol), [rol]);
 
   const show = useCallback(
     (anchor) => {
@@ -415,7 +429,7 @@ export default function Ayuda() {
   };
 
   const searching = query.trim().length > 0;
-  const preguntas = searching ? FAQ.filter((item) => coincide(query, [item.q, item.a])) : FAQ;
+  const preguntas = searching ? faq.filter((item) => coincide(query, [item.q, item.a])) : faq;
   const hits = useMemo(() => searchManual(chapters, query), [chapters, query]);
 
   return (
@@ -428,7 +442,7 @@ export default function Ayuda() {
 
       <SearchBox value={query} onChange={setQuery} />
 
-      {!searching && <ProfileCards onGo={go} />}
+      {!searching && <ProfileCards perfiles={perfiles} onGo={go} />}
 
       <div className="grid items-start gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] xl:gap-10">
         <ChapterNav chapters={chapters} active={chapter} onGo={go} />
@@ -438,7 +452,7 @@ export default function Ayuda() {
             {searching ? (
               <>
                 <h2 className="m-0 mb-4 font-display text-xl font-semibold text-charcoal-950">Resultados</h2>
-                <SearchResults query={query.trim()} preguntas={preguntas} hits={hits} onGo={go} />
+                <SearchResults query={query.trim()} preguntas={preguntas} hits={hits} hasAnchor={hasAnchor} onGo={go} />
               </>
             ) : (
               <>
@@ -446,7 +460,7 @@ export default function Ayuda() {
                   <h2 className="m-0 font-display text-xl font-semibold text-charcoal-950">Preguntas frecuentes</h2>
                   <p className="m-0 text-sm text-muted">Respuestas cortas; el detalle está en el manual.</p>
                 </div>
-                <FaqList items={FAQ} onGo={go} />
+                <FaqList items={faq} hasAnchor={hasAnchor} onGo={go} />
               </>
             )}
           </section>
@@ -468,9 +482,9 @@ export default function Ayuda() {
                     value={chapter?.id || ""}
                     onChange={(event) => go(null, event.target.value)}
                   >
-                    {chapters.map((item) => (
+                    {chapters.map((item, position) => (
                       <option key={item.id} value={item.id}>
-                        {item.number ? `${item.number}. ` : ""}
+                        {item.number ? `${position + 1}. ` : ""}
                         {item.title}
                       </option>
                     ))}

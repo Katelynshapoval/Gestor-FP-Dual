@@ -28,6 +28,18 @@ function stub(id, value) {
   stubs.set(key(id), value);
 }
 
+// Unit tests never touch a real database. Until a test stubs src/db/pool, any
+// module that reaches the pool gets one that fails loudly instead of quietly
+// querying the developer's database (for example a module required before the
+// test installed its fake pool). The database integration tests
+// (DB_INTEGRATION=1) use the real pool.
+if (process.env.DB_INTEGRATION !== '1') {
+  const prohibido = () => {
+    throw new Error('Un test ha intentado usar la base de datos real: stub(\'src/db/pool\', fakePool(...)) antes de cargar el módulo.');
+  };
+  stubs.set(key('src/db/pool'), { query: prohibido, execute: prohibido, getConnection: prohibido });
+}
+
 function load(id) {
   const file = require.resolve(path.join(SRC, id.slice(4)));
   delete require.cache[file];

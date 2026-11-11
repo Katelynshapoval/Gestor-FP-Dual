@@ -27,6 +27,7 @@ export const FAQ = [
   },
   {
     q: "El correo de confirmación de la empresa no traía el convenio",
+    perfiles: ["EMPRESA"],
     a: "El centro todavía no lo ha generado. En el portal aparece «Convenio: en preparación por el centro» y aún no hay nada que subir. Cuando esté listo llega otro correo, «Tu convenio está disponible», con el convenio adjunto: descargadlo, firmadlo y subidlo.",
     href: "#empresa-documentos",
   },
@@ -42,6 +43,7 @@ export const FAQ = [
   },
   {
     q: "No puedo reservar a un alumno",
+    perfiles: ["EMPRESA"],
     a: "Puede ser porque la solicitud de la empresa aún no está validada, porque no quedan plazas en ese ciclo o porque el alumno ya tiene una plaza confirmada en otra empresa. Con la solicitud validada, la empresa solo puede reducir plazas: para ampliarlas hay que pedírselo al centro.",
     href: "#faq-plazas",
   },
@@ -78,3 +80,10 @@ export const PERFILES = [
   { href: "#empresa", title: "Empresa", text: "Convenio, plazas, reservas, tutores y firmas." },
   { href: "#alumno", title: "Alumno", text: "Candidatura, documentos, firma del anexo y corrección de datos." },
 ];
+
+// Questions marked with `perfiles` are only for those roles. Visitors who are
+// not signed in and the centre's staff see every question.
+export function faqParaRol(rol) {
+  if (!rol || rol === "ADMINISTRADOR" || rol === "COORDINADOR") return FAQ;
+  return FAQ.filter((item) => !item.perfiles || item.perfiles.includes(rol));
+}

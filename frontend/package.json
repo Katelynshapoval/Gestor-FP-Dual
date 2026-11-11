@@ -21,9 +21,20 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:coverage": "react-scripts test --watchAll=false --coverage --coverageReporters=text --coverageReporters=text-summary",
     "eject": "react-scripts eject"
   },
   "proxy": "http://localhost:3001",
+  "jest": {
+    "coverageThreshold": {
+      "global": {
+        "lines": 66,
+        "statements": 64,
+        "functions": 55,
+        "branches": 52
+      }
+    }
+  },
   "eslintConfig": {
     "extends": [
       "react-app",

@@ -4,6 +4,9 @@
 # Build de producción
 frontend/build/
 
+# Informes de cobertura de los tests
+**/coverage/
+
 # Ignorar todos los archivos .env
 **/.env
 

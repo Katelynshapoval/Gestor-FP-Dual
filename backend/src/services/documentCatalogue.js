@@ -103,7 +103,8 @@ const CATALOGUE = [
     replaceIfValidated: false,
     workflowOnUpload: "SUBIDO",
     signers: ["EMPRESA"],
-    actor: { EMPRESA: "upload", GESTOR: "review", ALUMNO: "view" },
+    // The convenio is a company document: the student never sees it.
+    actor: { EMPRESA: "upload", GESTOR: "review", ALUMNO: "hidden" },
   },
   {
     clave: "ANEXO_XIV",

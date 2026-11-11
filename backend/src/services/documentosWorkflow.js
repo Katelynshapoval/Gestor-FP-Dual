@@ -258,42 +258,16 @@ async function buildAlumnoList(idAlumno) {
   );
 
   const docMap = await latestDocs(
-    `(d.id_solicitud_alumno = ? OR d.id_solicitud_empresa IN (?) OR d.id_reserva IN (?))`,
-    [
-      solicitud.id_solicitud_alumno,
-      reservas.map((r) => r.id_solicitud_empresa).concat([-1]),
-      reservas.map((r) => r.id_reserva).concat([-1]),
-    ],
+    // Company documents (convenio, Anexo XIV) are not the student's.
+    `(d.id_solicitud_alumno = ? OR d.id_reserva IN (?))`,
+    [solicitud.id_solicitud_alumno, reservas.map((r) => r.id_reserva).concat([-1])],
   );
   const ids = Object.values(docMap).map((d) => d.id_documento);
   const firmaMap = await loadFirmas(ids);
   const templates = await activeTemplateClaves();
   const items = itemsForSolicitudAlumno("ALUMNO", solicitud, docMap, firmaMap, templates);
 
-  const seenConvenio = new Set();
   for (const reserva of reservas) {
-    if (!seenConvenio.has(reserva.id_solicitud_empresa)) {
-      seenConvenio.add(reserva.id_solicitud_empresa);
-      const def = defByClave("CONVENIO");
-      const row = pick(docMap, `E:${reserva.id_solicitud_empresa}`, "CONVENIO");
-      const item = projectItem(
-        def,
-        "ALUMNO",
-        {
-          id_solicitud_empresa: reserva.id_solicitud_empresa,
-          convocatoria: reserva.convocatoria,
-          empresa: reserva.empresa,
-          cif: reserva.cif,
-          alumno: solicitud.nombre,
-          dni: solicitud.dni,
-        },
-        row,
-        row ? firmaMap[row.id_documento] || [] : [],
-        { templates },
-      );
-      if (item) items.push(item);
-    }
-
     const anexoClave = anexoClaveForContrato(reserva.tipo_contrato);
     if (anexoClave) {
       const def = defByClave(anexoClave);

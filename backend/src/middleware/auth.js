@@ -118,6 +118,37 @@ const requireAuth = buildRequireAuth();
 // password finish the mandatory change.
 const requireAuthAllowPasswordChange = buildRequireAuth({ allowPendingPasswordChange: true });
 
+// For public routes whose answer depends on who asks: sets req.user when the
+// token is valid and the account is active, and otherwise carries on as an
+// anonymous visitor. Never answers 401.
+async function optionalAuth(req, _res, next) {
+  req.user = undefined;
+  const header = req.headers['authorization'];
+  if (!header || !header.startsWith('Bearer ')) return next();
+  let payload;
+  try {
+    payload = jwt.verify(header.slice(7), getJwtSecret(), { algorithms: [JWT_ALGORITHM] });
+  } catch {
+    return next();
+  }
+  let account;
+  try {
+    account = await loadAccountState(payload.id);
+  } catch (err) {
+    return next(err);
+  }
+  if (
+    account &&
+    account.activo &&
+    payload.pwd === passwordFingerprint(account.password_hash) &&
+    account.rol === payload.rol
+  ) {
+    const { pwd, ...claims } = payload;
+    req.user = { ...claims, rol: account.rol, must_change_password: !!account.must_change_password };
+  }
+  return next();
+}
+
 // requireRole('ADMINISTRADOR', 'COORDINADOR')
 function requireRole(...roles) {
   return (req, res, next) => {
@@ -137,6 +168,7 @@ module.exports = {
   passwordFingerprint,
   requireAuth,
   requireAuthAllowPasswordChange,
+  optionalAuth,
   requireRole,
   assertJwtConfig,
   PASSWORD_CHANGE_CODE,

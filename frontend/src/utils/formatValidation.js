@@ -1,6 +1,9 @@
-// Utility functions for validating DNI/NIE and CIF formats
+// Utility functions for validating DNI/NIE and CIF formats. They give the same
+// answer as the server (backend/src/helpers/dbHelpers.js): spaces and lower
+// case are accepted, the format and the control character are both checked.
 
-export function dniNieValido(dniNie) {
+export function dniNieValido(valor) {
+  const dniNie = String(valor ?? "").trim().toUpperCase();
   const dniRegex = /^[0-9]{8}[A-Z]$/;
   const nieRegex = /^[XYZ][0-9]{7}[A-Z]$/;
   const letras = "TRWAGMYFPDXBNJZSQVHLCKE";
@@ -42,7 +45,9 @@ export function nSSValido(nss) {
   return calculado === control;
 }
 
-export function cifValido(cif) {
+export function cifValido(valor) {
+  const cif = String(valor ?? "").trim().toUpperCase();
+  if (!/^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(cif)) return false;
   let sumaPar = 0;
   let sumaImpar = 0;
   const numero = cif.substring(1, 8);

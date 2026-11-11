@@ -55,9 +55,9 @@
 - **Comportamiento**: `POST /documentos/convenios/generar-pendientes` las genera **una a una** con `regenerar: false` y envía cada convenio por correo. Un convenio ya subido o generado no se toca; si otro proceso lo crea entre la consulta y la generación, `generateDocument` responde 409 y queda en `fallidos`. Un error en una empresa no detiene las demás. Una segunda ejecución mientras hay otra en curso → 409 (bloqueo en memoria, un solo proceso).
 - **Consecuencias**: se ejecuta dentro de la petición HTTP; con muchas solicitudes puede tardar (un Chromium por convenio). Si se cambia la plantilla durante la ejecución, cada convenio usa la activa en su momento.
 
-### El alumno puede descargar el convenio de empresas con reservas canceladas
-- **Comportamiento**: `alumnoMayDownload` permite el convenio de una solicitud de empresa si el alumno tiene **cualquier** reserva con ella, incluso cancelada. La lista `/documentos/alumno/mios`, en cambio, solo incluye empresas con reservas no canceladas.
-- **Motivo**: no documentado.
+### El alumno no ve el convenio
+- **Comportamiento**: el convenio (y el Anexo XIV) son documentos de la empresa. `CONVENIO` tiene `actor.ALUMNO: "hidden"`, `/documentos/alumno/mios` no lo lista y `alumnoMayDownload` rechaza cualquier documento de una solicitud de empresa, aunque el alumno tenga reservas con ella.
+- **Motivo**: el convenio es un acuerdo entre la empresa y el centro; el alumno firma su anexo, no el convenio.
 
 ### La empresa ve el CV de candidatos, no su Anexo DGA
 - **Comportamiento**: `empresaMayViewStudentDocument` solo permite tipos con `actor.EMPRESA` visible (CV) y solo de alumnos con reserva activa con la empresa o candidatos visibles en ese momento (VALIDADO, convocatoria activa, ciclo de sus ofertas validadas, sin confirmada). Un candidato confirmado en otra empresa deja de ser descargable.

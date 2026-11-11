@@ -318,20 +318,7 @@ async function alumnoMayDownload(idAlumno, doc) {
     );
     return rows[0]?.id_alumno === idAlumno;
   }
-  if (doc.id_solicitud_empresa) {
-    const [rows] = await pool.query(
-      `SELECT sa.id_alumno
-         FROM dual_reservas r
-         JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = r.id_solicitud_alumno
-         JOIN dual_solicitud_empresa_especialidades ee
-           ON ee.id_solicitud_empresa_especialidad = r.id_solicitud_empresa_especialidad
-         JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
-        WHERE se.id_solicitud_empresa = ? AND sa.id_alumno = ?
-        LIMIT 1`,
-      [doc.id_solicitud_empresa, idAlumno],
-    );
-    return Boolean(rows[0]);
-  }
+  // Company documents (convenio, Anexo XIV) belong to the company, not the student.
   return false;
 }
 

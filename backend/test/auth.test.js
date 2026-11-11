@@ -231,3 +231,25 @@ test('Login limiter: window expiry and success reset', () => {
   lim.recordFailure('ip', 'b');
   assert.equal(lim.retryAfter('ip', 'b'), 0);
 });
+
+test('optionalAuth: valid sessions get their role, anything else is an anonymous visitor (never 401)', async () => {
+  process.env.JWT_SECRET = SECRET;
+  const auth = load('src/middleware/auth');
+  const ok = await runMiddleware(auth.optionalAuth, mockReq({ headers: bearer({ id: 1, rol: 'ADMINISTRADOR' }) }));
+  assert.equal(ok.nextCalled, true);
+  assert.equal(ok.req.user.rol, 'ADMINISTRADOR');
+
+  const cases = [
+    {},
+    { authorization: 'Bearer basura' },
+    bearer({ id: 1, rol: 'ADMINISTRADOR' }, OLD_FALLBACK),
+    bearer({ id: 2, rol: 'EMPRESA' }), // deactivated
+    bearer({ id: 1, rol: 'COORDINADOR' }), // stale role
+  ];
+  for (const headers of cases) {
+    const r = await runMiddleware(auth.optionalAuth, mockReq({ headers }));
+    assert.equal(r.nextCalled, true);
+    assert.equal(r.req.user, undefined);
+    assert.notEqual(r.res.statusCode, 401);
+  }
+});

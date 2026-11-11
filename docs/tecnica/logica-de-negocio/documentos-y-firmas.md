@@ -10,7 +10,7 @@ El catálogo de Node decide, por tipo de documento (`clave` = `dual_tipos_docume
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `CV` | solicitud alumno | ALUMNO | — | Sí | No | No | Centro revisa; empresa **ve**; alumno sube |
 | `ANEXO_DGA` | solicitud alumno | ALUMNO | — | Sí | No | No | Empresa **no lo ve** |
-| `CONVENIO` | solicitud empresa | EMPRESA | **EMPRESA** | Sí | **Sí** | No | Alumno lo ve (si tiene reserva con la empresa) |
+| `CONVENIO` | solicitud empresa | EMPRESA | **EMPRESA** | Sí | **Sí** | No | Alumno no lo ve: es un documento de empresa |
 | `ANEXO_XIV` | solicitud empresa | EMPRESA | — | Sí | No | No | Alumno no lo ve |
 | `ANEXO_G` | solicitud empresa | CENTRO | — | No | No | Sí | Solo el centro |
 | `EXCEL` | solicitud empresa | CENTRO | — | No | No | Sí | Solo el centro |
@@ -121,7 +121,7 @@ El PDF refleja los datos **del momento**: cambios posteriores (tutor, datos de e
 | --- | --- |
 | Personal | Cualquier documento |
 | EMPRESA | Documentos de sus solicitudes y de reservas de su empresa; además el **CV** (tipos visibles para empresa) de un alumno si tiene con él una reserva no cancelada, o si el alumno es candidato visible (VALIDADO, convocatoria activa, ciclo de sus ofertas VALIDADO, sin confirmada) |
-| ALUMNO | Documentos visibles para alumno de su solicitud y de sus reservas; el **convenio** de una empresa con la que tenga **cualquier** reserva (incluidas canceladas) |
+| ALUMNO | Documentos visibles para alumno de su solicitud y de sus reservas. Nunca los de la solicitud de empresa (convenio, Anexo XIV) |
 
 Respuesta `application/pdf`, `Content-Disposition: attachment; filename="documento_<id>.pdf"` (SEC-008: una visita directa a la URL no lo abre en el origen de la API). El visor de la aplicación lo pide como *blob* y lo muestra igual. Sin fichero → 404.
 
@@ -129,7 +129,7 @@ Respuesta `application/pdf`, `Content-Disposition: attachment; filename="documen
 
 | Endpoint | Contenido |
 | --- | --- |
-| `GET /documentos/alumno/mios` | De la solicitud **más reciente** del alumno: CV y Anexo DGA; por cada reserva no cancelada, el convenio de la empresa, el anexo de su familia y el calendario |
+| `GET /documentos/alumno/mios` | De la solicitud **más reciente** del alumno: CV y Anexo DGA; por cada reserva no cancelada, el anexo de su familia y el calendario (el convenio no: es de la empresa) |
 | `GET /documentos/empresa` | Por cada solicitud de la empresa: convenio y Anexo XIV; por cada reserva no cancelada: anexo y calendario |
 | `GET /documentos/seguimiento` | Ver [panel y seguimiento](panel-y-seguimiento.md) |
 
