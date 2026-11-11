@@ -22,7 +22,7 @@ describe("staff accounts", () => {
     jest.useFakeTimers();
     const { llamadas } = simularApi({
       "GET /usuarios/personal": PERSONAL,
-      "POST /usuarios/personal": { usuario: { nombre_mostrar: "Nuevo" }, newPassword: "a1b2c3d4e5f6a7b8" },
+      "POST /usuarios/personal": { usuario: { nombre_mostrar: "Nuevo" }, newPassword: "clave-temporal-de-prueba" },
     });
     renderPagina(<Personal />);
     await screen.findByText("Marta");
@@ -30,11 +30,11 @@ describe("staff accounts", () => {
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "nuevo@centro.test" } });
     fireEvent.change(screen.getByLabelText("Rol"), { target: { value: "ADMINISTRADOR" } });
     fireEvent.click(screen.getByRole("button", { name: "Dar de alta" }));
-    expect(await screen.findByText("a1b2c3d4e5f6a7b8")).toBeInTheDocument();
+    expect(await screen.findByText("clave-temporal-de-prueba")).toBeInTheDocument();
     expect(llamadas.find((l) => l.method === "POST").body).toEqual({ nombre: "Nuevo", email: "nuevo@centro.test", rol: "ADMINISTRADOR" });
     expect(screen.getByLabelText("Nombre")).toHaveValue("");
     act(() => jest.advanceTimersByTime(2 * 60 * 1000 + 10));
-    expect(screen.queryByText("a1b2c3d4e5f6a7b8")).toBeNull();
+    expect(screen.queryByText("clave-temporal-de-prueba")).toBeNull();
     jest.useRealTimers();
   });
 

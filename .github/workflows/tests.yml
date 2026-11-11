@@ -27,7 +27,8 @@ jobs:
       # Tests never generate PDFs, so the browser Puppeteer downloads is not needed.
       PUPPETEER_SKIP_DOWNLOAD: "true"
       NODE_ENV: test
-      JWT_SECRET: ci-only-not-a-real-secret
+      # Placeholder only (the app requires 32+ characters); each test file sets its own.
+      JWT_SECRET: ci-placeholder-value-not-used-anywhere-0000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

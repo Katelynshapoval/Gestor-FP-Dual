@@ -14,7 +14,9 @@ const pool = fakePool((sql, params) => {
 });
 stub('src/db/pool', pool);
 stub('bcrypt', fakeBcrypt);
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-that-is-long-enough-0123456789';
+// Always its own secret, like the other test files: never whatever the
+// environment (a developer's .env or CI) happens to provide.
+process.env.JWT_SECRET = 'test-secret-that-is-long-enough-0123456789';
 
 const tx = load('src/services/reservasTx');
 const auth = load('src/services/authService');

@@ -157,7 +157,7 @@ test('PDF conversion: no scripts, only data: and about:blank requests, A4 with m
   assert.equal(peticion('about:blank'), 'ok');
   assert.equal(peticion('http://169.254.169.254/latest/meta-data'), 'bloqueada');
   assert.equal(peticion('https://example.com/x.png'), 'bloqueada');
-  assert.equal(peticion('file:///etc/passwd'), 'bloqueada');
+  assert.equal(peticion('file:///home/usuario/notas.txt'), 'bloqueada');
   assert.equal(navegador.cerrado, 1);
 });
 
