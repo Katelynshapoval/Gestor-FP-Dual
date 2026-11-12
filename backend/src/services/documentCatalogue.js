@@ -3,6 +3,11 @@
 // Review states (PENDIENTE/VALIDADO/RECHAZADO) stay separate from the operational status.
 // FORMULARIO is historical only: the student application is not a document.
 // The real shared document is CONVENIO.
+//
+// Migration 025: the centre can add document types (dual_tipos_documento with
+// es_sistema = 0). CATALOGUE keeps the 13 system types and their special rules;
+// custom types are loaded by tiposDocumento.cargar() and turned into the same
+// shape by customDef(), so every list, signature and check treats them alike.
 
 const OPERATIONAL_LABEL = {
   PENDIENTE_SUBIDA: "Pendiente de subir",
@@ -103,6 +108,7 @@ const CATALOGUE = [
     replaceIfValidated: false,
     workflowOnUpload: "SUBIDO",
     signers: ["EMPRESA"],
+    required: true,
     // The convenio is a company document: the student never sees it.
     actor: { EMPRESA: "upload", GESTOR: "review", ALUMNO: "hidden" },
   },
@@ -157,6 +163,7 @@ const CATALOGUE = [
     kind: "upload",
     generated: true,
     contractFamily: "contrato",
+    required: true,
     requiresReview: true,
     requeridoParaValidarAlumno: false,
     replaceIfValidated: false,
@@ -173,6 +180,7 @@ const CATALOGUE = [
     kind: "upload",
     generated: true,
     contractFamily: "beca",
+    required: true,
     requiresReview: true,
     requeridoParaValidarAlumno: false,
     replaceIfValidated: false,
@@ -226,7 +234,77 @@ const CATALOGUE = [
   },
 ];
 
-const BY_CLAVE = Object.fromEntries(CATALOGUE.map((d) => [d.clave, d]));
+CATALOGUE.forEach((d, i) => {
+  d.orden = (i + 1) * 10;
+  d.required = Boolean(d.required || d.requeridoParaValidarAlumno);
+});
+
+// ── Types added by the centre (migration 025) ──────────────────────────────
+// Always generated from a template by the centre, reviewed by the centre.
+// Whoever signs it among company and student may upload the signed copy once
+// it exists; the other party of the request only sees it.
+function customActor(row) {
+  const actor = { GESTOR: "review" };
+  if (row.ambito === "solicitud_alumno") {
+    actor.ALUMNO = row.firma_alumno ? "upload" : "view";
+    actor.EMPRESA = "hidden";
+  } else if (row.ambito === "solicitud_empresa") {
+    actor.EMPRESA = row.firma_empresa ? "upload" : "view";
+    actor.ALUMNO = "hidden";
+  } else {
+    actor.EMPRESA = row.firma_empresa ? "upload" : "view";
+    actor.ALUMNO = "view";
+  }
+  return actor;
+}
+
+function customDef(row) {
+  const signers = [];
+  if (Number(row.firma_empresa)) signers.push("EMPRESA");
+  if (Number(row.firma_centro)) signers.push("GESTOR");
+  if (Number(row.firma_alumno)) signers.push("ALUMNO");
+  const required = Boolean(Number(row.requerido));
+  return {
+    clave: row.nombre,
+    nombre: row.nombre_mostrar,
+    custom: true,
+    id_tipo_documento: row.id_tipo_documento,
+    legacy: !Number(row.activo),
+    ambito: row.ambito,
+    stage: row.ambito === "reserva" ? "reserva" : row.ambito === "solicitud_empresa" ? "empresa" : "solicitud",
+    kind: "upload",
+    generated: true,
+    contractFamily: row.ambito === "reserva" ? row.familia_contrato || null : null,
+    required,
+    requiresReview: true,
+    requeridoParaValidarAlumno: required && row.ambito === "solicitud_alumno",
+    replaceIfValidated: false,
+    workflowOnUpload: "SUBIDO",
+    signers,
+    actor: customActor({ ...row, firma_empresa: Number(row.firma_empresa), firma_alumno: Number(row.firma_alumno) }),
+    orden: Number(row.orden) || 100,
+  };
+}
+
+let CUSTOM = [];
+let BY_CLAVE = {};
+function rebuild() {
+  BY_CLAVE = Object.fromEntries([...CATALOGUE, ...CUSTOM].map((d) => [d.clave, d]));
+}
+rebuild();
+
+// rows: dual_tipos_documento rows; only es_sistema = 0 become custom types.
+function setCustomTypes(rows) {
+  CUSTOM = (rows || [])
+    .filter((row) => !Number(row.es_sistema) && row.ambito && !BY_SYSTEM.has(row.nombre))
+    .map(customDef);
+  rebuild();
+}
+const BY_SYSTEM = new Set(CATALOGUE.map((d) => d.clave));
+
+function allDefs() {
+  return [...CATALOGUE, ...CUSTOM].sort((a, b) => a.orden - b.orden);
+}
 
 const CONTEXTO_LABEL = {
   solicitud_alumno: "Solicitud alumno",
@@ -263,7 +341,15 @@ function defByClave(clave) {
 }
 
 function activeDefs() {
-  return CATALOGUE.filter((d) => !d.legacy);
+  return allDefs().filter((d) => !d.legacy);
+}
+
+// Active types of one parent; for a reservation, only those its contract
+// family needs (no family yet: only the ones for every reservation).
+function defsFor(ambito, { tipoContrato } = {}) {
+  return activeDefs().filter(
+    (d) => d.ambito === ambito && (ambito !== "reserva" || appliesToContrato(d, tipoContrato)),
+  );
 }
 
 function generatedDefs() {
@@ -388,6 +474,14 @@ function deriveDocumentState(def, row, firmas = [], { templateAvailable = false 
   };
 }
 
+// Contract family of a contract type name: 'beca' or 'contrato' (any other
+// type), null while no type is set.
+function familiaContrato(nombre) {
+  const value = String(nombre || "").trim().toLowerCase();
+  if (!value) return null;
+  return value.includes("beca") ? "beca" : "contrato";
+}
+
 // Contract-type flow -> Anexo II. Beca flow -> Anexo III. Unknown -> neither.
 function anexoClaveForContrato(nombre) {
   const value = String(nombre || "").trim().toLowerCase();
@@ -408,7 +502,7 @@ function anexoClaveSql(tc = "tc") {
 
 function appliesToContrato(def, nombreContrato) {
   if (!def?.contractFamily) return true;
-  return anexoClaveForContrato(nombreContrato) === def.clave;
+  return familiaContrato(nombreContrato) === def.contractFamily;
 }
 
 function workflowLabel(code) {
@@ -427,6 +521,11 @@ module.exports = {
   ACTOR_LABEL,
   CONTEXTO_LABEL,
   CATALOGUE,
+  allDefs,
+  defsFor,
+  setCustomTypes,
+  customDef,
+  familiaContrato,
   staffRole,
   mapActor,
   actorLabel,

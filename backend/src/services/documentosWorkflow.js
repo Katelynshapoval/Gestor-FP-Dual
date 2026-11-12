@@ -4,6 +4,8 @@ const {
   staffRole,
   defByClave,
   activeDefs,
+  defsFor,
+  allDefs,
   requiredForStudentValidation,
   anexoClaveForContrato,
   workflowLabel,
@@ -49,10 +51,21 @@ function canUpload(def, rol) {
 
 const EN_PREPARACION_LABEL = "En preparación por el centro";
 
+// Types listed for one parent: the active ones (for a reservation, those of its
+// contract family) plus a custom type switched off that already has a current
+// document there, so nothing uploaded or signed disappears from view.
+function defsDelPadre(ambito, parentKey, docMap, { tipoContrato } = {}) {
+  const activos = defsFor(ambito, { tipoContrato });
+  const retirados = allDefs().filter(
+    (d) => d.custom && d.legacy && d.ambito === ambito && pick(docMap, parentKey, d.clave),
+  );
+  return [...activos, ...retirados];
+}
+
 function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
   const actor = actorOf(rol);
   const mode = def.actor[actor] || "hidden";
-  if (mode === "hidden" || def.legacy) return null;
+  if (mode === "hidden" || (def.legacy && !def.custom)) return null;
 
   const templateAvailable = options.templateAvailable ?? options.templates?.has?.(def.clave) ?? false;
   const derived = deriveDocumentState(def, row, firmas, { templateAvailable });
@@ -66,8 +79,10 @@ function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
 
   // The company signs the convenio the centre generates: until that file exists
   // it sees "en preparación" and has nothing to upload. The centre's own detail
-  // (missing template) stays out of the company's view.
-  const enPreparacion = def.clave === "CONVENIO" && actor === "EMPRESA" && !file;
+  // (missing template) stays out of the company's view. The same holds for every
+  // document type the centre adds, for the company and the student.
+  const enPreparacion = !file && !isStaff
+    && ((def.clave === "CONVENIO" && actor === "EMPRESA") || def.custom);
   const puedeSubir = ownsUpload && !file && !enPreparacion;
   const puedeReemplazar = ownsUpload && file && (def.replaceIfValidated || !validated);
   const puedeRevisar = isStaff && derived.estado_operativo === "PENDIENTE_VALIDACION" && Boolean(row?.id_documento);
@@ -124,6 +139,9 @@ function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
     plantilla_nombre: row?.plantilla_nombre || null,
     plantilla_version: row?.plantilla_version || null,
     requerido_para_validar: Boolean(def.requeridoParaValidarAlumno),
+    requerido: Boolean(def.required),
+    personalizado: Boolean(def.custom),
+    retirado: Boolean(def.custom && def.legacy),
     id_solicitud_alumno: ctx.id_solicitud_alumno || null,
     id_solicitud_empresa: ctx.id_solicitud_empresa || null,
     id_reserva: ctx.id_reserva || null,
@@ -199,8 +217,9 @@ function pick(map, parent, clave) {
 
 function itemsForSolicitudAlumno(rol, solicitud, docMap, firmaMap, templates) {
   const items = [];
-  for (const def of activeDefs().filter((d) => d.ambito === "solicitud_alumno")) {
-    const row = pick(docMap, `A:${solicitud.id_solicitud_alumno}`, def.clave);
+  const parentKey = `A:${solicitud.id_solicitud_alumno}`;
+  for (const def of defsDelPadre("solicitud_alumno", parentKey, docMap)) {
+    const row = pick(docMap, parentKey, def.clave);
     const item = projectItem(
       def,
       rol,
@@ -218,6 +237,40 @@ function itemsForSolicitudAlumno(rol, solicitud, docMap, firmaMap, templates) {
       row ? firmaMap[row.id_documento] || [] : [],
       { templates },
     );
+    if (item) items.push(item);
+  }
+  return items;
+}
+
+// Documents of one reservation for `rol`: every active type of its contract
+// family (Anexo II or III, the calendar, the types the centre added).
+// `tipoMostrado` is what the annex shows as contract type.
+function itemsForReserva(rol, ctx, tipoContrato, docMap, firmaMap, templates, tipoMostrado = tipoContrato) {
+  const parentKey = `R:${ctx.id_reserva}`;
+  const items = [];
+  for (const def of defsDelPadre("reserva", parentKey, docMap, { tipoContrato })) {
+    const row = pick(docMap, parentKey, def.clave);
+    const item = projectItem(
+      def,
+      rol,
+      { ...ctx, tipo_contrato: def.contractFamily ? tipoMostrado || null : null },
+      row,
+      row ? firmaMap[row.id_documento] || [] : [],
+      { templates },
+    );
+    if (item) items.push(item);
+  }
+  return items;
+}
+
+// Documents of one company application for `rol` (convenio, Anexo XIV,
+// Anexo G, Excel and the types the centre added; each role sees its own).
+function itemsForSolicitudEmpresa(rol, ctx, docMap, firmaMap, templates) {
+  const parentKey = `E:${ctx.id_solicitud_empresa}`;
+  const items = [];
+  for (const def of defsDelPadre("solicitud_empresa", parentKey, docMap)) {
+    const row = pick(docMap, parentKey, def.clave);
+    const item = projectItem(def, rol, ctx, row, row ? firmaMap[row.id_documento] || [] : [], { templates });
     if (item) items.push(item);
   }
   return items;
@@ -268,38 +321,11 @@ async function buildAlumnoList(idAlumno) {
   const items = itemsForSolicitudAlumno("ALUMNO", solicitud, docMap, firmaMap, templates);
 
   for (const reserva of reservas) {
-    const anexoClave = anexoClaveForContrato(reserva.tipo_contrato);
-    if (anexoClave) {
-      const def = defByClave(anexoClave);
-      const row = pick(docMap, `R:${reserva.id_reserva}`, anexoClave);
-      const item = projectItem(
-        def,
-        "ALUMNO",
-        {
-          id_reserva: reserva.id_reserva,
-          id_solicitud_alumno: solicitud.id_solicitud_alumno,
-          alumno: solicitud.nombre,
-          dni: solicitud.dni,
-          empresa: reserva.empresa,
-          cif: reserva.cif,
-          especialidad: reserva.especialidad,
-          tipo_contrato: reserva.tipo_contrato,
-          convocatoria: reserva.convocatoria,
-        },
-        row,
-        row ? firmaMap[row.id_documento] || [] : [],
-        { templates },
-      );
-      if (item) items.push(item);
-    }
-
-    const cal = defByClave("CALENDARIO");
-    const calRow = pick(docMap, `R:${reserva.id_reserva}`, "CALENDARIO");
-    const calItem = projectItem(
-      cal,
+    items.push(...itemsForReserva(
       "ALUMNO",
       {
         id_reserva: reserva.id_reserva,
+        id_solicitud_alumno: solicitud.id_solicitud_alumno,
         alumno: solicitud.nombre,
         dni: solicitud.dni,
         empresa: reserva.empresa,
@@ -307,11 +333,11 @@ async function buildAlumnoList(idAlumno) {
         especialidad: reserva.especialidad,
         convocatoria: reserva.convocatoria,
       },
-      calRow,
-      calRow ? firmaMap[calRow.id_documento] || [] : [],
-      { templates },
-    );
-    if (calItem) items.push(calItem);
+      reserva.tipo_contrato,
+      docMap,
+      firmaMap,
+      templates,
+    ));
   }
 
   return items;
@@ -358,58 +384,21 @@ async function buildEmpresaList(idEmpresa) {
   const items = [];
 
   for (const se of solicitudes) {
-    for (const clave of ["CONVENIO", "ANEXO_XIV"]) {
-      const def = defByClave(clave);
-      const row = pick(docMap, `E:${se.id_solicitud_empresa}`, clave);
-      const item = projectItem(
-        def,
-        "EMPRESA",
-        {
-          id_solicitud_empresa: se.id_solicitud_empresa,
-          convocatoria: se.convocatoria,
-          empresa: se.empresa,
-          cif: se.cif,
-        },
-        row,
-        row ? firmaMap[row.id_documento] || [] : [],
-        { templates },
-      );
-      if (item) items.push(item);
-    }
+    items.push(...itemsForSolicitudEmpresa(
+      "EMPRESA",
+      { id_solicitud_empresa: se.id_solicitud_empresa, convocatoria: se.convocatoria, empresa: se.empresa, cif: se.cif },
+      docMap,
+      firmaMap,
+      templates,
+    ));
   }
 
   for (const reserva of reservas) {
-    const anexoClave = anexoClaveForContrato(reserva.tipo_contrato);
-    if (anexoClave) {
-      const def = defByClave(anexoClave);
-      const row = pick(docMap, `R:${reserva.id_reserva}`, anexoClave);
-      const item = projectItem(
-        def,
-        "EMPRESA",
-        {
-          id_reserva: reserva.id_reserva,
-          alumno: reserva.alumno,
-          dni: reserva.dni,
-          empresa: reserva.empresa,
-          cif: reserva.cif,
-          especialidad: reserva.especialidad,
-          tipo_contrato: reserva.tipo_contrato,
-          convocatoria: reserva.convocatoria,
-          id_solicitud_empresa: reserva.id_solicitud_empresa,
-        },
-        row,
-        row ? firmaMap[row.id_documento] || [] : [],
-        { templates },
-      );
-      if (item) items.push(item);
-    }
-    const cal = defByClave("CALENDARIO");
-    const row = pick(docMap, `R:${reserva.id_reserva}`, "CALENDARIO");
-    const item = projectItem(
-      cal,
+    items.push(...itemsForReserva(
       "EMPRESA",
       {
         id_reserva: reserva.id_reserva,
+        id_solicitud_empresa: reserva.id_solicitud_empresa,
         alumno: reserva.alumno,
         dni: reserva.dni,
         empresa: reserva.empresa,
@@ -417,11 +406,11 @@ async function buildEmpresaList(idEmpresa) {
         especialidad: reserva.especialidad,
         convocatoria: reserva.convocatoria,
       },
-      row,
-      row ? firmaMap[row.id_documento] || [] : [],
-      { templates },
-    );
-    if (item) items.push(item);
+      reserva.tipo_contrato,
+      docMap,
+      firmaMap,
+      templates,
+    ));
   }
 
   return items;
@@ -482,66 +471,29 @@ async function buildStaffList() {
   }
 
   for (const se of empresas) {
-    for (const clave of ["CONVENIO", "ANEXO_XIV", "ANEXO_G", "EXCEL"]) {
-      const def = defByClave(clave);
-      const row = pick(docMap, `E:${se.id_solicitud_empresa}`, clave);
-      const item = projectItem(
-        def,
-        "ADMINISTRADOR",
-        {
-          id_solicitud_empresa: se.id_solicitud_empresa,
-          id_empresa: se.id_empresa,
-          id_convocatoria: se.id_convocatoria,
-          convocatoria: se.convocatoria,
-          empresa: se.empresa,
-          cif: se.cif,
-        },
-        row,
-        row ? firmaMap[row.id_documento] || [] : [],
-        { templates },
-      );
-      if (item) items.push(item);
-    }
+    items.push(...itemsForSolicitudEmpresa(
+      "ADMINISTRADOR",
+      {
+        id_solicitud_empresa: se.id_solicitud_empresa,
+        id_empresa: se.id_empresa,
+        id_convocatoria: se.id_convocatoria,
+        convocatoria: se.convocatoria,
+        empresa: se.empresa,
+        cif: se.cif,
+      },
+      docMap,
+      firmaMap,
+      templates,
+    ));
   }
 
   for (const reserva of reservas) {
-    const anexoClave = anexoClaveForContrato(reserva.tipo_contrato);
-    if (anexoClave) {
-      const def = defByClave(anexoClave);
-      const row = pick(docMap, `R:${reserva.id_reserva}`, anexoClave);
-      const item = projectItem(
-        def,
-        "ADMINISTRADOR",
-        {
-          id_reserva: reserva.id_reserva,
-          id_solicitud_alumno: reserva.id_solicitud_alumno,
-          id_solicitud_empresa: reserva.id_solicitud_empresa,
-          id_alumno: reserva.id_alumno,
-          id_empresa: reserva.id_empresa,
-          id_especialidad: reserva.id_especialidad,
-          id_convocatoria: reserva.id_convocatoria,
-          alumno: reserva.alumno,
-          dni: reserva.dni,
-          empresa: reserva.empresa,
-          cif: reserva.cif,
-          especialidad: reserva.especialidad,
-          tipo_contrato: reserva.tipo_contrato,
-          convocatoria: reserva.convocatoria,
-        },
-        row,
-        row ? firmaMap[row.id_documento] || [] : [],
-        { templates },
-      );
-      if (item) items.push(item);
-    }
-
-    const cal = defByClave("CALENDARIO");
-    const row = pick(docMap, `R:${reserva.id_reserva}`, "CALENDARIO");
-    const item = projectItem(
-      cal,
+    items.push(...itemsForReserva(
       "ADMINISTRADOR",
       {
         id_reserva: reserva.id_reserva,
+        id_solicitud_alumno: reserva.id_solicitud_alumno,
+        id_solicitud_empresa: reserva.id_solicitud_empresa,
         id_alumno: reserva.id_alumno,
         id_empresa: reserva.id_empresa,
         id_especialidad: reserva.id_especialidad,
@@ -553,18 +505,18 @@ async function buildStaffList() {
         especialidad: reserva.especialidad,
         convocatoria: reserva.convocatoria,
       },
-      row,
-      row ? firmaMap[row.id_documento] || [] : [],
-      { templates },
-    );
-    if (item) items.push(item);
+      reserva.tipo_contrato,
+      docMap,
+      firmaMap,
+      templates,
+    ));
   }
 
   return items;
 }
 
-// Current documents of ONE reservation (annex of the stored contract family and
-// calendar), projected for `rol` exactly as the lists project them, so every
+// Current documents of ONE reservation (annex of the stored contract family,
+// calendar and the types the centre added), projected for `rol` exactly as the lists project them, so every
 // screen shows the same state and the same permitted actions.
 // reserva: { id_reserva, tipo_contrato_clave, alumno, dni, empresa, cif,
 //            especialidad, convocatoria, id_* … }
@@ -587,23 +539,10 @@ async function reservaDocumentos(reserva, rol) {
     especialidad: reserva.especialidad,
     convocatoria: reserva.convocatoria,
   };
-  const items = [];
-  const anexoClave = anexoClaveForContrato(reserva.tipo_contrato_clave);
-  const claves = anexoClave ? [anexoClave, "CALENDARIO"] : ["CALENDARIO"];
-  for (const clave of claves) {
-    const def = defByClave(clave);
-    const row = pick(docMap, `R:${reserva.id_reserva}`, clave);
-    const item = projectItem(
-      def,
-      rol,
-      { ...ctx, tipo_contrato: clave === anexoClave ? reserva.tipo_contrato || null : null },
-      row,
-      row ? firmaMap[row.id_documento] || [] : [],
-      { templates },
-    );
-    if (item) items.push(reserva.estado_reserva === "CANCELADA" ? soloConsulta(item) : item);
-  }
-  return items;
+  const items = itemsForReserva(
+    rol, ctx, reserva.tipo_contrato_clave, docMap, firmaMap, templates, reserva.tipo_contrato,
+  );
+  return reserva.estado_reserva === "CANCELADA" ? items.map(soloConsulta) : items;
 }
 
 // A cancelled reservation keeps its documents as history: they can be viewed,
@@ -719,6 +658,27 @@ async function missingStudentValidation(idSolicitud) {
   return pending;
 }
 
+// Required documents of a company application not validated yet, by name:
+// the types the centre added, plus the convenio with `incluirSistema` (the
+// database already refuses to validate a company without it). `validado` is a
+// type being validated in the caller's transaction, counted as validated.
+async function missingCompanyValidation(idSolicitud, conn = pool, { incluirSistema = false, validado = null } = {}) {
+  const required = defsFor("solicitud_empresa").filter(
+    (d) => d.required && (incluirSistema || d.custom) && d.clave !== validado,
+  );
+  if (!required.length) return [];
+  const [rows] = await conn.query(
+    `SELECT td.nombre AS clave, ev.nombre AS estado_validacion
+       FROM dual_documentos d
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+      WHERE d.id_solicitud_empresa = ? AND d.es_actual = 1 AND d.archivo IS NOT NULL`,
+    [idSolicitud],
+  );
+  const validados = new Set(rows.filter((r) => r.estado_validacion === "VALIDADO").map((r) => r.clave));
+  return required.filter((d) => !validados.has(d.clave)).map((d) => d.nombre);
+}
+
 function alumnoMaySee(def, doc) {
   if (!def || def.legacy) return false;
   if (def.actor.ALUMNO === "hidden") return false;
@@ -735,6 +695,7 @@ module.exports = {
   queryStaffPage,
   attachSolicitudDocumentos,
   missingStudentValidation,
+  missingCompanyValidation,
   reservaDocumentos,
   reservaDocSummary,
   reservaHistorial,

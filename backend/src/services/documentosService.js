@@ -4,7 +4,7 @@ const {
   getCompanyIdFromUser,
   getStudentIdFromUser,
 } = require("../helpers/dbHelpers");
-const { defByClave, anexoClaveForContrato } = require("./documentCatalogue");
+const { defByClave, anexoClaveForContrato, appliesToContrato } = require("./documentCatalogue");
 const workflow = require("./documentosWorkflow");
 const { saveByClave } = require("./documentosStore");
 const { generateDocument } = require("./documentGenerationService");
@@ -96,7 +96,7 @@ async function assertCanUpload(req, def, parents = {}) {
     if (rows[0].estado_reserva === "CANCELADA") {
       return { status: 400, error: "No se puede subir documentación de una reserva cancelada." };
     }
-    if (def.contractFamily) {
+    if (def.contractFamily && !def.custom) {
       const clave = anexoClaveForContrato(rows[0].tipo_contrato);
       if (!clave) {
         return { status: 400, error: "El anexo II o III aparece cuando el centro indica el tipo de contrato." };
@@ -104,6 +104,8 @@ async function assertCanUpload(req, def, parents = {}) {
       if (clave !== def.clave) {
         return { status: 400, error: `Para el tipo de contrato de esta reserva corresponde el ${clave === "ANEXO_III" ? "Anexo III" : "Anexo II"}.` };
       }
+    } else if (def.contractFamily && !appliesToContrato(def, rows[0].tipo_contrato)) {
+      return { status: 400, error: `«${def.nombre}» solo corresponde a reservas de ${def.contractFamily}.` };
     }
     parentSql = "d.id_reserva = ?";
   } else {
@@ -456,13 +458,19 @@ exports.validar = async function (req, res) {
       detalle: { clave: doc.tipo, ...(Number(doc.firmas_exentas_legacy) ? { firmas_exentas_legacy: true } : {}) },
     });
 
+    // The last required document of a pending company application (the convenio
+    // or a required type the centre added) also validates the application.
     let empresaValidada = false;
-    if (doc.tipo === "CONVENIO" && doc.id_solicitud_empresa && doc.estado_solicitud_empresa === "PENDIENTE") {
+    if (
+      def.required && doc.id_solicitud_empresa && doc.estado_solicitud_empresa === "PENDIENTE"
+      && (await workflow.missingCompanyValidation(doc.id_solicitud_empresa, conn, { incluirSistema: true, validado: doc.tipo }))
+        .length === 0
+    ) {
       await conn.query("CALL sp_validar_solicitud_empresa(?)", [doc.id_solicitud_empresa]);
       await recordEvent(conn, {
         entidad: "SOLICITUD_EMPRESA", id: doc.id_solicitud_empresa, accion: "VALIDAR",
         antes: "PENDIENTE", despues: "VALIDADO", user: req.user,
-        detalle: { por_convenio: id },
+        detalle: doc.tipo === "CONVENIO" ? { por_convenio: id } : { por_documento: id, clave: doc.tipo },
       });
       empresaValidada = true;
     }
@@ -471,7 +479,7 @@ exports.validar = async function (req, res) {
     if (empresaValidada) notificar.solicitudEmpresa(doc.id_solicitud_empresa, "VALIDADO");
     return res.json({
       message: empresaValidada
-        ? "Convenio y empresa validados correctamente."
+        ? `${def.nombre} y empresa validados correctamente.`
         : "Documento validado correctamente.",
       empresa_validada: empresaValidada,
     });
@@ -653,10 +661,13 @@ exports.generar = async function (req, res) {
     return res.status(400).json({ error: "Este documento no se genera desde plantilla." });
   }
   const parents = {
-    id_solicitud_alumno: null,
+    id_solicitud_alumno: def.ambito === "solicitud_alumno" ? parseInt(req.body.id_solicitud_alumno, 10) || null : null,
     id_solicitud_empresa: def.ambito === "solicitud_empresa" ? parseInt(req.body.id_solicitud_empresa, 10) || null : null,
     id_reserva: def.ambito === "reserva" ? parseInt(req.body.id_reserva, 10) || null : null,
   };
+  if (def.ambito === "solicitud_alumno" && !parents.id_solicitud_alumno) {
+    return res.status(400).json({ error: "Falta la solicitud del alumno." });
+  }
   if (def.ambito === "solicitud_empresa" && !parents.id_solicitud_empresa) {
     return res.status(400).json({ error: "Falta la solicitud de empresa." });
   }
@@ -676,8 +687,11 @@ exports.generar = async function (req, res) {
     if (rows[0].estado_reserva === "CANCELADA") {
       return res.status(400).json({ error: "No se genera documentación de una reserva cancelada." });
     }
-    if (def.contractFamily && anexoClaveForContrato(rows[0].tipo_contrato) !== def.clave) {
+    if (def.contractFamily && !def.custom && anexoClaveForContrato(rows[0].tipo_contrato) !== def.clave) {
       return res.status(400).json({ error: "Este anexo no corresponde al tipo de contrato de la reserva." });
+    }
+    if (def.custom && !appliesToContrato(def, rows[0].tipo_contrato)) {
+      return res.status(400).json({ error: `«${def.nombre}» no corresponde al tipo de contrato de la reserva.` });
     }
   }
   try {

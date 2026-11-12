@@ -11,6 +11,7 @@ const {
 const empresaDatos = require("./empresaDatos");
 const { generateDocument } = require("./documentGenerationService");
 const { aplicarTransicion } = require("./solicitudTransiciones");
+const { missingCompanyValidation } = require("./documentosWorkflow");
 const notificar = require("./notificaciones");
 const { inTransaction, HttpError } = require("../db/transaction");
 const { recordEvent } = require("./auditLog");
@@ -754,6 +755,14 @@ exports.getEspecialidades = async function (req, res) {
 exports.validar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   if (!id) return res.status(400).json({ error: "Solicitud no válida." });
+  // Every required document (the convenio and the ones the centre added) first.
+  const pending = await missingCompanyValidation(id);
+  if (pending.length) {
+    return res.status(400).json({
+      error: `Para validar la empresa primero hay que validar: ${pending.join(", ")}.`,
+      code: "DOCUMENTOS_PENDIENTES",
+    });
+  }
   try {
     const out = await aplicarTransicion("SOLICITUD_EMPRESA", id, "VALIDAR", { user: req.user });
     if (!out.ok) return res.status(out.status).json({ error: out.error, code: out.code });

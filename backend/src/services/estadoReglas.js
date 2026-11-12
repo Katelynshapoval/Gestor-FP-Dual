@@ -2,7 +2,7 @@
 // and the tests. Each returns null when the transition is allowed, or
 // { status, error, code } describing why not. The tables in
 // docs/STATE_TRANSITIONS.md describe the same rules.
-const { anexoClaveForContrato, pendingSignatures, actorLabel } = require("./documentCatalogue");
+const { anexoClaveForContrato, familiaContrato, defByClave, pendingSignatures, actorLabel } = require("./documentCatalogue");
 
 function deny(status, code, error) {
   return { status, code, error };
@@ -60,8 +60,9 @@ function documentoFirmable(def, doc, rolFirma) {
   return null;
 }
 
-// D2. reserva: { estado, tipo_contrato }. anexos: current annex rows of the
-// reservation [{ clave, tiene_archivo, estado_validacion }].
+// D2. reserva: { estado, tipo_contrato }. anexos: current rows of the
+// reservation's family documents (Anexo II/III and the types the centre added
+// for beca or contrato) [{ clave, tiene_archivo, estado_validacion }].
 function tipoContratoCambiable(reserva, nuevoTipoNombre, anexos) {
   if (!reserva) return deny(404, "NO_ENCONTRADA", "Reserva no encontrada.");
   if (reserva.estado === "CANCELADA") {
@@ -70,25 +71,30 @@ function tipoContratoCambiable(reserva, nuevoTipoNombre, anexos) {
   if (reserva.estado === "CONFIRMADA") {
     return deny(400, "RESERVA_CONFIRMADA", "El tipo de contrato de una reserva confirmada no se puede cambiar.");
   }
-  const actual = anexoClaveForContrato(reserva.tipo_contrato);
-  const nuevo = anexoClaveForContrato(nuevoTipoNombre);
-  if (!actual || actual === nuevo) return null;
-  // Changing family: allowed only while no file of the current annex is under
-  // review or validated. A rejected file goes to history (see retiredOnChange).
+  const actual = familiaContrato(reserva.tipo_contrato);
+  const nueva = familiaContrato(nuevoTipoNombre);
+  if (!actual || actual === nueva) return null;
+  // Changing family: allowed only while no file of the current family is under
+  // review or validated. A rejected file goes to history (see setTipoContrato).
   const bloqueante = (anexos || []).find(
-    (a) => a.clave === actual && Number(a.tiene_archivo) && a.estado_validacion !== "RECHAZADO",
+    (a) => defByClave(a.clave)?.contractFamily === actual
+      && Number(a.tiene_archivo) && a.estado_validacion !== "RECHAZADO",
   );
   if (bloqueante) {
+    const nombre = defByClave(bloqueante.clave)?.nombre || bloqueante.clave;
+    const anexo = bloqueante.clave === "ANEXO_II" || bloqueante.clave === "ANEXO_III";
     return deny(409, "ANEXO_EXISTENTE",
-      `Ya hay un ${actual === "ANEXO_III" ? "Anexo III" : "Anexo II"} subido para esta reserva. ` +
+      `Ya hay ${anexo ? `un ${nombre}` : `«${nombre}»`} subido para esta reserva. ` +
       "Para cambiar el tipo de contrato hay que rechazar antes ese documento.");
   }
   return null;
 }
 
 // reserva: { estado, tipo_contrato, id_tipo_contrato }; anexo: current row of
-// the matching annex or null; firmas: its signature rows.
-function reservaConfirmable(reserva, idTipoPedido, def, anexo, firmas) {
+// the matching annex or null; firmas: its signature rows. extras: the required
+// document types the centre added for this reservation's contract family,
+// [{ def, row, firmas }]; each needs its file, every signature and validation.
+function reservaConfirmable(reserva, idTipoPedido, def, anexo, firmas, extras = []) {
   if (!reserva) return deny(404, "NO_ENCONTRADA", "Reserva no encontrada.");
   if (reserva.estado !== "PENDIENTE") return deny(400, "NO_PENDIENTE", "Solo una reserva PENDIENTE puede confirmarse.");
   if (!reserva.id_tipo_contrato) {
@@ -107,6 +113,19 @@ function reservaConfirmable(reserva, idTipoPedido, def, anexo, firmas) {
   }
   if (anexo.estado_validacion !== "VALIDADO") {
     return deny(400, "ANEXO_SIN_VALIDAR", `Para confirmar, el ${nombre} debe estar validado.`);
+  }
+  for (const extra of extras) {
+    const n = extra.def.nombre;
+    if (!extra.row || !Number(extra.row.tiene_archivo)) {
+      return deny(400, "DOCUMENTO_FALTA", `Para confirmar falta «${n}».`);
+    }
+    const faltan = pendingSignatures(extra.def, { ...extra.row, id_documento: extra.row.id_documento || 1 }, extra.firmas);
+    if (faltan.length) {
+      return deny(400, "FIRMAS_PENDIENTES", `Para confirmar faltan firmas de «${n}»: ${joinRoles(faltan)}.`);
+    }
+    if (extra.row.estado_validacion !== "VALIDADO") {
+      return deny(400, "DOCUMENTO_SIN_VALIDAR", `Para confirmar, «${n}» debe estar validado.`);
+    }
   }
   return null;
 }

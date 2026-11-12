@@ -234,6 +234,7 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
       const data = await postJSON("/documentos/generar", {
         clave: item.clave,
         id_solicitud_empresa: item.id_solicitud_empresa,
+        id_solicitud_alumno: (item.ambito || item.contexto) === "solicitud_alumno" ? item.id_solicitud_alumno : undefined,
         id_reserva: item.id_reserva,
         regenerar,
       });

@@ -13,6 +13,7 @@ import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
 import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
 import Personal from "./pages/Personal/Personal.jsx";
 import Correos from "./pages/Correos/Correos.jsx";
+import TiposDocumento from "./pages/TiposDocumento/TiposDocumento.jsx";
 import Configuracion from "./pages/Configuracion/Configuracion.jsx";
 import StudentMain from "./pages/StudentMain";
 import AdminDocumentsView from "./pages/AdminDocumentsView";
@@ -60,6 +61,7 @@ function App() {
                   <Route path="convocatorias" element={<Convocatorias />} />
                   <Route path="personal" element={<Personal />} />
                   <Route path="correos" element={<Correos />} />
+                  <Route path="documentos" element={<TiposDocumento />} />
                   <Route path="*" element={null} />
                 </Route>
 

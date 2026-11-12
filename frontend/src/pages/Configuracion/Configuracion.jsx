@@ -8,6 +8,7 @@ export const CONFIG_TABS = [
   { id: "convocatorias", label: "Convocatorias" },
   { id: "personal", label: "Personal" },
   { id: "correos", label: "Correos" },
+  { id: "documentos", label: "Documentos" },
 ];
 
 export default function Configuracion() {
@@ -27,7 +28,7 @@ export default function Configuracion() {
       <PageHeader
         kicker="Administración"
         title="Configuración"
-        subtitle="Periodos de solicitud, cuentas del personal y correos automáticos."
+        subtitle="Periodos de solicitud, cuentas del personal, correos automáticos y documentos."
         className="!mb-5"
       />
       <Tabs

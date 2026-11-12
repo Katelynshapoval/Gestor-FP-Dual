@@ -13,6 +13,7 @@ function abrir(ruta) {
           <Route path="convocatorias" element={<p>Contenido convocatorias</p>} />
           <Route path="personal" element={<p>Contenido personal</p>} />
           <Route path="correos" element={<p>Contenido correos</p>} />
+          <Route path="documentos" element={<p>Contenido documentos</p>} />
           <Route path="*" element={null} />
         </Route>
       </Routes>
@@ -25,7 +26,7 @@ test("the tab of the address is selected and its content shown", () => {
   abrir("/configuracion/personal");
   expect(screen.getByRole("heading", { level: 1, name: "Configuración" })).toBeInTheDocument();
   const tabs = screen.getAllByRole("tab").map((t) => t.textContent);
-  expect(tabs).toEqual(["Convocatorias", "Personal", "Correos"]);
+  expect(tabs).toEqual(["Convocatorias", "Personal", "Correos", "Documentos"]);
   expect(screen.getByRole("tab", { name: "Personal" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByRole("tabpanel")).toHaveTextContent("Contenido personal");
 });
@@ -36,6 +37,8 @@ test("choosing a tab changes the address; arrow keys move between tabs", () => {
   expect(screen.getByTestId("ruta")).toHaveTextContent("/configuracion/correos");
   expect(screen.getByRole("tabpanel")).toHaveTextContent("Contenido correos");
   fireEvent.keyDown(screen.getByRole("tab", { name: "Correos" }), { key: "ArrowRight" });
+  expect(screen.getByTestId("ruta")).toHaveTextContent("/configuracion/documentos");
+  fireEvent.keyDown(screen.getByRole("tab", { name: "Documentos" }), { key: "ArrowRight" });
   expect(screen.getByTestId("ruta")).toHaveTextContent("/configuracion/convocatorias");
 });
 

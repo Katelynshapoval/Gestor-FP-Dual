@@ -6,6 +6,30 @@ import InlineNotice from "../../components/ui/InlineNotice.jsx";
 import StatusBadge from "../../components/ui/StatusBadge.jsx";
 import { useUser } from "../../context/UserContext";
 
+// The fields a template can use, as they must be written in the .docx.
+function CamposPlantilla({ variables }) {
+  return (
+    <details className="group mt-3 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2">
+      <summary className="cursor-pointer select-none text-sm font-medium text-charcoal-800 marker:text-muted">
+        Campos que puede usar la plantilla ({variables.length})
+      </summary>
+      <p className="mb-2 mt-2 text-xs text-muted">
+        Escríbelos tal cual en el documento Word; al generarlo se sustituyen por los datos de cada solicitud o reserva.
+      </p>
+      <ul className="m-0 grid list-none gap-x-4 gap-y-1.5 p-0 sm:grid-cols-2">
+        {variables.map((v) => (
+          <li key={v.nombre} className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
+            <code className="rounded border border-surface-200 bg-white px-1.5 py-0.5 font-mono text-xs text-brand-800">
+              {v.marcador}
+            </code>
+            <span className="text-muted">{v.etiqueta}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export default function Plantillas() {
   const toast = useToast();
   const confirm = useConfirm();
@@ -186,6 +210,12 @@ export default function Plantillas() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="font-display text-base font-semibold text-charcoal-950">{tipo.nombre}</h3>
+              {tipo.ambito_label && (
+                <p className="mt-0.5 text-xs text-muted">
+                  {tipo.ambito_label}
+                  {tipo.personalizado ? " · añadido por el centro" : ""}
+                </p>
+              )}
               {tipo.activa ? (
                 <>
                   <p className="mt-1 text-sm text-charcoal-800">{tipo.activa.nombre_archivo}</p>
@@ -203,6 +233,7 @@ export default function Plantillas() {
               {tipo.activa ? "Activa" : "Sin plantilla"}
             </StatusBadge>
           </div>
+          {tipo.variables?.length > 0 && <CamposPlantilla variables={tipo.variables} />}
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
             {canUpload && (
               <>
@@ -239,7 +270,7 @@ export default function Plantillas() {
       ))}
       {tipos.length === 0 && (
         <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center text-sm text-muted shadow-card">
-          No hay tipos de documento generables.
+          No hay tipos de documento generables. Añádelos en Configuración › Documentos.
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 # Plan: dynamic documents, one convenio per company, documents in emails
 
-Status: **proposal, waiting for approval**. Nothing has been changed in the code or the database.
+Status: **part A done** (migration 025 applied 2026-11-12; backend, Configuración › Documentos, Plantillas fields). Parts B (migration 026) and C pending.
 
 ## What was asked
 

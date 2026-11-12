@@ -1,6 +1,6 @@
 # Documentos y firmas
 
-> Código: [`documentCatalogue.js`](../../../backend/src/services/documentCatalogue.js), [`documentosService.js`](../../../backend/src/services/documentosService.js), [`documentosStore.js`](../../../backend/src/services/documentosStore.js), [`documentosWorkflow.js`](../../../backend/src/services/documentosWorkflow.js), [`estadoReglas.js`](../../../backend/src/services/estadoReglas.js), [`documentGenerationService.js`](../../../backend/src/services/documentGenerationService.js), [`documentGenerationConfig.js`](../../../backend/src/services/documentGenerationConfig.js), [`plantillasService.js`](../../../backend/src/services/plantillasService.js). Pruebas: `authorization.test.js`, `phase2.test.js`, `test/db/stage1.db.test.js`.
+> Código: [`documentCatalogue.js`](../../../backend/src/services/documentCatalogue.js), [`documentosService.js`](../../../backend/src/services/documentosService.js), [`documentosStore.js`](../../../backend/src/services/documentosStore.js), [`documentosWorkflow.js`](../../../backend/src/services/documentosWorkflow.js), [`estadoReglas.js`](../../../backend/src/services/estadoReglas.js), [`documentGenerationService.js`](../../../backend/src/services/documentGenerationService.js), [`documentGenerationConfig.js`](../../../backend/src/services/documentGenerationConfig.js), [`plantillasService.js`](../../../backend/src/services/plantillasService.js), [`tiposDocumento.js`](../../../backend/src/services/tiposDocumento.js). Pruebas: `authorization.test.js`, `phase2.test.js`, `tiposDocumento.test.js`, `test/db/stage1.db.test.js`, `test/db/stage025.db.test.js`.
 
 ## 1. Catálogo
 
@@ -27,6 +27,25 @@ Modos por actor (`actor`): `upload` (sube), `sign` (firma), `review` (revisa), `
 - Validar una solicitud de alumno exige `CV` y `ANEXO_DGA` validados (`requeridoParaValidarAlumno`).
 - Validar una solicitud de empresa exige `CONVENIO` validado.
 - Confirmar una reserva exige el `ANEXO_II` o `ANEXO_III` de su familia firmado por los tres y validado.
+- Más los tipos **obligatorios añadidos por el centro** (§ 1.1).
+
+### 1.1 Tipos añadidos por el centro (migración 025)
+
+`dual_tipos_documento` guarda, para cada tipo, `nombre_mostrar`, `ambito`, `generado`, `firma_empresa/centro/alumno`, `requerido`, `familia_contrato`, `activo`, `es_sistema` y `orden`. Los 13 tipos de la tabla anterior son `es_sistema = 1`: sus reglas siguen en `CATALOGUE` y solo cambia su plantilla. Administración añade tipos en **Configuración › Documentos** (`/tipos-documento`, [`tiposDocumento.js`](../../../backend/src/services/tiposDocumento.js)); `customDef()` los convierte en definiciones del catálogo y `setCustomTypes()` las carga al arrancar y tras cada cambio.
+
+| Regla | Tipo añadido |
+| --- | --- |
+| Generación | Siempre desde plantilla (`chk_tipos_documento_generado`); lo genera el centro |
+| Revisión | Siempre la revisa el centro |
+| Quién sube | El firmante empresa (o alumno, en su solicitud) puede subir la copia firmada cuando ya existe; antes ve «En preparación por el centro» |
+| Visibilidad | Alumno: solicitud alumno y reserva. Empresa: solicitud empresa y reserva |
+| Firmas | Las marcadas; el alumno no firma en la solicitud de empresa ni la empresa en la del alumno (CHECK y API) |
+| Obligatorio | Solicitud alumno: bloquea validar al alumno. Solicitud empresa: bloquea validar la empresa (`missingCompanyValidation`; validar el último obligatorio valida la empresa, como el convenio). Reserva: debe estar firmado y validado para confirmar (`reservaConfirmable(…, extras)`, una línea por tipo en la lista de requisitos) |
+| Familia | Solo reservas: todas, solo `beca` o solo `contrato`. Sin tipo de contrato solo aparecen los de «todas». Cambiar de familia se rechaza mientras haya un documento de la familia actual subido y no rechazado; los rechazados pasan al historial |
+| Desactivar | Deja de pedirse; los documentos existentes se siguen listando y consultando |
+| Editar | Nombre, firmas, obligatorio, familia y activo. El ámbito solo mientras no haya documentos. Auditado (`TIPO_DOCUMENTO`: `CREAR`, `EDITAR`, `ACTIVAR`, `DESACTIVAR`) |
+
+Los triggers de `dual_documentos` comprueban el padre con `ambito` (antes, nombres escritos a mano).
 
 ## 2. Estado operativo
 
@@ -96,13 +115,13 @@ Efecto: `sp_validar_documento` + evento. Si es un **CONVENIO** y la solicitud de
 ### `POST /documentos/:id/rechazar { motivo }`
 `documentoRechazable`: existe, versión actual, con fichero, reserva no cancelada, no RECHAZADO ya. **Se puede rechazar un documento VALIDADO** (también el anexo de una reserva confirmada o el CV de un alumno validado), sin efecto sobre la solicitud o la reserva. Evento con motivo; correo a quien debe sustituirlo (alumno, coordinador de la empresa o, en reservas, coordinador de la empresa).
 
-## 6. Generar desde plantilla — `POST /documentos/generar { clave, id_solicitud_empresa | id_reserva, regenerar? }` (personal)
+## 6. Generar desde plantilla — `POST /documentos/generar { clave, id_solicitud_alumno | id_solicitud_empresa | id_reserva, regenerar? }` (personal)
 
-1. La clave debe ser generable (CONVENIO, ANEXO_II, ANEXO_III) → si no, 400.
+1. La clave debe ser generable (CONVENIO, ANEXO_II, ANEXO_III y los tipos añadidos por el centro) → si no, 400.
 2. Reserva: existe, no CANCELADA, y la clave corresponde a la familia del tipo guardado.
 3. Plantilla activa del tipo → si no, **409 `SIN_PLANTILLA`**.
 4. Ya hay fichero y no se pidió `regenerar` → 409; ya está VALIDADO → 400.
-5. Datos (`documentGenerationConfig`): convenio = razón social, representante, DNI, domicilio legal, CIF, cargo, códigos de ciclos, fecha, convocatoria; anexos = alumno, DNI, empresa, CIF, ciclo, tipo de contrato, convocatoria, tutor (nombre, email, teléfono) y fecha.
+5. Datos (`documentGenerationConfig`), **por ámbito**, iguales para todos los tipos de ese ámbito: solicitud de empresa = los del convenio (razón social, representante, DNI, domicilio legal, CIF, cargo, códigos de ciclos, fecha, convocatoria, email del coordinador); reserva = los de los anexos (alumno, DNI, empresa, CIF, ciclo, código, tipo de contrato, convocatoria, tutor con email y teléfono, fecha); solicitud de alumno = alumno, DNI, email, teléfono, domicilio, ciclo, código, convocatoria y fecha. La pestaña Plantillas los muestra tal como se escriben (`<<razonSocial>>`).
 6. `docx-templates` (delimitadores `<<` `>>`) → `mammoth` (HTML) → `puppeteer` (PDF A4, márgenes 2 cm). **Se lanza un Chromium por generación.** Desde SEC-004 cada comando `<<…>>` solo puede ser un **nombre de variable** (`razonSocial`, `$fila.codigo`): se resuelve con `resolveTemplateVariable` y nunca se ejecuta como JavaScript; cualquier otra cosa da error. Chromium genera el PDF con JavaScript desactivado y sin red (solo se permiten recursos `data:`).
 7. `saveByClave` con origen `GENERADO` (sin firmas).
 

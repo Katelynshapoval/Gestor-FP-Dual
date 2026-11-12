@@ -114,6 +114,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
         postJSON("/documentos/generar", {
           clave: doc.clave,
           id_solicitud_empresa: doc.id_solicitud_empresa,
+          id_solicitud_alumno: doc.ambito === "solicitud_alumno" ? doc.id_solicitud_alumno : undefined,
           id_reserva: doc.id_reserva,
           regenerar,
         }),

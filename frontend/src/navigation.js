@@ -85,6 +85,7 @@ const TITLES = {
   "/configuracion/convocatorias": "Convocatorias · Configuración",
   "/configuracion/personal": "Personal · Configuración",
   "/configuracion/correos": "Correos · Configuración",
+  "/configuracion/documentos": "Documentos · Configuración",
   "/ayuda": "Ayuda",
   "/companyMain": "Mi empresa",
   "/studentMain": "Mi proceso Dual",

@@ -60,4 +60,9 @@ app.listen(PORT, () => {
   require("./services/convocatoriasService").startConvocatoriaScheduler();
   // Migration 022: every email the code can send needs a valid template.
   require("./services/correoPlantillas").verificar();
+  // Migration 025: document types added by the centre.
+  require("./services/tiposDocumento")
+    .cargar()
+    .then((n) => console.log(`[documentos] ${n} tipos de documento añadidos por el centro.`))
+    .catch((err) => console.error("[documentos] No se pudieron cargar los tipos de documento:", err.message));
 });

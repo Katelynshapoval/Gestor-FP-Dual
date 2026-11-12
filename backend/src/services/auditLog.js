@@ -8,8 +8,11 @@
 // caller's transaction (src/db/transaction.js).
 const pool = require("../db/pool");
 
-// OFERTA and TUTOR since migration 018, USUARIO since 019, CORREO since 022 (chk_de_entidad).
-const ENTIDADES = ["SOLICITUD_ALUMNO", "SOLICITUD_EMPRESA", "RESERVA", "DOCUMENTO", "OFERTA", "TUTOR", "USUARIO", "CORREO"];
+// OFERTA and TUTOR since migration 018, USUARIO since 019, CORREO since 022,
+// TIPO_DOCUMENTO since 025 (chk_de_entidad).
+const ENTIDADES = [
+  "SOLICITUD_ALUMNO", "SOLICITUD_EMPRESA", "RESERVA", "DOCUMENTO", "OFERTA", "TUTOR", "USUARIO", "CORREO", "TIPO_DOCUMENTO",
+];
 
 function actorFrom(user) {
   return { id: user?.id || null, rol: user?.rol || null };

@@ -4,7 +4,9 @@ const { inTransaction, HttpError } = require('../db/transaction');
 const tx = require('./reservasTx');
 const { attachSolicitudDocumentos, reservaDocumentos, reservaDocSummary, reservaHistorial } = require('./documentosWorkflow');
 const { ESTADOS_RESERVA } = require('../constants/reservaEstados');
-const { anexoClaveSql, anexoClaveForContrato, defByClave, pendingSignatures } = require('./documentCatalogue');
+const {
+  anexoClaveSql, anexoClaveForContrato, defByClave, defsFor, allDefs, familiaContrato, pendingSignatures,
+} = require('./documentCatalogue');
 const { recordEvent } = require('./auditLog');
 const reglas = require('./estadoReglas');
 const notificar = require('./notificaciones');
@@ -746,6 +748,36 @@ exports.reasignar = async function (req, res) {
   });
 };
 
+// Required document types the centre added (migration 025) for this
+// reservation's contract family, with their current row and signatures:
+// [{ def, row, firmas }]. `lock` takes the rows FOR UPDATE (confirmation).
+async function requeridosExtra(conn, idReserva, tipoContrato, { lock = false } = {}) {
+  const defs = defsFor('reserva', { tipoContrato }).filter((d) => d.custom && d.required);
+  if (!defs.length) return [];
+  const [rows] = await conn.query(
+    `SELECT d.id_documento, td.nombre AS clave, ev.nombre AS estado_validacion, d.firmas_exentas_legacy,
+            CASE WHEN d.archivo IS NULL THEN 0 ELSE 1 END AS tiene_archivo
+       FROM dual_documentos d
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = d.id_tipo_documento
+       JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+      WHERE d.id_reserva = ? AND d.es_actual = 1 AND td.nombre IN (?)
+      ORDER BY d.id_documento DESC${lock ? '\n      FOR UPDATE' : ''}`,
+    [idReserva, defs.map((d) => d.clave)],
+  );
+  const ids = rows.map((r) => r.id_documento);
+  let firmas = [];
+  if (ids.length) {
+    [firmas] = await conn.query(
+      `SELECT id_documento, rol, estado FROM dual_documento_firmas WHERE id_documento IN (?)${lock ? ' FOR SHARE' : ''}`,
+      [ids],
+    );
+  }
+  return defs.map((def) => {
+    const row = rows.find((r) => r.clave === def.clave) || null;
+    return { def, row, firmas: row ? firmas.filter((f) => f.id_documento === row.id_documento) : [] };
+  });
+}
+
 async function currentAnexos(conn, idReserva, { lock = false } = {}) {
   const [rows] = await conn.query(
     `SELECT d.id_documento, td.nombre AS clave, ev.nombre AS estado_validacion,
@@ -756,11 +788,17 @@ async function currentAnexos(conn, idReserva, { lock = false } = {}) {
        JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
       WHERE d.id_reserva = ?
         AND d.es_actual = 1
-        AND td.nombre IN ('ANEXO_II', 'ANEXO_III')
+        AND td.nombre IN (?)
       ORDER BY d.id_documento DESC${lock ? '\n      FOR UPDATE' : ''}`,
-    [idReserva]
+    [idReserva, clavesDeFamilia()]
   );
   return rows;
+}
+
+// Types tied to a contract family: Anexo II, Anexo III and the reservation
+// types the centre added for beca or contrato only (also switched-off ones).
+function clavesDeFamilia() {
+  return allDefs().filter((d) => d.ambito === 'reserva' && d.contractFamily).map((d) => d.clave);
 }
 
 // POST /reservas/:id/tipo-contrato — staff records the contract family before confirmation.
@@ -795,9 +833,12 @@ exports.setTipoContrato = async function (req, res) {
 
     await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [idTipo, idReserva]);
 
-    const familiaAnterior = anexoClaveForContrato(rows[0].tipo_contrato);
-    const retirados = familiaAnterior && familiaAnterior !== anexoClaveForContrato(tipos[0].nombre)
-      ? anexos.filter((a) => a.clave === familiaAnterior).map((a) => a.id_documento)
+    // Changing family retires every current document of the old family
+    // (rejected ones only: tipoContratoCambiable refused the rest).
+    const familiaAnterior = familiaContrato(rows[0].tipo_contrato);
+    const familiaNueva = familiaContrato(tipos[0].nombre);
+    const retirados = familiaAnterior && familiaAnterior !== familiaNueva
+      ? anexos.filter((a) => defByClave(a.clave)?.contractFamily === familiaAnterior).map((a) => a.id_documento)
       : [];
     if (retirados.length) {
       await conn.query('UPDATE dual_documentos SET es_actual = 0 WHERE id_documento IN (?)', [retirados]);
@@ -858,7 +899,8 @@ exports.confirmar = async function (req, res) {
         [anexo.id_documento]
       );
     }
-    const denied = reglas.reservaConfirmable(reserva, idTipoPedido, def, anexo, firmas);
+    const extras = reserva ? await requeridosExtra(conn, idReserva, reserva.tipo_contrato, { lock: true }) : [];
+    const denied = reglas.reservaConfirmable(reserva, idTipoPedido, def, anexo, firmas, extras);
     if (denied) throw new HttpError(denied.status, denied.error, { code: denied.code });
 
     const otras = await tx.confirmar(conn, {
@@ -997,15 +1039,27 @@ exports.getDetalle = async function (req, res) {
   const conArchivo = Boolean(anexoRow && Number(anexoRow.tiene_archivo));
   const pendientes = def && conArchivo ? pendingSignatures(def, anexoRow, firmas) : [];
   const nombreAnexo = def?.nombre || 'Anexo II/III';
+  const extras = await requeridosExtra(pool, idReserva, reserva.tipo_contrato_clave);
   const requisitos = [
     { clave: 'TIPO_CONTRATO', ok: Boolean(reserva.id_tipo_contrato), texto: 'Tipo de contrato indicado' },
     { clave: 'ANEXO_SUBIDO', ok: conArchivo, texto: `${nombreAnexo} subido o generado` },
     { clave: 'FIRMAS', ok: conArchivo && pendientes.length === 0, texto: `${nombreAnexo} firmado por empresa, centro y alumno`, pendientes },
     { clave: 'VALIDADO', ok: anexoRow?.estado_validacion === 'VALIDADO', texto: `${nombreAnexo} validado por el centro` },
+    // One line per required document the centre added: file, signatures and validation.
+    ...extras.map((x) => {
+      const conFichero = Boolean(x.row && Number(x.row.tiene_archivo));
+      const faltan = conFichero ? pendingSignatures(x.def, x.row, x.firmas) : [];
+      return {
+        clave: `DOCUMENTO_${x.def.clave}`,
+        ok: conFichero && faltan.length === 0 && x.row.estado_validacion === 'VALIDADO',
+        texto: x.def.signers.length ? `${x.def.nombre} firmado y validado` : `${x.def.nombre} validado`,
+        pendientes: faltan,
+      };
+    }),
   ];
   const bloqueoConfirmar = reglas.reservaConfirmable(
     { estado, id_tipo_contrato: reserva.id_tipo_contrato, tipo_contrato: reserva.tipo_contrato_clave },
-    null, def, anexoRow, firmas,
+    null, def, anexoRow, firmas, extras,
   );
 
   // Would switching to the other annex family be refused right now? (D2)

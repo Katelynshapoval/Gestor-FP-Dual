@@ -136,6 +136,9 @@ const ESPERADO = [
   'POST /correos/:clave/adjuntos/archivo :: AUTH ROLE:ADMINISTRADOR',
   'DELETE /correos/:clave/adjuntos/:id :: AUTH ROLE:ADMINISTRADOR',
   'GET /correos/:clave/adjuntos/:id/archivo :: AUTH ROLE:ADMINISTRADOR',
+  'GET /tipos-documento :: AUTH ROLE:ADMINISTRADOR,COORDINADOR',
+  'POST /tipos-documento :: AUTH ROLE:ADMINISTRADOR',
+  'PUT /tipos-documento/:clave :: AUTH ROLE:ADMINISTRADOR',
 ];
 
 function rutas() {
@@ -187,7 +190,7 @@ test('only the expected endpoints are public', () => {
 });
 
 test('staff-only areas are never open to companies or students', () => {
-  const soloPersonal = /^(GET|POST|PUT|PATCH|DELETE) \/(usuarios|correos|panel|convocatorias(?!\/(activa|estado)))/;
+  const soloPersonal = /^(GET|POST|PUT|PATCH|DELETE) \/(usuarios|correos|tipos-documento|panel|convocatorias(?!\/(activa|estado)))/;
   for (const r of rutas().filter((x) => soloPersonal.test(x))) {
     assert.ok(!/EMPRESA|ALUMNO/.test(r), r);
     assert.match(r, /ROLE:/, r);

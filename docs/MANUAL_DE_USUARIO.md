@@ -19,7 +19,7 @@ _Versión del manual: 28/10/2026. Describe la aplicación tal y como funciona en
 4. [Solicitudes públicas (alumnos y empresas nuevos)](#solicitudes-publicas)
    - [Comprobar si el plazo está abierto](#plazo) · [Solicitud de alumno](#solicitud-alumno) · [Solicitud de empresa](#solicitud-empresa) · [Después de enviar](#despues-enviar)
 5. [Manual del administrador](#administrador)
-   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Personal](#personal-centro) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja) · [Correos automáticos](#correos)
+   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Personal](#personal-centro) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja) · [Correos automáticos](#correos) · [Documentos que pide el centro](#tipos-documento)
 6. [Manual del coordinador](#coordinador)
 7. [Manual de empresa](#empresa)
    - [Portal de la empresa](#portal-empresa) · [Datos y cambios](#empresa-datos) · [Ciclos y plazas](#empresa-plazas) · [Tutores](#empresa-tutores) · [Alumnos disponibles y reservas](#empresa-reservar) · [Documentos y firmas](#empresa-documentos) · [Nueva convocatoria](#empresa-reaplicar)
@@ -763,7 +763,9 @@ _Un documento pendiente de validar, con sus acciones._
 
 ### 5.8 Plantillas de documentos
 
-Pestaña **«Plantillas»** dentro de Documentos. Aquí están las plantillas **DOCX** con las que se generan el **Convenio**, el **Anexo II** y el **Anexo III**. Cada una aparece como «Activa» o «Sin plantilla».
+Pestaña **«Plantillas»** dentro de Documentos. Aquí están las plantillas **DOCX** con las que se generan el **Convenio**, el **Anexo II**, el **Anexo III** y los [documentos añadidos por el centro](#tipos-documento). Cada una aparece como «Activa» o «Sin plantilla».
+
+Despliega **«Campos que puede usar la plantilla»** para ver los datos que se rellenan solos, escritos tal como hay que ponerlos en el Word (por ejemplo `<<razonSocial>>` o `<<alumno>>`). Dependen de a qué pertenece el documento: todos los de empresa usan los mismos campos que el convenio; todos los de reserva, los mismos que los anexos.
 
 - Cualquier miembro del personal puede **descargar** la plantilla activa.
 - 🔒 **Solo Administración** puede subirlas: selecciona un archivo **.docx** y pulsa **«Subir plantilla»** (o **«Reemplazar»** si ya hay una). Se guarda como versión nueva.
@@ -876,6 +878,26 @@ Cada vez que se guarda queda una versión nueva. Pulsa **«Historial»** (junto 
 Si otra persona guarda el mismo correo mientras lo editas, al guardar se avisa y puedes **«Cargar su versión»** antes de seguir, para no pisar sus cambios.
 
 ---
+
+<a id="tipos-documento"></a>
+
+### 5.12 Documentos que pide el centro — 🔒 Solo Administración
+
+**Configuración › Documentos** muestra los documentos de cada **solicitud de alumno**, **solicitud de empresa** y **reserva**. Los marcados «Del sistema» (CV, Anexo DGA, Convenio, Anexo II, Anexo III…) no se editan: solo se cambia su plantilla.
+
+**Añadir un documento**
+
+1. Pulsa **«Nuevo documento»**.
+2. Escribe el **nombre** (así lo verán todos).
+3. Elige **de qué es**: de la solicitud del alumno, de la solicitud de empresa o de la reserva.
+4. Marca **quién firma**: empresa, centro, alumno. El alumno no firma documentos de empresa, ni la empresa los del alumno.
+5. Solo en reservas: elige **en qué reservas** se pide: todas, solo las de beca (como el Anexo III) o solo las de contrato (como el Anexo II).
+6. Marca **«Obligatorio»** si hay que tenerlo para seguir: validar al alumno, validar a la empresa o (en reservas) confirmar la reserva, ya firmado y validado.
+7. Pulsa **«Crear documento»** y sube su plantilla en [Documentos › Plantillas](#plantillas). Hasta entonces aparece «Falta la plantilla».
+
+El documento aparece en las solicitudes y reservas como los demás: el centro lo **genera**, lo firman quienes hayas marcado (la empresa o el alumno firmante también puede subir la copia firmada) y el centro lo **valida**. Mientras no esté generado, la empresa y el alumno ven «En preparación por el centro».
+
+**Editar o desactivar.** «Editar» cambia el nombre, las firmas, si es obligatorio y en qué reservas. A qué pertenece solo se puede cambiar mientras no haya ningún documento de ese tipo. «Desactivar» deja de pedirlo en adelante; los que ya existen se conservan y se pueden consultar. Se puede volver a activar.
 
 <a id="coordinador"></a>
 

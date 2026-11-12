@@ -1,5 +1,6 @@
 const pool = require("../db/pool");
-const { generatedDefs } = require("./documentCatalogue");
+const { generatedDefs, CONTEXTO_LABEL } = require("./documentCatalogue");
+const { variablesPorAmbito } = require("./documentGenerationConfig");
 const workflow = require("./documentosWorkflow");
 const { getActiveConvocatoria } = require("../helpers/dbHelpers");
 const conveniosPendientes = require("./conveniosPendientes");
@@ -44,6 +45,10 @@ exports.list = async function (req, res) {
     return {
       clave: def.clave,
       nombre: def.nombre,
+      ambito: def.ambito,
+      ambito_label: CONTEXTO_LABEL[def.ambito] || def.ambito,
+      personalizado: Boolean(def.custom),
+      variables: variablesPorAmbito(def.ambito),
       activa: activa
         ? {
             id_plantilla: activa.id_plantilla,
