@@ -15,6 +15,7 @@ const notificar = require("./notificaciones");
 const { inTransaction, HttpError } = require("../db/transaction");
 const { recordEvent } = require("./auditLog");
 const reservasTx = require("./reservasTx");
+const { revisarTextos } = require("../helpers/formInput");
 
 // SEC-002: upper bound for the places a company can offer for one ciclo.
 const MAX_PLAZAS_POR_CICLO = Number(process.env.MAX_PLAZAS_POR_CICLO) || 20;
@@ -28,6 +29,44 @@ const AMPLIACION_REQUIERE_CENTRO =
 function empresaNoPuedeAmpliar(req, datos) {
   return req.user.rol === "EMPRESA" && datos.estado_validacion === "VALIDADO";
 }
+
+// Public company sign-up: text fields and their column sizes (000_baseline.sql).
+const TEXTOS_ALTA_EMPRESA = {
+  cif: { label: "CIF", max: 12 },
+  empresa: { label: "Razón social", max: 100 },
+  web: { label: "Web", max: 100 },
+  observaciones: { label: "Observaciones", max: 2000 },
+  emailEmpresa: { label: "Email empresa", max: 100, email: true },
+  telefonoEmpresa: { label: "Teléfono empresa", max: 20 },
+  domicilioLegal: { label: "Domicilio fiscal", max: 255 },
+  cpLegal: { label: "Código postal fiscal", max: 10 },
+  provinciaLegal: { label: "Provincia fiscal", max: 50 },
+  localidadLegal: { label: "Localidad fiscal", max: 100 },
+  municipioLegal: { label: "Municipio fiscal", max: 45 },
+  telefonoLegal: { label: "Teléfono fiscal", max: 50 },
+  emailLegal: { label: "Email fiscal", max: 100, email: true },
+  domicilioTrabajo: { label: "Domicilio de trabajo", max: 255 },
+  cpTrabajo: { label: "Código postal de trabajo", max: 10 },
+  provinciaTrabajo: { label: "Provincia de trabajo", max: 50 },
+  localidadTrabajo: { label: "Localidad de trabajo", max: 100 },
+  municipioTrabajo: { label: "Municipio de trabajo", max: 45 },
+  telefonoTrabajo: { label: "Teléfono de trabajo", max: 50 },
+  emailTrabajo: { label: "Email de trabajo", max: 100, email: true },
+  dniRepresentante: { label: "DNI responsable legal", max: 15 },
+  nombreRepresentante: { label: "Nombre responsable legal", max: 100 },
+  emailRepresentante: { label: "Email responsable legal", max: 100, email: true },
+  telefonoRepresentante: { label: "Teléfono responsable legal", max: 50 },
+  cargoRepresentante: { label: "Cargo responsable legal", max: 100 },
+  dniCoordinador: { label: "DNI coordinador", max: 15 },
+  nombreCoordinador: { label: "Nombre coordinador", max: 100 },
+  emailCoordinador: { label: "Email coordinador", max: 100, email: true },
+  telefonoCoordinador: { label: "Teléfono coordinador", max: 50 },
+  cargoCoordinador: { label: "Cargo coordinador", max: 100 },
+  descripcion_puesto: { label: "Descripción del puesto", max: 5000 },
+  passwordCoordinador: { label: "Contraseña", max: 200 },
+  menosdecincotrabajadores: { label: "Menos de cinco trabajadores" },
+  mismoLugarTrabajo: { label: "Mismo lugar de trabajo" },
+};
 
 const EMPRESA_YA_REGISTRADA =
   "Esta empresa ya está registrada. Inicia sesión con el CIF para gestionar su participación.";
@@ -138,6 +177,19 @@ exports.create = async function (req, res) {
     return res.status(400).json({
       error: "Se requiere contraseña para la cuenta del coordinador.",
     });
+  }
+
+  // Every text field must be text, fit its column, and emails must look like
+  // emails (the convenio and notices are sent to them).
+  const textoInvalido = revisarTextos(req.body, TEXTOS_ALTA_EMPRESA);
+  if (textoInvalido) {
+    return res.status(400).json({ error: textoInvalido, code: "DATOS_NO_VALIDOS" });
+  }
+  if (
+    !Array.isArray(transportes) ||
+    especialidades.some((e) => !e || typeof e !== "object" || Array.isArray(e))
+  ) {
+    return res.status(400).json({ error: "Los ciclos o los transportes no tienen un formato válido." });
   }
 
   // WF-12: the same checks as the form, enforced here as well.

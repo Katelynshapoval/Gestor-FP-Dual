@@ -25,6 +25,11 @@ const pool = mysql.createPool({
   // V-3: DATE columns come back as 'YYYY-MM-DD' strings instead of a JS Date at
   // local midnight, which JSON turned into the previous day in UTC.
   dateStrings: ['DATE'],
+  // By default a plain object bound to `?` is expanded into `key = value`
+  // pairs, so a JSON body like {"email": {"email": 1}} turns
+  // `WHERE email = ?` into `WHERE email = \`email\` = 1` (always true).
+  // With this option the object becomes the string '[object Object]'.
+  stringifyObjects: true,
 });
 
 module.exports = pool;

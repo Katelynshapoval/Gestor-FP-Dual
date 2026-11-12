@@ -86,8 +86,12 @@ exports.findUserByIdentifier = findUserByIdentifier;
 
 // POST /auth/login — accepts both 'email' and 'username' fields for compatibility
 exports.loginWithCredentials = async function (req, res) {
-  const identifier = (req.body.email || req.body.username || '').trim();
-  const { password } = req.body;
+  const rawIdentifier = req.body?.email || req.body?.username || '';
+  const { password } = req.body || {};
+  if (typeof rawIdentifier !== 'string' || (password != null && typeof password !== 'string')) {
+    return res.status(400).json({ error: 'Usuario y contraseña son obligatorios.' });
+  }
+  const identifier = rawIdentifier.trim();
 
   if (!identifier || !password) {
     return res.status(400).json({ error: 'Usuario y contraseña son obligatorios.' });

@@ -7,7 +7,11 @@ const { aplicarTransicion } = require('./solicitudTransiciones');
 const { cicloCorregido, solicitudAlumnoRecibida } = require('./notificaciones');
 const alumnoDatos = require('./alumnoDatos');
 const { recordEvent } = require('./auditLog');
+const { campoNoEscalar } = require('../helpers/formInput');
 const MIN_PASSWORD_LENGTH = 8;
+const MAX_OBSERVACIONES = 2000;
+// Student fields of the public form that the admin correction also edits.
+const CAMPOS_FORMULARIO = Object.keys(alumnoDatos.CAMPOS);
 
 // SEC-001 / SEC-009: one answer for every identity rejection on the public form,
 // so it does not reveal whether a DNI already has an account or only a record.
@@ -15,13 +19,26 @@ const IDENTIDAD_NO_VERIFICADA = 'No se ha podido verificar tu identidad con este
 
 // POST /solicitudes/alumno — public: create student application
 exports.create = async function (req, res) {
+  const body = req.body || {};
+  // Text fields only: multipart names like `nombre[x]` arrive as objects.
+  if (campoNoEscalar(body, [...CAMPOS_FORMULARIO, 'dni', 'id_especialidad_dual', 'observaciones', 'password'])) {
+    return res.status(400).json({ error: 'Hay un campo del formulario que no es válido.' });
+  }
+  const { dni, password } = body;
+  const idEspecialidad = parseInt(body.id_especialidad_dual, 10);
+  const id_especialidad_dual = Number.isInteger(idEspecialidad) && idEspecialidad > 0 ? idEspecialidad : null;
+  const observaciones = String(body.observaciones ?? '').trim();
+
+  // Same normalisation and rules as the admin correction (alumnoDatos): trimmed
+  // text, lower-case emails, 9-digit phones, real booleans ("0" is false).
+  const datos = alumnoDatos.sanitizeProposed(
+    Object.fromEntries(CAMPOS_FORMULARIO.filter((k) => k in body).map((k) => [k, body[k]])),
+  );
   const {
-    nombre, dni, domicilio, cp, localidad, telalumno, telfamilia = '', email,
-    id_especialidad_dual, observaciones = '', nacionalidad, fechaNacimiento,
-    emailColegio, sexo, carnetDeConducir, tieneCoche, numeroSS,
+    nombre, domicilio, cp, localidad, telalumno, telfamilia = '', email,
+    nacionalidad, fechaNacimiento, emailColegio, sexo, carnetDeConducir, tieneCoche, numeroSS,
     situacionLaboral, idiomasConocidos, tutorLegal, dniTutorLegal,
-    password,
-  } = req.body;
+  } = datos;
 
   const cvFile = req.files?.cv?.[0];
   const anexoDgaFile = req.files?.anexoDga?.[0];
@@ -31,6 +48,18 @@ exports.create = async function (req, res) {
   }
   if (!nombre || !dni || !domicilio || !cp || !localidad || !telalumno || !email || !id_especialidad_dual) {
     return res.status(400).json({ error: 'Faltan campos obligatorios del formulario.' });
+  }
+  const errores = alumnoDatos.validateChanges(datos);
+  const primero = Object.keys(errores)[0];
+  if (primero) {
+    return res.status(400).json({
+      error: `${alumnoDatos.ETIQUETAS[primero] || primero}: ${errores[primero]}`,
+      code: 'DATOS_NO_VALIDOS',
+      errores,
+    });
+  }
+  if (observaciones.length > MAX_OBSERVACIONES) {
+    return res.status(400).json({ error: `Las observaciones admiten como máximo ${MAX_OBSERVACIONES} caracteres.` });
   }
   if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });

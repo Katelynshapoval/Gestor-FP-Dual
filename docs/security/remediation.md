@@ -25,3 +25,14 @@ No hay migraciones: ningún cambio toca el esquema de `proyecto_dual`.
 - Todas las sesiones abiertas caducan una vez: los tokens anteriores no llevan la huella de la contraseña.
 - Una ficha de alumno sin cuenta ya no puede darse de alta desde el formulario. Hoy no hay ninguna con solicitud. Si apareciera, el portal todavía no tiene una pantalla para que administración cree la cuenta.
 - Si se vuelve a cargar la demo, las contraseñas ya no son el identificador: están en `backend/.demo.local.json`.
+
+## Segunda revisión (12 de noviembre de 2026)
+
+Rama `security-hardening`. Sin migraciones.
+
+| ID | Estado | Qué se ha hecho |
+|---|---|---|
+| SEC-014 | Corregido | Las páginas de la aplicación llevan una CSP (`deploy/nginx.conf`): solo scripts del propio origen, sin scripts en línea ni manejadores `on…`. La imagen web se construye con `INLINE_RUNTIME_CHUNK=false`. Como el token sigue en `localStorage` (SEC-011), esta es la barrera frente a un XSS. |
+| SEC-015 | Corregido en parte | `dompurify` 3.4.17 (tenía avisos de XSS) y `react-router-dom` 6.30.6. Los avisos que quedan de react-router solo se corrigen en la v7: uno es de SSR (no se usa) y el otro necesita navegar a una ruta que venga del usuario (todas las rutas de la app son fijas). |
+| SEC-016 | Corregido | `stringifyObjects: true` en el pool de MySQL: un objeto en un parámetro `?` ya no se convierte en `` `clave` = valor `` (la vía clásica para saltarse un `WHERE` en Node). |
+| SEC-017 | Corregido | Las altas públicas y el login rechazan con 400 los campos que no son texto. El alta de alumno usa las mismas reglas que la corrección de datos (formato de email, teléfono, CP, longitudes). El alta de empresa comprueba longitudes y emails. Arreglado de paso: `carnetDeConducir = "0"` se guardaba como 1. |
