@@ -171,15 +171,28 @@ test("attachments: adding a generated document saves at once and keeps the draft
   const { llamadas } = await abrir({
     "POST /correos/:clave/adjuntos": {
       message: "«Anexo II» se adjuntará a este correo.",
-      correo: correo({ version: 2, lleva_adjuntos: true, adjuntos: [{ id: 9, tipo: "DOCUMENTO", documento: "ANEXO_II", nombre: "Anexo II" }], documentos_disponibles: [{ documento: "ANEXO_II", nombre: "Anexo II", adjunto: true, plantilla_activa: { version: 2, nombre_archivo: "a2.docx" } }] }),
+      correo: correo({ version: 2, lleva_adjuntos: true, adjuntos: [{ id: 9, tipo: "DOCUMENTO", documento: "ANEXO_II", nombre: "Anexo II" }], documentos_disponibles: [{ documento: "ANEXO_II", nombre: "Anexo II", ambito: "reserva", adjunto: true, plantilla_activa: { version: 2, nombre_archivo: "a2.docx" } }] }),
     },
   });
   fireEvent.change(asunto(), { target: { value: "Borrador sin guardar" } });
   fireEvent.click(screen.getByRole("button", { name: /Adjuntar Anexo II/ }));
-  expect(await screen.findByText(/generado con la plantilla activa \(versión 2, a2\.docx\)/)).toBeInTheDocument();
+  expect(await screen.findByText(/«Anexo II» de la reserva de la que trata el correo, generado con su plantilla \(versión 2, a2\.docx\)/)).toBeInTheDocument();
   expect(llamadas.find((l) => l.path.endsWith("/adjuntos")).body).toEqual({ documento: "ANEXO_II", version: 1 });
   expect(asunto()).toHaveValue("Borrador sin guardar");
   expect(screen.getByRole("switch", { name: /Lleva adjuntos/ })).toBeChecked();
+});
+
+test("attachments: two kinds, a document of the request or a fixed PDF; emails about no request explain why", async () => {
+  await abrir({
+    "GET /correos/:clave": (req) => (req.path.endsWith("/pie")
+      ? correo({ clave: "pie", nombre: "Pie de todos los correos", admite_adjuntos: false, desactivable: false })
+      : correo({ documentos_disponibles: [], sin_documentos_motivo: "Este correo no trata de una solicitud ni de una reserva concreta, así que no puede llevar un documento generado: solo PDF fijos." })),
+  });
+  expect(screen.getByText("Documento de la solicitud")).toBeInTheDocument();
+  expect(screen.getByText("PDF fijo")).toBeInTheDocument();
+  expect(screen.getByText(/no trata de una solicitud ni de una reserva concreta/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Adjuntar/ })).toBeNull();
+  expect(screen.getByRole("button", { name: /Subir PDF/ })).toBeInTheDocument();
 });
 
 test("attachments: removing one asks first and sends the current version", async () => {

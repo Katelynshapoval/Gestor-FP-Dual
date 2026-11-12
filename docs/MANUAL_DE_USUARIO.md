@@ -880,8 +880,15 @@ Con el interruptor **«Activo»** puedes dejar de enviar un correo (y guardar). 
 Debajo del texto, el apartado **«Adjuntos»** dice si el correo se envía con archivos adjuntos y cuáles. En la lista de correos, los que llevan adjuntos tienen un clip 📎.
 
 - **«Lleva adjuntos»**: interruptor para enviar el correo con o sin sus adjuntos. Se guarda con **«Guardar cambios»**. Desactivado, el correo sale sin adjuntos aunque tenga alguno en la lista.
-- **Adjuntar un documento generado**: algunos correos pueden llevar un documento que la aplicación genera con las [plantillas](#plantillas). Cada persona recibe **el suyo**: el convenio de su empresa o el anexo de su reserva, generado con la plantilla activa. Los correos de solicitudes de empresa pueden llevar el **Convenio** (en «Solicitud recibida» y «Convenio disponible» viene adjunto de serie); los de reservas creadas o confirmadas y el de documento rechazado de una reserva, el **Anexo II** y el **Anexo III** (cada reserva solo tiene el que corresponde a su contrato). Usa los botones **«Adjuntar …»**. Debajo de cada uno se ve qué versión de plantilla está activa; si no hay ninguna, sale un aviso y el correo se envía sin él.
-- **«Subir PDF»**: añade un PDF fijo que se envía igual a todos, por ejemplo una guía. Solo PDF, hasta 5 MB y 5 por correo. Con el botón de descarga puedes comprobar cuál es.
+En **«Adjuntos»** hay dos tipos:
+
+- **Documento de la solicitud**: eliges una **plantilla de documento** y cada persona recibe **el suyo**, rellenado con sus datos y generado con esa plantilla. Depende de qué trata el correo:
+  - correos de una **solicitud de alumno** (validada, rechazada, ciclo corregido, cambio de datos, documento rechazado): los documentos generados de la solicitud del alumno;
+  - correos de una **solicitud de empresa** (recibida, validada, rechazada, convenio disponible, convenio nuevo, documento rechazado): el **Convenio** y los documentos generados de la empresa (en «Solicitud recibida» y «Convenio disponible» el convenio viene adjunto de serie);
+  - correos de una **reserva** (creada, cancelada, confirmada, documento rechazado): el **Anexo II**, el **Anexo III** (cada reserva solo tiene el de su contrato) y los documentos generados de la reserva.
+
+  Los [documentos que añade el centro](#tipos-documento) aparecen aquí solos. Usa los botones **«Adjuntar …»**; si un documento todavía no tiene plantilla, el botón lo indica y el correo se envía sin él. Los correos que no tratan de una solicitud concreta (recuperar contraseña, el aviso de convenio por renovar al centro, la reducción de plazas) lo explican y solo admiten PDF fijos.
+- **PDF fijo** («Subir PDF»): el mismo archivo para todos, por ejemplo una guía. Solo PDF, hasta 5 MB y 5 por correo. Con el botón de descarga puedes comprobar cuál es.
 - Para quitar un adjunto, pulsa la papelera. Añadir o quitar un adjunto **se guarda al momento**, como una versión nueva del historial. El primer adjunto que añades activa «Lleva adjuntos».
 - Si un documento generado no existe todavía para esa solicitud (por ejemplo, el convenio o el anexo aún no se han generado), el correo se envía igualmente, sin él. Las variables **«Convenio adjunto»**, **«Anexo II adjunto»**, **«Anexo III adjunto»** y **«Convenio generado»** sirven para que el texto diga lo que corresponde en cada caso.
 - La **vista previa** muestra los adjuntos que llevaría el correo. La **prueba** incluye los PDF subidos, pero no el convenio, porque solo se genera para una solicitud real.

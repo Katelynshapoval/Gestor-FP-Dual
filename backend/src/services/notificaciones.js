@@ -88,7 +88,7 @@ async function enviar(clave, to, valores, documentos = null) {
 // with the active template (or the signed copy that replaced it); it never
 // generates one. `generados` passes a PDF the caller has just generated.
 // File name: <DOCUMENTO>_<empresa or alumno>_<year>.pdf, safe characters only.
-function documentosDe({ id_solicitud_empresa = null, id_reserva = null, nombre = '' }, generados = {}) {
+function documentosDe({ id_solicitud_alumno = null, id_solicitud_empresa = null, id_reserva = null, nombre = '' }, generados = {}) {
   const seguro = String(nombre || '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'documento';
   return async (documento) => {
     const filename = `${documento}_${seguro}_${new Date().getFullYear()}.pdf`;
@@ -98,7 +98,9 @@ function documentosDe({ id_solicitud_empresa = null, id_reserva = null, nombre =
       ? ['id_solicitud_empresa', id_solicitud_empresa]
       : ambito === 'reserva'
         ? ['id_reserva', id_reserva]
-        : [null, null];
+        : ambito === 'solicitud_alumno'
+          ? ['id_solicitud_alumno', id_solicitud_alumno]
+          : [null, null];
     if (!columna || !id) return null;
     const [rows] = await pool.query(
       `SELECT d.archivo
@@ -210,23 +212,25 @@ const solicitudAlumno = safe('solicitud_alumno', async (idSolicitud, estado, mot
   if (estado !== 'VALIDADO' && estado !== 'RECHAZADO') return false;
   const d = await datosSolicitudAlumno(idSolicitud);
   if (!d) return false;
-  if (estado === 'VALIDADO') return enviar('solicitud_alumno_validada', d.email, valoresAlumno(d));
-  return enviar('solicitud_alumno_rechazada', d.email, { ...valoresAlumno(d), motivo });
+  const documentos = documentosDe({ id_solicitud_alumno: idSolicitud, nombre: d.nombre });
+  if (estado === 'VALIDADO') return enviar('solicitud_alumno_validada', d.email, valoresAlumno(d), documentos);
+  return enviar('solicitud_alumno_rechazada', d.email, { ...valoresAlumno(d), motivo }, documentos);
 });
 
 // The centre corrected the ciclo of a student application.
 const cicloCorregido = safe('ciclo_corregido', async (idSolicitud) => {
   const d = await datosSolicitudAlumno(idSolicitud);
   if (!d) return false;
-  return enviar('ciclo_corregido', d.email, valoresAlumno(d));
+  return enviar('ciclo_corregido', d.email, valoresAlumno(d), documentosDe({ id_solicitud_alumno: idSolicitud, nombre: d.nombre }));
 });
 
 // Administración resolved the student's request to correct their data.
 const cambioDatosResuelto = safe('cambio_datos_alumno', async (idSolicitud, aprobado, motivo) => {
   const d = await datosSolicitudAlumno(idSolicitud);
   if (!d) return false;
-  if (aprobado) return enviar('cambio_datos_aprobado', d.email, valoresAlumno(d));
-  return enviar('cambio_datos_rechazado', d.email, { ...valoresAlumno(d), motivo });
+  const documentos = documentosDe({ id_solicitud_alumno: idSolicitud, nombre: d.nombre });
+  if (aprobado) return enviar('cambio_datos_aprobado', d.email, valoresAlumno(d), documentos);
+  return enviar('cambio_datos_rechazado', d.email, { ...valoresAlumno(d), motivo }, documentos);
 });
 
 const solicitudEmpresa = safe('solicitud_empresa', async (idSolicitud, estado, motivo) => {
@@ -237,7 +241,8 @@ const solicitudEmpresa = safe('solicitud_empresa', async (idSolicitud, estado, m
     return enviar('solicitud_empresa_validada', d.email, valoresEmpresa(d),
       documentosDe({ id_solicitud_empresa: idSolicitud, nombre: d.empresa }));
   }
-  return enviar('solicitud_empresa_rechazada', d.email, { ...valoresEmpresa(d), motivo });
+  return enviar('solicitud_empresa_rechazada', d.email, { ...valoresEmpresa(d), motivo },
+    documentosDe({ id_solicitud_empresa: idSolicitud, nombre: d.empresa }));
 });
 
 // Confirmation after the public form or a reapplication. Sent whether or not the
@@ -318,7 +323,8 @@ const documentoRechazado = safe('documento_rechazado', async (idDocumento, motiv
   if (doc.id_solicitud_alumno) {
     const d = await datosSolicitudAlumno(doc.id_solicitud_alumno);
     if (!d) return false;
-    return enviar('documento_rechazado_alumno', d.email, { ...valoresAlumno(d), documento, motivo });
+    return enviar('documento_rechazado_alumno', d.email, { ...valoresAlumno(d), documento, motivo },
+      documentosDe({ id_solicitud_alumno: doc.id_solicitud_alumno, nombre: d.nombre }));
   }
   if (doc.id_solicitud_empresa) {
     const d = await datosSolicitudEmpresa(doc.id_solicitud_empresa);
@@ -350,8 +356,9 @@ const reservaCancelada = safe('reserva_cancelada', async (idReserva, { avisarEmp
   const r = await datosReserva(idReserva);
   if (!r) return false;
   const envios = [];
-  if (avisarAlumno) envios.push(enviar('reserva_cancelada_alumno', r.email_alumno, valoresReserva(r)));
-  if (avisarEmpresa) envios.push(enviar('reserva_cancelada_empresa', r.email_empresa, valoresReserva(r)));
+  const documentos = documentosDe({ id_reserva: idReserva, nombre: r.alumno });
+  if (avisarAlumno) envios.push(enviar('reserva_cancelada_alumno', r.email_alumno, valoresReserva(r), documentos));
+  if (avisarEmpresa) envios.push(enviar('reserva_cancelada_empresa', r.email_empresa, valoresReserva(r), documentos));
   await Promise.all(envios);
   return true;
 });

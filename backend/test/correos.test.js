@@ -683,7 +683,7 @@ test('preview and detail: the draft switch decides the convenio text; the editor
   const d = await svc._internals.detalle(p.clave);
   assert.equal(d.lleva_adjuntos, true);
   assert.deepEqual(d.adjuntos.map((a) => [a.tipo, a.nombre]), [['DOCUMENTO', 'Convenio']]);
-  assert.deepEqual(d.documentos_disponibles, [{ documento: 'CONVENIO', nombre: 'Convenio', adjunto: true, plantilla_activa: null }]);
+  assert.deepEqual(d.documentos_disponibles, [{ documento: 'CONVENIO', nombre: 'Convenio', ambito: 'solicitud_empresa', adjunto: true, plantilla_activa: null }]);
   assert.deepEqual(d.avisos_adjuntos, []);
 
   const { avisosAdjuntos } = load('src/services/correoPlantillas');
@@ -771,4 +771,89 @@ test('test email: uploaded PDFs go with it; generated documents are named as mis
   assert.equal(res.statusCode, 200, JSON.stringify(res.body));
   assert.deepEqual(sent[0].attachments.map((a) => a.filename), ['Guía.pdf']);
   assert.match(res.body.message, /Convenio no va en la prueba/);
+});
+
+// ── Part C: any generated document of the request (docs/PLAN_DOCUMENTOS_DINAMICOS.md) ──
+
+const catalogo = require('../src/services/documentCatalogue');
+const TIPO_IV = {
+  id_tipo_documento: 20, nombre: 'ANEXO_IV', nombre_mostrar: 'Anexo IV', ambito: 'reserva', generado: 1,
+  firma_empresa: 1, firma_centro: 1, firma_alumno: 0, requerido: 0, familia_contrato: null, activo: 1, es_sistema: 0, orden: 110,
+};
+const TIPO_ALUMNO = { ...TIPO_IV, id_tipo_documento: 21, nombre: 'COMPROMISO', nombre_mostrar: 'Compromiso', ambito: 'solicitud_alumno', firma_empresa: 0, firma_alumno: 1 };
+
+test('part C: an email may attach every active generated document of the request it is about', () => {
+  catalogo.setCustomTypes([TIPO_IV, TIPO_ALUMNO, { ...TIPO_IV, id_tipo_documento: 22, nombre: 'VIEJO', nombre_mostrar: 'Viejo', activo: 0 }]);
+  try {
+    const c = load('src/services/correoPlantillas');
+    assert.deepEqual(c.documentosPermitidos('reserva_cancelada_empresa'), ['ANEXO_II', 'ANEXO_III', 'ANEXO_IV']);
+    assert.deepEqual(c.documentosPermitidos('reserva_confirmada_alumno'), ['ANEXO_II', 'ANEXO_III', 'ANEXO_IV']);
+    assert.deepEqual(c.documentosPermitidos('solicitud_empresa_rechazada'), ['CONVENIO']);
+    assert.deepEqual(c.documentosPermitidos('solicitud_alumno_validada'), ['COMPROMISO']);
+    for (const clave of ['restablecer_contrasena', 'convenio_renovar_centro', 'cupo_reducido_empresa', 'solicitud_alumno_recibida', 'pie']) {
+      assert.deepEqual(c.documentosPermitidos(clave), [], clave);
+      assert.ok(c.sinDocumentosMotivo(clave), clave);
+    }
+    assert.equal(c.sinDocumentosMotivo('reserva_creada_alumno'), null);
+    // Every email the code sends is classified one way or the other.
+    for (const clave of Object.keys(c.CONTRATO)) {
+      assert.ok(c.AMBITO[clave] || c.sinDocumentosMotivo(clave), clave);
+    }
+  } finally {
+    catalogo.setCustomTypes([]);
+  }
+});
+
+test('part C: the editor lists the new type and refuses it where it does not belong', async () => {
+  catalogo.setCustomTypes([TIPO_IV]);
+  try {
+    const seed = correoSeed();
+    const base = adminDb(seed);
+    handler = (sql, params) => (sql.startsWith('SELECT id_tipo_documento FROM dual_tipos_documento WHERE nombre = ?') && params[0] === 'ANEXO_IV'
+      ? [{ id_tipo_documento: 20 }]
+      : base(sql, params));
+    const svc = load('src/services/correosService');
+    const d = await svc._internals.detalle('reserva_cancelada_alumno');
+    assert.deepEqual(d.documentos_disponibles.map((x) => [x.documento, x.nombre]), [['ANEXO_II', 'Anexo II'], ['ANEXO_III', 'Anexo III'], ['ANEXO_IV', 'Anexo IV']]);
+    assert.equal(d.sin_documentos_motivo, null);
+    assert.match((await svc._internals.detalle('restablecer_contrasena')).sin_documentos_motivo, /solo PDF fijos/);
+
+    pool.calls.length = 0;
+    let res = mockRes();
+    await svc.agregarDocumento(mockReq({ params: { clave: 'solicitud_empresa_validada' }, body: { documento: 'ANEXO_IV', version: 1 }, user: ADMIN }), res);
+    assert.equal(res.statusCode, 400, 'a reservation document on a company email');
+    res = mockRes();
+    await svc.agregarDocumento(mockReq({ params: { clave: 'reserva_cancelada_alumno' }, body: { documento: 'ANEXO_IV', version: 1 }, user: ADMIN }), res);
+    assert.equal(res.statusCode, 201, JSON.stringify(res.body));
+    assert.deepEqual(writes()[0].params.slice(0, 2), ['reserva_cancelada_alumno', 20]);
+  } finally {
+    catalogo.setCustomTypes([]);
+  }
+});
+
+test('part C: a student email attaches that student\'s generated document, read from their application', async () => {
+  catalogo.setCustomTypes([TIPO_ALUMNO]);
+  try {
+    const seed = correoSeed();
+    seed.plantillas.find((x) => x.clave === 'solicitud_alumno_validada').lleva_adjuntos = 1;
+    seed.adjuntos.push({ id_adjunto: 60, clave_plantilla: 'solicitud_alumno_validada', tipo: 'DOCUMENTO', documento: 'COMPROMISO', orden: 1 });
+    const base = notifDb(seed);
+    const leidos = [];
+    handler = (sql, params) => {
+      if (sql.includes('FROM dual_documentos d') && sql.includes('d.id_solicitud_alumno = ?')) {
+        leidos.push(params);
+        return [{ archivo: Buffer.from('%PDF compromiso') }];
+      }
+      return base(sql, params);
+    };
+    const n = load('src/services/notificaciones');
+    sent.length = 0;
+    assert.equal(await n.solicitudAlumno(3, 'VALIDADO'), true);
+    assert.deepEqual(leidos, [[3, 'COMPROMISO']]);
+    assert.equal(sent[0].attachments.length, 1);
+    assert.match(sent[0].attachments[0].filename, /^COMPROMISO_Ana_\d{4}\.pdf$/);
+    assert.equal(sent[0].attachments[0].content.toString(), '%PDF compromiso');
+  } finally {
+    catalogo.setCustomTypes([]);
+  }
 });

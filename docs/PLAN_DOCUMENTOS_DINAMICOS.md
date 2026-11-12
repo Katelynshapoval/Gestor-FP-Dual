@@ -1,6 +1,6 @@
 # Plan: dynamic documents, one convenio per company, documents in emails
 
-Status: **parts A and B done** (migrations 025 and 026 applied 2026-11-12). Part B as built: inherited copies, renewals (CICLOS / MANUAL «Sustituir convenio»), company and admin emails, Panel card, company warnings; the company stays validated during a renewal. Part C pending.
+Status: **parts A and B done** (migrations 025 and 026 applied 2026-11-12). Part B as built: inherited copies, renewals (CICLOS / MANUAL «Sustituir convenio»), company and admin emails, Panel card, company warnings; the company stays validated during a renewal. Part C done (no migration): emails attach any active generated document of the request they are about, chosen by ámbito; emails about no request explain why they only take fixed PDFs.
 
 ## What was asked
 

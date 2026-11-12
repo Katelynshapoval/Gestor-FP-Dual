@@ -14,13 +14,21 @@ import {
 } from "../../components/feedback/ToastProvider.jsx";
 import { getBlob, postForm, postJSON } from "../../utils/api";
 
+// Whose document each recipient gets, by what the document belongs to.
+const DE_CADA = {
+  solicitud_alumno: "de la solicitud del alumno",
+  solicitud_empresa: "de la solicitud de la empresa",
+  reserva: "de la reserva",
+};
+
 // Where a generated document comes from, for the attachment list.
 function origenDocumento(a, disponibles) {
   const d = disponibles.find((x) => x.documento === a.documento);
-  const de = a.documento === "CONVENIO" ? "de cada empresa" : "de cada reserva";
-  if (!d?.plantilla_activa) return `El ${a.nombre.toLowerCase()} ${de} · sin plantilla activa`;
+  const de = DE_CADA[d?.ambito] || "de la solicitud";
+  if (!d?.plantilla_activa)
+    return `«${a.nombre}» ${de} de la que trata el correo · sin plantilla activa`;
   const p = d.plantilla_activa;
-  return `El ${a.nombre.toLowerCase()} ${de}, generado con la plantilla activa (versión ${p.version}${p.nombre_archivo ? `, ${p.nombre_archivo}` : ""}). Si aún no existe, el correo sale sin él.`;
+  return `«${a.nombre}» ${de} de la que trata el correo, generado con su plantilla (versión ${p.version}${p.nombre_archivo ? `, ${p.nombre_archivo}` : ""}). Si aún no existe, el correo sale sin él.`;
 }
 
 function tamano(bytes) {
@@ -91,8 +99,7 @@ export default function AdjuntosCorreo({ correo, lleva, onLleva, onCambio }) {
   const agregarDocumento = (d) =>
     ejecutar(
       `doc-${d.documento}`,
-      () =>
-        postJSON(base, { documento: d.documento, version: correo.version }),
+      () => postJSON(base, { documento: d.documento, version: correo.version }),
       "No se ha podido añadir el adjunto.",
     );
 
@@ -107,7 +114,11 @@ export default function AdjuntosCorreo({ correo, lleva, onLleva, onCambio }) {
     const form = new FormData();
     form.append("archivo", file);
     form.append("version", String(correo.version));
-    ejecutar("subir", () => postForm(`${base}/archivo`, form), "No se ha podido subir el PDF.");
+    ejecutar(
+      "subir",
+      () => postForm(`${base}/archivo`, form),
+      "No se ha podido subir el PDF.",
+    );
   };
 
   const quitar = async (a) => {
@@ -123,8 +134,7 @@ export default function AdjuntosCorreo({ correo, lleva, onLleva, onCambio }) {
     if (!ok) return;
     ejecutar(
       `quitar-${a.id}`,
-      () =>
-        postJSON(`${base}/${a.id}?version=${correo.version}`, {}, "DELETE"),
+      () => postJSON(`${base}/${a.id}?version=${correo.version}`, {}, "DELETE"),
       "No se ha podido quitar el adjunto.",
     );
   };
@@ -246,40 +256,84 @@ export default function AdjuntosCorreo({ correo, lleva, onLleva, onCambio }) {
           </ul>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          {pendientes.map((d) => (
-            <button
-              key={d.documento}
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => agregarDocumento(d)}
-              disabled={Boolean(ocupado)}
-              title={
-                d.plantilla_activa
-                  ? `Se adjunta el de cada solicitud, generado con la plantilla activa (versión ${d.plantilla_activa.version})`
-                  : "Aún no hay plantilla activa de este documento"
-              }
-            >
-              <FaPlus aria-hidden="true" />
-              {ocupado === `doc-${d.documento}`
-                ? "Añadiendo…"
-                : `Adjuntar ${d.nombre}`}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => inputRef.current?.click()}
-            disabled={Boolean(ocupado) || archivos >= maxArchivos}
-            title={
-              archivos >= maxArchivos
-                ? `Máximo ${maxArchivos} PDF por correo`
-                : "Un PDF fijo que se envía igual a todos (por ejemplo, una guía)"
-            }
-          >
-            <FaUpload aria-hidden="true" />
-            {ocupado === "subir" ? "Subiendo…" : "Subir PDF"}
-          </button>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-surface-200 bg-surface-50 p-3">
+            <p className="m-0 flex items-center gap-2 text-sm font-semibold text-charcoal-900">
+              <FaFileSignature aria-hidden="true" className="text-brand-700" />
+              Documento de la solicitud
+            </p>
+            {correo.sin_documentos_motivo ? (
+              <p className="m-0 mt-1 text-xs leading-5 text-muted">
+                {correo.sin_documentos_motivo}
+              </p>
+            ) : (
+              <>
+                <p className="m-0 mt-1 text-xs leading-5 text-muted">
+                  Elige una plantilla de documento: cada destinatario recibe el
+                  suyo, rellenado con sus datos.
+                </p>
+                {pendientes.length === 0 ? (
+                  <p className="m-0 mt-2 text-xs text-muted">
+                    {(correo.documentos_disponibles || []).length
+                      ? "Ya están todos adjuntos."
+                      : "No hay documentos generados para este tipo de solicitud."}
+                  </p>
+                ) : (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {pendientes.map((d) => (
+                      <button
+                        key={d.documento}
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => agregarDocumento(d)}
+                        disabled={Boolean(ocupado)}
+                        title={
+                          d.plantilla_activa
+                            ? `Se adjunta el de cada destinatario, generado con la plantilla (versión ${d.plantilla_activa.version})`
+                            : "Aún no hay plantilla activa de este documento"
+                        }
+                      >
+                        <FaPlus aria-hidden="true" />
+                        {ocupado === `doc-${d.documento}`
+                          ? "Añadiendo…"
+                          : `Adjuntar ${d.nombre}`}
+                        {!d.plantilla_activa && (
+                          <span className="text-xs font-normal text-amber-800">
+                            · sin plantilla
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <div className="rounded-lg border border-surface-200 bg-surface-50 p-3">
+            <p className="m-0 flex items-center gap-2 text-sm font-semibold text-charcoal-900">
+              <FaFilePdf aria-hidden="true" className="text-red-700" />
+              PDF fijo
+            </p>
+            <p className="m-0 mt-1 text-xs leading-5 text-muted">
+              El mismo archivo para todos, por ejemplo una guía.
+            </p>
+            <div className="mt-2">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => inputRef.current?.click()}
+                disabled={Boolean(ocupado) || archivos >= maxArchivos}
+                title={
+                  archivos >= maxArchivos
+                    ? `Máximo ${maxArchivos} PDF por correo`
+                    : "Un PDF fijo que se envía igual a todos (por ejemplo, una guía)"
+                }
+              >
+                <FaUpload aria-hidden="true" />
+                {ocupado === "subir" ? "Subiendo…" : "Subir PDF"}
+              </button>
+            </div>
+          </div>
           <input
             ref={inputRef}
             type="file"

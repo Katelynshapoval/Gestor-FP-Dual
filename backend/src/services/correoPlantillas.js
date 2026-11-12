@@ -8,7 +8,7 @@
 // administrators (correosService).
 const pool = require('../db/pool');
 const plantilla = require('../mail/plantilla');
-const { defByClave } = require('./documentCatalogue');
+const { defByClave, generatedDefs } = require('./documentCatalogue');
 
 const PIE = 'pie';
 
@@ -66,6 +66,49 @@ const DOCUMENTOS = {
   reserva_confirmada_empresa: DOC_RESERVA,
   documento_rechazado_reserva: DOC_RESERVA,
 };
+
+// What each email is about (part C of docs/PLAN_DOCUMENTOS_DINAMICOS.md): any
+// active generated document of that request may go attached, including the
+// types the centre adds (migration 025). Emails about no single request
+// (password reset, the alert to the centre, places reduced, the footer) carry
+// only fixed PDFs. DOCUMENTOS above keeps the documents that also have a
+// `<documento>_adjunto` variable for the text.
+const AMBITO = {
+  solicitud_alumno_validada: 'solicitud_alumno',
+  solicitud_alumno_rechazada: 'solicitud_alumno',
+  ciclo_corregido: 'solicitud_alumno',
+  cambio_datos_aprobado: 'solicitud_alumno',
+  cambio_datos_rechazado: 'solicitud_alumno',
+  documento_rechazado_alumno: 'solicitud_alumno',
+  solicitud_empresa_recibida: 'solicitud_empresa',
+  convenio_disponible: 'solicitud_empresa',
+  convenio_renovar_empresa: 'solicitud_empresa',
+  solicitud_empresa_validada: 'solicitud_empresa',
+  solicitud_empresa_rechazada: 'solicitud_empresa',
+  documento_rechazado_empresa: 'solicitud_empresa',
+  reserva_creada_alumno: 'reserva',
+  reserva_creada_empresa: 'reserva',
+  reserva_cancelada_alumno: 'reserva',
+  reserva_cancelada_empresa: 'reserva',
+  reserva_confirmada_alumno: 'reserva',
+  reserva_confirmada_empresa: 'reserva',
+  documento_rechazado_reserva: 'reserva',
+};
+
+// Generated documents an email may carry: those with their own variable, plus
+// every active generated type of the request the email is about.
+function documentosPermitidos(clave) {
+  const ambito = AMBITO[clave];
+  const propios = ambito ? generatedDefs().filter((d) => d.ambito === ambito).map((d) => d.clave) : [];
+  return [...new Set([...(DOCUMENTOS[clave] || []), ...propios])];
+}
+
+// Why an email cannot carry generated documents, for the editor.
+function sinDocumentosMotivo(clave) {
+  if (clave === PIE) return 'El pie no lleva adjuntos.';
+  if (AMBITO[clave]) return null;
+  return 'Este correo no trata de una solicitud ni de una reserva concreta, así que no puede llevar un documento generado: solo PDF fijos.';
+}
 
 // Fixed PDFs uploaded by administrators.
 const MAX_ARCHIVO = 5 * 1024 * 1024;
@@ -152,7 +195,7 @@ async function resolverAdjuntos(clave, llevaAdjuntos, adjuntos, obtenerDocumento
       attachments.push({ filename: a.nombre_archivo, content: a.archivo, contentType: a.mime_type || 'application/pdf' });
       continue;
     }
-    if (!(DOCUMENTOS[clave] || []).includes(a.documento)) {
+    if (!documentosPermitidos(clave).includes(a.documento)) {
       console.warn(`[correo] ${clave}: «${a.documento}» no se puede adjuntar a este correo; no se adjunta.`);
       continue;
     }
@@ -233,7 +276,7 @@ function problemas(clave, fila, variables) {
 // goes without the attachment that cannot be sent.
 function avisosAdjuntos(clave, llevaAdjuntos, adjuntos) {
   const out = [];
-  const permitidos = DOCUMENTOS[clave] || [];
+  const permitidos = documentosPermitidos(clave);
   for (const a of adjuntos) {
     if (a.tipo === 'DOCUMENTO' && !permitidos.includes(a.documento)) {
       out.push(`«${nombreDocumento(a.documento)}» no se puede adjuntar a este correo: no pertenece a la solicitud de la que trata. No se adjuntará.`);
@@ -271,6 +314,9 @@ async function verificar() {
 module.exports = {
   CONTRATO,
   DOCUMENTOS,
+  AMBITO,
+  documentosPermitidos,
+  sinDocumentosMotivo,
   PIE,
   MAX_ARCHIVO,
   MAX_ARCHIVOS,

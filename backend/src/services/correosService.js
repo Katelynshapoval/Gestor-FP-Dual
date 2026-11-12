@@ -22,6 +22,7 @@ const pool = require('../db/pool');
 const { inTransaction, HttpError } = require('../db/transaction');
 const { recordEvent } = require('./auditLog');
 const correo = require('./correoPlantillas');
+const { defByClave } = require('./documentCatalogue');
 const { validar } = require('../mail/plantilla');
 const { isPdf } = require('../middleware/pdfUpload');
 
@@ -139,7 +140,7 @@ async function detalle(clave, conn = pool) {
   );
   const adjuntos = await correo.cargarAdjuntos(clave, conn);
   const llevaAdjuntos = bool(fila.lleva_adjuntos);
-  const posibles = correo.DOCUMENTOS[clave] || [];
+  const posibles = correo.documentosPermitidos(clave);
   // The active template of each document: what the attached PDFs are generated with.
   const [activas] = posibles.length
     ? await conn.query(
@@ -176,11 +177,13 @@ async function detalle(clave, conn = pool) {
       obligatoria: bool(v.obligatoria),
     })),
     adjuntos: adjuntos.map(adjuntoPublico),
+    sin_documentos_motivo: correo.sinDocumentosMotivo(clave),
     documentos_disponibles: posibles.map((d) => {
       const activa = activas.find((p) => p.documento === d);
       return {
         documento: d,
         nombre: correo.nombreDocumento(d),
+        ambito: defByClave(d)?.ambito || null,
         adjunto: adjuntos.some((a) => a.tipo === 'DOCUMENTO' && a.documento === d),
         plantilla_activa: activa ? { version: Number(activa.version), nombre_archivo: activa.nombre_archivo } : null,
       };
@@ -366,7 +369,7 @@ exports.agregarDocumento = async function (req, res) {
   try {
     const clave = claveDe(req);
     const documento = String(req.body?.documento || '').toUpperCase();
-    if (!(correo.DOCUMENTOS[clave] || []).includes(documento)) {
+    if (!correo.documentosPermitidos(clave).includes(documento)) {
       throw new HttpError(400, 'Ese documento no se puede adjuntar a este correo.');
     }
     const nombre = correo.nombreDocumento(documento);
