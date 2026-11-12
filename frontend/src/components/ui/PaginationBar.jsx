@@ -38,52 +38,70 @@ const PaginationBar = ({ pagination, page, disabled = false, onPage, onPageSize,
   const to = Math.min(page * pagination.pageSize, total);
   const pages = visiblePages(page, pagination.totalPages);
 
+  // Phones: "Mostrando…" and the page size share the first row, the page
+  // buttons get a full-width row with prev/next at the ends. From lg up it is
+  // one row: count, pages, page size.
   return (
-    <div className="flex flex-col gap-3 rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card">
       <p className="text-sm text-muted">
-        Mostrando {from}–{to} de {total} {itemNoun(noun, total)}
+        <span className="hidden sm:inline">Mostrando </span>
+        {from}–{to} de {total} {itemNoun(noun, total)}
       </p>
-      <nav className="flex flex-wrap items-center gap-1" aria-label="Paginación">
-        <button type="button" className="btn btn-secondary btn-sm" disabled={disabled || page <= 1} onClick={() => onPage(page - 1)}>
-          ‹ Anterior
-        </button>
-        {pages.map((entry, index) =>
-          entry === "…" ? (
-            <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted">
-              …
-            </span>
-          ) : (
-            <button
-              key={entry}
-              type="button"
-              disabled={disabled}
-              aria-current={entry === page ? "page" : undefined}
-              className={`min-h-8 min-w-8 rounded-lg border px-2 text-sm font-semibold transition-colors duration-150 ${
-                entry === page
-                  ? "border-brand-600 bg-brand-600 text-white"
-                  : "border-surface-200 bg-white text-charcoal-800 hover:border-charcoal-300"
-              }`}
-              onClick={() => onPage(entry)}
-            >
-              {entry}
-            </button>
-          ),
-        )}
+      <nav
+        className="order-last flex w-full items-center justify-between gap-1 lg:order-none lg:w-auto lg:justify-start"
+        aria-label="Paginación"
+      >
         <button
           type="button"
-          className="btn btn-secondary btn-sm"
+          className="btn btn-secondary btn-sm h-10 min-w-10 px-3 sm:h-auto"
+          disabled={disabled || page <= 1}
+          onClick={() => onPage(page - 1)}
+        >
+          <span aria-hidden="true" className="text-base leading-none">‹</span>
+          <span className="sr-only sm:not-sr-only sm:ml-1">Anterior</span>
+        </button>
+        <div className="flex items-center gap-1">
+          {pages.map((entry, index) =>
+            entry === "…" ? (
+              <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted">
+                …
+              </span>
+            ) : (
+              <button
+                key={entry}
+                type="button"
+                disabled={disabled}
+                aria-current={entry === page ? "page" : undefined}
+                className={`min-h-10 min-w-10 rounded-lg border px-2 text-sm font-semibold transition-colors duration-150 sm:min-h-8 sm:min-w-8 ${
+                  entry === page
+                    ? "border-brand-600 bg-brand-600 text-white"
+                    : "border-surface-200 bg-white text-charcoal-800 hover:border-charcoal-300"
+                }`}
+                onClick={() => onPage(entry)}
+              >
+                {entry}
+              </button>
+            ),
+          )}
+        </div>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm h-10 min-w-10 px-3 sm:h-auto"
           disabled={disabled || page >= pagination.totalPages}
           onClick={() => onPage(page + 1)}
         >
-          Siguiente ›
+          <span className="sr-only sm:not-sr-only sm:mr-1">Siguiente</span>
+          <span aria-hidden="true" className="text-base leading-none">›</span>
         </button>
       </nav>
       <label className="flex items-center gap-2 text-sm text-muted">
-        Filas por página
+        <span className="sm:hidden">Por página</span>
+        <span className="hidden sm:inline">Filas por página</span>
         <select
           className={SELECT_CLASS}
           value={pagination.pageSize}
           disabled={disabled}
+          aria-label="Filas por página"
           onChange={(event) => onPageSize(Number(event.target.value))}
         >
           {PAGE_SIZES.map((size) => (

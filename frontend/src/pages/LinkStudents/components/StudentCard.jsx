@@ -182,7 +182,7 @@ const StudentCard = ({
     <div className={cardClass}>
       {/* Card header — always visible, toggles the expanded panel */}
       <div
-        className={`${cardHeaderClass} flex flex-col gap-2 sm:flex-row sm:items-center`}
+        className={`${cardHeaderClass} flex-wrap !items-start !gap-x-3 !gap-y-2.5 sm:flex-nowrap sm:!items-center sm:!gap-4`}
         onClick={handleToggle}
       >
         <div className="min-w-0 flex-1">
@@ -200,9 +200,11 @@ const StudentCard = ({
           )}
         </div>
 
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {/* Phones: chips on their own row under the name, left-aligned.
+            From sm up: chips then buttons, right-aligned on the same row. */}
+        <div className="order-last flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:order-none sm:w-auto sm:flex-1 sm:justify-end">
           {!isEmpresa ? (
-            <div className={cardChipsClass}>
+            <div className={`${cardChipsClass} items-center !justify-start sm:!justify-end`}>
               {r.id_cambio_pendiente ? (
                 <span className={`${signedBadgeClass} max-w-full bg-amber-100 text-amber-800`}>
                   <MdPendingActions className="text-[13px]" />
@@ -211,7 +213,8 @@ const StudentCard = ({
               ) : null}
               <EstadoBadge kind="solicitud" value={r.estado_validacion} />
               {confirmedReserva && (
-                <StatusBadge variant="success">
+                // Phones: last, so the short badges and icons share the first row.
+                <StatusBadge variant="success" className="order-last sm:order-none">
                   Confirmada: {confirmedReserva.empresa}
                 </StatusBadge>
               )}
@@ -234,7 +237,9 @@ const StudentCard = ({
               onCancel={onCancel}
             />
           )}
+        </div>
 
+        <div className="flex shrink-0 items-center gap-1">
           {isAdmin && r.convocatoria_activa && !editingAlumno && (
             <button
               type="button"
