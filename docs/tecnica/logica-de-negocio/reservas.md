@@ -16,11 +16,12 @@ Condiciones comunes de elegibilidad (Node `validateReservaTargets` + trigger `tr
 
 ## 2. Reservar
 
-### 2.1 Empresa — `POST /reservas { id_solicitud_alumno, id_solicitud_empresa_especialidad }`
+### 2.1 Empresa — `POST /reservas { id_solicitud_alumno, id_solicitud_empresa_especialidad, id_tipo_contrato }`
 
+0. `id_tipo_contrato` **obligatorio** y existente en `dual_tipos_contrato` (400 si no): la empresa elige beca o contrato al reservar, y eso decide el anexo (§ 5).
 1. La oferta debe ser **de la propia empresa**, de la **convocatoria activa** y de una solicitud **VALIDADO** → si no, 403.
 2. `validateReservaTargets(…, requireActive: true)`: 404 si no existe; 400 si no son VALIDADO, convocatoria distinta o ciclo distinto.
-3. En la transacción: `CALL sp_reservar_alumno` (bloqueos y comprobaciones; ver [integridad § 3.1](../base-de-datos/integridad-y-transacciones.md#31-sp_reservar_alumno)) y evento `RESERVAR`.
+3. En la transacción: `CALL sp_reservar_alumno` (bloqueos y comprobaciones; ver [integridad § 3.1](../base-de-datos/integridad-y-transacciones.md#31-sp_reservar_alumno)), `UPDATE` del `id_tipo_contrato` en la fila nueva (el trigger de inserción no admite tipo, el de actualización sí en PENDIENTE) y evento `RESERVAR` con el tipo en `detalle`.
 4. Tras el commit, correo al alumno.
 5. 201 `{ id_reserva, estado_reserva: 'PENDIENTE' }`.
 
@@ -54,6 +55,8 @@ En ambos casos: motivo obligatorio; tipo de contrato, tutor y documentos **se co
 Funciona desde **CONFIRMADA**: el alumno pasa a tener una reserva **PENDIENTE** en el destino y pierde la confirmación. Las destinaciones se listan con `GET /reservas/ofertas-elegibles?id_solicitud_alumno=&reasignar_desde=<id>`, que no excluye al alumno confirmado.
 
 ## 5. Tipo de contrato — `POST /reservas/:id/tipo-contrato { id_tipo_contrato }` (personal)
+
+La empresa lo fija al reservar (§ 2.1); el personal lo indica en sus reservas (§ 2.2) o lo corrige aquí.
 
 Determina la **familia de anexo**: nombre con «beca» → **Anexo III**; cualquier otro (contrato de formación en alternancia, convenio, otro) → **Anexo II**.
 

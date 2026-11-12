@@ -45,8 +45,20 @@ test('book: the procedure\'s new id is audited; no id means failure', async () =
   assert.equal(await tx.reservar(c, { idSolicitudAlumno: 40, idOferta: 5, user: USER }), 77);
   assert.deepEqual(pool.calls[0].params, [40, 5]);
   assert.deepEqual(eventos(), [[77, 'RESERVAR', null, 'PENDIENTE']]);
+  assert.ok(!sqls().some((s) => s.startsWith('UPDATE dual_reservas')), 'no type, no update');
   c = conn([['CALL sp_reservar_alumno', [[]]]]);
   await assert.rejects(tx.reservar(c, { idSolicitudAlumno: 40, idOferta: 5, user: USER }), /no devolvió/);
+});
+
+test('book with a contract type: stored on the new row before the event, in the same transaction', async () => {
+  conn([['CALL sp_reservar_alumno', [[[{ id_reserva: 77 }]], []]]]);
+  const c = { query: pool.query, release() {} };
+  await tx.reservar(c, { idSolicitudAlumno: 40, idOferta: 5, idTipoContrato: 1, user: USER });
+  const i = pool.calls.findIndex((x) => x.sql.startsWith('UPDATE dual_reservas SET id_tipo_contrato'));
+  assert.ok(i > 0, 'type stored');
+  assert.deepEqual(pool.calls[i].params, [1, 77]);
+  assert.ok(i < pool.calls.findIndex((x) => x.sql.startsWith('INSERT INTO dual_eventos')));
+  assert.deepEqual(eventos(), [[77, 'RESERVAR', null, 'PENDIENTE']]);
 });
 
 test('offers are locked once each, in ascending id order (migration 018)', async () => {

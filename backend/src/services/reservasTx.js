@@ -88,14 +88,25 @@ async function estadoBloqueado(conn, idReserva) {
 }
 
 // New attempt (D2: always a new row). Returns the new id_reserva.
-async function reservar(conn, { idSolicitudAlumno, idOferta, user, detalle = {} }) {
+// `idTipoContrato` (optional) is the contract type chosen when booking: beca →
+// Anexo III, any other → Anexo II. The insert trigger only lets the procedure
+// create the row without one, so it is set right after, in the same transaction
+// (trg_dr_bu_reglas allows a type on a PENDIENTE reservation).
+async function reservar(conn, { idSolicitudAlumno, idOferta, idTipoContrato = null, user, detalle = {} }) {
   assertConn(conn);
   const row = await callProcedureWithResult(conn, "sp_reservar_alumno", [idSolicitudAlumno, idOferta]);
   const idReserva = Number(row?.id_reserva) || null;
   if (!idReserva) throw new Error("sp_reservar_alumno no devolvió la reserva creada.");
+  if (idTipoContrato) {
+    await conn.query("UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?", [idTipoContrato, idReserva]);
+  }
   await recordEvent(conn, {
     entidad: "RESERVA", id: idReserva, accion: "RESERVAR", despues: ESTADOS_RESERVA.PENDIENTE, user,
-    detalle: { id_solicitud_alumno: idSolicitudAlumno, id_oferta: idOferta, ...detalle },
+    detalle: {
+      id_solicitud_alumno: idSolicitudAlumno, id_oferta: idOferta,
+      ...(idTipoContrato ? { id_tipo_contrato: idTipoContrato } : {}),
+      ...detalle,
+    },
   });
   return idReserva;
 }

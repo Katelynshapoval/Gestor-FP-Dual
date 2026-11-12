@@ -54,7 +54,7 @@ export const FAQ = [
   },
   {
     q: "¿Qué anexo me toca y por qué no aparece?",
-    a: "Lo decide el centro al indicar el tipo de contrato. Beca es el Anexo III; el resto, el Anexo II. Hasta que no está indicado el tipo, el anexo no aparece. Confirmar la reserva exige el anexo firmado por los tres y validado. El calendario no hace falta para confirmar.",
+    a: "Lo decide el tipo de contrato, que la empresa elige al reservar (el centro puede corregirlo mientras la reserva esté pendiente). Beca es el Anexo III; el resto, el Anexo II. Hasta que no está indicado el tipo, el anexo no aparece. Confirmar la reserva exige el anexo firmado por los tres y validado. El calendario no hace falta para confirmar.",
     href: "#faq-anexos",
   },
   {

@@ -51,7 +51,7 @@ FP Dual es la aplicación del centro para gestionar la Formación Profesional Du
 2. Alumnos y empresas presentan su **solicitud** desde la página de inicio.
 3. El centro **valida** a los alumnos (revisando su CV y su Anexo DGA) y a las empresas (cuando su convenio firmado está validado).
 4. Las empresas **reservan** a los alumnos que les interesan.
-5. Para cada reserva, el centro indica el **tipo de contrato**, se prepara el **Anexo II o III**, lo firman empresa, alumno y centro, y el centro lo **valida**.
+5. Al reservar, la empresa elige el **tipo de contrato** (beca o contrato; el centro puede corregirlo mientras la reserva esté pendiente), se prepara el **Anexo II o III**, lo firman empresa, alumno y centro, y el centro lo **valida**.
 6. El centro **confirma** la reserva: la plaza pasa a ser definitiva.
 
 **Cómo está organizado este manual**
@@ -674,9 +674,9 @@ _Panel de una reserva pendiente con tipo de contrato «Convenio»: el Anexo II l
 
 El trabajo normal con una reserva sigue este orden:
 
-**1. Indicar el tipo de contrato**
+**1. Revisar el tipo de contrato**
 
-En **«Tipo de contrato»** elige una opción. Se guarda al elegirla.
+La empresa lo elige al reservar. Si la reserva la creó el centro, o hay que corregirlo, en **«Tipo de contrato»** elige una opción. Se guarda al elegirla.
 
 | Tipo de contrato | Anexo que hay que preparar |
 | --- | --- |
@@ -1010,6 +1010,7 @@ _Pestaña «Tutores»._
 1. En el menú, pulsa **«Alumnos disponibles»**. Aparecen los alumnos validados de vuestros ciclos en la convocatoria activa. Podéis buscar por nombre o DNI/NIE y filtrar por especialidad.
 2. Despliega la tarjeta para ver los datos de contacto, la movilidad y el CV.
 3. Pulsa **«Reservar alumno»**.
+4. En la ventana que se abre, elige el **«Tipo de contrato»** y pulsa **«Reservar»**. El tipo decide el anexo: **Beca → Anexo III**; contrato de formación en alternancia, convenio u otro → **Anexo II**. La ventana indica cuál corresponde antes de confirmar.
 
 ![Alumnos disponibles con el aviso de que la reserva no es definitiva y el botón Reservar alumno](manual/imagenes/alumnos-disponibles.png)
 _Alumnos disponibles para la empresa._
@@ -1030,7 +1031,7 @@ En la pestaña **«Reservas»** del portal aparecen todas, con su estado. Pulsa 
 - elegir el **«Tutor de empresa»**;
 - **cancelar** la reserva mientras esté pendiente («Cancelar reserva», con un motivo). Una reserva cancelada ya no se puede cambiar; si volvéis a reservar al mismo alumno, se crea una reserva nueva.
 
-Lo que **solo hace el centro**: indicar el tipo de contrato, validar el anexo, confirmar la reserva, cancelar una reserva ya confirmada y reasignar al alumno.
+Lo que **solo hace el centro**: cambiar el tipo de contrato después de reservar, validar el anexo, confirmar la reserva, cancelar una reserva ya confirmada y reasignar al alumno.
 
 ![Pestaña Reservas del portal de la empresa](manual/imagenes/portal-empresa-reservas.png)
 _Pestaña «Reservas». Las canceladas se muestran con su motivo y el botón «Ver detalle»._
@@ -1242,7 +1243,7 @@ Las solicitudes solo se admiten mientras hay una **convocatoria activa**, y eso 
 
 ### Tipo de contrato y anexos
 
-- **¿Quién elige el tipo de contrato?** Solo el **centro**, en el panel de la reserva. La empresa y el alumno ven «El centro indicará el tipo de contrato; entonces aparecerá el Anexo II o III.»
+- **¿Quién elige el tipo de contrato?** La **empresa**, al reservar al alumno (beca o contrato). El **centro** puede cambiarlo en el panel de la reserva mientras esté pendiente, e indicarlo en las reservas que crea él; en esas, hasta que lo indique, la empresa y el alumno ven «El centro indicará el tipo de contrato; entonces aparecerá el Anexo II o III.»
 - **¿Qué anexo toca?** **Beca → Anexo III.** Contrato de formación en alternancia, Convenio u Otro → **Anexo II.**
 - **¿Por qué no aparece el anexo?** Porque todavía no se ha indicado el tipo de contrato. También puede estar «Pendiente de generar» si el centro tiene que generarlo y aún no lo ha hecho (o no hay plantilla).
 - **¿Se puede cambiar el tipo de contrato?** Entre tipos del mismo anexo, sí. Para pasar de Anexo II a Anexo III (o al revés), **no**, cuando el anexo actual ya está subido pendiente de revisión o validado; la aplicación lo indica. En una reserva **confirmada** el tipo ya no se puede cambiar.

@@ -550,12 +550,25 @@ async function transicion(res, work, { status = 200, after = null } = {}) {
 }
 
 // POST /reservas — empresa reserves a student against one of its validated speciality offers
+// The company chooses the contract type when booking: beca → Anexo III, any
+// other type → Anexo II. Staff can still correct it while the reservation is pending.
 exports.reservar = async function (req, res) {
   const idSolicitudAlumno = parseId(req.body.id_solicitud_alumno);
   const idOferta = parseId(req.body.id_solicitud_empresa_especialidad);
+  const idTipoContrato = parseId(req.body.id_tipo_contrato);
 
   if (!idSolicitudAlumno || !idOferta) {
     return res.status(400).json({ error: 'Se requieren id_solicitud_alumno e id_solicitud_empresa_especialidad.' });
+  }
+  if (!idTipoContrato) {
+    return res.status(400).json({ error: 'Indica el tipo de contrato (beca o contrato) de la reserva.' });
+  }
+  const [tipoRows] = await pool.query(
+    'SELECT id_tipo_contrato FROM dual_tipos_contrato WHERE id_tipo_contrato = ?',
+    [idTipoContrato]
+  );
+  if (!tipoRows[0]) {
+    return res.status(400).json({ error: 'Tipo de contrato no válido.' });
   }
 
   const idEmpresa = await getCompanyIdFromUser(req.user.id);
@@ -586,7 +599,7 @@ exports.reservar = async function (req, res) {
   }
 
   return transicion(res, async (conn) => {
-    const idReserva = await tx.reservar(conn, { idSolicitudAlumno, idOferta, user: req.user });
+    const idReserva = await tx.reservar(conn, { idSolicitudAlumno, idOferta, idTipoContrato, user: req.user });
     return {
       idReserva,
       body: { message: 'Alumno reservado correctamente.', id_reserva: idReserva, estado_reserva: ESTADOS_RESERVA.PENDIENTE },

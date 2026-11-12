@@ -27,6 +27,9 @@ const pool = fakePool((sql, params) => {
   if (sql.startsWith('SELECT r.id_solicitud_empresa_especialidad, er.nombre AS estado FROM dual_reservas r')) {
     return st.origenReasignar ? [st.origenReasignar] : [];
   }
+  if (sql.startsWith('SELECT id_tipo_contrato FROM dual_tipos_contrato WHERE')) {
+    return st.tipoExiste ? [{ id_tipo_contrato: params[0] }] : [];
+  }
   if (st.lista && sql.startsWith('SELECT') && sql.includes(st.lista.match)) return st.lista.rows;
   return [];
 });
@@ -55,7 +58,7 @@ const OBJETIVO = {
 };
 
 async function llamar(fn, { user = ADMIN, params = {}, body = {}, query = {}, ...estado } = {}) {
-  st = { empresa: 100, ofertaPropia: true, objetivo: { ...OBJETIVO }, ...estado };
+  st = { empresa: 100, ofertaPropia: true, tipoExiste: true, objetivo: { ...OBJETIVO }, ...estado };
   tx.length = 0;
   avisos.length = 0;
   pool.calls.length = 0;
@@ -64,7 +67,7 @@ async function llamar(fn, { user = ADMIN, params = {}, body = {}, query = {}, ..
   return res;
 }
 
-const BOOK = { id_solicitud_alumno: 40, id_solicitud_empresa_especialidad: 5 };
+const BOOK = { id_solicitud_alumno: 40, id_solicitud_empresa_especialidad: 5, id_tipo_contrato: 1 };
 
 // ── Booking ─────────────────────────────────────────────────────────────────
 
@@ -72,6 +75,19 @@ test('company booking: both ids are required', async () => {
   for (const body of [{}, { id_solicitud_alumno: 40 }, { id_solicitud_empresa_especialidad: 'x' }, { id_solicitud_alumno: -1, id_solicitud_empresa_especialidad: 5 }]) {
     assert.equal((await llamar('reservar', { user: EMPRESA, body })).statusCode, 400, JSON.stringify(body));
   }
+  assert.equal(tx.length, 0);
+});
+
+test('company booking: the contract type (beca → Anexo III, other → Anexo II) is required and must exist', async () => {
+  const { id_tipo_contrato: _omit, ...sinTipo } = BOOK;
+  for (const body of [sinTipo, { ...BOOK, id_tipo_contrato: '' }, { ...BOOK, id_tipo_contrato: 'beca' }]) {
+    const res = await llamar('reservar', { user: EMPRESA, body });
+    assert.equal(res.statusCode, 400, JSON.stringify(body));
+    assert.match(res.body.error, /tipo de contrato/);
+  }
+  const res = await llamar('reservar', { user: EMPRESA, body: { ...BOOK, id_tipo_contrato: 99 }, tipoExiste: false });
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /no válido/);
   assert.equal(tx.length, 0);
 });
 
@@ -103,7 +119,7 @@ test('company booking: created PENDIENTE in a transaction, student told after th
   const res = await llamar('reservar', { user: EMPRESA, body: BOOK });
   assert.equal(res.statusCode, 201);
   assert.deepEqual(res.body, { message: 'Alumno reservado correctamente.', id_reserva: 77, estado_reserva: 'PENDIENTE' });
-  assert.deepEqual(tx, [['reservar', { idSolicitudAlumno: 40, idOferta: 5, user: EMPRESA }]]);
+  assert.deepEqual(tx, [['reservar', { idSolicitudAlumno: 40, idOferta: 5, idTipoContrato: 1, user: EMPRESA }]]);
   const sqls = pool.calls.map((c) => c.sql);
   assert.ok(sqls.indexOf('COMMIT') > sqls.indexOf('BEGIN'));
   assert.deepEqual(avisos, [['reservaCreada', 77]]);

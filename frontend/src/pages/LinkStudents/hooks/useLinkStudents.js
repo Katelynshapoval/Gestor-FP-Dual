@@ -145,20 +145,20 @@ export const useLinkStudents = () => {
       return next;
     });
 
+  // Company booking with its contract type (beca → Anexo III, other → Anexo II).
+  // Errors are thrown so the booking dialog can show them and stay open.
   const reserveStudent = async (
     idSolicitudAlumno,
     idSolicitudEmpresaEspecialidad,
+    idTipoContrato,
   ) => {
-    try {
-      await postJSON("/reservas", {
-        id_solicitud_alumno: idSolicitudAlumno,
-        id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
-      });
-      toast.success("Reserva creada.");
-      await fetchLinkRequests();
-    } catch (err) {
-      toast.error(err.message || "Error al reservar el alumno.");
-    }
+    await postJSON("/reservas", {
+      id_solicitud_alumno: idSolicitudAlumno,
+      id_solicitud_empresa_especialidad: idSolicitudEmpresaEspecialidad,
+      id_tipo_contrato: idTipoContrato,
+    });
+    toast.success("Reserva creada.");
+    await fetchLinkRequests();
   };
 
   // Company cancels its own pending reservation; errors stay in the dialog.

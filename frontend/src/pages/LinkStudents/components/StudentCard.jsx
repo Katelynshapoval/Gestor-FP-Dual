@@ -24,6 +24,7 @@ import AlumnoDatosActions from "./student-card/AlumnoDatosActions";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import EstadoBadge from "../../../components/ui/EstadoBadge.jsx";
 import MotivoDialog from "../../../components/ui/MotivoDialog.jsx";
+import ReservarDialog from "../../../components/reservas/ReservarDialog.jsx";
 import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBadges.jsx";
 import CuentaPanel from "../../../components/CuentaPanel.jsx";
 import { label } from "../../../utils/labels.js";
@@ -82,6 +83,7 @@ const ReservasChips = ({ reservas, excludeId }) => {
 // Reserve / cancel button for empresa users
 const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showReserveModal, setShowReserveModal] = useState(false);
   const reservaConfirmada = r.reservas?.some((rv) =>
     isConfirmedReserva(rv.estado_reserva),
   );
@@ -134,20 +136,33 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
       <span className="text-xs text-muted">Sin plazas disponibles</span>
     );
 
+  // The company chooses beca or contrato when booking (beca → Anexo III, else Anexo II).
   return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onReserve(
-          r.id_solicitud_alumno,
-          ofertaMatch.id_solicitud_empresa_especialidad,
-        );
-      }}
-      className="btn btn-outline-brand btn-sm"
-    >
-      Reservar alumno
-    </button>
+    <>
+      <ReservarDialog
+        open={showReserveModal}
+        nombre={r.nombre}
+        onClose={() => setShowReserveModal(false)}
+        onConfirm={async (idTipoContrato) => {
+          await onReserve(
+            r.id_solicitud_alumno,
+            ofertaMatch.id_solicitud_empresa_especialidad,
+            idTipoContrato,
+          );
+          setShowReserveModal(false);
+        }}
+      />
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowReserveModal(true);
+        }}
+        className="btn btn-outline-brand btn-sm"
+      >
+        Reservar alumno
+      </button>
+    </>
   );
 };
 

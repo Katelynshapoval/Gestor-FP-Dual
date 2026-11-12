@@ -102,8 +102,8 @@
 | `GET /reservas/:id/detalle` | Todos los roles (propiedad) | Ficha completa con acciones e intentos relacionados (`relacionadas`) |
 | `GET /reservas/ofertas-elegibles?id_solicitud_alumno=[&reasignar_desde=]` | Personal | |
 | `GET /reservas/alumnos-elegibles?id_solicitud_empresa_especialidad=` | Personal | |
-| `POST /reservas` | EMPRESA | `{ id_solicitud_alumno, id_solicitud_empresa_especialidad }` · 400 si el par ya tiene una reserva activa |
-| `POST /reservas/admin` | Personal | Ídem, sin exigir convocatoria activa |
+| `POST /reservas` | EMPRESA | `{ id_solicitud_alumno, id_solicitud_empresa_especialidad, id_tipo_contrato }` · tipo obligatorio (beca → Anexo III, resto → Anexo II) · 400 si el par ya tiene una reserva activa |
+| `POST /reservas/admin` | Personal | `{ id_solicitud_alumno, id_solicitud_empresa_especialidad }`, sin exigir convocatoria activa; el tipo se indica después |
 | `POST /reservas/:id/cancelar` | EMPRESA (propiedad) | `{ motivo }` · solo PENDIENTE |
 | `POST /reservas/:id/cancelar-admin` | Personal | `{ motivo }` |
 | `POST /reservas/:id/reasignar` | Personal | `{ id_solicitud_empresa_especialidad, motivo }` |

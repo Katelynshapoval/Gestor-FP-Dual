@@ -4,7 +4,7 @@ import { useToast } from "./feedback/ToastProvider.jsx";
 
 // One request per page load for the contract-type catalogue.
 let tiposPromise = null;
-function loadTiposContrato() {
+export function loadTiposContrato() {
   if (!tiposPromise) {
     tiposPromise = getJSON("/tiposContrato")
       .then((rows) => (Array.isArray(rows) ? rows : []))
@@ -22,7 +22,7 @@ function loadTiposContrato() {
  * POST /reservas/:id/tipo-contrato endpoint (staff only).
  */
 // Annex family of a contract type: Beca → Anexo III, any other → Anexo II.
-const familia = (t) => (/beca/i.test(`${t.nombre || ""} ${t.nombre_mostrar || ""}`) ? "ANEXO_III" : "ANEXO_II");
+export const familiaAnexo = (t) => (/beca/i.test(`${t.nombre || ""} ${t.nombre_mostrar || ""}`) ? "ANEXO_III" : "ANEXO_II");
 
 // `familiaFija` (D2): once an annex of one family is under review or validated,
 // types of the other family are shown disabled (the backend refuses them too).
@@ -92,7 +92,7 @@ const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = 
             Sin indicar
           </option>
           {tipos.map((t) => {
-            const bloqueado = Boolean(familiaFija) && familia(t) !== familiaFija;
+            const bloqueado = Boolean(familiaFija) && familiaAnexo(t) !== familiaFija;
             return (
               <option key={t.id_tipo_contrato} value={t.id_tipo_contrato} disabled={bloqueado}>
                 {t.nombre_mostrar || t.nombre}

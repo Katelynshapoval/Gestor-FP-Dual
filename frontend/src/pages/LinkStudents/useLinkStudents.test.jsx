@@ -169,13 +169,14 @@ describe("company", () => {
     });
     const { result } = montar();
     await waitFor(() => expect(result.current.status).toBe("ready"));
-    await act(() => result.current.reserveStudent(1, 5));
-    await act(() => result.current.reserveStudent(9, 5));
+    await act(() => result.current.reserveStudent(1, 5, 1));
+    // A refusal is thrown so the booking dialog keeps it on screen.
+    await act(() => expect(result.current.reserveStudent(9, 5, 2)).rejects.toThrow("Sin plazas."));
     await act(() => result.current.cancelReservation(8, "Ya no"));
     const posts = llamadas.filter((l) => l.method === "POST");
     expect(posts.map((p) => [p.path, p.body])).toEqual([
-      ["/reservas", { id_solicitud_alumno: 1, id_solicitud_empresa_especialidad: 5 }],
-      ["/reservas", { id_solicitud_alumno: 9, id_solicitud_empresa_especialidad: 5 }],
+      ["/reservas", { id_solicitud_alumno: 1, id_solicitud_empresa_especialidad: 5, id_tipo_contrato: 1 }],
+      ["/reservas", { id_solicitud_alumno: 9, id_solicitud_empresa_especialidad: 5, id_tipo_contrato: 2 }],
       ["/reservas/8/cancelar", { motivo: "Ya no" }],
     ]);
   });
