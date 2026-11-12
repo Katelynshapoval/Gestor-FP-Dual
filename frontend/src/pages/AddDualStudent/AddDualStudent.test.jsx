@@ -97,11 +97,11 @@ test("contact: 9-digit phone, 5-digit postal code, choices answered, a valid Soc
   siguiente();
   expect(errores()).toMatch(/Carnet de conducir: Elige una opción/);
   pasoContacto();
-  escribir("Teléfono", "600 123 456");
+  escribir("Teléfono", "600 12");
   escribir("Código postal", "5000");
   escribir("Nº de la Seguridad Social", "123456789012");
   siguiente();
-  expect(errores()).toMatch(/9 cifras, sin espacios/);
+  expect(errores()).toMatch(/teléfono de 9 cifras/);
   expect(errores()).toMatch(/5 cifras del código postal/);
   expect(errores()).toMatch(/12 cifras y ser un número válido/);
   escribir("Teléfono", "600123456");

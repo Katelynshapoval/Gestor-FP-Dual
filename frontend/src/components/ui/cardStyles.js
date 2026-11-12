@@ -1,5 +1,5 @@
 export const cardClass =
-  "mb-2 overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card transition-shadow duration-150 hover:shadow-card-hover";
+  "mb-2 overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card transition-[box-shadow,border-color] duration-200 ease-out hover:border-surface-300 hover:shadow-card-hover animate-rise-in";
 
 export const cardHeaderClass =
   "flex cursor-pointer select-none items-center justify-between gap-4 px-4 py-3 transition-colors duration-150";

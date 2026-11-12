@@ -49,7 +49,7 @@
 .input,
 .textarea,
 .select-input {
-  @apply w-full rounded-lg border border-surface-200 bg-white px-3 py-2.5 text-base font-normal text-charcoal-950 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out placeholder:text-charcoal-400 placeholder:italic hover:border-surface-300 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20 disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-muted;
+  @apply w-full rounded-lg border border-surface-200 bg-white px-3 py-2.5 text-base font-normal text-charcoal-950 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out placeholder:text-charcoal-400 placeholder:italic hover:border-surface-300 focus:outline-none focus-visible:border-charcoal-500 focus-visible:ring-2 focus-visible:ring-charcoal-400/25 disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-muted;
 }
 
 .select-input {
@@ -65,7 +65,7 @@
 }
 
 .radio-option {
-  @apply flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-100 hover:bg-brand-50 focus-within:border-brand-200 focus-within:bg-brand-50;
+  @apply flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-100 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:bg-brand-50;
 }
 
 .radio-option input[type="radio"] {
@@ -87,7 +87,7 @@
 }
 
 .checkbox-item {
-  @apply flex cursor-pointer items-center justify-between rounded-lg border border-surface-200 bg-white px-3 py-2.5 font-normal transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-300 hover:bg-brand-50 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/15;
+  @apply flex cursor-pointer items-center justify-between rounded-lg border border-surface-200 bg-white px-3 py-2.5 font-normal transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-300 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:ring-2 focus-within:ring-charcoal-400/25;
 }
 
 .checkbox-item.checked {
@@ -157,7 +157,7 @@
 }
 
 .file-upload {
-  @apply flex w-full cursor-pointer flex-row items-center gap-3 rounded-lg border border-dashed border-brand-200 bg-white px-4 py-4 text-charcoal-700 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-400 hover:bg-brand-50 focus-within:border-brand-600 focus-within:ring-2 focus-within:ring-brand-500/20;
+  @apply flex w-full cursor-pointer flex-row items-center gap-3 rounded-lg border border-dashed border-brand-200 bg-white px-4 py-4 text-charcoal-700 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-400 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:ring-2 focus-within:ring-charcoal-400/25;
 }
 
 .file-upload-icon {

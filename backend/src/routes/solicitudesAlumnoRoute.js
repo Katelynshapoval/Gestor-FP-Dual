@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { signupRateLimit } = require('../middleware/loginRateLimit');
 const asyncHandler = require('../middleware/asyncHandler');
-const { pdfUpload, requirePdfSignature, NOT_PDF } = require('../middleware/pdfUpload');
+const { pdfUpload, requirePdfSignature, NOT_PDF, uploadErrorMessage } = require('../middleware/pdfUpload');
 const svc = require('../services/solicitudesAlumnoService');
 const cambios = require('../services/alumnoCambiosService');
 const baja = require('../services/bajaService').handlers('SOLICITUD_ALUMNO');
@@ -47,7 +47,7 @@ router.get('/solicitudes/alumno/:id/documentos', requireAuth, requireRole('ADMIN
 // Forward multer errors as 400 responses
 router.use((err, req, res, next) => {
   if (err.name === 'MulterError' || err.message === NOT_PDF) {
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: uploadErrorMessage(err) });
   }
   next(err);
 });

@@ -123,7 +123,7 @@ export default function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 flex items-center justify-center bg-black/45 p-3 animate-fade-in sm:p-6"
+      className="fixed inset-0 flex items-center justify-center bg-black/45 p-3 backdrop-blur-[2px] animate-fade-in sm:p-6"
       style={{ zIndex: 400 + Math.min(depth, 50) }}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && closeOnOverlay && !busy) onClose?.();
@@ -136,7 +136,7 @@ export default function Modal({
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         tabIndex={-1}
-        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-xl2 bg-white shadow-[0_24px_80px_rgb(17_17_16/0.28)] outline-none animate-slide-in ${SIZE[size] || SIZE.md}`}
+        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-xl2 bg-white shadow-[0_24px_80px_rgb(17_17_16/0.28)] outline-none animate-scale-in ${SIZE[size] || SIZE.md}`}
       >
         <div className="flex items-start justify-between gap-3 border-b border-surface-200 px-4 py-3 sm:px-5">
           <div className="min-w-0">

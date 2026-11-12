@@ -3,7 +3,7 @@
 const { Router } = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
-const { pdfUpload, requirePdfSignature, NOT_PDF } = require('../middleware/pdfUpload');
+const { pdfUpload, requirePdfSignature, NOT_PDF, uploadErrorMessage } = require('../middleware/pdfUpload');
 const svc = require('../services/correosService');
 
 const router = Router();
@@ -29,7 +29,7 @@ router.get('/correos/:clave/adjuntos/:id/archivo', ...admin, asyncHandler(svc.de
 // Upload errors (not a PDF, too large) as 400 responses.
 router.use('/correos', (err, _req, res, next) => {
   if (err?.name === 'MulterError' || err?.message === NOT_PDF) {
-    const message = err.code === 'LIMIT_FILE_SIZE' ? 'El PDF es demasiado grande.' : err.message;
+    const message = err.code === 'LIMIT_FILE_SIZE' ? 'El PDF es demasiado grande.' : uploadErrorMessage(err);
     return res.status(400).json({ error: message });
   }
   return next(err);

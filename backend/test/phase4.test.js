@@ -35,6 +35,7 @@ function panelDb({ convocatorias = CONVOCATORIAS } = {}) {
     if (sql.includes('FROM dual_solicitudes_alumno s')) return [{ n: params[0] === 2 ? 4 : 0 }];
     if (sql.includes('FROM dual_solicitudes_empresa s')) return [{ n: 1 }];
     if (sql.includes('FROM dual_empresa_cambios')) return [{ n: 2 }];
+    if (sql.includes('FROM dual_alumno_cambios')) return [{ n: 3 }];
     if (sql.includes('FROM dual_reservas r')) {
       return [
         { id_reserva: 1, tipo_contrato_clave: null },
@@ -62,6 +63,7 @@ test('panel: defaults to the active convocatoria and scopes every count to it', 
   assert.equal(c.solicitudes_alumno_pendientes, 4);
   assert.equal(c.solicitudes_empresa_pendientes, 1);
   assert.equal(c.cambios_empresa_pendientes, 2);
+  assert.equal(c.cambios_alumno_pendientes, 3, 'student data change requests are counted too');
   assert.equal(c.documentos_accion_centro, 7);
   assert.deepEqual(staffQueries[0], { convocatoria: '2', accionPendiente: 'CENTRO', pageSize: 10 });
   assert.deepEqual(c.reservas, { pendientes: 6, sinTipo: 1, listas: 1, revisar: 1, firmas: 1, documento: 2 });

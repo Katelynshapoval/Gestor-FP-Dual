@@ -43,7 +43,7 @@ test("shows the active convocatoria's companies, newest first, with convenio cou
   renderPagina(<AdminCompanyView />);
   await screen.findByRole("heading", { name: "Empresas" });
   await waitFor(() => expect(tarjetas()).toEqual(["Beta", "ACME"]));
-  expect(screen.getByRole("button", { name: /1 pendiente/ })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /1 por validar/ })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /1 sin convenio/ })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /1 cambio pendiente/ })).toBeInTheDocument();
 });

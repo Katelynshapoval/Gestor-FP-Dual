@@ -71,15 +71,15 @@ test("edit dialog: saving needs a change, and closing with changes asks first", 
   const guardar = screen.getByRole("button", { name: "Guardar cambios" });
   expect(guardar).toBeDisabled();
   expect(screen.getByText("Sin cambios")).toBeInTheDocument();
-  fireEvent.change(document.getElementById("campo-cp"), { target: { value: "50002" } });
+  fireEvent.change(screen.getByLabelText(/Código postal/), { target: { value: "50002" } });
   expect(guardar).toBeEnabled();
   expect(screen.getByText("1 campo modificado")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
   fireEvent.click(await screen.findByRole("button", { name: "Seguir editando" }));
-  expect(document.getElementById("campo-cp")).toHaveValue("50002");
+  expect(screen.getByLabelText(/Código postal/)).toHaveValue("50002");
   fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
   fireEvent.click(await screen.findByRole("button", { name: "Descartar" }));
-  await waitFor(() => expect(document.getElementById("campo-cp")).toBeNull());
+  await waitFor(() => expect(screen.queryByLabelText(/Código postal/)).toBeNull());
 });
 
 test("direct edit: a new ciclo is sent and the DNI is never sent", async () => {
@@ -128,7 +128,7 @@ test("student: sends a correction for review and sees it pending", async () => {
     </ToastProvider>,
   );
   fireEvent.click(await screen.findByRole("button", { name: "Solicitar corrección" }));
-  fireEvent.change(document.getElementById("campo-cp"), { target: { value: "50002" } });
+  fireEvent.change(screen.getByLabelText(/Código postal/), { target: { value: "50002" } });
   postJSON.mockResolvedValueOnce({ message: "Hemos recibido tu petición." });
   getJSON.mockResolvedValueOnce({ dni: "12345678Z", editable: true, datos, pending: pendingDiff, ultimo: null });
   fireEvent.click(screen.getByRole("button", { name: "Enviar para revisión" }));

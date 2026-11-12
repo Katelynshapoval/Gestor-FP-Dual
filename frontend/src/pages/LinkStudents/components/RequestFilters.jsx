@@ -17,7 +17,7 @@ const RequestFilters = ({ filters, setFilter, onReset, active, specialities, con
       value={filters.q}
       onChange={(v) => setFilter("q", v)}
       placeholder={isEmpresa ? "Nombre o DNI/NIE" : "Nombre, DNI/NIE o empresa"}
-      className="sm:col-span-2 lg:col-span-1"
+
     />
     {!isEmpresa && (
       <FilterSelect
@@ -54,6 +54,15 @@ const RequestFilters = ({ filters, setFilter, onReset, active, specialities, con
         onChange={(v) => setFilter("reserva", v)}
         allLabel="Cualquiera"
         options={RESERVA_OPCIONES}
+      />
+    )}
+    {!isEmpresa && (
+      <FilterSelect
+        label="Cambios de datos"
+        value={filters.cambios}
+        onChange={(v) => setFilter("cambios", v)}
+        allLabel="Todos"
+        options={[{ value: "pendiente", label: "Pendientes de aprobar" }]}
       />
     )}
   </FilterBar>

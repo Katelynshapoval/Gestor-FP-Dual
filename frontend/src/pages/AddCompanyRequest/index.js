@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { cifValido, dniNieValido } from "../../utils/formatValidation.js";
+import { cifValido, dniNieValido, normalizarEmail } from "../../utils/formatValidation.js";
 import { getJSON, postJSON } from "../../utils/api.js";
 import SpecialitySelector from "./SpecialitySelector.jsx";
 import TransportSelector from "./TransportSelector.jsx";
@@ -89,10 +89,11 @@ const LABELS = {
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const TEL_RE = /^[0-9+\s]{9,15}$/;
+const TEL_RE = /^\+?[0-9]{9,15}$/;
 const req = (v, msg = "Este campo es obligatorio.") => (String(v ?? "").trim() ? null : msg);
+const limpiarTel = (v) => String(v ?? "").replace(/[\s.\-()/]/g, "");
 const email = (v) => req(v) || (EMAIL_RE.test(v.trim()) ? null : "Escribe un email válido.");
-const tel = (v) => req(v) || (TEL_RE.test(v.trim()) ? null : "Escribe un teléfono válido (al menos 9 cifras).");
+const tel = (v) => req(v) || (TEL_RE.test(limpiarTel(v)) ? null : "Escribe un teléfono válido (al menos 9 cifras).");
 const dni = (v) => req(v) || (dniNieValido(v.trim().toUpperCase()) ? null : "No es un DNI/NIE válido.");
 const cp = (v) => req(v) || (/^[0-9]{5}$/.test(v.trim()) ? null : "Escribe las 5 cifras del código postal.");
 
@@ -102,7 +103,7 @@ function validateStep(id, v) {
     e.razonSocial = req(v.razonSocial);
     const c = v.cif.trim().toUpperCase();
     e.cif = req(c) || (/^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$/.test(c) && cifValido(c) ? null : "No es un CIF válido (letra, 7 cifras y control).");
-    e.telEmpresa = v.telEmpresa.trim() && !TEL_RE.test(v.telEmpresa.trim()) ? "Escribe un teléfono válido." : null;
+    e.telEmpresa = v.telEmpresa.trim() && !TEL_RE.test(limpiarTel(v.telEmpresa)) ? "Escribe un teléfono válido." : null;
     e.dirRazSocial = req(v.dirRazSocial);
     e.municipio = req(v.municipio);
     e.provincia = req(v.provincia);
@@ -184,7 +185,7 @@ const AddCompanyRequest = () => {
       await postJSON("/solicitudes/empresa", {
         cif: v.cif.trim().toUpperCase(),
         empresa: v.razonSocial.trim(),
-        telefonoEmpresa: v.telEmpresa.trim(),
+        telefonoEmpresa: limpiarTel(v.telEmpresa),
         domicilioLegal: v.dirRazSocial.trim(),
         cpLegal: v.cpRazSoc.trim(),
         provinciaLegal: v.provincia.trim(),
@@ -204,13 +205,13 @@ const AddCompanyRequest = () => {
             }),
         dniRepresentante: v.dniRl.trim().toUpperCase(),
         nombreRepresentante: v.responsableLegal.trim(),
-        emailRepresentante: v.emailRepresentante.trim(),
-        telefonoRepresentante: v.telefonoRepresentante.trim(),
+        emailRepresentante: normalizarEmail(v.emailRepresentante),
+        telefonoRepresentante: limpiarTel(v.telefonoRepresentante),
         cargoRepresentante: v.cargo.trim(),
         dniCoordinador: v.dniCoordinador.trim().toUpperCase(),
         nombreCoordinador: v.nombreCoordinador.trim(),
-        emailCoordinador: v.emailCoordinador.trim(),
-        telefonoCoordinador: v.telefonoCoordinador.trim(),
+        emailCoordinador: normalizarEmail(v.emailCoordinador),
+        telefonoCoordinador: limpiarTel(v.telefonoCoordinador),
         cargoCoordinador: "COORDINADOR DUAL",
         descripcion_puesto: v.descripcionPuesto.trim(),
         especialidades: Object.entries(v.especialidades).map(([id, n]) => ({
@@ -364,7 +365,7 @@ const AddCompanyRequest = () => {
 
                 <fieldset className="mb-5">
                   <legend className="mb-2 block text-sm font-semibold text-charcoal-800">Lugar de trabajo</legend>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm text-charcoal-800 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-500/15">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm text-charcoal-800 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:ring-2 focus-within:ring-charcoal-400/25">
                     <input
                       type="checkbox"
                       className="h-4 w-4 shrink-0 accent-brand-600"

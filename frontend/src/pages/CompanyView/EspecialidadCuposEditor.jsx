@@ -54,8 +54,10 @@ const EspecialidadCuposEditor = ({
 
   const save = async (esp, ids) => {
     const idOferta = esp.id_solicitud_empresa_especialidad;
-    const cantidad = Number(valueFor(esp));
-    if (!Number.isInteger(cantidad) || cantidad < 0) {
+    const raw = String(valueFor(esp) ?? "").trim();
+    const cantidad = Number(raw);
+    // An emptied field is not 0 places: Number("") would silently be 0.
+    if (raw === "" || !Number.isInteger(cantidad) || cantidad < 0) {
       setFieldError("Indica un número entero de plazas mayor o igual que 0.");
       return;
     }

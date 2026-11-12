@@ -2,6 +2,8 @@ const pool = require('../db/pool');
 const {
   getCompanyIdFromUser,
   sendSqlError,
+  dniNieValido,
+  normalizeDni,
 } = require('../helpers/dbHelpers');
 const { recordEvent } = require('./auditLog');
 
@@ -14,6 +16,22 @@ function trimOrNull(value) {
   if (value == null) return null;
   const s = String(value).trim();
   return s.length ? s : null;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TEL_RE = /^\+?[0-9]{9,15}$/;
+
+// Stores what people type in one shape (lower-case email, phone without
+// spaces, DNI in capitals) and says what is wrong, in Spanish. A typo in a
+// tutor's email means their notices never arrive; the DNI goes on the anexos.
+function formatoTutor(fields) {
+  if (fields.email) fields.email = fields.email.toLowerCase();
+  if (fields.telefono) fields.telefono = fields.telefono.replace(/[\s.\-()/]/g, '');
+  if (fields.dni) fields.dni = normalizeDni(fields.dni);
+  if (fields.email && !EMAIL_RE.test(fields.email)) return 'El email del tutor no es válido.';
+  if (fields.telefono && !TEL_RE.test(fields.telefono)) return 'El teléfono del tutor no es válido (al menos 9 cifras).';
+  if (fields.dni && !dniNieValido(fields.dni)) return 'El DNI/NIE del tutor no es válido.';
+  return null;
 }
 
 function tutorSelectSql(whereSql) {
@@ -135,15 +153,20 @@ exports.create = async function (req, res) {
   const { idEmpresa, error } = await resolveOwnedEmpresaId(req, explicit);
   if (error) return res.status(error.status).json({ error: error.message });
 
+  const datos = {
+    email: trimOrNull(req.body?.email),
+    telefono: trimOrNull(req.body?.telefono),
+    dni: trimOrNull(req.body?.dni),
+  };
   const nombre = trimOrNull(req.body?.nombre);
-  const email = trimOrNull(req.body?.email);
-  const telefono = trimOrNull(req.body?.telefono);
-  const dni = trimOrNull(req.body?.dni);
   const cargo = trimOrNull(req.body?.cargo) || 'TUTOR EMPRESA';
 
   if (!nombre) return res.status(400).json({ error: 'El nombre del tutor es obligatorio.' });
-  if (!email) return res.status(400).json({ error: 'El email del tutor es obligatorio.' });
-  if (!telefono) return res.status(400).json({ error: 'El teléfono del tutor es obligatorio.' });
+  if (!datos.email) return res.status(400).json({ error: 'El email del tutor es obligatorio.' });
+  if (!datos.telefono) return res.status(400).json({ error: 'El teléfono del tutor es obligatorio.' });
+  const formato = formatoTutor(datos);
+  if (formato) return res.status(400).json({ error: formato });
+  const { email, telefono, dni } = datos;
 
   const conn = await pool.getConnection();
   try {
@@ -238,6 +261,11 @@ exports.update = async function (req, res) {
       dni: trimOrNull(req.body?.dni),
       cargo: trimOrNull(req.body?.cargo),
     };
+    const formato = formatoTutor(fields);
+    if (formato) {
+      await conn.rollback();
+      return res.status(400).json({ error: formato });
+    }
 
     const sets = [];
     const params = [];

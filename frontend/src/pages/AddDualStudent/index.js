@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { dniNieValido, nSSValido } from "../../utils/formatValidation.js";
+import { dniNieValido, normalizarEmail, normalizarTelefono, nSSValido, problemaPdf, telefonoValido } from "../../utils/formatValidation.js";
 import { postForm, publicJSON } from "../../utils/api.js";
 import PageHeader from "../../components/ui/PageHeader.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
@@ -94,20 +94,30 @@ function esMenor(fecha) {
   return new Date(`${fecha}T12:00:00`) > limite;
 }
 
+// A typed year like 0200 or 2206 is a typo, not a birth date.
+function fechaNacimientoProblema(fecha) {
+  const d = new Date(`${fecha}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "Escribe una fecha válida.";
+  const hoy = new Date();
+  const edad = (hoy - d) / (365.25 * 24 * 3600 * 1000);
+  if (edad < 14) return "Revisa la fecha: tendrías menos de 14 años.";
+  if (edad > 80) return "Revisa el año de la fecha de nacimiento.";
+  return null;
+}
+
 const req = (v, msg = "Este campo es obligatorio.") => (String(v ?? "").trim() ? null : msg);
-const isPdf = (f) => f && (f.type === "application/pdf" || /\.pdf$/i.test(f.name));
 
 function validateStep(id, v) {
   const e = {};
   if (id === "ciclo") {
-    e.emailColegio = req(v.emailColegio) || (COLEGIO_RE.test(v.emailColegio.trim()) ? null : "Debe terminar en @zaragoza.salesianos.edu.");
+    e.emailColegio = req(v.emailColegio) || (COLEGIO_RE.test(normalizarEmail(v.emailColegio)) ? null : "Debe terminar en @zaragoza.salesianos.edu.");
     e.especialidad = req(v.especialidad, "Elige tu ciclo.");
   }
   if (id === "personales") {
     const dni = v.dni.trim().toUpperCase();
     e.dni = req(dni) || (dniNieValido(dni) ? null : "No es un DNI/NIE válido (8 números y letra, o X/Y/Z, 7 números y letra).");
     e.nombre = req(v.nombre);
-    e.fechaNacimiento = req(v.fechaNacimiento);
+    e.fechaNacimiento = req(v.fechaNacimiento) || fechaNacimientoProblema(v.fechaNacimiento);
     e.nacionalidad = req(v.nacionalidad);
     e.sexo = req(v.sexo, "Elige una opción.");
     if (esMenor(v.fechaNacimiento)) {
@@ -118,7 +128,7 @@ function validateStep(id, v) {
   }
   if (id === "contacto") {
     e.email = req(v.email) || (EMAIL_RE.test(v.email.trim()) ? null : "Escribe un email válido.");
-    e.telefono = req(v.telefono) || (/^[0-9]{9}$/.test(v.telefono.trim()) ? null : "Escribe 9 cifras, sin espacios.");
+    e.telefono = req(v.telefono) || (telefonoValido(v.telefono) ? null : "Escribe un teléfono de 9 cifras.");
     e.domicilio = req(v.domicilio);
     e.cp = req(v.cp) || (/^[0-9]{5}$/.test(v.cp.trim()) ? null : "Escribe las 5 cifras del código postal.");
     e.localidad = req(v.localidad);
@@ -129,8 +139,8 @@ function validateStep(id, v) {
     e.numeroSS = ss && !(/^[0-9]{12}$/.test(ss) && nSSValido(ss)) ? "Debe tener 12 cifras y ser un número válido." : null;
   }
   if (id === "documentos") {
-    e.cv = !v.cv ? "Adjunta tu currículum." : isPdf(v.cv) ? null : "El archivo debe ser un PDF.";
-    e.anexoDga = !v.anexoDga ? "Adjunta el Anexo DGA." : isPdf(v.anexoDga) ? null : "El archivo debe ser un PDF.";
+    e.cv = !v.cv ? "Adjunta tu currículum." : problemaPdf(v.cv);
+    e.anexoDga = !v.anexoDga ? "Adjunta el Anexo DGA." : problemaPdf(v.anexoDga);
   }
   if (id === "cuenta") {
     e.password = req(v.password) || (v.password.length >= 8 ? null : "Debe tener al menos 8 caracteres.");
@@ -162,14 +172,14 @@ function AddDualStudent() {
     setSubmitting(true);
     try {
       const data = new FormData();
-      data.append("emailColegio", v.emailColegio.trim());
+      data.append("emailColegio", normalizarEmail(v.emailColegio));
       data.append("dni", v.dni.trim().toUpperCase());
       data.append("nombre", v.nombre.trim());
       data.append("sexo", v.sexo);
       data.append("fechaNacimiento", v.fechaNacimiento);
       data.append("nacionalidad", v.nacionalidad.trim());
-      data.append("email", v.email.trim());
-      data.append("telalumno", v.telefono.trim());
+      data.append("email", normalizarEmail(v.email));
+      data.append("telalumno", normalizarTelefono(v.telefono));
       data.append("carnetDeConducir", v.carnet === "true" ? 1 : 0);
       data.append("tieneCoche", v.vehiculo === "true" ? 1 : 0);
       data.append("idiomasConocidos", v.idiomas.trim());
@@ -333,10 +343,10 @@ function AddDualStudent() {
                     {...field("telefono")} placeholder="Ej.: 600123456"
                     type="tel"
                     required
-                    inputMode="numeric"
-                    maxLength={9}
+                    inputMode="tel"
+                    maxLength={20}
                     autoComplete="tel-national"
-                    hint="9 cifras."
+                    hint="9 cifras. Puedes escribirlo con espacios."
                   />
                 </div>
                 <TextField {...field("domicilio")} required maxLength={255} autoComplete="street-address" placeholder="Calle, número, piso" />
@@ -392,7 +402,7 @@ function AddDualStudent() {
                   onChange={set}
                   error={errors.anexoDga}
                   required
-                  hint="El documento de la DGA firmado. Si no lo tienes, pídelo en secretaría."
+                  hint="El documento de la DGA firmado, en PDF de hasta 10 MB. Si no lo tienes, pídelo en secretaría."
                 />
               </>
             )}

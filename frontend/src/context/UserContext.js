@@ -5,6 +5,8 @@ const UserContext = createContext();
 
 // Used only when a token carries no readable `exp` (should not happen).
 const FALLBACK_DURATION = 8 * 60 * 60 * 1000;
+// How long before the end of the session people are warned to save their work.
+export const SESSION_WARNING_MS = 10 * 60 * 1000;
 
 const NOTICE = {
   ACCOUNT_DISABLED: "Tu cuenta está desactivada. Contacta con el centro.",
@@ -24,6 +26,8 @@ export const User = ({ children }) => {
   });
   // Why the session ended, shown once on the login page.
   const [sessionNotice, setSessionNotice] = useState(null);
+  // When the session ends, once it is less than SESSION_WARNING_MS away.
+  const [expiresSoon, setExpiresSoon] = useState(null);
   const endedRef = useRef(false);
 
   // Save immediately to avoid auth race conditions after login. The expiry
@@ -71,7 +75,12 @@ export const User = ({ children }) => {
     }
     // setTimeout overflows above ~24.8 days; tokens last hours.
     const timer = setTimeout(() => endSession("EXPIRED"), Math.min(ms, 2 ** 31 - 1));
-    return () => clearTimeout(timer);
+    const warn = setTimeout(() => setExpiresSoon(expires), Math.max(0, Math.min(ms - SESSION_WARNING_MS, 2 ** 31 - 1)));
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(warn);
+      setExpiresSoon(null);
+    };
   }, [user, endSession]);
 
   // Sync login/logout across browser tabs
@@ -99,7 +108,7 @@ export const User = ({ children }) => {
   const clearSessionNotice = useCallback(() => setSessionNotice(null), []);
 
   return (
-    <UserContext.Provider value={{ user, setUser, logout, sessionNotice, clearSessionNotice }}>
+    <UserContext.Provider value={{ user, setUser, logout, sessionNotice, clearSessionNotice, expiresSoon }}>
       {children}
     </UserContext.Provider>
   );

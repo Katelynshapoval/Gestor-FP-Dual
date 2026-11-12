@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "../components/feedback/ToastProvider.jsx";
 
 const inputCls =
-  "w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20";
+  "w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition focus:border-charcoal-500 focus:ring-2 focus:ring-charcoal-400/25";
 const labelCls = "text-xs font-semibold uppercase tracking-wide text-muted";
 
 async function post(url, body) {

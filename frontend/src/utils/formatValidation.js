@@ -81,3 +81,38 @@ export function cifValido(valor) {
     valorControl === letras[valorCalculado]
   );
 }
+
+// ── Forgiving input (what people actually type) ────────────────────────────
+
+// The server refuses uploads above this size (backend/src/middleware/pdfUpload.js).
+export const MAX_PDF_BYTES = 10 * 1024 * 1024;
+
+export function formatBytes(bytes) {
+  if (!Number.isFinite(bytes)) return "";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}
+
+// Why a picked file cannot be uploaded as a PDF, or null when it can.
+export function problemaPdf(file) {
+  if (!file) return null;
+  const esPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+  if (!esPdf) return "El archivo debe ser un PDF.";
+  if (file.size > MAX_PDF_BYTES) {
+    return `El PDF pesa ${formatBytes(file.size)} y el máximo es ${formatBytes(MAX_PDF_BYTES)}. Comprímelo (por ejemplo con ilovepdf.com) o escanéalo con menos calidad.`;
+  }
+  if (file.size === 0) return "El archivo está vacío.";
+  return null;
+}
+
+// "+34 634 89 71 39", "634-897-139" or "0034634897139" → "634897139".
+export function normalizarTelefono(valor) {
+  let t = String(valor ?? "").replace(/[\s.\-()/]/g, "");
+  if (/^(\+|00)34[0-9]{9}$/.test(t)) t = t.slice(-9);
+  return t;
+}
+
+export const telefonoValido = (valor) => /^[0-9]{9}$/.test(normalizarTelefono(valor));
+
+// Emails are case-insensitive: compare and store them trimmed and in lower case.
+export const normalizarEmail = (valor) => String(valor ?? "").trim().toLowerCase();

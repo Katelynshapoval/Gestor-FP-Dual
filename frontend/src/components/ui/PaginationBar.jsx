@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 const PAGE_SIZES = [10, 20, 50];
 const SELECT_CLASS =
-  "h-10 rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20";
+  "h-10 rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-charcoal-500 focus-visible:ring-2 focus-visible:ring-charcoal-400/25";
 
 export function visiblePages(current, total) {
   if (total <= 1) return total === 1 ? [1] : [];

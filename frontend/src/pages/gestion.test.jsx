@@ -107,22 +107,42 @@ const CONVOCATORIAS = [
 ];
 
 describe("convocatorias", () => {
-  test("states and edit button: only a future convocatoria can be edited, by an administrator", async () => {
+  test("states and edit buttons: the future and the active convocatoria can be edited, a closed one cannot", async () => {
     simularApi({ "GET /convocatorias": CONVOCATORIAS });
     renderPagina(<Convocatorias />);
     await screen.findByText("Actual");
     expect(screen.getByText("Activa")).toBeInTheDocument();
     expect(screen.getByText("Próxima", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByText("Cerrada")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Editar" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Editar" })).toHaveLength(2);
   });
 
-  test("coordinators see the list without editing", async () => {
-    iniciarSesion({ id: 2, rol: "COORDINADOR" });
-    simularApi({ "GET /convocatorias": CONVOCATORIAS });
+  test("mistakes are caught before sending, next to the form", async () => {
+    const { llamadas } = simularApi({ "GET /convocatorias": CONVOCATORIAS });
     renderPagina(<Convocatorias />);
     await screen.findByText("Actual");
-    expect(screen.queryByRole("button", { name: "Editar" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Crear convocatoria" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Escribe un nombre");
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "2030/2031" } });
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2031-09-01" } });
+    fireEvent.change(screen.getByLabelText("Fecha de fin"), { target: { value: "2030-06-30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Crear convocatoria" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("no puede ser posterior");
+    expect(llamadas.some((l) => l.method === "POST")).toBe(false);
+  });
+
+  test("the active convocatoria can be corrected but must stay open today", async () => {
+    const { llamadas } = simularApi({ "GET /convocatorias": CONVOCATORIAS, "PUT /convocatorias/6": {} });
+    renderPagina(<Convocatorias />);
+    await screen.findByText("Actual");
+    fireEvent.click(screen.getAllByRole("button", { name: "Editar" })[1]);
+    const ayer = new Date(Date.now() - 864e5);
+    const ayerIso = `${ayer.getFullYear()}-${String(ayer.getMonth() + 1).padStart(2, "0")}-${String(ayer.getDate()).padStart(2, "0")}`;
+    fireEvent.change(screen.getByLabelText("Fecha fin"), { target: { value: ayerIso } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("seguir abierta hoy");
+    expect(llamadas.some((l) => l.method === "PUT")).toBe(false);
   });
 
   test("creating sends name and dates and reloads; a refusal is shown", async () => {
@@ -145,7 +165,7 @@ describe("convocatorias", () => {
     const { llamadas } = simularApi({ "GET /convocatorias": CONVOCATORIAS, "PUT /convocatorias/7": {} });
     renderPagina(<Convocatorias />);
     await screen.findByText("Actual");
-    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Editar" })[0]);
     expect(screen.getByLabelText("Fecha inicio")).toHaveValue(futura);
     fireEvent.change(screen.getByDisplayValue("Próxima"), { target: { value: "Próxima 2" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));

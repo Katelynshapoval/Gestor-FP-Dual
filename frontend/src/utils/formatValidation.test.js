@@ -63,3 +63,42 @@ describe("nSSValido", () => {
     expect(nSSValido(numero + String((Number(control) + 1) % 97).padStart(2, "0"))).toBe(false);
   });
 });
+
+describe("forgiving input", () => {
+  const { MAX_PDF_BYTES, formatBytes, normalizarEmail, normalizarTelefono, problemaPdf, telefonoValido } = require("./formatValidation.js");
+  const { avisoRegenerar } = require("./documentos.js");
+
+  test("phones with spaces, dashes or +34 are the same 9 digits", () => {
+    for (const t of ["634 897 139", "634-897-139", "+34 634 89 71 39", "0034634897139", "(634) 897.139"]) {
+      expect(normalizarTelefono(t)).toBe("634897139");
+      expect(telefonoValido(t)).toBe(true);
+    }
+    expect(telefonoValido("634 89")).toBe(false);
+  });
+
+  test("emails are compared trimmed and in lower case", () => {
+    expect(normalizarEmail("  Ana.Garcia@Zaragoza.Salesianos.EDU ")).toBe("ana.garcia@zaragoza.salesianos.edu");
+  });
+
+  test("a picked file is checked for type, size and emptiness at once", () => {
+    const f = (name, size, type = "application/pdf") => ({ name, size, type });
+    expect(problemaPdf(null)).toBeNull();
+    expect(problemaPdf(f("cv.pdf", 2_000_000))).toBeNull();
+    expect(problemaPdf(f("CV.PDF", 1000, ""))).toBeNull();
+    expect(problemaPdf(f("foto.jpg", 1000, "image/jpeg"))).toMatch(/debe ser un PDF/);
+    expect(problemaPdf(f("scan.pdf", MAX_PDF_BYTES + 1))).toMatch(/máximo es 10,0 MB/);
+    expect(problemaPdf(f("vacio.pdf", 0))).toMatch(/vacío/);
+    expect(formatBytes(512)).toBe("1 KB");
+    expect(formatBytes(2.5 * 1024 * 1024)).toBe("2,5 MB");
+  });
+
+  test("regenerating names who already signed", () => {
+    expect(avisoRegenerar([])).toBe("Se creará una nueva versión del documento.");
+    const firmas = [
+      { rol_label: "Empresa", estado: "FIRMADO" },
+      { rol_label: "Centro", estado: "PENDIENTE" },
+      { rol_label: "Alumno", estado: "FIRMADO" },
+    ];
+    expect(avisoRegenerar(firmas)).toMatch(/Ya han firmado: Empresa y Alumno\..*tendrán que volver a firmar/);
+  });
+});

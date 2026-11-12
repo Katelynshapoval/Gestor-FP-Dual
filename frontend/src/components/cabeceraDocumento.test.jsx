@@ -86,7 +86,7 @@ describe("document card", () => {
     const input = screen.getByLabelText("Archivo PDF de Calendario");
     expect(screen.getByRole("button", { name: "Subir" })).toBeDisabled();
     fireEvent.change(input, { target: { files: [new File(["x"], "foto.png", { type: "image/png" })] } });
-    expect(screen.getByText("Solo se admiten PDFs.")).toBeInTheDocument();
+    expect(screen.getByText("El archivo debe ser un PDF.")).toBeInTheDocument();
     fireEvent.change(input, { target: { files: [pdf()] } });
     fireEvent.click(screen.getByRole("button", { name: "Subir" }));
     expect(await screen.findByText("Documento enviado.")).toBeInTheDocument();

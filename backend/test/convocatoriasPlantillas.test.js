@@ -66,7 +66,7 @@ test('sync: a database error rolls back and is rethrown; read endpoints carry on
   st = { respuestas: [['AS vigente FROM dual_convocatorias', () => { throw new Error('caída'); }]] };
   await assert.rejects(conv.syncConvocatoriaActiva(), /caída/);
   assert.ok(hubo('ROLLBACK'));
-  const res = await llamar(conv, 'getAll', { respuestas: [['AS vigente', () => { throw new Error('caída'); }], ['ORDER BY id_convocatoria DESC', [{ id_convocatoria: 5 }]]] });
+  const res = await llamar(conv, 'getAll', { respuestas: [['AS vigente', () => { throw new Error('caída'); }], ['ORDER BY fecha_inicio DESC', [{ id_convocatoria: 5 }]]] });
   assert.deepEqual(res.body, [{ id_convocatoria: 5 }]);
 });
 
@@ -114,20 +114,48 @@ test('create: name and ISO dates required, start before end, no overlap; opens a
   assert.equal(res.body.activa, 1, 'activated because today is in its range');
 });
 
-test('edit: only a convocatoria that is not active; overlap ignores itself', async () => {
+test('edit: a future one freely, the active one only while it stays open today, never a closed one', async () => {
   assert.equal((await llamar(conv, 'update', { params: { id: 'x' } })).statusCode, 400);
   assert.equal((await llamar(conv, 'update', { params: { id: '7' } })).statusCode, 404);
-  let res = await llamar(conv, 'update', { params: { id: '6' }, respuestas: [['SELECT fecha_inicio, activa', [{ activa: 1 }]]] });
+  const fila = (activa, futura) => ['AS futura', [{ activa, futura, hoy: '2026-11-12' }]];
+
+  let res = await llamar(conv, 'update', { params: { id: '5' }, body: {}, respuestas: [fila(0, 0)] });
   assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /cerrada/);
+
+  const activaBody = (inicio, fin) => ({ nombre: ' 2026/2027 ', fecha_inicio: inicio, fecha_fin: fin });
+  for (const [inicio, fin] of [['2026-12-01', '2027-06-30'], ['2026-09-01', '2026-11-01']]) {
+    res = await llamar(conv, 'update', { params: { id: '6' }, body: activaBody(inicio, fin), respuestas: [fila(1, 0)] });
+    assert.equal(res.statusCode, 400, `${inicio}–${fin} would close the active one`);
+    assert.match(res.body.error, /seguir abierta hoy/);
+  }
+  res = await llamar(conv, 'update', {
+    params: { id: '6' }, body: activaBody('2026-09-01', '2027-07-31'),
+    respuestas: [fila(1, 0), ['WHERE id_convocatoria = ?', [{ id_convocatoria: 6 }]]],
+  });
+  assert.equal(res.statusCode, 200, 'a typo in the end date of the active one can be fixed');
+  assert.deepEqual(escrituras().at(-1).params, ['2026/2027', '2026-09-01', '2027-07-31', 6], 'name trimmed');
+
   const body = { nombre: '2027/2028', fecha_inicio: '2027-09-01', fecha_fin: '2028-06-30' };
   res = await llamar(conv, 'update', {
     params: { id: '7' }, body,
-    respuestas: [['SELECT fecha_inicio, activa', [{ activa: 0 }]], ['WHERE id_convocatoria = ?', [{ id_convocatoria: 7 }]]],
+    respuestas: [fila(0, 1), ['WHERE id_convocatoria = ?', [{ id_convocatoria: 7 }]]],
   });
   assert.equal(res.statusCode, 200);
-  const overlap = pool.calls.find((c) => c.sql.startsWith('SELECT nombre FROM dual_convocatorias'));
+  const overlap = pool.calls.filter((c) => c.sql.startsWith('SELECT nombre FROM dual_convocatorias')).at(-1);
   assert.deepEqual(overlap.params, ['2028-06-30', '2027-09-01', 7, 7]);
-  assert.deepEqual(escrituras()[0].params, ['2027/2028', '2027-09-01', '2028-06-30', 7]);
+  assert.deepEqual(escrituras().at(-1).params, ['2027/2028', '2027-09-01', '2028-06-30', 7]);
+});
+
+test('create: a name made only of spaces is refused; the name is stored trimmed', async () => {
+  let res = await llamar(conv, 'create', { body: { nombre: '   ', fecha_inicio: '2027-01-01', fecha_fin: '2027-06-30' } });
+  assert.equal(res.statusCode, 400);
+  res = await llamar(conv, 'create', {
+    body: { nombre: '  2027/2028 ', fecha_inicio: '2027-09-01', fecha_fin: '2028-06-30' },
+    respuestas: [['WHERE id_convocatoria = ?', [{ id_convocatoria: 78, activa: 0 }]]],
+  });
+  assert.equal(res.statusCode, 201);
+  assert.equal(escrituras().at(-1).params[0], '2027/2028');
 });
 
 // ── Document templates ──────────────────────────────────────────────────────

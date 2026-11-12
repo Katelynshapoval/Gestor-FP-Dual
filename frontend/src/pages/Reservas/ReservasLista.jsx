@@ -107,7 +107,7 @@ const ReservasLista = ({ reservations, onReservationUpdate, activaNombre }) => {
           value={filters.q}
           onChange={(v) => setFilter("q", v)}
           placeholder="Alumno, DNI/NIE, empresa o tutor"
-          className="sm:col-span-2 lg:col-span-1"
+
         />
         <FilterSelect
           label="Convocatoria"

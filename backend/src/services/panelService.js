@@ -42,6 +42,18 @@ async function contarCambiosEmpresa(idConvocatoria) {
   return Number(rows[0].n);
 }
 
+// Students' data change requests waiting for the centre (migration 020).
+async function contarCambiosAlumno(idConvocatoria) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS n
+       FROM dual_alumno_cambios ac
+       JOIN dual_solicitudes_alumno sa ON sa.id_solicitud_alumno = ac.id_solicitud_alumno
+      WHERE ac.estado = 'PENDIENTE' AND sa.id_convocatoria = ?`,
+    [idConvocatoria]
+  );
+  return Number(rows[0].n);
+}
+
 // Pending reservations grouped exactly like the Reservas page (ReservasAdmin.grupoDe).
 async function contarReservas(idConvocatoria) {
   const [rows] = await pool.query(
@@ -86,10 +98,11 @@ exports.resumen = async function (req, res) {
     return res.json({ convocatoria: null, convocatorias: opciones, contadores: null });
   }
   const id = convocatoria.id_convocatoria;
-  const [alumnos, empresas, cambios, reservas, documentos, convenio] = await Promise.all([
+  const [alumnos, empresas, cambios, cambiosAlumno, reservas, documentos, convenio] = await Promise.all([
     contarSolicitudes('dual_solicitudes_alumno', id),
     contarSolicitudes('dual_solicitudes_empresa', id),
     contarCambiosEmpresa(id),
+    contarCambiosAlumno(id),
     contarReservas(id),
     contarDocumentosCentro(id),
     conveniosPendientes.resumen(id),
@@ -107,6 +120,7 @@ exports.resumen = async function (req, res) {
       solicitudes_alumno_pendientes: alumnos,
       solicitudes_empresa_pendientes: empresas,
       cambios_empresa_pendientes: cambios,
+      cambios_alumno_pendientes: cambiosAlumno,
       documentos_accion_centro: documentos,
       reservas: reservas,
       // { plantilla_activa, solicitudes_sin_convenio }: "no CONVENIO template" warning.

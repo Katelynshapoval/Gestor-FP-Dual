@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "./Header/Header";
 import Footer from "./Footer/Footer";
+import SessionWarning from "./SessionWarning.jsx";
 import { useUser } from "../../context/UserContext";
 import { pageTitle } from "../../navigation.js";
 
@@ -54,7 +55,12 @@ const PageLayout = ({ children }) => {
 
       <div className="flex min-h-0 min-w-0 flex-col md:col-start-2 md:row-start-2">
         <main id="contenido" ref={mainRef} tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
-          {children ?? <Outlet />}
+          <SessionWarning />
+          {/* A soft fade-and-rise when moving to another section of the app
+              (tabs inside a section keep their own, lighter transition). */}
+          <div key={pathname.split("/")[1] || "inicio"} className="flex min-h-0 flex-1 flex-col animate-page-in">
+            {children ?? <Outlet />}
+          </div>
         </main>
         <Footer />
       </div>

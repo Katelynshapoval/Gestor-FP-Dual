@@ -73,7 +73,7 @@ function startConvocatoriaScheduler(intervalMs = SYNC_INTERVAL_MS) {
 
 // Validates dates and rejects ranges that overlap another convocatoria.
 async function validateRange(nombre, fechaInicio, fechaFin, excludeId = null) {
-  if (!nombre || !fechaInicio || !fechaFin) {
+  if (!String(nombre ?? '').trim() || !fechaInicio || !fechaFin) {
     return { status: 400, error: 'nombre, fecha_inicio y fecha_fin son obligatorios.' };
   }
   if (!DATE_RE.test(String(fechaInicio)) || !DATE_RE.test(String(fechaFin))) {
@@ -105,7 +105,7 @@ exports.startConvocatoriaScheduler = startConvocatoriaScheduler;
 exports.getAll = async function (req, res) {
   await safeSync();
   const [rows] = await pool.query(
-    'SELECT * FROM dual_convocatorias ORDER BY id_convocatoria DESC'
+    'SELECT * FROM dual_convocatorias ORDER BY fecha_inicio DESC, id_convocatoria DESC'
   );
   return res.json(rows);
 };
@@ -139,7 +139,8 @@ exports.getEstado = async function (req, res) {
 
 // POST /convocatorias — creates a new convocatoria, inactive by default
 exports.create = async function (req, res) {
-  const { nombre, fecha_inicio, fecha_fin } = req.body;
+  const { fecha_inicio, fecha_fin } = req.body;
+  const nombre = String(req.body.nombre ?? '').trim();
   const invalid = await validateRange(nombre, fecha_inicio, fecha_fin);
   if (invalid) return res.status(invalid.status).json({ error: invalid.error });
   try {
@@ -160,24 +161,35 @@ exports.create = async function (req, res) {
   }
 };
 
-// PUT /convocatorias/:id — updates a future (not yet active) convocatoria
+// PUT /convocatorias/:id — updates a future or the active convocatoria.
+// The active one can be corrected (a typo in its name or end date) as long as
+// it stays active: it must still contain today. Closed ones are history.
 exports.update = async function (req, res) {
   const id = parseInt(req.params.id, 10);
-  const { nombre, fecha_inicio, fecha_fin } = req.body;
+  const { fecha_inicio, fecha_fin } = req.body;
+  const nombre = String(req.body.nombre ?? '').trim();
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: 'Convocatoria no válida.' });
   }
   try {
     const [check] = await pool.query(
-      'SELECT fecha_inicio, activa FROM dual_convocatorias WHERE id_convocatoria = ?',
+      `SELECT activa, fecha_inicio > CURDATE() AS futura,
+              DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS hoy
+         FROM dual_convocatorias WHERE id_convocatoria = ?`,
       [id]
     );
     if (!check[0]) return res.status(404).json({ error: 'Convocatoria no encontrada.' });
-    if (check[0].activa) {
-      return res.status(400).json({ error: 'No se puede editar una convocatoria activa.' });
+    const { activa, futura, hoy } = check[0];
+    if (!Number(activa) && !Number(futura)) {
+      return res.status(400).json({ error: 'Una convocatoria cerrada no se puede modificar.' });
     }
     const invalid = await validateRange(nombre, fecha_inicio, fecha_fin, id);
     if (invalid) return res.status(invalid.status).json({ error: invalid.error });
+    if (Number(activa) && (String(fecha_inicio) > hoy || String(fecha_fin) < hoy)) {
+      return res.status(400).json({
+        error: 'La convocatoria activa tiene que seguir abierta hoy: la fecha de inicio no puede ser posterior a hoy ni la de fin anterior.',
+      });
+    }
 
     await pool.query(
       'UPDATE dual_convocatorias SET nombre = ?, fecha_inicio = ?, fecha_fin = ? WHERE id_convocatoria = ?',

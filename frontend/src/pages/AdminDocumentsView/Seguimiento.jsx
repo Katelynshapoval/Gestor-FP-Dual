@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getJSON, postJSON } from "../../utils/api.js";
-import { formatDocumentDate } from "../../utils/documentos.js";
+import { avisoRegenerar, formatDocumentDate } from "../../utils/documentos.js";
 import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
 import EstadoBadge from "../../components/ui/EstadoBadge.jsx";
 import PdfViewer from "../../components/ui/PdfViewer.jsx";
@@ -11,7 +11,7 @@ import { ACTOR, tipoContratoLabel } from "../../utils/labels.js";
 import PaginationBar from "../../components/ui/PaginationBar";
 
 const FILTER_SELECT_CLASS =
-  "rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/20";
+  "rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-charcoal-500 focus-visible:ring-2 focus-visible:ring-charcoal-400/25";
 const FILTER_LABEL_CLASS = "text-xs font-semibold whitespace-nowrap text-charcoal-700";
 
 const EMPTY_FILTERS = {
@@ -226,7 +226,7 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
       if (regenerar) {
         const accepted = await confirm({
           title: `Regenerar ${item.nombre}`,
-          message: "Se creará una nueva versión. Las firmas anteriores dejan de aplicar.",
+          message: avisoRegenerar(item.firmas),
           confirmLabel: "Regenerar",
         });
         if (!accepted) return false;
@@ -422,6 +422,8 @@ function FilterPanel({
   hasActiveFilters,
   onClear,
 }) {
+  // Phones: search and convocatoria only; the rest opens with «Filtros».
+  const [mobileOpen, setMobileOpen] = useState(false);
   return (
     <div className="space-y-3 rounded-xl2 border border-surface-200 bg-white p-3 shadow-card sm:p-4">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1.7fr)_minmax(12rem,0.8fr)]">
@@ -443,7 +445,16 @@ function FilterPanel({
         </Field>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm w-full sm:hidden"
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen((v) => !v)}
+      >
+        {mobileOpen ? "Ocultar filtros" : "Más filtros"}
+        {hasActiveFilters && !mobileOpen && <span className="h-2 w-2 rounded-full bg-brand-600" aria-label="(hay filtros aplicados)" />}
+      </button>
+      <div className={`${mobileOpen ? "grid animate-slide-down" : "hidden"} gap-3 sm:grid sm:grid-cols-2 xl:grid-cols-4`}>
         <Field label="Documento">
           <Select
             value={filters.documento}
@@ -637,6 +648,14 @@ function DocumentRow({
 
 function DocumentActions({ item, busy, onView, onOpenReserva, onValidate, onReject, onGenerate, onRegenerate, onSign, onOpenTemplates }) {
   const buttons = [];
+  // Regenerar is rare and undoes signatures: first and quiet, away from Firmar.
+  if (item.puede_regenerar) {
+    buttons.push(
+      <button key="regenerar" type="button" className="btn btn-ghost btn-sm text-muted" disabled={busy} onClick={onRegenerate}>
+        Regenerar
+      </button>,
+    );
+  }
   if (onOpenReserva) {
     buttons.push(
       <button key="reserva" type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={onOpenReserva}>
@@ -655,13 +674,6 @@ function DocumentActions({ item, busy, onView, onOpenReserva, onValidate, onReje
     buttons.push(
       <button key="plantillas" type="button" className="btn btn-secondary btn-sm" onClick={onOpenTemplates}>
         Ir a plantillas
-      </button>,
-    );
-  }
-  if (item.puede_regenerar) {
-    buttons.push(
-      <button key="regenerar" type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={onRegenerate}>
-        Regenerar
       </button>,
     );
   }

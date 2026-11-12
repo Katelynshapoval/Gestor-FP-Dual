@@ -99,6 +99,13 @@ function normalizeCampo(key, value) {
   let text = String(value).trim();
   if (regla.dni) text = text.toUpperCase();
   if (key === 'numeroSS') text = text.replace(/\s/g, '');
+  // "+34 634 89 71 39" or "634-897-139" are the same phone as "634897139".
+  if (key === 'telalumno' || key === 'telfamilia') {
+    text = text.replace(/[\s.\-()/]/g, '');
+    if (/^(\+|00)34[0-9]{9}$/.test(text)) text = text.slice(-9);
+  }
+  // Emails are case-insensitive.
+  if (key === 'email' || key === 'emailColegio') text = text.toLowerCase();
   if (!text) return regla.empty ?? null;
   return text;
 }

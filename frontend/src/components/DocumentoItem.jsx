@@ -1,3 +1,5 @@
+import { avisoRegenerar } from "../utils/documentos.js";
+import { formatBytes, problemaPdf } from "../utils/formatValidation.js";
 import { useRef, useState } from "react";
 import { postForm, postJSON } from "../utils/api.js";
 import { MdOutlineFileUpload } from "react-icons/md";
@@ -102,7 +104,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
     if (regenerar) {
       const accepted = await confirm({
         title: `Regenerar ${doc.nombre}`,
-        message: "Se creará una nueva versión. Las firmas de la versión anterior dejan de aplicar.",
+        message: avisoRegenerar(doc.firmas),
         confirmLabel: "Regenerar",
       });
       if (!accepted) return;
@@ -205,7 +207,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <label className="file-upload min-h-10 flex-1 px-3 py-2">
               <MdOutlineFileUpload className="file-upload-icon" aria-hidden="true" />
-              <span className="file-upload-text text-sm">{file ? file.name : `Seleccionar PDF de ${doc.nombre}`}</span>
+              <span className="file-upload-text text-sm">{file ? `${file.name} · ${formatBytes(file.size)}` : `Seleccionar PDF de ${doc.nombre} (máx. 10 MB)`}</span>
               <input
                 ref={inputRef}
                 type="file"
@@ -213,8 +215,11 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
                 aria-label={`Archivo PDF de ${doc.nombre}`}
                 onChange={(e) => {
                   const next = e.target.files[0];
-                  if (next && next.type !== "application/pdf") {
-                    setFileError("Solo se admiten PDFs.");
+                  const problema = problemaPdf(next);
+                  if (problema) {
+                    setFile(null);
+                    setFileError(problema);
+                    e.target.value = "";
                     return;
                   }
                   setFile(next || null);

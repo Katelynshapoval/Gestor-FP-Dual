@@ -10,7 +10,7 @@ import { isCancelledReserva, isConfirmedReserva } from "../../../utils/reservaEs
 
 export const CONVOCATORIA_ACTIVA = "activa";
 export const CONVOCATORIA_TODAS = "todas";
-const FILTER_DEFAULTS = { q: "", convocatoria: CONVOCATORIA_ACTIVA, especialidad: "", estado: "", reserva: "" };
+const FILTER_DEFAULTS = { q: "", convocatoria: CONVOCATORIA_ACTIVA, especialidad: "", estado: "", reserva: "", cambios: "" };
 
 // Reservation situation of one application, for the "Reserva" filter.
 export function situacionReserva(r) {
@@ -53,7 +53,7 @@ export const useLinkStudents = () => {
 
   useEffect(() => {
     setExpandedCards(new Set());
-  }, [filters.q, filters.convocatoria, filters.especialidad, filters.estado, filters.reserva]);
+  }, [filters.q, filters.convocatoria, filters.especialidad, filters.estado, filters.reserva, filters.cambios]);
 
   // First load shows the loading state; later refreshes keep the list on
   // screen so cards do not collapse after every action.
@@ -208,6 +208,7 @@ export const useLinkStudents = () => {
     if (convocatoriaFiltro && r.convocatoria !== convocatoriaFiltro) return false;
     if (filters.estado && r.estado_validacion !== filters.estado) return false;
     if (filters.reserva && situacionReserva(r) !== filters.reserva) return false;
+    if (filters.cambios === "pendiente" && !r.id_cambio_pendiente) return false;
     return coincide(filters.q, [
       r.nombre,
       r.dni,

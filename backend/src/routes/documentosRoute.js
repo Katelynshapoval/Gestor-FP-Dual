@@ -2,7 +2,7 @@ const { Router } = require('express');
 const multer = require('multer');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
-const { pdfUpload, requirePdfSignature, NOT_PDF } = require('../middleware/pdfUpload');
+const { pdfUpload, requirePdfSignature, NOT_PDF, uploadErrorMessage } = require('../middleware/pdfUpload');
 const svc = require('../services/documentosService');
 const plantillas = require('../services/plantillasService');
 const conveniosPendientes = require('../services/conveniosPendientes');
@@ -92,7 +92,7 @@ router.get('/documentos/plantillas/:id/descargar', requireAuth, requireRole('ADM
 // Forward multer errors as 400 responses
 router.use((err, req, res, next) => {
   if (err.name === 'MulterError' || err.message === NOT_PDF) {
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: uploadErrorMessage(err) });
   }
   next(err);
 });

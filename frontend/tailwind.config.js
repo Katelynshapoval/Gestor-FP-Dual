@@ -60,9 +60,15 @@ module.exports = {
       borderRadius: {
         xl2: "0.5rem",
       },
+      // Short, soft and interruptible; all of it is switched off for people
+      // who ask for reduced motion (main.css).
       animation: {
         "slide-in": "slideIn 0.2s ease-out",
+        "slide-down": "slideIn 0.28s cubic-bezier(.2,.8,.2,1)",
         "fade-in": "fadeIn 0.3s ease-out",
+        "page-in": "pageIn 0.32s cubic-bezier(.2,.8,.2,1) backwards",
+        "scale-in": "scaleIn 0.18s cubic-bezier(.2,.8,.2,1) backwards",
+        "rise-in": "pageIn 0.36s cubic-bezier(.2,.8,.2,1) backwards",
       },
       keyframes: {
         slideIn: {
@@ -70,6 +76,14 @@ module.exports = {
           to: { transform: "translateY(0)", opacity: "1" },
         },
         fadeIn: { from: { opacity: "0" }, to: { opacity: "1" } },
+        pageIn: {
+          from: { transform: "translateY(8px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        scaleIn: {
+          from: { transform: "scale(.97)", opacity: "0" },
+          to: { transform: "scale(1)", opacity: "1" },
+        },
       },
     },
   },

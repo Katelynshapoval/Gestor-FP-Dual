@@ -20,6 +20,13 @@ import MotivoDialog from "../../components/ui/MotivoDialog.jsx";
 import PageHeader from "../../components/ui/PageHeader";
 import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
 
+// One convenio state per company, the same one its card shows.
+export function estadoConvenio(c) {
+  if (!c.tieneConvenio) return "sin_convenio";
+  if (c.convenio_estado === "RECHAZADO") return "rechazado";
+  return c.convenio_validado ? "validado" : "pendiente";
+}
+
 const FILTER_DEFAULTS = { q: "", curso: "activa", estado: "", convenio: "", especialidad: "", cambios: "", orden: "fecha_desc" };
 
 const AdminCompanyView = () => {
@@ -146,13 +153,7 @@ const AdminCompanyView = () => {
         )
       )
         return false;
-      if (filterConvenio === "validado" && !c.convenio_validado) return false;
-      if (
-        filterConvenio === "pendiente" &&
-        (!c.tieneConvenio || c.convenio_validado)
-      )
-        return false;
-      if (filterConvenio === "sin_convenio" && c.tieneConvenio) return false;
+      if (filterConvenio && estadoConvenio(c) !== filterConvenio) return false;
       if (filterCourse && c.convocatoria !== filterCourse) return false;
       if (filterCambios === "pendiente" && !c.cambio_pendiente) return false;
       if (filterEstado && c.estado_validacion !== filterEstado) return false;
@@ -179,16 +180,26 @@ const AdminCompanyView = () => {
 
   // Counted within the selected convocatoria, so clicking a chip shows exactly that many.
   const enCurso = companies.filter((c) => !filterCourse || c.convocatoria === filterCourse);
-  const totalValidado = enCurso.filter((c) => c.convenio_validado).length;
-  const totalPendiente = enCurso.filter((c) => c.tieneConvenio && !c.convenio_validado).length;
-  const totalSin = enCurso.filter((c) => !c.tieneConvenio).length;
+  const cuenta = (estado) => enCurso.filter((c) => estadoConvenio(c) === estado).length;
+  const totalValidado = cuenta("validado");
+  const totalPendiente = cuenta("pendiente");
+  const totalRechazado = cuenta("rechazado");
+  const totalSin = cuenta("sin_convenio");
   const totalCambios = enCurso.filter((c) => c.cambio_pendiente).length;
   const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
   // Each chip toggles its filter; clicking the active one clears it.
   const chips = [
-    { key: "convenio", value: "validado", tone: "bg-green-500/10 text-green-800", Icon: IoIosCheckmarkCircleOutline, text: plural(totalValidado, "validado", "validados") },
-    { key: "convenio", value: "pendiente", tone: "bg-yellow-400/15 text-yellow-800", Icon: MdPendingActions, text: plural(totalPendiente, "pendiente", "pendientes") },
-    { key: "convenio", value: "sin_convenio", tone: "bg-red-500/10 text-red-800", Icon: MdOutlineCancel, text: `${totalSin} sin convenio` },
+    // The same four states as the badge on each card, so the numbers add up.
+    { key: "convenio", value: "validado", tone: "bg-green-500/10 text-green-800", Icon: IoIosCheckmarkCircleOutline, text: plural(totalValidado, "convenio validado", "convenios validados") },
+    ...(totalPendiente
+      ? [{ key: "convenio", value: "pendiente", tone: "bg-yellow-400/15 text-yellow-800", Icon: MdPendingActions, text: `${totalPendiente} por validar` }]
+      : []),
+    ...(totalRechazado
+      ? [{ key: "convenio", value: "rechazado", tone: "bg-red-500/10 text-red-800", Icon: MdOutlineCancel, text: plural(totalRechazado, "rechazado", "rechazados") }]
+      : []),
+    ...(totalSin
+      ? [{ key: "convenio", value: "sin_convenio", tone: "bg-surface-100 text-charcoal-700", Icon: MdOutlineCancel, text: `${totalSin} sin convenio` }]
+      : []),
     ...(totalCambios
       ? [{ key: "cambios", value: "pendiente", tone: "bg-amber-100 text-amber-800", Icon: MdPendingActions, text: plural(totalCambios, "cambio pendiente", "cambios pendientes") }]
       : []),
@@ -254,7 +265,7 @@ const AdminCompanyView = () => {
           value={q}
           onChange={(v) => setFilter("q", v)}
           placeholder="Empresa, CIF, coordinador o municipio"
-          className="sm:col-span-2 lg:col-span-1"
+
         />
         <FilterSelect
           label="Convocatoria"
@@ -280,7 +291,8 @@ const AdminCompanyView = () => {
           allLabel="Todos"
           options={[
             { value: "validado", label: "Validados" },
-            { value: "pendiente", label: "Pendientes" },
+            { value: "pendiente", label: "Por validar" },
+            { value: "rechazado", label: "Rechazados" },
             { value: "sin_convenio", label: "Sin convenio" },
           ]}
         />

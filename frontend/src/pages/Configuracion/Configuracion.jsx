@@ -36,7 +36,9 @@ export default function Configuracion() {
         value={actual}
         onChange={(id) => navigate(`/configuracion/${id}`)}
       >
-        <Outlet />
+        <div key={actual} className="animate-fade-in">
+          <Outlet />
+        </div>
       </Tabs>
     </div>
   );

@@ -63,6 +63,15 @@ function tareas(c, conv) {
       to: `/empresas?${qs({ curso: nombre, cambios: "pendiente" })}`,
       Icon: FaPenToSquare,
     },
+    {
+      key: "cambiosAlumno",
+      n: c.cambios_alumno_pendientes ?? 0,
+      singular: "cambio de datos de alumno por aprobar",
+      plural: "cambios de datos de alumnos por aprobar",
+      hint: "Los alumnos corrigen sus datos; se aplican cuando el centro los aprueba.",
+      to: `/alumnos?${qs({ convocatoria: nombre, cambios: "pendiente" })}`,
+      Icon: FaPenToSquare,
+    },
   ];
 }
 
@@ -82,10 +91,10 @@ const TareaCard = ({ t }) => {
   const done = t.n === 0;
   const text = `${t.n} ${t.n === 1 ? t.singular : t.plural}`;
   return (
-    <li>
+    <li className="flex min-w-0 flex-[1_1_15rem]">
       <Link
         to={t.to}
-        className={`group flex h-full flex-col gap-3 rounded-xl2 border bg-white p-5 shadow-card outline-none transition-[border-color,box-shadow] duration-150 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
+        className={`group flex h-full w-full flex-col gap-3 rounded-xl2 border bg-white p-5 shadow-card outline-none transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
           done ? "border-surface-200" : "border-amber-300"
         }`}
       >
@@ -256,7 +265,8 @@ const Panel = () => {
             <h2 id="panel-solicitudes" className="form-section-title mb-4">
               Solicitudes y documentos
             </h2>
-            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {/* Rows fill the width whatever the number of cards (no lonely last card). */}
+            <ul className="flex flex-wrap gap-4">
               {lista.map((t) => (
                 <TareaCard key={t.key} t={t} />
               ))}
@@ -275,8 +285,14 @@ const Panel = () => {
                 Ver todas las reservas
               </Link>
             </div>
-            <ul className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card">
-              {grupos.map((g) => (
+            {grupos.every((g) => g.n === 0) && (
+              <p className="m-0 rounded-xl2 border border-surface-200 bg-white px-5 py-4 text-sm text-muted shadow-card">
+                No hay reservas pendientes en esta convocatoria.
+              </p>
+            )}
+            {/* Only the groups that have something: rows of zeros were noise. */}
+            <ul className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card empty:hidden">
+              {grupos.filter((g) => g.n > 0).map((g) => (
                 <li key={g.key} className="border-b border-surface-200 last:border-b-0">
                   <Link
                     to={g.to}

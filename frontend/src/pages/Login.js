@@ -128,7 +128,7 @@ const Login = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white outline-none transition focus:border-charcoal-500 focus:ring-2 focus:ring-charcoal-400/25"
               />
             </div>
 
@@ -144,7 +144,7 @@ const Login = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+                className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white outline-none transition focus:border-charcoal-500 focus:ring-2 focus:ring-charcoal-400/25"
               />
             </div>
 
@@ -192,7 +192,7 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-charcoal-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-charcoal-900 outline-none transition focus:border-charcoal-500 focus:ring-2 focus:ring-charcoal-400/25"
             />
           </div>
 
@@ -208,7 +208,7 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-charcoal-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+              className="w-full px-3 py-2 border border-surface-200 rounded-lg text-sm bg-white text-charcoal-900 outline-none transition focus:border-charcoal-500 focus:ring-2 focus:ring-charcoal-400/25"
             />
           </div>
 

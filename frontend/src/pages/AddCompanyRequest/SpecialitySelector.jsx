@@ -47,7 +47,7 @@ const SpecialitySelector = ({ dataSpecialities, selected, onToggle, onAmountChan
                   min="1"
                   max="99"
                   inputMode="numeric"
-                  className="h-9 w-20 rounded-lg border border-surface-200 px-2 text-center text-sm focus-visible:border-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/20"
+                  className="h-9 w-20 rounded-lg border border-surface-200 px-2 text-center text-sm focus-visible:border-charcoal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-charcoal-400/25"
                   value={plazas || ""}
                   onChange={(e) => onAmountChange(id, Math.max(0, parseInt(e.target.value, 10) || 0))}
                 />

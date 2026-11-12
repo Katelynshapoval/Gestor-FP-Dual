@@ -26,6 +26,8 @@ const SEGMENTO = {
   negrita: "text-charcoal-300",
 };
 
+const NEGRITA_TEXTO = "rounded-[2px] bg-charcoal-100/70 text-charcoal-950 [text-shadow:0.35px_0_0_currentColor]";
+
 const PlantillaCampo = forwardRef(function PlantillaCampo(
   {
     id,
@@ -51,28 +53,46 @@ const PlantillaCampo = forwardRef(function PlantillaCampo(
   }, [value, minAlto]);
 
   const segmentos = useMemo(() => segmentar(value, nombres), [value, nombres]);
+  // Which segments sit between an opening and a closing ** marker.
+  const negritaEn = useMemo(() => {
+    let dentro = false;
+    return segmentos.map((s) => {
+      if (s.tipo === "negrita") {
+        dentro = !dentro;
+        return false;
+      }
+      return dentro;
+    });
+  }, [segmentos]);
 
   return (
     <div
       className={`relative rounded-lg border bg-white transition-[border-color,box-shadow] duration-150 focus-within:ring-2 ${
         invalido
           ? "border-red-300 focus-within:border-red-500 focus-within:ring-red-500/15"
-          : "border-surface-200 hover:border-surface-300 focus-within:border-brand-700 focus-within:ring-brand-500/20"
+          : "border-surface-200 hover:border-surface-300 focus-within:border-charcoal-500 focus-within:ring-charcoal-400/25"
       }`}
     >
       <div
         aria-hidden="true"
         className={`${TEXTO} pointer-events-none absolute inset-0 overflow-hidden text-charcoal-950`}
       >
-        {segmentos.map((s, i) =>
-          s.tipo === "texto" ? (
-            <span key={i}>{s.texto}</span>
-          ) : (
+        {segmentos.map((s, i) => {
+          // Text between ** markers gets a soft tint and stronger colour so it
+          // reads as bold (real bold would move the text under the caret).
+          const enNegrita = negritaEn[i];
+          if (s.tipo === "texto")
+            return (
+              <span key={i} className={enNegrita ? NEGRITA_TEXTO : undefined}>
+                {s.texto}
+              </span>
+            );
+          return (
             <span key={i} className={SEGMENTO[s.tipo]}>
               {s.texto}
             </span>
-          ),
-        )}
+          );
+        })}
         {/* keeps the last empty line as tall as in the textarea */}
         {"​"}
       </div>

@@ -39,7 +39,7 @@ async function llamar(fn, { user = EMPRESA, params = {}, body = {}, query = {}, 
 const escrituras = () => pool.calls.filter((c) => /^(INSERT|UPDATE|DELETE)/.test(c.sql));
 const hubo = (sql) => pool.calls.some((c) => c.sql === sql);
 const TUTOR = { id_empresa_tutor: 5, id_empresa: 100, id_contacto: 61, activo: 1 };
-const NUEVO = { nombre: ' Pepe ', email: 'p@acme.test', telefono: '600' };
+const NUEVO = { nombre: ' Pepe ', email: 'P@Acme.test', telefono: '600 12 34 56' };
 
 test('list: a company sees its own tutors; staff name the company; only active with ?activo=1', async () => {
   let res = await llamar('list');
@@ -70,7 +70,7 @@ test('add: name, email and phone required; linked to the work address; audited',
   const res = await llamar('create', { body: NUEVO });
   assert.equal(res.statusCode, 201, JSON.stringify(res.body));
   const w = escrituras();
-  assert.deepEqual(w[0].params, [32, '', 'Pepe', 'p@acme.test', '600', 'TUTOR EMPRESA']);
+  assert.deepEqual(w[0].params, [32, '', 'Pepe', 'p@acme.test', '600123456', 'TUTOR EMPRESA'], 'email in lower case, phone without spaces');
   assert.deepEqual(w[1].params, [100, 70]);
   assert.equal(w[2].params[0], 'TUTOR');
   assert.equal(w[2].params[2], 'ALTA');
@@ -185,4 +185,20 @@ test('assign tutor: null clears it; re-assigning the same tutor writes no event'
   assert.equal(escrituras().length, 1, 'no change, no event');
   res = await asignar({ id_empresa_tutor: 5 }, { reserva: { ...RESERVA, id_empresa_tutor: 5 } });
   assert.equal(escrituras().length, 1);
+});
+
+test('add and edit: a mistyped email, phone or DNI is refused with a clear message', async () => {
+  const casos = [
+    [{ ...NUEVO, email: 'pepe@acme' }, /email/],
+    [{ ...NUEVO, telefono: '600 12' }, /teléfono/],
+    [{ ...NUEVO, dni: '12345678A' }, /DNI/],
+  ];
+  for (const [body, msg] of casos) {
+    const res = await llamar('create', { body });
+    assert.equal(res.statusCode, 400, JSON.stringify(body));
+    assert.match(res.body.error, msg);
+  }
+  const res = await llamar('update', { params: { id: '5' }, tutor: TUTOR, body: { email: 'sin-arroba' } });
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /email/);
 });

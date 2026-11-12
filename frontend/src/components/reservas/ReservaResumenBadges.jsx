@@ -40,18 +40,27 @@ export function ReservaIconLegend({ className = "" }) {
     ["neutral", "no aplica"],
   ];
   return (
-    <div className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted ${className}`} aria-hidden="true">
-      {items.map(([Icon, text]) => (
-        <span key={text} className="inline-flex items-center gap-1.5">
-          <Icon className="h-3.5 w-3.5 text-charcoal-700" /> {text}
-        </span>
-      ))}
-      <span className="hidden h-3 border-l border-surface-300 sm:inline" />
-      {marks.map(([variant, text]) => (
-        <span key={variant} className="inline-flex items-center gap-1.5">
-          <StateMark variant={variant} inline /> {text}
-        </span>
-      ))}
+    <div
+      className={`flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-dashed border-surface-200 bg-white/60 px-3 py-2 text-xs text-muted ${className}`}
+      aria-hidden="true"
+    >
+      <span className="font-semibold uppercase tracking-wide text-charcoal-700">Leyenda</span>
+      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-charcoal-500">Iconos:</span>
+        {items.map(([Icon, text]) => (
+          <span key={text} className="inline-flex items-center gap-1.5">
+            <Icon className="h-3.5 w-3.5 text-charcoal-700" /> {text}
+          </span>
+        ))}
+      </span>
+      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-charcoal-500">Punto de color:</span>
+        {marks.map(([variant, text]) => (
+          <span key={variant} className="inline-flex items-center gap-1.5">
+            <StateMark variant={variant} inline /> {text}
+          </span>
+        ))}
+      </span>
     </div>
   );
 }

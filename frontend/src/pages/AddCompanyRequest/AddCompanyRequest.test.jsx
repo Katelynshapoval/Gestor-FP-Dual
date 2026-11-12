@@ -151,7 +151,7 @@ test("a complete application is sent once, cleaned, and the success page is show
     cif: "B12345674", empresa: "Talleres Ebro S.L.", telefonoEmpresa: "", domicilioLegal: "C/ Mayor 1", cpLegal: "50001",
     provinciaLegal: "Zaragoza", localidadLegal: "Zaragoza", municipioLegal: "Zaragoza", mismoLugarTrabajo: true,
     dniRepresentante: "12345678Z", nombreRepresentante: "Ana López", emailRepresentante: "ana@ebro.test",
-    telefonoRepresentante: "600 000 000", cargoRepresentante: "Gerente",
+    telefonoRepresentante: "600000000", cargoRepresentante: "Gerente",
     dniCoordinador: "X1234567L", nombreCoordinador: "Luis Pérez", emailCoordinador: "luis@ebro.test",
     telefonoCoordinador: "611111111", cargoCoordinador: "COORDINADOR DUAL",
     descripcion_puesto: "Montaje y mantenimiento", especialidades: [{ idEspecialidad: 2, cantidadAlumnos: 3 }],

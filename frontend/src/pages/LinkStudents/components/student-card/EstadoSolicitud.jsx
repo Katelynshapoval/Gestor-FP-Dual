@@ -3,7 +3,7 @@ import { sectionLabelClass } from "../../../../components/ui/cardStyles";
 import StatusBadge from "../../../../components/ui/StatusBadge";
 import EstadoBadge from "../../../../components/ui/EstadoBadge.jsx";
 import MotivoDialog from "../../../../components/ui/MotivoDialog.jsx";
-import { useToast } from "../../../../components/feedback/ToastProvider.jsx";
+import { useToast, useConfirm } from "../../../../components/feedback/ToastProvider.jsx";
 
 function validateHint(r) {
   const required = (r.documentos || []).filter((d) => d.requerido_para_validar);
@@ -24,6 +24,7 @@ function validateHint(r) {
 // account and «Dar de baja» are in the card's «Cuenta» tab (CuentaPanel).
 const EstadoSolicitud = ({ r, onValidar, onRechazar, onReabrir }) => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [dialog, setDialog] = useState(null); // "rechazar" | "reabrir"
   const [submitting, setSubmitting] = useState(false);
 
@@ -33,6 +34,14 @@ const EstadoSolicitud = ({ r, onValidar, onRechazar, onReabrir }) => {
 
   const handleValidar = async () => {
     if (!canValidar || submitting) return;
+    // Validating emails the student at once: a mis-click cannot be taken back.
+    const ok = await confirm({
+      title: "Validar solicitud",
+      message: `${r.nombre} recibirá un correo diciendo que su solicitud está validada y podrá ser reservado por las empresas.`,
+      confirmLabel: "Validar y avisar",
+      tone: "primary",
+    });
+    if (!ok) return;
     setSubmitting(true);
     try {
       await onValidar(r.id_solicitud_alumno);

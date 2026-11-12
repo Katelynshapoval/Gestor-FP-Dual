@@ -1,3 +1,4 @@
+import { formatBytes, MAX_PDF_BYTES, problemaPdf } from "../../utils/formatValidation.js";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { FaCheck } from "react-icons/fa6";
 import { MdOutlineFileUpload } from "react-icons/md";
@@ -318,11 +319,27 @@ export const RadioField = ({ name, label, value, onChange, error, hint, required
 
 export const FileField = ({ name, label, file, onChange, error, hint, required, accept = ".pdf,application/pdf" }) => {
   const id = `campo-${name}`;
+  // A wrong or too-large file is flagged as soon as it is picked, not at the end.
+  const shown = error || problemaPdf(file);
   return (
-    <FieldShell id={id} label={label} required={required} hint={hint} error={error}>
-      <label className={`file-upload ${error ? "border-red-400" : ""}`}>
+    <FieldShell
+      id={id}
+      label={label}
+      required={required}
+      hint={hint || `PDF de hasta ${formatBytes(MAX_PDF_BYTES)}.`}
+      error={shown}
+    >
+      <label className={`file-upload ${shown ? "border-red-400" : file ? "border-emerald-300 bg-emerald-50/40" : ""}`}>
         <MdOutlineFileUpload aria-hidden="true" className="file-upload-icon" />
-        <span className="file-upload-text">{file ? file.name : "Seleccionar archivo PDF…"}</span>
+        <span className="file-upload-text">
+          {file ? (
+            <>
+              {file.name} <span className="text-muted">· {formatBytes(file.size)}</span>
+            </>
+          ) : (
+            "Seleccionar archivo PDF…"
+          )}
+        </span>
         <input
           id={id}
           type="file"

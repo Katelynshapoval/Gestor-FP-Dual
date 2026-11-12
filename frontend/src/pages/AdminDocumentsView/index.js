@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useConvocatoriaEstado } from "../../hooks/useConvocatoriaEstado.js";
 import { FaBuildingColumns, FaFileLines, FaHourglassHalf } from "react-icons/fa6";
 import PageHeader from "../../components/ui/PageHeader.jsx";
+import Tabs from "../../components/ui/Tabs.jsx";
 import Seguimiento from "./Seguimiento.jsx";
 import Plantillas from "./Plantillas.jsx";
 import "../../styles/forms.css";
@@ -12,10 +15,24 @@ export default function AdminDocumentsView() {
   );
   const [summary, setSummary] = useState(null);
 
-  const tabCls = (active) =>
-    `whitespace-nowrap px-5 py-2.5 text-sm font-semibold transition border-b-2 ${
-      active ? "border-brand-600 text-brand-700" : "border-transparent text-muted hover:text-charcoal-900"
-    }`;
+  // Like every other staff list, Seguimiento starts on the active convocatoria
+  // (a link or bookmark with ?convocatoria= keeps its own choice).
+  const [params, setParams] = useSearchParams();
+  const estado = useConvocatoriaEstado();
+  const [defaultReady, setDefaultReady] = useState(() => params.has("convocatoria"));
+  useEffect(() => {
+    if (defaultReady || estado.status === "loading") return;
+    const activa = estado.data?.activa?.id_convocatoria;
+    if (activa) {
+      setParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("convocatoria", String(activa));
+        return next;
+      }, { replace: true });
+    }
+    setDefaultReady(true);
+  }, [defaultReady, estado.status, estado.data, setParams]);
+
 
   return (
     <div className="flex-1 bg-surface-100">
@@ -29,32 +46,25 @@ export default function AdminDocumentsView() {
 
         {tab === "seguimiento" && <SummaryCards summary={summary} />}
 
-        <div className="flex gap-1 overflow-x-auto border-b border-surface-200" role="tablist" aria-label="Vista de documentos">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "seguimiento"}
-            className={tabCls(tab === "seguimiento")}
-            onClick={() => setTab("seguimiento")}
-          >
-            Seguimiento
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "plantillas"}
-            className={tabCls(tab === "plantillas")}
-            onClick={() => setTab("plantillas")}
-          >
-            Plantillas
-          </button>
-        </div>
-
+        <Tabs
+          label="Vista de documentos"
+          tabs={[
+            { id: "seguimiento", label: "Seguimiento" },
+            { id: "plantillas", label: "Plantillas" },
+          ]}
+          value={tab}
+          onChange={setTab}
+        >
         {tab === "seguimiento" ? (
-          <Seguimiento onSummary={setSummary} onOpenTemplates={() => setTab("plantillas")} />
+          defaultReady ? (
+            <Seguimiento onSummary={setSummary} onOpenTemplates={() => setTab("plantillas")} />
+          ) : (
+            <p className="text-sm text-muted">Cargando…</p>
+          )
         ) : (
           <Plantillas />
         )}
+        </Tabs>
       </div>
     </div>
   );
