@@ -53,11 +53,40 @@ const altaResp = ({ solicitud = true, ciclo = true, existe = false } = {}) => [
 test('add ciclo: an active ciclo, not already offered; audited as a new offer', async () => {
   const res = await llamar('addEspecialidad', { body: ALTA, respuestas: altaResp() });
   assert.equal(res.statusCode, 201, JSON.stringify(res.body));
-  assert.deepEqual(res.body, { message: 'Ciclo añadido.', id_solicitud_empresa_especialidad: 60, id_especialidad: 2, nombre: 'Joyería', cantidad: 3 });
+  assert.deepEqual(res.body, { message: 'Ciclo añadido.', convenio_renovado: false, id_solicitud_empresa_especialidad: 60, id_especialidad: 2, nombre: 'Joyería', cantidad: 3 });
   assert.deepEqual(escrituras()[0].params, [10, 2, 3]);
   const ev = escrituras()[1];
   assert.deepEqual([ev.params[0], ev.params[1], ev.params[2], ev.params[4]], ['OFERTA', 60, 'ALTA', '3']);
   assert.ok(hubo('COMMIT'));
+});
+
+test('add ciclo with a convenio (026): the convenio goes to history, a renewal opens, company and administrators are told', async () => {
+  const res = await llamar('addEspecialidad', {
+    body: ALTA,
+    respuestas: [
+      ...altaResp(),
+      ["WHERE d.id_solicitud_empresa = ? AND td.nombre = 'CONVENIO' AND d.es_actual = 1", [{ id_documento: 77, estado_validacion: 'VALIDADO', tiene_archivo: 1 }]],
+      ['FROM dual_solicitud_empresa_especialidades ee JOIN dual_especialidades esp', [{ id: 1, nombre: 'Electricidad' }, { id: 2, nombre: 'Joyería' }]],
+    ],
+  });
+  assert.equal(res.statusCode, 201, JSON.stringify(res.body));
+  assert.equal(res.body.convenio_renovado, true);
+  assert.match(res.body.message, /firmar un convenio nuevo/);
+  const retirado = escrituras().find((c) => c.sql.startsWith('UPDATE dual_documentos SET es_actual = 0'));
+  assert.deepEqual(retirado.params, [77]);
+  const ren = escrituras().find((c) => c.sql.startsWith('INSERT INTO dual_convenio_renovaciones'));
+  assert.deepEqual(ren.params, [10, 'CICLOS', 'La empresa ha añadido el ciclo Joyería', 'Electricidad', 'Electricidad, Joyería', 77, 3]);
+  const ev = escrituras().filter((c) => c.sql.startsWith('INSERT INTO dual_eventos')).map((c) => c.params[2]);
+  assert.deepEqual(ev, ['ALTA', 'RENOVAR_CONVENIO']);
+  assert.ok(pool.calls.findIndex((c) => c.sql === 'COMMIT') > pool.calls.indexOf(ren));
+  // After the commit: no template here, so the steps start with uploading it.
+  await new Promise((r) => setTimeout(r, 20));
+  const empresa = avisos.find((a) => a[0] === 'convenioRenovarEmpresa');
+  assert.deepEqual(empresa.slice(1), [10, { motivo: 'habéis añadido el ciclo Joyería', pdf: null }]);
+  const centro = avisos.find((a) => a[0] === 'convenioRenovarCentro');
+  assert.equal(centro[2].motivo, 'la empresa ha añadido el ciclo Joyería');
+  assert.equal(centro[2].ciclosAntes, 'Electricidad');
+  assert.match(centro[2].pasos[0], /Subir la plantilla de Convenio/);
 });
 
 test('add ciclo: unknown application, inactive ciclo or a repeated one are refused', async () => {

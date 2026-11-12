@@ -103,6 +103,7 @@
 | `GET /reservas/ofertas-elegibles?id_solicitud_alumno=[&reasignar_desde=]` | Personal | |
 | `GET /reservas/alumnos-elegibles?id_solicitud_empresa_especialidad=` | Personal | |
 | `POST /reservas` | EMPRESA | `{ id_solicitud_alumno, id_solicitud_empresa_especialidad, id_tipo_contrato }` · tipo obligatorio (beca → Anexo III, resto → Anexo II) · 400 si el par ya tiene una reserva activa |
+| `POST /solicitudes/empresa/:id/convenio/sustituir` | Personal | `{ motivo }` · abre una renovación del convenio (026): retira el actual, genera el nuevo, avisa a la empresa y a Administración · 409 si ya hay una abierta |
 | `GET /tipos-documento` | Personal | Tipos de documento con ámbito, firmas, obligatorio, familia, plantilla activa y nº de documentos; campos de plantilla por ámbito |
 | `POST /tipos-documento` | ADMINISTRADOR | `{ nombre, ambito, firma_empresa, firma_centro, firma_alumno, requerido, familia_contrato }` · 409 si el nombre existe |
 | `PUT /tipos-documento/:clave` | ADMINISTRADOR | Mismos campos y `activo`; solo tipos añadidos por el centro; ámbito fijo si hay documentos |

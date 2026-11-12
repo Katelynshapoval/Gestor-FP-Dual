@@ -85,6 +85,24 @@ async function contarDocumentosCentro(idConvocatoria) {
   return page.pagination.totalItems;
 }
 
+// Migration 026: company applications of the convocatoria whose convenio is
+// being renewed (ciclos changed or replaced), until the new one is validated.
+async function contarRenovaciones(idConvocatoria) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS n
+         FROM dual_convenio_renovaciones r
+         JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = r.id_solicitud_empresa
+        WHERE r.resuelta_en IS NULL AND se.id_convocatoria = ?`,
+      [idConvocatoria],
+    );
+    return Number(rows[0]?.n || 0);
+  } catch (err) {
+    if (err.code === 'ER_NO_SUCH_TABLE') return 0;
+    throw err;
+  }
+}
+
 // GET /panel/resumen?convocatoria=<id>
 exports.resumen = async function (req, res) {
   const convocatorias = await convocatoriasConActiva();
@@ -98,7 +116,7 @@ exports.resumen = async function (req, res) {
     return res.json({ convocatoria: null, convocatorias: opciones, contadores: null });
   }
   const id = convocatoria.id_convocatoria;
-  const [alumnos, empresas, cambios, cambiosAlumno, reservas, documentos, convenio] = await Promise.all([
+  const [alumnos, empresas, cambios, cambiosAlumno, reservas, documentos, convenio, renovaciones] = await Promise.all([
     contarSolicitudes('dual_solicitudes_alumno', id),
     contarSolicitudes('dual_solicitudes_empresa', id),
     contarCambiosEmpresa(id),
@@ -106,6 +124,7 @@ exports.resumen = async function (req, res) {
     contarReservas(id),
     contarDocumentosCentro(id),
     conveniosPendientes.resumen(id),
+    contarRenovaciones(id),
   ]);
   return res.json({
     convocatoria: {
@@ -121,6 +140,7 @@ exports.resumen = async function (req, res) {
       solicitudes_empresa_pendientes: empresas,
       cambios_empresa_pendientes: cambios,
       cambios_alumno_pendientes: cambiosAlumno,
+      convenios_por_renovar: renovaciones,
       documentos_accion_centro: documentos,
       reservas: reservas,
       // { plantilla_activa, solicitudes_sin_convenio }: "no CONVENIO template" warning.

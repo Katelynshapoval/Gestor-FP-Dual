@@ -189,6 +189,42 @@ test('notifications: the direct emails (application received, places reduced) us
   assert.match(sent[1].html, /de 3 a 1/);
 });
 
+test('notifications (026): a convenio renewal reaches every active administrator with the steps as a list', async () => {
+  const seed = correoSeed();
+  handler = (sql, params) => {
+    const t = correoDb(sql, params, seed);
+    if (t) return t;
+    if (sql.includes('FROM dual_solicitudes_empresa se') && sql.includes('ct.email')) {
+      return [{ empresa: 'ACME', coordinador: 'Luis', email: 'luis@acme.test', convocatoria: '2026/2027' }];
+    }
+    if (sql.includes("r.nombre = 'ADMINISTRADOR'")) return [{ email: 'a1@centro.test' }, { email: 'a2@centro.test' }];
+    return [];
+  };
+  const n = load('src/services/notificaciones');
+  sent.length = 0;
+  assert.equal(await n.convenioRenovarCentro(10, {
+    motivo: 'la empresa ha añadido el ciclo Web',
+    ciclosAntes: 'Electricidad',
+    ciclosAhora: 'Electricidad, Web',
+    pasos: ['Generar el convenio nuevo', 'Esperar la firma', 'Validarlo'],
+  }), true);
+  assert.deepEqual(sent.map((m) => m.to), ['a1@centro.test', 'a2@centro.test']);
+  assert.equal(sent[0].subject, 'ACME necesita un convenio nuevo');
+  assert.match(sent[0].html, /<li>Generar el convenio nuevo<\/li>\s*<li>Esperar la firma<\/li>/);
+  assert.match(sent[0].html, /Ciclos que solicita ahora: Electricidad, Web/);
+
+  sent.length = 0;
+  assert.equal(await n.convenioRenovarEmpresa(10, { motivo: 'habéis añadido el ciclo Web' }), true);
+  assert.equal(sent[0].to, 'luis@acme.test');
+  assert.match(sent[0].html, /tiene que renovarse: habéis añadido el ciclo Web/);
+  assert.match(sent[0].html, /El centro está preparando el convenio nuevo/, 'no convenio yet');
+
+  sent.length = 0;
+  assert.equal(await n.solicitudEmpresaRecibida(10, null, { vigente: true }), true);
+  assert.match(sent[0].html, /Vuestro convenio sigue vigente/);
+  assert.equal(sent[0].attachments, undefined);
+});
+
 // ── Admin endpoints ─────────────────────────────────────────────────────────
 
 test('routes: every /correos endpoint is for ADMINISTRADOR only', () => {
@@ -396,7 +432,9 @@ test('migration 023: one email per event; the merged ones carry the convenio and
     assert.deepEqual(seed.adjuntos.filter((a) => a.clave_plantilla === clave).map((a) => a.documento), ['CONVENIO'], clave);
     assert.equal(seed.historial.find((h) => h.clave_plantilla === clave).adjuntos, 'Convenio');
   }
-  for (const p of seed.plantillas.filter((x) => !fusionados.includes(x.clave))) assert.equal(p.lleva_adjuntos, 0, p.clave);
+  // 026 adds one more email that carries the convenio from the start.
+  const conConvenio = [...fusionados, 'convenio_renovar_empresa'];
+  for (const p of seed.plantillas.filter((x) => !conConvenio.includes(x.clave))) assert.equal(p.lleva_adjuntos, 0, p.clave);
 });
 
 test('migration 024: every email that may carry a document has its «…_adjunto» variable', () => {

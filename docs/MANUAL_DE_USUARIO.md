@@ -583,6 +583,25 @@ La solicitud de una empresa **se valida al validar su convenio firmado**: es el 
 
 Si aparece «Convenio pendiente de generar», hay que generarlo desde [Documentos](#staff-documentos) (necesita una [plantilla](#plantillas) activa). Si son varios, es más rápido **«Generar convenios pendientes»** en la pestaña [Plantillas](#plantillas). Al generarlo, la empresa recibe el convenio por correo.
 
+<a id="convenio-renovar"></a>
+
+#### Un convenio por empresa: cuándo cambia
+
+Cada empresa firma **un convenio** y le sirve para los años siguientes mientras pida **los mismos ciclos**:
+
+- **Nueva convocatoria con los mismos ciclos:** la solicitud nueva usa el convenio validado de antes. No se genera ni se firma otro; en la tarjeta se lee «Es el mismo convenio de la convocatoria …». La solicitud se valida con **«Validar solicitud»**.
+- **La empresa cambia los ciclos** (en la nueva convocatoria pide otros, o se añade un ciclo durante el curso, desde el portal de la empresa o desde su tarjeta): el convenio pasa al historial y hace falta **uno nuevo**.
+- **El centro lo sustituye:** en la tarjeta, **«Sustituir convenio»**, escribe por qué (cambio de representante, plantilla nueva, un error…) y confirma. Solo en la convocatoria activa.
+
+En los dos últimos casos se abre una **renovación del convenio**:
+
+1. Si hay plantilla, el convenio nuevo se genera solo y se envía a la empresa con el correo «Hay que firmar un convenio nuevo», que explica el motivo.
+2. Cada administrador recibe «… necesita un convenio nuevo» con el motivo, los ciclos de antes y de ahora y **los pasos**.
+3. En el [Panel](#panel) aparece la tarjeta **«Convenios por renovar»** y en Empresas el filtro **«Convenio: Por renovar»**.
+4. En la tarjeta de la empresa, el recuadro **«Convenio por renovar»** muestra el motivo, los ciclos y los tres pasos, con el siguiente marcado: **generar** el convenio nuevo (si falta la plantilla, subirla antes), que **la empresa lo firme** y lo suba, y **validarlo**. Al validarlo, la renovación se cierra.
+
+Mientras tanto **la empresa sigue validada** y sus reservas continúan con normalidad.
+
 #### Estado de la solicitud: rechazar, reabrir o validar
 
 Debajo del convenio está el bloque **«Estado de la solicitud»**, con la etiqueta del estado:
@@ -1097,7 +1116,9 @@ Si vuestra empresa ya participó en una convocatoria anterior, **no tenéis que 
 3. Revisad los datos del **coordinador principal**, la **descripción del puesto**, los **ciclos y plazas** y los **transportes**. Vienen rellenados con vuestra última solicitud.
 4. Pulsad **«Enviar reaplicación»**.
 
-La nueva solicitud queda **pendiente** y, como la primera vez, se valida cuando el centro valida el **nuevo convenio** firmado. Este bloque solo aparece cuando hay una convocatoria abierta en la que todavía no participáis.
+La nueva solicitud queda **pendiente** hasta que el centro la valida. Este bloque solo aparece cuando hay una convocatoria abierta en la que todavía no participáis.
+
+**El convenio.** Mientras pidáis **los mismos ciclos** que cubre vuestro convenio validado, sigue vigente: no hay que firmar otro (el formulario lo indica en verde). Si cambiáis los ciclos, el formulario avisa de que **tendréis que firmar un convenio nuevo**; lo recibiréis por correo y en «Mis documentos». Lo mismo pasa si durante el curso añadís un ciclo, o si el centro sustituye el convenio: en «Pendientes» aparece «Tenéis que firmar un convenio nuevo» con el motivo. Vuestra solicitud sigue validada mientras tanto.
 
 ---
 

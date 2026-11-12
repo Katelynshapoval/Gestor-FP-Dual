@@ -89,6 +89,16 @@ export function pendientesEmpresa({ solicitud, cambio, reservations, documentos,
       });
     }
   }
+  // Migration 026: the convenio has to be renewed (ciclos changed or the centre replaced it).
+  if (solicitud.renovacion_convenio) {
+    items.push({
+      key: "renovar-convenio",
+      tone: "action",
+      title: "Tenéis que firmar un convenio nuevo.",
+      text: `Motivo: ${solicitud.renovacion_convenio.detalle}. Cuando el centro lo genere lo encontraréis en «Mis documentos». Vuestra solicitud sigue validada mientras tanto.`,
+      action: { label: "Ir a documentos", onClick: () => irA("documentos") },
+    });
+  }
   if (cambio?.pending) {
     items.push({
       key: "cambio",
@@ -384,6 +394,11 @@ const MisDatos = ({
           onUpdated={onCupoChange}
           canEdit={!!solicitud.convocatoria_activa}
           soloReducir={solicitud.estado_validacion === "VALIDADO"}
+          avisoConvenio={
+            solicitud.tiene_convenio
+              ? "Vuestro convenio cubre los ciclos que pedís ahora. Si añadís uno, tendréis que firmar un convenio nuevo que lo incluya."
+              : null
+          }
         />
       </div>
 
@@ -431,15 +446,15 @@ const MisDatos = ({
           <div className="mt-5">
             {reapplyDone ? (
               <p className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
-                Tu reaplicación ha sido enviada correctamente.
+                {typeof reapplyDone === "string" ? reapplyDone : "Tu reaplicación ha sido enviada correctamente."}
               </p>
             ) : (
               <ReapplyForm
                 solicitud={solicitud}
                 specialities={specialities}
                 transports={transports}
-                onSuccess={() => {
-                  setReapplyDone(true);
+                onSuccess={(data) => {
+                  setReapplyDone(data?.message || true);
                   toast.success("Tu solicitud para la nueva convocatoria se ha enviado. El centro la revisará.");
                   if (onReapplySuccess) onReapplySuccess();
                 }}
@@ -452,6 +467,28 @@ const MisDatos = ({
     </>
   );
 };
+
+// Migration 026: one convenio per company. Asking for the same ciclos as the
+// convenio in force keeps it; any other selection means signing a new one.
+export function AvisoConvenioReaplicar({ vigente, seleccion }) {
+  if (!vigente?.ciclos?.length) return null;
+  const elegidos = Object.keys(seleccion || {}).map(Number).sort((a, b) => a - b).join(",");
+  const cubiertos = vigente.ciclos.map((c) => Number(c.id)).sort((a, b) => a - b).join(",");
+  if (!elegidos) return null;
+  if (elegidos === cubiertos) {
+    return (
+      <InlineNotice tone="success">
+        Pedís los mismos ciclos que cubre vuestro convenio ({vigente.convocatoria}): sigue vigente y no tendréis que firmar otro.
+      </InlineNotice>
+    );
+  }
+  return (
+    <InlineNotice tone="warning">
+      Habéis cambiado los ciclos respecto a vuestro convenio vigente ({vigente.ciclos.map((c) => c.nombre).join(", ")}).
+      Si enviáis la solicitud así, tendréis que firmar un convenio nuevo.
+    </InlineNotice>
+  );
+}
 
 // Re-apply form — lets the empresa re-submit with updated coordinator data and speciality picks
 const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
@@ -510,7 +547,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
     setSubmitting(true);
     setFieldError("");
     try {
-      await postJSON("/solicitudes/empresa/reapply", {
+      const data = await postJSON("/solicitudes/empresa/reapply", {
         nombreCoordinador,
         emailCoordinador,
         telefonoCoordinador,
@@ -521,7 +558,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
         })),
         transportes: selectedTransps,
       });
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(data);
     } catch (err) {
       toast.error(
         err.code === "SOLICITUD_EXISTENTE"
@@ -539,7 +576,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
     <div className="space-y-5">
       <p className="text-sm text-muted">
         Puedes modificar los datos del coordinador principal, el puesto y los ciclos. Los datos de la empresa se mantienen.
-        La nueva solicitud queda pendiente hasta que el centro valide su convenio.
+        La nueva solicitud queda pendiente hasta que el centro la valide.
       </p>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -590,6 +627,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
         onToggle={handleEspToggle}
         onAmountChange={handleAmountChange}
       />
+      <AvisoConvenioReaplicar vigente={solicitud?.convenio_vigente} seleccion={selectedEsps} />
       <TransportSelector
         dataTransports={transports}
         metodosTransporte={selectedTransps}

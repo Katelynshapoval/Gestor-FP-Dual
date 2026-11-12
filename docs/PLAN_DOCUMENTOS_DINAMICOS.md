@@ -1,6 +1,6 @@
 # Plan: dynamic documents, one convenio per company, documents in emails
 
-Status: **part A done** (migration 025 applied 2026-11-12; backend, Configuración › Documentos, Plantillas fields). Parts B (migration 026) and C pending.
+Status: **parts A and B done** (migrations 025 and 026 applied 2026-11-12). Part B as built: inherited copies, renewals (CICLOS / MANUAL «Sustituir convenio»), company and admin emails, Panel card, company warnings; the company stays validated during a renewal. Part C pending.
 
 ## What was asked
 

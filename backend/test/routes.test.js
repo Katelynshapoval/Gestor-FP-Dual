@@ -69,6 +69,7 @@ const ESPERADO = [
   'GET /solicitudes/empresa :: AUTH ROLE:ADMINISTRADOR,COORDINADOR',
   'GET /solicitudes/empresa/:id :: AUTH ROLE:ADMINISTRADOR,COORDINADOR,EMPRESA',
   'GET /solicitudes/empresa/:id/especialidades :: AUTH ROLE:ADMINISTRADOR,COORDINADOR,EMPRESA',
+  'POST /solicitudes/empresa/:id/convenio/sustituir :: AUTH ROLE:ADMINISTRADOR,COORDINADOR',
   'POST /solicitudes/empresa/:id/especialidades :: AUTH ROLE:ADMINISTRADOR,COORDINADOR,EMPRESA',
   'PUT /solicitudes/empresa/:id/especialidades/:idOferta/cantidad :: AUTH ROLE:ADMINISTRADOR,COORDINADOR,EMPRESA',
   'GET /solicitudes/empresa/:id/documentos :: AUTH ROLE:ADMINISTRADOR,COORDINADOR,EMPRESA',

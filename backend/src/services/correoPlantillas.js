@@ -23,8 +23,11 @@ const CONTRATO = {
   ciclo_corregido: [...ALUMNO_SOL, 'ciclo'],
   cambio_datos_aprobado: ALUMNO_SOL,
   cambio_datos_rechazado: [...ALUMNO_SOL, 'motivo'],
-  solicitud_empresa_recibida: [...EMPRESA_SOL, 'convenio_adjunto', 'convenio_generado'],
+  solicitud_empresa_recibida: [...EMPRESA_SOL, 'convenio_adjunto', 'convenio_generado', 'convenio_vigente'],
   convenio_disponible: [...EMPRESA_SOL, 'convenio_adjunto'],
+  // Migration 026: a convenio renewal (ciclos changed or replaced by the centre).
+  convenio_renovar_empresa: [...EMPRESA_SOL, 'motivo', 'convenio_adjunto', 'convenio_generado'],
+  convenio_renovar_centro: ['empresa', 'convocatoria', 'motivo', 'ciclos_anteriores', 'ciclos_nuevos', 'pasos', 'enlace_portal'],
   solicitud_empresa_validada: EMPRESA_SOL,
   solicitud_empresa_rechazada: [...EMPRESA_SOL, 'motivo'],
   documento_rechazado_alumno: [...ALUMNO_SOL, 'documento', 'motivo'],
@@ -54,6 +57,7 @@ const DOC_RESERVA = ['ANEXO_II', 'ANEXO_III'];
 const DOCUMENTOS = {
   solicitud_empresa_recibida: DOC_EMPRESA,
   convenio_disponible: DOC_EMPRESA,
+  convenio_renovar_empresa: DOC_EMPRESA,
   solicitud_empresa_validada: DOC_EMPRESA,
   documento_rechazado_empresa: DOC_EMPRESA,
   reserva_creada_alumno: DOC_RESERVA,

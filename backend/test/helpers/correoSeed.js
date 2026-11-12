@@ -11,6 +11,7 @@ const path = require('path');
 const FILE = path.join(__dirname, '..', '..', '..', 'db', 'migrations', '022_correo_plantillas.sql');
 const FILE_023 = path.join(__dirname, '..', '..', '..', 'db', 'migrations', '023_correo_adjuntos.sql');
 const FILE_024 = path.join(__dirname, '..', '..', '..', 'db', 'migrations', '024_correo_adjuntos_documentos.sql');
+const FILE_026 = path.join(__dirname, '..', '..', '..', 'db', 'migrations', '026_convenio_por_empresa.sql');
 
 // Parses `INSERT INTO `t` (cols) VALUES (...), (...) AS nueva ...;` as written by
 // the migration: single-quoted strings ('' and \\ \n escapes), integers, NULL.
@@ -69,6 +70,15 @@ function parseInsert(sqlText, table) {
 const TEXT = fs.readFileSync(FILE, 'utf8').replace(/\r\n/g, '\n');
 const TEXT_023 = fs.readFileSync(FILE_023, 'utf8').replace(/\r\n/g, '\n');
 const TEXT_024 = fs.readFileSync(FILE_024, 'utf8').replace(/\r\n/g, '\n');
+const TEXT_026 = fs.readFileSync(FILE_026, 'utf8').replace(/\r\n/g, '\n');
+
+// `SET @name = '…';` of a migration, unescaped as parseInsert does.
+function setValue(sqlText, name) {
+  const marca = `SET @${name} = `;
+  const resto = sqlText.slice(sqlText.indexOf(marca) + marca.length);
+  const literal = resto.slice(0, resto.indexOf("';\n") + 1);
+  return parseInsert(`INSERT INTO \`_set\` (v) VALUES (${literal})`, '_set')[0].v;
+}
 
 // 022, then what 023 does to an unedited database: the merged emails keep
 // version 1 with the merged text, the other email of each pair disappears,
@@ -107,6 +117,27 @@ function construir() {
   }
   base.variables.push(...parseInsert(TEXT_023, 'dual_correo_variables'));
   base.variables.push(...parseInsert(TEXT_024, 'dual_correo_variables'));
+
+  // 026: two renewal emails (version 1; the company one carries the convenio),
+  // their variables, and «solicitud recibida» with `convenio_vigente`.
+  for (const p of parseInsert(TEXT_026, 'dual_correo_plantillas')) {
+    base.plantillas.push({ ...p, version: 1 });
+    base.historial.push({
+      clave_plantilla: p.clave, version: 1, asunto: p.asunto, cuerpo: p.cuerpo, activa: p.activa,
+      lleva_adjuntos: p.lleva_adjuntos, adjuntos: p.lleva_adjuntos ? 'Convenio' : null,
+    });
+    if (p.lleva_adjuntos) {
+      base.adjuntos.push({
+        id_adjunto: base.adjuntos.length + 1, clave_plantilla: p.clave, tipo: 'DOCUMENTO', documento: 'CONVENIO',
+        nombre_archivo: null, mime_type: null, tamano: null, archivo: null, orden: 1,
+        creado_en: '2026-11-12 10:00:00', subido_por: null,
+      });
+    }
+  }
+  base.variables.push(...parseInsert(TEXT_026, 'dual_correo_variables'));
+  const recibida = setValue(TEXT_026, 'recibida_026');
+  base.plantillas.find((p) => p.clave === 'solicitud_empresa_recibida').cuerpo = recibida;
+  base.historial.find((h) => h.clave_plantilla === 'solicitud_empresa_recibida' && h.version === 1).cuerpo = recibida;
   return base;
 }
 

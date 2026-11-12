@@ -16,6 +16,7 @@ const EspecialidadCuposEditor = ({
   // Validated application: the company may lower places but not add ciclos
   // or raise places without the centre (the backend enforces it too).
   soloReducir = false,
+  avisoConvenio = null,
 }) => {
   const toast = useToast();
   const [drafts, setDrafts] = useState({});
@@ -122,12 +123,12 @@ const EspecialidadCuposEditor = ({
     setSavingId("new");
     setFieldError("");
     try {
-      await postJSON(
+      const data = await postJSON(
         `/solicitudes/empresa/${solicitudId}/especialidades`,
         { id_especialidad: id, cantidad },
       );
       cancelAdd();
-      toast.success("Ciclo añadido correctamente.");
+      toast.success(data?.convenio_renovado ? data.message : "Ciclo añadido correctamente.");
       if (onUpdated) await onUpdated();
     } catch (err) {
       toast.error(err.message || "Error al añadir el ciclo.");
@@ -227,6 +228,11 @@ const EspecialidadCuposEditor = ({
       })}
       {canEdit && !soloReducir && adding && missing.length > 0 && (
         <div className="rounded-lg border bg-white px-4 py-3">
+          {avisoConvenio && (
+            <InlineNotice tone="warning" className="mb-3">
+              {avisoConvenio}
+            </InlineNotice>
+          )}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
               <label

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   FaArrowRightLong,
+  FaArrowsRotate,
   FaBuilding,
   FaCircleCheck,
   FaClipboardList,
@@ -41,9 +42,18 @@ function tareas(c, conv) {
       n: c.solicitudes_empresa_pendientes,
       singular: "solicitud de empresa por revisar",
       plural: "solicitudes de empresas por revisar",
-      hint: "La solicitud se valida al validar su convenio firmado.",
+      hint: "Se valida al validar su convenio firmado, o con «Validar solicitud» si conserva el convenio de otro año.",
       to: `/empresas?${qs({ curso: nombre, estado: "PENDIENTE" })}`,
       Icon: FaBuilding,
+    },
+    {
+      key: "renovar",
+      n: c.convenios_por_renovar ?? 0,
+      singular: "convenio por renovar",
+      plural: "convenios por renovar",
+      hint: "Una empresa cambió sus ciclos o se sustituyó su convenio: generar el nuevo, esperar la firma y validarlo.",
+      to: `/empresas?${qs({ curso: nombre, convenio: "renovar" })}`,
+      Icon: FaArrowsRotate,
     },
     {
       key: "documentos",

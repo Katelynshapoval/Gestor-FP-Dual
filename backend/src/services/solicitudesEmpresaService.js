@@ -12,6 +12,7 @@ const empresaDatos = require("./empresaDatos");
 const { generateDocument } = require("./documentGenerationService");
 const { aplicarTransicion } = require("./solicitudTransiciones");
 const { missingCompanyValidation } = require("./documentosWorkflow");
+const conveniosEmpresa = require("./conveniosEmpresa");
 const notificar = require("./notificaciones");
 const { inTransaction, HttpError } = require("../db/transaction");
 const { recordEvent } = require("./auditLog");
@@ -640,6 +641,15 @@ exports.getMia = async function (req, res) {
   }
 
   const row = { ...rows[0], convocatoria_activa: Number(rows[0].convocatoria_activa) === 1 };
+  // Migration 026: the renewal of this application's convenio, if one is open,
+  // and the convenio in force with the ciclos it covers (re-applying with the
+  // same ciclos keeps it; other ciclos mean a new convenio to sign).
+  const estado = (await conveniosEmpresa.estadoConvenios([row.id_solicitud_empresa]))[row.id_solicitud_empresa];
+  row.renovacion_convenio = estado?.renovacion ?? null;
+  row.tiene_convenio = Boolean(Number((await conveniosEmpresa.convenioActual(pool, row.id_solicitud_empresa))?.tiene_archivo));
+  row.convenio_heredado_de = estado?.convenio_heredado_de ?? null;
+  const vigente = await conveniosEmpresa.convenioVigente(pool, idEmpresa);
+  row.convenio_vigente = vigente ? { convocatoria: vigente.convocatoria, ciclos: vigente.ciclos } : null;
   if (incluirAnteriores) {
     const activa = await getActiveConvocatoria();
     row.convocatoria_abierta = activa
@@ -996,6 +1006,9 @@ exports.getTodas = async function (req, res) {
     }
   });
 
+  // Migration 026: open convenio renewal and inherited convenio of each application.
+  const estadoConvenio = await conveniosEmpresa.estadoConvenios(ids);
+
   const result = rows.map((r) => {
     const conv = convenioMap[r.id_solicitud_empresa];
 
@@ -1018,6 +1031,8 @@ exports.getTodas = async function (req, res) {
       id_cambio_pendiente: cambioMap[r.id_solicitud_empresa]?.id_cambio ?? null,
       fecha_cambio_pendiente:
         cambioMap[r.id_solicitud_empresa]?.fecha_solicitud ?? null,
+      renovacion_convenio: estadoConvenio[r.id_solicitud_empresa]?.renovacion ?? null,
+      convenio_heredado_de: estadoConvenio[r.id_solicitud_empresa]?.convenio_heredado_de ?? null,
     };
   });
 
@@ -1218,17 +1233,43 @@ exports.reapply = async function (req, res) {
       transportes.map((t) => parseInt(t, 10)).filter(Boolean),
     );
 
+    // Migration 026: same ciclos as the company's validated convenio → it is
+    // kept (inherited copy); other ciclos → a renewal the centre is told about.
+    const convenio = await conveniosEmpresa.alSolicitarDeNuevo(conn, {
+      idSolicitud: idSolicitudEmpresa, idEmpresa, user: req.user,
+    });
+
     await conn.commit();
 
-    await safelyGenerateAndSendConvenio(
-      idSolicitudEmpresa,
-      "Error al generar/enviar el convenio de reaplicación:",
-      req.user?.id || null,
-    );
+    if (convenio.vigente) {
+      notificar.solicitudEmpresaRecibida(idSolicitudEmpresa, null, { vigente: true });
+    } else if (convenio.renovacion) {
+      // The company receives the new convenio with «solicitud recibida».
+      const { pdf } = await conveniosEmpresa.despuesDeAbrir(idSolicitudEmpresa, {
+        generar: generarConvenio(req.user?.id || null),
+        avisarEmpresa: false,
+        motivoCentro: convenio.renovacion.motivoCentro,
+        ciclosAntes: convenio.renovacion.ciclosAntes,
+        ciclosAhora: convenio.renovacion.ciclosAhora,
+      });
+      notificar.solicitudEmpresaRecibida(idSolicitudEmpresa, pdf);
+    } else {
+      await safelyGenerateAndSendConvenio(
+        idSolicitudEmpresa,
+        "Error al generar/enviar el convenio de reaplicación:",
+        req.user?.id || null,
+      );
+    }
 
     return res.status(201).json({
-      message: "Reaplicación enviada correctamente.",
+      message: convenio.vigente
+        ? "Reaplicación enviada correctamente. Vuestro convenio sigue vigente: no hace falta firmar otro."
+        : convenio.renovacion
+          ? "Reaplicación enviada correctamente. Como han cambiado los ciclos, tendréis que firmar un convenio nuevo."
+          : "Reaplicación enviada correctamente.",
       id_solicitud_empresa: idSolicitudEmpresa,
+      convenio_vigente: convenio.vigente,
+      convenio_renovado: Boolean(convenio.renovacion),
     });
   } catch (err) {
     await conn.rollback();
@@ -1846,10 +1887,42 @@ exports.addEspecialidad = async function (req, res) {
       detalle: { id_solicitud_empresa: id, id_especialidad: idEspecialidad },
     });
 
+    // Migration 026: the convenio covers the ciclos it was made for. If one
+    // exists (or a renewal is already open), a new ciclo means a new convenio.
+    let renovacion = null;
+    if ((await conveniosEmpresa.convenioActual(conn, id)) || (await conveniosEmpresa.renovacionAbierta(conn, id))) {
+      const ahora = await conveniosEmpresa.ciclosDe(conn, id);
+      const antes = ahora.filter((c) => c.id !== idEspecialidad);
+      const nombre = espRows[0].nombre;
+      const porEmpresa = req.user.rol === "EMPRESA";
+      await conveniosEmpresa.abrirRenovacion(conn, {
+        idSolicitud: id,
+        motivo: "CICLOS",
+        detalle: `${porEmpresa ? "La empresa" : "El centro"} ha añadido el ciclo ${nombre}`,
+        ciclosAntes: conveniosEmpresa.nombres(antes),
+        ciclosAhora: conveniosEmpresa.nombres(ahora),
+        user: req.user,
+      });
+      renovacion = {
+        motivoEmpresa: porEmpresa ? `habéis añadido el ciclo ${nombre}` : `el centro ha añadido el ciclo ${nombre} a vuestra solicitud`,
+        motivoCentro: porEmpresa ? `la empresa ha añadido el ciclo ${nombre}` : `se ha añadido el ciclo ${nombre} desde el centro`,
+        ciclosAntes: conveniosEmpresa.nombres(antes),
+        ciclosAhora: conveniosEmpresa.nombres(ahora),
+      };
+    }
+
     await conn.commit();
 
+    if (renovacion) {
+      conveniosEmpresa.despuesDeAbrir(id, { generar: generarConvenio(req.user.id), ...renovacion })
+        .catch((err) => console.error("[convenio] renovación:", err.message));
+    }
+
     return res.status(201).json({
-      message: "Ciclo añadido.",
+      message: renovacion
+        ? "Ciclo añadido. Como cambian los ciclos, la empresa tendrá que firmar un convenio nuevo."
+        : "Ciclo añadido.",
+      convenio_renovado: Boolean(renovacion),
       id_solicitud_empresa_especialidad: ins.insertId,
       id_especialidad: idEspecialidad,
       nombre: espRows[0].nombre,
@@ -2141,5 +2214,80 @@ async function safelyGenerateAndSendConvenio(idSolicitudEmpresa, errorMessage, u
   }
   await notificar.solicitudEmpresaRecibida(idSolicitudEmpresa, pdf);
 }
+
+// Generator of a new convenio for one application (used by the renewals).
+function generarConvenio(userId) {
+  return (idSolicitud) => generateDocument({
+    clave: "CONVENIO",
+    parents: { id_solicitud_empresa: idSolicitud },
+    userId: userId || null,
+    regenerar: false,
+  });
+}
+
+// POST /solicitudes/empresa/:id/convenio/sustituir { motivo } — staff.
+// Migration 026: the centre replaces a company's convenio (new representative,
+// new template, a mistake…). The current one goes to history, a new one is
+// generated, the company signs it and the centre validates it. The company
+// stays validated meanwhile.
+exports.sustituirConvenio = async function (req, res) {
+  const id = parseInt(req.params.id, 10);
+  const motivo = String(req.body?.motivo || "").replace(/\s+/g, " ").trim();
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Solicitud no válida." });
+  if (!motivo) return res.status(400).json({ error: "Indica por qué se sustituye el convenio." });
+  if (motivo.length > 300) return res.status(400).json({ error: "El motivo admite como máximo 300 caracteres." });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.query(
+      `SELECT se.id_solicitud_empresa, ev.nombre AS estado, c.activa
+         FROM dual_solicitudes_empresa se
+         JOIN dual_estados_validacion ev ON ev.id_estado_validacion = se.id_estado_validacion
+         JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
+        WHERE se.id_solicitud_empresa = ?
+        FOR UPDATE`,
+      [id],
+    );
+    const sol = rows[0];
+    let denegado = null;
+    if (!sol) denegado = [404, "Solicitud no encontrada."];
+    else if (Number(sol.activa) !== 1) denegado = [400, "Solo se sustituye el convenio de solicitudes de la convocatoria activa."];
+    else if (sol.estado === "RECHAZADO" || sol.estado === "BAJA") denegado = [400, "La solicitud no está activa."];
+    else if (await conveniosEmpresa.renovacionAbierta(conn, id)) {
+      denegado = [409, "Ya hay una renovación del convenio en curso: genera, firma y valida el convenio nuevo."];
+    } else {
+      const actual = await conveniosEmpresa.convenioActual(conn, id);
+      if (!actual || !Number(actual.tiene_archivo)) {
+        denegado = [400, "Esta solicitud todavía no tiene convenio: genéralo en lugar de sustituirlo."];
+      }
+    }
+    if (denegado) {
+      await conn.rollback();
+      return res.status(denegado[0]).json({ error: denegado[1] });
+    }
+    await conveniosEmpresa.abrirRenovacion(conn, { idSolicitud: id, motivo: "MANUAL", detalle: motivo, user: req.user });
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+
+  const { pdf, sinPlantilla } = await conveniosEmpresa.despuesDeAbrir(id, {
+    generar: generarConvenio(req.user.id),
+    motivoEmpresa: `el centro lo ha sustituido (${motivo})`,
+    motivoCentro: `se ha sustituido desde el centro (${motivo})`,
+  });
+  return res.json({
+    message: pdf
+      ? "Convenio sustituido. El nuevo se ha enviado a la empresa para que lo firme."
+      : sinPlantilla
+        ? "Convenio retirado. No hay plantilla activa: súbela y genera el convenio nuevo."
+        : "Convenio retirado. Genera el convenio nuevo para enviarlo a la empresa.",
+    generado: Boolean(pdf),
+  });
+};
 
 exports._internals = { safelyGenerateAndSendConvenio };

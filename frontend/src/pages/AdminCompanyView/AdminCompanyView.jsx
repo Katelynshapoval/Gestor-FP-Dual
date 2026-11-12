@@ -153,7 +153,9 @@ const AdminCompanyView = () => {
         )
       )
         return false;
-      if (filterConvenio && estadoConvenio(c) !== filterConvenio) return false;
+      if (filterConvenio === "renovar") {
+        if (!c.renovacion_convenio) return false;
+      } else if (filterConvenio && estadoConvenio(c) !== filterConvenio) return false;
       if (filterCourse && c.convocatoria !== filterCourse) return false;
       if (filterCambios === "pendiente" && !c.cambio_pendiente) return false;
       if (filterEstado && c.estado_validacion !== filterEstado) return false;
@@ -186,6 +188,7 @@ const AdminCompanyView = () => {
   const totalRechazado = cuenta("rechazado");
   const totalSin = cuenta("sin_convenio");
   const totalCambios = enCurso.filter((c) => c.cambio_pendiente).length;
+  const totalRenovar = enCurso.filter((c) => c.renovacion_convenio).length;
   const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
   // Each chip toggles its filter; clicking the active one clears it.
   const chips = [
@@ -199,6 +202,9 @@ const AdminCompanyView = () => {
       : []),
     ...(totalSin
       ? [{ key: "convenio", value: "sin_convenio", tone: "bg-surface-100 text-charcoal-700", Icon: MdOutlineCancel, text: `${totalSin} sin convenio` }]
+      : []),
+    ...(totalRenovar
+      ? [{ key: "convenio", value: "renovar", tone: "bg-amber-100 text-amber-900", Icon: MdPendingActions, text: plural(totalRenovar, "convenio por renovar", "convenios por renovar") }]
       : []),
     ...(totalCambios
       ? [{ key: "cambios", value: "pendiente", tone: "bg-amber-100 text-amber-800", Icon: MdPendingActions, text: plural(totalCambios, "cambio pendiente", "cambios pendientes") }]
@@ -294,6 +300,7 @@ const AdminCompanyView = () => {
             { value: "pendiente", label: "Por validar" },
             { value: "rechazado", label: "Rechazados" },
             { value: "sin_convenio", label: "Sin convenio" },
+            { value: "renovar", label: "Por renovar" },
           ]}
         />
         <FilterSelect

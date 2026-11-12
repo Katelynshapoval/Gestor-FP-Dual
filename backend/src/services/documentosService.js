@@ -6,6 +6,7 @@ const {
 } = require("../helpers/dbHelpers");
 const { defByClave, anexoClaveForContrato, appliesToContrato } = require("./documentCatalogue");
 const workflow = require("./documentosWorkflow");
+const convenios = require("./conveniosEmpresa");
 const { saveByClave } = require("./documentosStore");
 const { generateDocument } = require("./documentGenerationService");
 const { recordEvent } = require("./auditLog");
@@ -457,6 +458,11 @@ exports.validar = async function (req, res) {
       antes: doc.estado_validacion, despues: "VALIDADO", user: req.user,
       detalle: { clave: doc.tipo, ...(Number(doc.firmas_exentas_legacy) ? { firmas_exentas_legacy: true } : {}) },
     });
+
+    // Migration 026: validating a convenio closes the renewal of its application.
+    if (doc.tipo === "CONVENIO" && doc.id_solicitud_empresa) {
+      await convenios.cerrarRenovacion(conn, doc.id_solicitud_empresa, id);
+    }
 
     // The last required document of a pending company application (the convenio
     // or a required type the centre added) also validates the application.

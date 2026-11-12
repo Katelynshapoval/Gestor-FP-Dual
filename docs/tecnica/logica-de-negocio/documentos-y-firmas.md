@@ -47,6 +47,20 @@ Modos por actor (`actor`): `upload` (sube), `sign` (firma), `review` (revisa), `
 
 Los triggers de `dual_documentos` comprueban el padre con `ambito` (antes, nombres escritos a mano).
 
+### 1.2 Un convenio por empresa (migración 026)
+
+[`conveniosEmpresa.js`](../../../backend/src/services/conveniosEmpresa.js). El convenio validado de una empresa cubre los ciclos de la solicitud a la que pertenece.
+
+| Situación | Qué pasa |
+| --- | --- |
+| `reapply` con los **mismos ciclos** que el convenio vigente (último CONVENIO actual VALIDADO de otra solicitud de la empresa sin renovación abierta) | Copia `HEREDADO` en la solicitud nueva (fichero, estado VALIDADO y firmas; `id_documento_origen` = el original, también desde una copia). Evento `DOCUMENTO/HEREDAR`. Correo «solicitud recibida» con `convenio_vigente = sí` y sin adjunto. La solicitud se valida a mano (el convenio ya está validado) |
+| `reapply` con **otros ciclos** | Renovación `CICLOS` en la solicitud nueva; tras el commit se genera el convenio (si hay plantilla) y va en «solicitud recibida»; aviso a Administración |
+| `addEspecialidad` con convenio o renovación abierta | Renovación `CICLOS`: el convenio actual (validado o no) pasa a `es_actual = 0`; tras el commit, generación, `convenio_renovar_empresa` y `convenio_renovar_centro` |
+| `POST /solicitudes/empresa/:id/convenio/sustituir { motivo }` (personal) | Renovación `MANUAL` con el motivo (≤ 300). Solo convocatoria activa, solicitud no rechazada ni de baja, con convenio y sin renovación abierta (409) |
+| Validar un CONVENIO | Cierra la renovación abierta de su solicitud (`resuelta_en`, `id_documento_nuevo`) en la misma transacción |
+
+`dual_convenio_renovaciones` guarda motivo, `detalle` en palabras, ciclos antes/ahora, convenio retirado y nuevo, usuario y fechas; como máximo una abierta por solicitud (columna generada única). Un segundo cambio antes de resolver se suma a la abierta. La solicitud de empresa **no cambia de estado** durante la renovación. `convenio_renovar_centro` va a cada ADMINISTRADOR activo con email, con `pasos` (LISTA) según lo hecho: generado, falta plantilla o falta generar. Panel: `contadores.convenios_por_renovar`; listas: `renovacion_convenio`, `convenio_heredado_de`; `GET /solicitudes/empresa/mia`: además `tiene_convenio` y `convenio_vigente { convocatoria, ciclos }` (aviso al reaplicar).
+
 ## 2. Estado operativo
 
 `deriveDocumentState(def, fila, firmas)` combina fichero, revisión y firmas:

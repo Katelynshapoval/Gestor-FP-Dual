@@ -25,6 +25,7 @@ import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBad
 import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
 import AsignarAlumnoModal from "./AsignarAlumnoModal.jsx";
 import EstadoSolicitudEmpresa from "./EstadoSolicitudEmpresa.jsx";
+import RenovacionConvenio from "./RenovacionConvenio.jsx";
 import CuentaPanel from "../../../components/CuentaPanel.jsx";
 import CupoReductionDialog from "../../../components/CupoReductionDialog.jsx";
 import { postJSON, putJSON } from "../../../utils/api.js";
@@ -40,6 +41,7 @@ const EspecialidadList = ({
   solicitudId,
   canEdit,
   onUpdated,
+  avisoConvenio = null,
 }) => {
   const toast = useToast();
   const [drafts, setDrafts] = useState({});
@@ -116,14 +118,14 @@ const EspecialidadList = ({
     setSavingId("new");
     setFieldError("");
     try {
-      await postJSON(`/solicitudes/empresa/${solicitudId}/especialidades`, {
+      const data = await postJSON(`/solicitudes/empresa/${solicitudId}/especialidades`, {
         id_especialidad: id,
         cantidad,
       });
       setAdding(false);
       setNewEspId("");
       setNewCantidad("1");
-      toast.success("Ciclo añadido correctamente.");
+      toast.success(data?.convenio_renovado ? data.message : "Ciclo añadido correctamente.");
       if (onUpdated) onUpdated();
     } catch (err) {
       toast.error(err.message || "Error al añadir el ciclo.");
@@ -237,6 +239,12 @@ const EspecialidadList = ({
         </ul>
       )}
       {adding && (
+        <>
+        {avisoConvenio && (
+          <p className="m-0 mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+            {avisoConvenio}
+          </p>
+        )}
         <AddRow
           missing={missing}
           newEspId={newEspId}
@@ -247,6 +255,7 @@ const EspecialidadList = ({
           onAdd={add}
           onCancel={closeAdd}
         />
+        </>
       )}
       <CupoReductionDialog
         open={Boolean(picker)}
@@ -587,6 +596,11 @@ const CompanyCard = ({
                         solicitudId={id}
                         canEdit={!!empresa.convocatoria_activa}
                         onUpdated={onUpdated}
+                        avisoConvenio={
+                          empresa.tieneConvenio
+                            ? "El convenio cubre los ciclos actuales: al añadir uno, la empresa tendrá que firmar un convenio nuevo y se avisará a Administración."
+                            : null
+                        }
                       />
                     </div>
 
@@ -657,6 +671,7 @@ const CompanyCard = ({
                           )}
                         </div>
                       )}
+                      <RenovacionConvenio empresa={empresa} convenioStatus={convenioStatus} onUpdated={onUpdated} />
                     </div>
                     <EstadoSolicitudEmpresa empresa={empresa} onUpdated={onUpdated} />
                   </div>
