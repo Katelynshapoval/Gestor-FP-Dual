@@ -13,13 +13,12 @@ import { tipoContratoLabel } from "./utils/labels.js";
 describe("navigation (D.1)", () => {
   test("staff get management areas, never the public forms", () => {
     const staff = navForUser({ rol: "COORDINADOR" }).map((i) => i.to);
-    expect(staff).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias", "/ayuda"]);
-    expect(staff).not.toContain("/personal");
-    expect(staff).not.toContain("/correos");
+    expect(staff).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/ayuda"]);
+    expect(staff).not.toContain("/configuracion");
     expect(staff).not.toContain("/addDualStudent");
     const admin = navForUser({ rol: "ADMINISTRADOR" }).map((i) => i.to);
-    expect(admin).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/convocatorias", "/personal", "/correos", "/ayuda"]);
-    expect(pageTitle("/personal")).toBe("Personal");
+    expect(admin).toEqual(["/panel", "/alumnos", "/empresas", "/reservas", "/documentos", "/configuracion", "/ayuda"]);
+    expect(pageTitle("/configuracion/personal")).toBe("Personal · Configuración");
     expect(pageTitle("/ayuda")).toBe("Ayuda");
   });
   test("visitors, companies and students get their own menus and homes", () => {

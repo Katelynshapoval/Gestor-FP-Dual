@@ -13,6 +13,7 @@ import {
 import PageHeader from "../../components/ui/PageHeader";
 import { FilterSelect } from "../../components/ui/FilterBar.jsx";
 import { getJSON } from "../../utils/api.js";
+import { useUser } from "../../context/UserContext";
 import { useUrlFilters } from "../../hooks/useUrlFilters.js";
 import { formatFecha } from "../../utils/fechas.js";
 
@@ -138,6 +139,7 @@ const Skeleton = () => (
 );
 
 const Panel = () => {
+  const { user } = useUser();
   const { filters, setFilter } = useUrlFilters({ convocatoria: "" });
   const [state, setState] = useState({ status: "loading", data: null, error: null });
 
@@ -213,9 +215,13 @@ const Panel = () => {
       ) : !conv ? (
         <div role="status" className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
           <p className="font-semibold text-charcoal-950">Todavía no hay ninguna convocatoria.</p>
-          <Link to="/convocatorias" className="btn btn-primary btn-sm mt-4">
-            Ir a Convocatorias
-          </Link>
+          {user?.rol === "ADMINISTRADOR" ? (
+            <Link to="/configuracion/convocatorias" className="btn btn-primary btn-sm mt-4">
+              Ir a Convocatorias
+            </Link>
+          ) : (
+            <p className="mt-2 text-sm text-muted">Un administrador tiene que crearla.</p>
+          )}
         </div>
       ) : (
         <div className="space-y-8" aria-busy={status === "refreshing"}>

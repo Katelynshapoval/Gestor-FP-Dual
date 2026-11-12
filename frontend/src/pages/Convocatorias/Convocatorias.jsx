@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '../../context/UserContext';
 import { getJSON, postJSON, putJSON } from '../../utils/api';
-import PageHeader from '../../components/ui/PageHeader';
+import { SeccionIntro } from '../Configuracion/Configuracion.jsx';
 import StatusBadge from '../../components/ui/StatusBadge';
 import '../../styles/forms.css';
 import { formatFecha as formatDate } from '../../utils/fechas.js';
@@ -81,12 +81,11 @@ export default function Convocatorias() {
   };
 
   return (
-    <div className="page-container">
-      <PageHeader
-        kicker="Administración"
-        title="Gestión de convocatorias"
-        subtitle="Crea nuevas convocatorias y define el periodo en que están abiertas. La activa se determina automáticamente por fechas."
-      />
+    <div>
+      <SeccionIntro>
+        Crea nuevas convocatorias y define el periodo en que están abiertas. La
+        activa se determina automáticamente por fechas.
+      </SeccionIntro>
 
       {error && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

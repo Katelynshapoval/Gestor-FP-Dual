@@ -185,9 +185,18 @@ describe("dashboard", () => {
     await waitFor(() => expect(llamadas.at(-1).url).toBe("/panel/resumen?convocatoria=5"));
   });
 
-  test("without any convocatoria it says so", async () => {
+  test("without any convocatoria it says so; only an administrator gets the link to create one", async () => {
+    iniciarSesion({ id: 1, rol: "ADMINISTRADOR" });
+    simularApi({ "GET /panel/resumen": { convocatoria: null, convocatorias: [] } });
+    const { unmount } = renderPagina(<Panel />);
+    expect(await screen.findByText("Todavía no hay ninguna convocatoria.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ir a Convocatorias" })).toHaveAttribute("href", "/configuracion/convocatorias");
+    unmount();
+
+    iniciarSesion({ id: 2, rol: "COORDINADOR" });
     simularApi({ "GET /panel/resumen": { convocatoria: null, convocatorias: [] } });
     renderPagina(<Panel />);
-    expect(await screen.findByText("Todavía no hay ninguna convocatoria.")).toBeInTheDocument();
+    expect(await screen.findByText("Un administrador tiene que crearla.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ir a Convocatorias" })).toBeNull();
   });
 });

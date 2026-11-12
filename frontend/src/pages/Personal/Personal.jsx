@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useUser } from "../../context/UserContext";
 import { getJSON, patchJSON, postJSON } from "../../utils/api";
-import PageHeader from "../../components/ui/PageHeader";
+import { SeccionIntro } from "../Configuracion/Configuracion.jsx";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ResetPasswordButton from "../../components/ResetPasswordButton.jsx";
 import { useConfirm } from "../../components/feedback/ToastProvider.jsx";
@@ -144,12 +144,11 @@ export default function Personal() {
   };
 
   return (
-    <div className="page-container">
-      <PageHeader
-        kicker="Administración"
-        title="Personal del centro"
-        subtitle="Da de alta a administradores y coordinadores. La contraseña temporal se muestra una sola vez y hay que cambiarla al entrar."
-      />
+    <div>
+      <SeccionIntro>
+        Da de alta a administradores y coordinadores. La contraseña temporal se
+        muestra una sola vez y hay que cambiarla al entrar.
+      </SeccionIntro>
 
       {error && (
         <div

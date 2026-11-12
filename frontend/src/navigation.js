@@ -3,17 +3,15 @@
 // decide access.
 import {
   FaBuilding,
-  FaCalendarDays,
   FaClipboardList,
   FaFileLines,
   FaGaugeHigh,
   FaHouse,
   FaRightToBracket,
   FaUserGraduate,
-  FaUserShield,
   FaUsers,
   FaCircleQuestion,
-  FaEnvelope,
+  FaGear,
 } from "react-icons/fa6";
 
 export const STAFF = ["ADMINISTRADOR", "COORDINADOR"];
@@ -33,9 +31,7 @@ const STAFF_NAV = [
   { to: "/empresas", label: "Empresas", Icon: FaBuilding },
   { to: "/reservas", label: "Reservas", Icon: FaClipboardList },
   { to: "/documentos", label: "Documentos", Icon: FaFileLines },
-  { to: "/convocatorias", label: "Convocatorias", Icon: FaCalendarDays },
-  { to: "/personal", label: "Personal", Icon: FaUserShield, roles: ["ADMINISTRADOR"] },
-  { to: "/correos", label: "Correos", Icon: FaEnvelope, roles: ["ADMINISTRADOR"] },
+  { to: "/configuracion", label: "Configuración", Icon: FaGear, roles: ["ADMINISTRADOR"] },
   { to: "/ayuda", label: "Ayuda", Icon: FaCircleQuestion },
 ];
 
@@ -85,9 +81,10 @@ const TITLES = {
   "/empresas": "Empresas",
   "/reservas": "Reservas",
   "/documentos": "Documentos",
-  "/convocatorias": "Convocatorias",
-  "/personal": "Personal",
-  "/correos": "Correos",
+  "/configuracion": "Configuración",
+  "/configuracion/convocatorias": "Convocatorias · Configuración",
+  "/configuracion/personal": "Personal · Configuración",
+  "/configuracion/correos": "Correos · Configuración",
   "/ayuda": "Ayuda",
   "/companyMain": "Mi empresa",
   "/studentMain": "Mi proceso Dual",

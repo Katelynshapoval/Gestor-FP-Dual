@@ -65,9 +65,9 @@ const RUTAS = [
   ["/empresas", "AdminCompanyView", ["ADMINISTRADOR", "COORDINADOR"]],
   ["/reservas", "Reservas", ["ADMINISTRADOR", "COORDINADOR"]],
   ["/documentos", "AdminDocumentsView", ["ADMINISTRADOR", "COORDINADOR"]],
-  ["/convocatorias", "Convocatorias", ["ADMINISTRADOR", "COORDINADOR"]],
-  ["/personal", "Personal", ["ADMINISTRADOR"]],
-  ["/correos", "Correos", ["ADMINISTRADOR"]],
+  ["/configuracion/convocatorias", "Convocatorias", ["ADMINISTRADOR"]],
+  ["/configuracion/personal", "Personal", ["ADMINISTRADOR"]],
+  ["/configuracion/correos", "Correos", ["ADMINISTRADOR"]],
   ["/companyMain", "CompanyView", ["EMPRESA"]],
   ["/studentMain", "StudentMain", ["ALUMNO"]],
   ["/cambiarPassword", "CambiarPassword", ["ADMINISTRADOR", "COORDINADOR", "EMPRESA", "ALUMNO"]],
@@ -90,7 +90,7 @@ describe("access to every page", () => {
 
   test("an expired session counts as a visitor", () => {
     localStorage.setItem("user", JSON.stringify({ data: { id: 1, rol: "ADMINISTRADOR", token: "t" }, expires: Date.now() - 1 }));
-    window.history.pushState({}, "", "/correos");
+    window.history.pushState({}, "", "/configuracion/correos");
     const { unmount } = render(<App />);
     expect(screen.getByText(/^PAGINA:/).textContent).toBe("PAGINA:Login");
     unmount();
@@ -101,6 +101,17 @@ describe("access to every page", () => {
     expect(window.location.search).toBe("?x=1");
     expect(abrir("/companiesView", "ADMINISTRADOR").destino).toBe("/empresas");
     expect(abrir("/documentsView", "ADMINISTRADOR").destino).toBe("/documentos");
+    expect(abrir("/convocatorias", "ADMINISTRADOR")).toEqual({ pagina: "Convocatorias", destino: "/configuracion/convocatorias" });
+    expect(abrir("/personal", "ADMINISTRADOR").destino).toBe("/configuracion/personal");
+    expect(abrir("/correos?clave=x", "ADMINISTRADOR")).toEqual({ pagina: "Correos", destino: "/configuracion/correos" });
+    expect(window.location.search).toBe("?clave=x");
+    expect(abrir("/convocatorias", "COORDINADOR")).toEqual({ pagina: "Panel", destino: "/panel" });
+  });
+
+  test("Configuración opens its first tab; an unknown tab goes back to it", () => {
+    expect(abrir("/configuracion", "ADMINISTRADOR")).toEqual({ pagina: "Convocatorias", destino: "/configuracion/convocatorias" });
+    expect(abrir("/configuracion/otra", "ADMINISTRADOR")).toEqual({ pagina: "Convocatorias", destino: "/configuracion/convocatorias" });
+    expect(abrir("/configuracion", "COORDINADOR").pagina).toBe("Panel");
   });
 
   test("an unknown address goes to the home page", () => {

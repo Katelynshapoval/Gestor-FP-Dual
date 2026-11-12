@@ -15,7 +15,7 @@ describe("header", () => {
     renderPagina(<Header />);
     const nav = screen.getAllByRole("navigation", { name: "Navegación principal" })[0];
     expect(within(nav).getByRole("link", { name: /Solicitud de empresa/ })).toBeInTheDocument();
-    expect(within(nav).queryByRole("link", { name: /Correos/ })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: /Configuración/ })).toBeNull();
   });
 
   test("an administrator gets the management menu; signing out ends the session", async () => {
@@ -23,7 +23,7 @@ describe("header", () => {
     simularApi();
     renderPagina(<Header />, { ruta: "/panel" });
     const nav = screen.getAllByRole("navigation", { name: "Navegación principal" })[0];
-    for (const name of [/Panel/, /Alumnos/, /Empresas/, /Correos/, /Personal/]) {
+    for (const name of [/Panel/, /Alumnos/, /Empresas/, /Configuración/]) {
       expect(within(nav).getByRole("link", { name })).toBeInTheDocument();
     }
     fireEvent.click(screen.getAllByRole("button", { name: /Salir/ })[0]);
@@ -39,7 +39,7 @@ describe("header", () => {
     const enlaces = within(nav).getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(enlaces).toEqual(expect.arrayContaining(["/companyMain", "/alumnos", "/ayuda"]));
     expect(enlaces).not.toContain("/panel");
-    expect(enlaces).not.toContain("/correos");
+    expect(enlaces).not.toContain("/configuracion");
   });
 
   test("the mobile menu opens as a dialog and closes with Escape; the sidebar collapse is remembered", async () => {

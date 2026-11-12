@@ -13,6 +13,7 @@ import AdminCompanyView from "./pages/AdminCompanyView/AdminCompanyView.jsx";
 import Convocatorias from "./pages/Convocatorias/Convocatorias.jsx";
 import Personal from "./pages/Personal/Personal.jsx";
 import Correos from "./pages/Correos/Correos.jsx";
+import Configuracion from "./pages/Configuracion/Configuracion.jsx";
 import StudentMain from "./pages/StudentMain";
 import AdminDocumentsView from "./pages/AdminDocumentsView";
 import Panel from "./pages/Panel/Panel.jsx";
@@ -55,9 +56,12 @@ function App() {
                 <Route path="/empresas" element={guard(STAFF, <AdminCompanyView />)} />
                 <Route path="/reservas" element={guard(STAFF, <Reservas />)} />
                 <Route path="/documentos" element={guard(STAFF, <AdminDocumentsView />)} />
-                <Route path="/convocatorias" element={guard(STAFF, <Convocatorias />)} />
-                <Route path="/personal" element={guard(["ADMINISTRADOR"], <Personal />)} />
-                <Route path="/correos" element={guard(["ADMINISTRADOR"], <Correos />)} />
+                <Route path="/configuracion" element={guard(["ADMINISTRADOR"], <Configuracion />)}>
+                  <Route path="convocatorias" element={<Convocatorias />} />
+                  <Route path="personal" element={<Personal />} />
+                  <Route path="correos" element={<Correos />} />
+                  <Route path="*" element={null} />
+                </Route>
 
                 <Route path="/companyMain" element={guard(["EMPRESA"], <CompanyView />)} />
                 <Route path="/studentMain" element={guard(["ALUMNO"], <StudentMain />)} />
@@ -66,6 +70,9 @@ function App() {
                 <Route path="/linkStudents" element={<Legacy to="/alumnos" />} />
                 <Route path="/companiesView" element={<Legacy to="/empresas" />} />
                 <Route path="/documentsView" element={<Legacy to="/documentos" />} />
+                <Route path="/convocatorias" element={<Legacy to="/configuracion/convocatorias" />} />
+                <Route path="/personal" element={<Legacy to="/configuracion/personal" />} />
+                <Route path="/correos" element={<Legacy to="/configuracion/correos" />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>

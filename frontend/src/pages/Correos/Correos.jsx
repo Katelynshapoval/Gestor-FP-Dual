@@ -17,7 +17,7 @@ import {
   FaPaperPlane,
   FaTriangleExclamation,
 } from "react-icons/fa6";
-import PageHeader from "../../components/ui/PageHeader";
+import { SeccionIntro } from "../Configuracion/Configuracion.jsx";
 import StatusBadge from "../../components/ui/StatusBadge";
 import InlineNotice from "../../components/ui/InlineNotice";
 import {
@@ -649,11 +649,8 @@ export default function Correos() {
   const conProblemas = correos.filter((c) => c.problemas.length).length;
 
   return (
-    <div className="page-container !max-w-[100rem]">
-      <PageHeader
-        kicker="Administración"
-        title="Correos automáticos"
-        subtitle="Edita el texto y los adjuntos de los correos que la aplicación envía a alumnos y empresas. Pulsa una variable para insertarla donde está el cursor: al enviar se sustituye por el dato real."
+    <div>
+      <SeccionIntro
         meta={
           !cargando && (
             <>
@@ -669,7 +666,11 @@ export default function Correos() {
             </>
           )
         }
-      />
+      >
+        Edita el texto y los adjuntos de los correos que la aplicación envía a
+        alumnos y empresas. Pulsa una variable para insertarla donde está el
+        cursor: al enviar se sustituye por el dato real.
+      </SeccionIntro>
 
       <InlineNotice className="mb-6">{error}</InlineNotice>
       {faltan.length > 0 && (
