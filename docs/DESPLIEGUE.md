@@ -5,7 +5,7 @@ Everything runs from `docker-compose.yml` at the repository root:
 | Service | Image | What it does |
 | --- | --- | --- |
 | `caddy` | `caddy:2.8-alpine` | Only public entry (ports 80/443). Gets and renews the HTTPS certificate, adds HSTS. |
-| `web` | built from `frontend/Dockerfile` | nginx with the React build. Page loads get `index.html`; every other request goes to the API (same rule as the CRA dev proxy, because the API has no `/api` prefix). Config: `deploy/nginx.conf`. |
+| `web` | built from `frontend/Dockerfile` | nginx with the React build. Page loads get `index.html`; every other request goes to the API (same rule as the Vite dev proxy, because the API has no `/api` prefix). Config: `deploy/nginx.conf`. |
 | `backend` | built from `backend/Dockerfile` | Node 24 API, with Chromium for PDF generation. Includes `db/` (migration runner) and `docs/` (manual at `/ayuda`). Runs as the `node` user. |
 | `db` | `mysql:8.4` | Database in the `db-data` volume. Not published to the host. |
 

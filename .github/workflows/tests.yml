@@ -57,8 +57,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      # Runs every test and prints the coverage table; fails if coverage drops
-      # below the minimum in package.json (jest.coverageThreshold).
+      # Fails on any lint warning (the check react-scripts used to run in the build).
+      - run: npm run lint
+      # Runs every test (Vitest) and prints the coverage table; fails if coverage
+      # drops below the minimum in vite.config.js (test.coverage.thresholds).
       - run: npm run test:coverage
-      # With CI=true the build fails on lint warnings too.
       - run: npm run build

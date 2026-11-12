@@ -20,7 +20,7 @@ export function iniciarSesion(user) {
 export function simularApi(routes = {}) {
   const llamadas = [];
   const noEncontradas = [];
-  global.fetch = jest.fn(async (url, options = {}) => {
+  global.fetch = vi.fn(async (url, options = {}) => {
     const method = (options.method || "GET").toUpperCase();
     const path = String(url).split("?")[0];
     let body = options.body;

@@ -19,7 +19,7 @@ const PERSONAL = [
 
 describe("staff accounts", () => {
   test("creating an account shows its temporary password once, then hides it", async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const { llamadas } = simularApi({
       "GET /usuarios/personal": PERSONAL,
       "POST /usuarios/personal": { usuario: { nombre_mostrar: "Nuevo" }, newPassword: "clave-temporal-de-prueba" },
@@ -33,9 +33,9 @@ describe("staff accounts", () => {
     expect(await screen.findByText("clave-temporal-de-prueba")).toBeInTheDocument();
     expect(llamadas.find((l) => l.method === "POST").body).toEqual({ nombre: "Nuevo", email: "nuevo@centro.test", rol: "ADMINISTRADOR" });
     expect(screen.getByLabelText("Nombre")).toHaveValue("");
-    act(() => jest.advanceTimersByTime(2 * 60 * 1000 + 10));
+    act(() => vi.advanceTimersByTime(2 * 60 * 1000 + 10));
     expect(screen.queryByText("clave-temporal-de-prueba")).toBeNull();
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   test("a refused creation shows the server's reason", async () => {

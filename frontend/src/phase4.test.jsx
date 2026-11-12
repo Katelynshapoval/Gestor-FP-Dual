@@ -6,8 +6,8 @@ import { coincide, normalizar } from "./utils/busqueda.js";
 import { homeForRole, isActivePath, navForUser, pageTitle } from "./navigation.js";
 import Tabs from "./components/ui/Tabs.jsx";
 import { ErrorSummary, TextField, useStepForm } from "./components/forms/StepForm.jsx";
-import { pendientesAlumno } from "./pages/StudentMain/index.js";
-import { pendientesEmpresa } from "./pages/CompanyView/index.js";
+import { pendientesAlumno } from "./pages/StudentMain/index.jsx";
+import { pendientesEmpresa } from "./pages/CompanyView/index.jsx";
 import { tipoContratoLabel } from "./utils/labels.js";
 
 describe("navigation (D.1)", () => {
@@ -76,7 +76,7 @@ describe("Tabs (WAI-ARIA)", () => {
     expect(screen.getByRole("tab", { name: /Dos/ })).toHaveAttribute("tabindex", "-1");
     uno.focus();
     fireEvent.keyDown(uno, { key: "ArrowRight" });
-    const dos = screen.getByRole("tab", { name: /Dos 2 pendientes/ });
+    const dos = screen.getByRole("tab", { name: /Dos\s*2\s*pendientes/ });
     expect(dos).toHaveAttribute("aria-selected", "true");
     expect(dos).toHaveFocus();
     fireEvent.keyDown(dos, { key: "End" });
@@ -115,11 +115,11 @@ describe("step forms", () => {
     );
   }
   test("errors block the step, are listed and linked to the field; values survive going back", () => {
-    jest.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
       cb();
       return 0;
     });
-    window.scrollTo = jest.fn();
+    window.scrollTo = vi.fn();
     render(<Harness />);
     fireEvent.click(screen.getByText("Siguiente"));
     expect(screen.getByText("Paso 1")).toBeInTheDocument();

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FaCheck, FaEye, FaEyeSlash, FaLightbulb, FaShieldHalved } from "react-icons/fa6";
 import { postJSON } from "../utils/api.js";
-import { useUser } from "../context/UserContext.js";
+import { useUser } from "../context/UserContext.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import InlineNotice from "../components/ui/InlineNotice.jsx";
 import { useToast } from "../components/feedback/ToastProvider.jsx";

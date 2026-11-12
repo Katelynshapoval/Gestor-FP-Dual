@@ -2,7 +2,7 @@
 // used in the portals (upload only PDFs to the right endpoint, sign, review,
 // generate and regenerate after confirming).
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import Header from "./layout/Header/Header.js";
+import Header from "./layout/Header/Header.jsx";
 import DocumentoItem from "./DocumentoItem.jsx";
 import { iniciarSesion, renderPagina, simularApi } from "../testUtils";
 
@@ -45,7 +45,7 @@ describe("header", () => {
   test("the mobile menu opens as a dialog and closes with Escape; the sidebar collapse is remembered", async () => {
     iniciarSesion({ id: 4, rol: "ALUMNO", nombre: "Ana" });
     simularApi();
-    const plegar = jest.fn();
+    const plegar = vi.fn();
     renderPagina(<Header onSidebarToggle={plegar} />);
     fireEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
     const menu = screen.getByRole("dialog", { name: "Menú" });
@@ -80,7 +80,7 @@ describe("document card", () => {
   beforeEach(() => iniciarSesion({ id: 3, rol: "EMPRESA" }));
 
   test("only PDFs; uploads with the document's type and parent", async () => {
-    const onRefresh = jest.fn();
+    const onRefresh = vi.fn();
     const { llamadas } = simularApi({ "POST /documentos/subir": { message: "Documento enviado." } });
     renderPagina(<DocumentoItem doc={doc()} onRefresh={onRefresh} />);
     const input = screen.getByLabelText("Archivo PDF de Calendario");
@@ -97,7 +97,7 @@ describe("document card", () => {
 
   test("the contract annex goes to its own endpoint and replaces the current file", async () => {
     const { llamadas } = simularApi({ "POST /documentos/reserva/8/anexo": {} });
-    renderPagina(<DocumentoItem doc={doc({ clave: "ANEXO_II", nombre: "Anexo II", id_documento: 5, puede_subir: false, puede_reemplazar: true, firmas: [{ rol: "EMPRESA", estado: "PENDIENTE" }] })} onRefresh={jest.fn()} />);
+    renderPagina(<DocumentoItem doc={doc({ clave: "ANEXO_II", nombre: "Anexo II", id_documento: 5, puede_subir: false, puede_reemplazar: true, firmas: [{ rol: "EMPRESA", estado: "PENDIENTE" }] })} onRefresh={vi.fn()} />);
     expect(screen.getByText(/declaras que lleva tu firma/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Archivo PDF de Anexo II"), { target: { files: [pdf("anexo.pdf")] } });
     fireEvent.click(screen.getByRole("button", { name: "Reemplazar" }));
@@ -108,7 +108,7 @@ describe("document card", () => {
   test("sign, and a refusal keeps the server's message", async () => {
     let respuesta = { status: 409, body: { error: "Solo se firma la versión actual del documento." } };
     simularApi({ "POST /documentos/5/firmar": () => respuesta });
-    renderPagina(<DocumentoItem doc={doc({ id_documento: 5, puede_subir: false, puede_firmar: true })} onRefresh={jest.fn()} />);
+    renderPagina(<DocumentoItem doc={doc({ id_documento: 5, puede_subir: false, puede_firmar: true })} onRefresh={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Firmar" }));
     expect(await screen.findByText("Solo se firma la versión actual del documento.")).toBeInTheDocument();
     respuesta = {};
@@ -119,7 +119,7 @@ describe("document card", () => {
   test("staff review: validate, or reject with a reason", async () => {
     iniciarSesion({ id: 1, rol: "ADMINISTRADOR" });
     const { llamadas } = simularApi({ "POST /documentos/5/validar": {}, "POST /documentos/5/rechazar": {} });
-    renderPagina(<DocumentoItem doc={doc({ id_documento: 5, puede_subir: false, puede_revisar: true })} onRefresh={jest.fn()} />);
+    renderPagina(<DocumentoItem doc={doc({ id_documento: 5, puede_subir: false, puede_revisar: true })} onRefresh={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Validar" }));
     expect(await screen.findByText("Documento validado.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Rechazar" }));
@@ -133,12 +133,12 @@ describe("document card", () => {
   test("generate, and regenerate only after confirming", async () => {
     iniciarSesion({ id: 1, rol: "ADMINISTRADOR" });
     const { llamadas } = simularApi({ "POST /documentos/generar": { message: "Generado." } });
-    const { unmount } = renderPagina(<DocumentoItem doc={doc({ clave: "ANEXO_II", nombre: "Anexo II", puede_subir: false, puede_generar: true })} onRefresh={jest.fn()} />);
+    const { unmount } = renderPagina(<DocumentoItem doc={doc({ clave: "ANEXO_II", nombre: "Anexo II", puede_subir: false, puede_generar: true })} onRefresh={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /^Generar/ }));
     await screen.findByText("Generado.");
     expect(llamadas[0].body).toMatchObject({ clave: "ANEXO_II", id_reserva: 8, regenerar: false });
     unmount();
-    renderPagina(<DocumentoItem doc={doc({ clave: "ANEXO_II", nombre: "Anexo II", id_documento: 5, puede_subir: false, puede_regenerar: true })} onRefresh={jest.fn()} />);
+    renderPagina(<DocumentoItem doc={doc({ clave: "ANEXO_II", nombre: "Anexo II", id_documento: 5, puede_subir: false, puede_regenerar: true })} onRefresh={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /^Regenerar/ }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Regenerar" }));
     await waitFor(() => expect(llamadas).toHaveLength(2));

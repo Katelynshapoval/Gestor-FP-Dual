@@ -39,12 +39,12 @@ function api(extra = {}) {
 }
 
 beforeEach(() => {
-  jest.useFakeTimers();
+  vi.useFakeTimers();
   iniciarSesion({ id: 1, rol: "ADMINISTRADOR", nombre: "Admin" });
 });
 afterEach(() => {
-  act(() => jest.runOnlyPendingTimers());
-  jest.useRealTimers();
+  act(() => vi.runOnlyPendingTimers());
+  vi.useRealTimers();
 });
 
 async function abrir(extra) {
@@ -56,7 +56,7 @@ async function abrir(extra) {
 const asunto = () => screen.getByLabelText("Asunto");
 const cuerpo = () => screen.getByLabelText("Texto del correo");
 const guardar = () => screen.getByRole("button", { name: "Guardar cambios" });
-const previa = () => act(() => jest.advanceTimersByTime(400));
+const previa = () => act(() => vi.advanceTimersByTime(400));
 
 test("lists the emails by group and opens the first one, with its text and variables", async () => {
   await abrir();

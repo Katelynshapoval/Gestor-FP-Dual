@@ -6,11 +6,11 @@ import AlumnoDatosActions from "../LinkStudents/components/student-card/AlumnoDa
 import MisDatos from "./MisDatos.jsx";
 import { getJSON, postJSON, publicJSON, putJSON } from "../../utils/api.js";
 
-jest.mock("../../utils/api.js", () => ({
-  getJSON: jest.fn(),
-  postJSON: jest.fn(),
-  putJSON: jest.fn(),
-  publicJSON: jest.fn(),
+vi.mock("../../utils/api.js", () => ({
+  getJSON: vi.fn(),
+  postJSON: vi.fn(),
+  putJSON: vi.fn(),
+  publicJSON: vi.fn(),
 }));
 
 const datos = {
@@ -35,7 +35,7 @@ beforeEach(() => {
     ),
   );
 });
-afterEach(() => jest.clearAllMocks());
+afterEach(() => vi.clearAllMocks());
 
 function adminPanel({ reservas = [], cambio = { pending: null, ultimo: null }, pendiente = null } = {}) {
   getJSON.mockImplementation((url) =>

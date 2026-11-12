@@ -6,9 +6,7 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# The page CSP (deploy/nginx.conf) allows no inline script: ship CRA's
-# runtime chunk as a file instead of inlining it into index.html.
-ENV INLINE_RUNTIME_CHUNK=false
+# Vite writes build/ with no inline script, as the page CSP (deploy/nginx.conf) requires.
 RUN npm run build
 
 FROM nginx:1.27-alpine

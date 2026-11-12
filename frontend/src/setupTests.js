@@ -1,4 +1,4 @@
-// Jest setup (react-scripts test): DOM matchers such as toBeInTheDocument.
+// Test setup (Vitest): DOM matchers such as toBeInTheDocument.
 import "@testing-library/jest-dom";
 
 // jsdom does not lay out pages, so it has no scrollIntoView; lists call it to

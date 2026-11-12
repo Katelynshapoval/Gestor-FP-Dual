@@ -5,7 +5,7 @@ function storeSession(token = "a.eyJleHAiOjQxMDI0NDQ4MDB9.s") {
 }
 
 function respond(status, body) {
-  global.fetch = jest.fn().mockResolvedValue({
+  global.fetch = vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
     text: () => Promise.resolve(body === undefined ? "" : JSON.stringify(body)),
@@ -42,7 +42,7 @@ describe("api error handling (WF-16, WF-17)", () => {
   });
 
   test("a network failure is reported as NETWORK, not as an empty result", async () => {
-    global.fetch = jest.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    global.fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
     await expect(getJSON("/x")).rejects.toMatchObject({ status: 0, code: "NETWORK" });
   });
 

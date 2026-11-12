@@ -149,7 +149,10 @@ describe("voluntary password change", () => {
   test("needs the current one, 8 characters and a match", async () => {
     const { llamadas } = simularApi();
     renderPagina(<CambiarPassword />);
-    const enviar = () => fireEvent.click(screen.getByRole("button", { name: /Cambiar contraseña|Guardar/ }));
+    // The browser's own checks (`required`, `minLength`) stop a click on the
+    // button; submitting the form directly reaches the app's checks behind them.
+    const enviar = () =>
+      fireEvent.submit(screen.getByRole("button", { name: /Cambiar contraseña|Guardar/ }).closest("form"));
     enviar();
     expect(await screen.findByText("Introduce tu contraseña actual.")).toBeInTheDocument();
     escribir("Contraseña actual", "vieja-clave");

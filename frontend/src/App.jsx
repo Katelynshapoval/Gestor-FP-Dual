@@ -3,7 +3,7 @@ import { User } from "./context/UserContext";
 import PageLayout from "./components/layout/PageLayout.jsx";
 import { ToastProvider } from "./components/feedback/ToastProvider.jsx";
 
-import Home from "./pages/Home/Home.js";
+import Home from "./pages/Home/Home.jsx";
 import Login from "./pages/Login";
 import AddDualStudent from "./pages/AddDualStudent";
 import AddCompanyRequest from "./pages/AddCompanyRequest";

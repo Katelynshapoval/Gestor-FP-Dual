@@ -2,11 +2,11 @@
 // convocatoria, every step checked before moving on, the catalogue retry, and
 // exactly what is sent (trimmed, uppercased, only the work address entered).
 import { fireEvent, screen, within } from "@testing-library/react";
-import AddCompanyRequest from "./index.js";
+import AddCompanyRequest from "./index.jsx";
 import { iniciarSesion, renderPagina, simularApi } from "../../testUtils";
 
 let mockEstadoConvocatoria = { abierta: true, activa: { nombre: "2026/2027" }, proxima: null };
-jest.mock("../../hooks/useConvocatoriaEstado.js", () => ({
+vi.mock("../../hooks/useConvocatoriaEstado.js", () => ({
   useConvocatoriaEstado: () => ({ status: "ready", data: mockEstadoConvocatoria, error: null }),
   loadConvocatoriaEstado: async () => mockEstadoConvocatoria,
 }));

@@ -6,7 +6,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import AdminCompanyView from "./AdminCompanyView.jsx";
 import { iniciarSesion, renderPagina, simularApi } from "../../testUtils";
 
-jest.mock("../../hooks/useConvocatoriaEstado.js", () => ({
+vi.mock("../../hooks/useConvocatoriaEstado.js", () => ({
   useConvocatoriaEstado: () => ({ status: "ready", data: { abierta: true, activa: { id_convocatoria: 6, nombre: "2026/2027" } }, error: null }),
   loadConvocatoriaEstado: async () => ({ abierta: true }),
 }));

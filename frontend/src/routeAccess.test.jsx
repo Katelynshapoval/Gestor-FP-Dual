@@ -5,28 +5,31 @@
 import { render, screen } from "@testing-library/react";
 import App from "./App";
 
-jest.mock("./components/layout/PageLayout.jsx", () => {
-  const { Outlet } = require("react-router-dom");
-  return () => <Outlet />;
+vi.mock("./components/layout/PageLayout.jsx", async () => {
+  const { Outlet } = await import("react-router-dom");
+  return { default: () => <Outlet /> };
 });
-const pagina = (nombre) => () => <p>PAGINA:{nombre}</p>;
-jest.mock("./pages/Home/Home.js", () => pagina("Home"));
-jest.mock("./pages/Login", () => pagina("Login"));
-jest.mock("./pages/AddDualStudent", () => pagina("AddDualStudent"));
-jest.mock("./pages/AddCompanyRequest", () => pagina("AddCompanyRequest"));
-jest.mock("./pages/LinkStudents", () => pagina("LinkStudents"));
-jest.mock("./pages/CompanyView/", () => pagina("CompanyView"));
-jest.mock("./pages/AdminCompanyView/AdminCompanyView.jsx", () => pagina("AdminCompanyView"));
-jest.mock("./pages/Convocatorias/Convocatorias.jsx", () => pagina("Convocatorias"));
-jest.mock("./pages/Personal/Personal.jsx", () => pagina("Personal"));
-jest.mock("./pages/Correos/Correos.jsx", () => pagina("Correos"));
-jest.mock("./pages/StudentMain", () => pagina("StudentMain"));
-jest.mock("./pages/AdminDocumentsView", () => pagina("AdminDocumentsView"));
-jest.mock("./pages/Panel/Panel.jsx", () => pagina("Panel"));
-jest.mock("./pages/Reservas/Reservas.jsx", () => pagina("Reservas"));
-jest.mock("./pages/CambiarPassword.jsx", () => pagina("CambiarPassword"));
-jest.mock("./pages/Ayuda/Ayuda.jsx", () => pagina("Ayuda"));
-jest.mock("./pages/RecuperarPassword.jsx", () => ({
+// vi.mock factories are hoisted above the imports, so the helper is too.
+const { pagina } = vi.hoisted(() => ({
+  pagina: (nombre) => ({ default: () => <p>PAGINA:{nombre}</p> }),
+}));
+vi.mock("./pages/Home/Home.jsx", () => pagina("Home"));
+vi.mock("./pages/Login", () => pagina("Login"));
+vi.mock("./pages/AddDualStudent", () => pagina("AddDualStudent"));
+vi.mock("./pages/AddCompanyRequest", () => pagina("AddCompanyRequest"));
+vi.mock("./pages/LinkStudents", () => pagina("LinkStudents"));
+vi.mock("./pages/CompanyView/", () => pagina("CompanyView"));
+vi.mock("./pages/AdminCompanyView/AdminCompanyView.jsx", () => pagina("AdminCompanyView"));
+vi.mock("./pages/Convocatorias/Convocatorias.jsx", () => pagina("Convocatorias"));
+vi.mock("./pages/Personal/Personal.jsx", () => pagina("Personal"));
+vi.mock("./pages/Correos/Correos.jsx", () => pagina("Correos"));
+vi.mock("./pages/StudentMain", () => pagina("StudentMain"));
+vi.mock("./pages/AdminDocumentsView", () => pagina("AdminDocumentsView"));
+vi.mock("./pages/Panel/Panel.jsx", () => pagina("Panel"));
+vi.mock("./pages/Reservas/Reservas.jsx", () => pagina("Reservas"));
+vi.mock("./pages/CambiarPassword.jsx", () => pagina("CambiarPassword"));
+vi.mock("./pages/Ayuda/Ayuda.jsx", () => pagina("Ayuda"));
+vi.mock("./pages/RecuperarPassword.jsx", () => ({
   RecuperarPassword: () => <p>PAGINA:RecuperarPassword</p>,
   RestablecerPassword: () => <p>PAGINA:RestablecerPassword</p>,
 }));

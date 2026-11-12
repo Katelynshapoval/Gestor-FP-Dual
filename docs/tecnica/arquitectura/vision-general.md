@@ -16,11 +16,11 @@ FP Dual es el portal que gestiona el programa de Formación Profesional Dual de 
 
 | Capa | Tecnología | Evidencia |
 | --- | --- | --- |
-| Frontend | React 18 (Create React App, `react-scripts` 5), React Router 6, Tailwind CSS 3, `react-icons`, `marked` (manual en la página Ayuda) | [`frontend/package.json`](../../../frontend/package.json) |
+| Frontend | React 18 (Vite 8), React Router 6, Tailwind CSS 3, `react-icons`, `marked` (manual en la página Ayuda) | [`frontend/package.json`](../../../frontend/package.json) |
 | Backend | Node.js + Express 4 (CommonJS), `mysql2/promise`, `jsonwebtoken`, `bcrypt`, `multer`, `nodemailer`, `morgan` | [`backend/package.json`](../../../backend/package.json) |
 | Generación documental | `docx-templates` (rellena DOCX), `mammoth` (DOCX → HTML), `puppeteer` (HTML → PDF con Chromium) | [`documentGenerationService.js`](../../../backend/src/services/documentGenerationService.js) |
 | Base de datos | MySQL 8 (InnoDB, `utf8mb4_0900_ai_ci`), procedimientos almacenados y triggers | [`db/000_baseline.sql`](../../../db/000_baseline.sql), [`db/migrations/`](../../../db/migrations) |
-| Pruebas | `node:test` con un arnés propio de *stubs* (backend); Jest + Testing Library (frontend) | [`backend/test/helpers/harness.js`](../../../backend/test/helpers/harness.js) |
+| Pruebas | `node:test` con un arnés propio de *stubs* (backend); Vitest + Testing Library (frontend) | [`backend/test/helpers/harness.js`](../../../backend/test/helpers/harness.js) |
 
 Dependencias declaradas pero **no usadas** por el código actual: `google-auth-library`, `soffice`, `crypto-browserify`, `body-parser` (backend) y `@react-oauth/google` (frontend). Ningún fichero de `src/`, `scripts/` ni `test/` las importa. El motivo de su presencia no consta 🔶 (probablemente restos de versiones anteriores).
 
@@ -46,7 +46,7 @@ flowchart LR
   EXP -- "nodemailer" --> SMTP
 ```
 
-- **Un solo proceso Node** sirve la API en `PORT` (3001 por defecto). No sirve el frontend compilado ni configura CORS: en desarrollo el *proxy* de CRA (`"proxy": "http://localhost:3001"` en `frontend/package.json`) reenvía las llamadas; en un despliegue real hace falta un proxy inverso que publique `frontend/build` y la API bajo el mismo origen 🔶 (no hay guía de despliegue en el repositorio).
+- **Un solo proceso Node** sirve la API en `PORT` (3001 por defecto). No sirve el frontend compilado ni configura CORS: en desarrollo el *proxy* de Vite (`frontend/vite.config.js`) reenvía las llamadas; en un despliegue real hace falta un proxy inverso que publique `frontend/build` y la API bajo el mismo origen 🔶 (no hay guía de despliegue en el repositorio).
 - **Sin colas ni workers.** Lo asíncrono se limita a: el programador de convocatorias (`setInterval`), el envío de correos «disparar y olvidar» tras el *commit* y la generación de PDF dentro de la propia petición. Ver [procesos](../procesos/README.md).
 - **Estado en memoria del proceso:** el limitador de intentos de login y de recuperación de contraseña ([`loginRateLimit.js`](../../../backend/src/middleware/loginRateLimit.js)). Se pierde al reiniciar y no se comparte entre procesos.
 - **No existe entorno de producción** a fecha de esta documentación. Todo lo verificado contra datos se hizo en la base de desarrollo local `proyecto_dual`.

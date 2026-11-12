@@ -92,7 +92,7 @@ test("rejecting needs a reason, which is sent", async () => {
 });
 
 test("generate sends the document and its parent; regenerate asks first; a missing template links to templates", async () => {
-  const plantillas = jest.fn();
+  const plantillas = vi.fn();
   const { llamadas } = simularApi({
     "GET /documentos/seguimiento": pagina([
       item({ clave: "CONVENIO", nombre: "Convenio", id_documento: null, id_solicitud_empresa: 10, contexto: "solicitud_empresa", empresa: "ACME", alumno: null, puede_generar: true }),

@@ -90,7 +90,7 @@
 | Validación de PDF por cabecera | Solo se comprueba la firma `%PDF-`, no el resto del fichero ni las firmas digitales | `pdfUpload.js` |
 | CORS sin configurar | Depende del proxy de despliegue 🔶 | `index.js` |
 | Contraseña temporal de alumnos y empresas sin auditoría | El reseteo de personal sí queda en `dual_eventos` (`USUARIO`). El de alumnos y empresas no. Ver [autenticación § 6](logica-de-negocio/autenticacion-y-cuentas.md#6-contraseña-temporal--post-usuariosidresetpassword-administrador) | `authService.resetPassword` |
-| Avisos de dependencias del frontend | La cadena de `react-scripts` sigue con avisos de `npm audit` (deuda de construcción) | `frontend/package.json` |
+| Avisos de dependencias del frontend | Resuelto al pasar de `react-scripts` a Vite: la cadena de construcción de CRA ya no se instala | `frontend/package.json` |
 | Firmas no criptográficas | `CONFIRMACION_APP` / `SUBIDA_FIRMADA` son atestaciones | migración 013 |
 
 No se han encontrado credenciales en el código versionado; `backend/.env.example` solo contiene nombres de variables.

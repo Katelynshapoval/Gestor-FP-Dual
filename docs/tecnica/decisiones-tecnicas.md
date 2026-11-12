@@ -84,3 +84,7 @@
 - `empresaDatos.applyEmpresaDatos`: copia en escritura y caso de domicilio legal = trabajo.
 - Cambiar `dateStrings` en el pool cambia el formato de todas las fechas de la API.
 - Cambiar `JWT_SECRET` cierra todas las sesiones. Cambiar cómo se calcula la huella de la contraseña (`passwordFingerprint`) también.
+
+## Vite en lugar de Create React App
+- **Qué**: el frontend se construye con Vite y se prueba con Vitest (antes `react-scripts` 5 y Jest). La configuración está en `frontend/vite.config.js` (servidor de desarrollo, *proxy*, build en `frontend/build/`, pruebas y cobertura mínima) y el lint en `frontend/eslint.config.js` (mismas reglas que comprobaba `react-scripts`: hooks, el subconjunto de jsx-a11y de CRA y las reglas base de ESLint).
+- **Por qué**: CRA ya no se mantiene y arrastraba unos 1.500 paquetes de construcción con avisos de `npm audit`. El código de la aplicación no cambia; los archivos con JSX pasan de `.js` a `.jsx` porque Vite lo exige.

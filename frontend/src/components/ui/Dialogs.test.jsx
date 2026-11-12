@@ -6,7 +6,7 @@ import MotivoDialog from "./MotivoDialog.jsx";
 // CRA resets mocks before each test, so the stub is installed per test.
 beforeEach(() => {
   // requestAnimationFrame runs synchronously in these tests
-  jest.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
     cb();
     return 0;
   });
@@ -38,8 +38,8 @@ describe("Modal (PM-7, D.4)", () => {
   });
 
   test("with stacked dialogs, Escape closes only the top one", () => {
-    const closeOuter = jest.fn();
-    const closeInner = jest.fn();
+    const closeOuter = vi.fn();
+    const closeInner = vi.fn();
     render(
       <Modal open onClose={closeOuter} title="Fuera">
         <Modal open onClose={closeInner} title="Dentro">
@@ -67,7 +67,7 @@ describe("Modal (PM-7, D.4)", () => {
 
 describe("MotivoDialog", () => {
   test("a required reason blocks the button until something is typed", async () => {
-    const onConfirm = jest.fn().mockResolvedValue();
+    const onConfirm = vi.fn().mockResolvedValue();
     render(<MotivoDialog open onClose={() => {}} onConfirm={onConfirm} title="Cancelar reserva" confirmLabel="Cancelar reserva" />);
     const button = screen.getByRole("button", { name: "Cancelar reserva" });
     expect(button).toBeDisabled();
@@ -78,7 +78,7 @@ describe("MotivoDialog", () => {
   });
 
   test("an error from the action is shown inside the dialog, which stays open", async () => {
-    const onConfirm = jest.fn().mockRejectedValue(new Error("Una reserva confirmada solo la puede cancelar el centro."));
+    const onConfirm = vi.fn().mockRejectedValue(new Error("Una reserva confirmada solo la puede cancelar el centro."));
     render(<MotivoDialog open onClose={() => {}} onConfirm={onConfirm} title="Cancelar" confirmLabel="Confirmar" />);
     fireEvent.change(screen.getByLabelText(/Motivo/), { target: { value: "x" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
@@ -87,7 +87,7 @@ describe("MotivoDialog", () => {
   });
 
   test("an optional reason can be confirmed empty", async () => {
-    const onConfirm = jest.fn().mockResolvedValue();
+    const onConfirm = vi.fn().mockResolvedValue();
     render(<MotivoDialog open required={false} onClose={() => {}} onConfirm={onConfirm} title="Reabrir" confirmLabel="Reabrir" />);
     fireEvent.click(screen.getByRole("button", { name: "Reabrir" }));
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith(""));

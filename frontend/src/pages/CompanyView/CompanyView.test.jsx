@@ -2,7 +2,7 @@
 // company to do, failed sections with retry, re-applying in a new
 // convocatoria and sending a data change request (never the CIF).
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import CompanyView from "./index.js";
+import CompanyView from "./index.jsx";
 import { iniciarSesion, renderPagina, simularApi } from "../../testUtils";
 
 const MIA = { id_solicitud_empresa: 10, convocatoria_activa: true, convocatoria: "2026/2027", estado_validacion: "PENDIENTE" };

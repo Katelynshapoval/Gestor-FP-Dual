@@ -2,10 +2,10 @@
 // (with a legal guardian for minors), contact, Social Security number, PDFs,
 // password, and exactly what is uploaded.
 import { fireEvent, screen, within } from "@testing-library/react";
-import AddDualStudent from "./index.js";
+import AddDualStudent from "./index.jsx";
 import { iniciarSesion, renderPagina, simularApi } from "../../testUtils";
 
-jest.mock("../../hooks/useConvocatoriaEstado.js", () => ({
+vi.mock("../../hooks/useConvocatoriaEstado.js", () => ({
   useConvocatoriaEstado: () => ({ status: "ready", data: { abierta: true, activa: { nombre: "2026/2027" } }, error: null }),
   loadConvocatoriaEstado: async () => ({ abierta: true }),
 }));

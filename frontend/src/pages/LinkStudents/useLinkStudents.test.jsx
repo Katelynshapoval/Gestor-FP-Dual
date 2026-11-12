@@ -9,7 +9,7 @@ import { ToastProvider } from "../../components/feedback/ToastProvider.jsx";
 import { situacionReserva, useLinkStudents } from "./hooks/useLinkStudents.js";
 import { iniciarSesion, simularApi } from "../../testUtils";
 
-jest.mock("../../hooks/useConvocatoriaEstado.js", () => ({
+vi.mock("../../hooks/useConvocatoriaEstado.js", () => ({
   useConvocatoriaEstado: () => ({ status: "ready", data: { activa: { nombre: "2026/2027" } }, error: null }),
 }));
 
