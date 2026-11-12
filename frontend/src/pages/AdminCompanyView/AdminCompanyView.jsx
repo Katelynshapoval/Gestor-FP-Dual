@@ -19,6 +19,7 @@ import PdfViewer from "../../components/ui/PdfViewer.jsx";
 import MotivoDialog from "../../components/ui/MotivoDialog.jsx";
 import PageHeader from "../../components/ui/PageHeader";
 import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
+import { SkeletonCards } from "../../components/ui/Loading.jsx";
 
 // One convenio state per company, the same one its card shows.
 export function estadoConvenio(c) {
@@ -213,10 +214,13 @@ const AdminCompanyView = () => {
 
   if (loading)
     return (
-      <div className="page-container">
-        <p role="status" className="rounded-xl2 border border-surface-200 bg-white py-12 text-center text-sm text-muted shadow-card">
-          Cargando empresas y reservas…
-        </p>
+      <div className="page-container space-y-6">
+        <PageHeader
+          kicker="Gestión"
+          title="Empresas"
+          subtitle="Solicitudes de empresa, convenios, ciclos y plazas, tutores y cambios de datos."
+        />
+        <SkeletonCards count={5} label="Cargando empresas y reservas…" />
       </div>
     );
   if (error)

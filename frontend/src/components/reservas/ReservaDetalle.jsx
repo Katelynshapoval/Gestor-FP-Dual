@@ -22,6 +22,7 @@ import { getJSON, postJSON } from "../../utils/api.js";
 import { tipoContratoLabel } from "../../utils/labels.js";
 import { formatDocumentDate } from "../../utils/documentos.js";
 import LongText from "../ui/LongText.jsx";
+import { Bar, InlineLoading, useAparecer } from "../ui/Loading.jsx";
 
 // The whole lifecycle of one reservation in one place (Phase 3, D.1):
 // state, contract type, Anexo II/III and calendar (upload, generate, sign,
@@ -148,7 +149,7 @@ export default function ReservaDetalle({ idReserva: idInicial, open, onClose, on
         }
       >
         {loading && !data ? (
-          <PanelState>Cargando la reserva…</PanelState>
+          <SkeletonReserva />
         ) : error ? (
           <PanelState>
             <p className="font-semibold text-charcoal-950">
@@ -385,7 +386,7 @@ function ReasignarDialog({ open, reserva, onClose, onDone }) {
         {error ? (
           <p className="text-sm text-red-700">{error}</p>
         ) : ofertas === null ? (
-          <p className="text-sm text-muted">Cargando ofertas…</p>
+          <InlineLoading>Cargando ofertas…</InlineLoading>
         ) : ofertas.length === 0 ? (
           <p className="text-sm text-muted">No hay otras ofertas de la misma especialidad y convocatoria con plazas libres.</p>
         ) : (
@@ -487,6 +488,37 @@ function Card({ title, Icon, children }) {
 
 function Hint({ children }) {
   return <p className="mb-3 mt-0 text-xs leading-5 text-muted">{children}</p>;
+}
+
+// Loading: summary, documents and side column of a reservation.
+function SkeletonReserva() {
+  const visible = useAparecer();
+  return (
+    <div>
+      <span role="status" className="sr-only">Cargando la reserva…</span>
+      {visible && (
+        <div className="grid gap-6 motion-safe:animate-pulse lg:grid-cols-[minmax(0,1fr)_18rem]" aria-hidden="true">
+          <div className="space-y-4">
+            <Bar w="w-48" h="h-5" tono="bg-surface-200" />
+            <Bar w="w-72" className="max-w-full" />
+            {[0, 1].map((i) => (
+              <div key={i} className="space-y-2 rounded-lg border border-surface-200 p-4">
+                <Bar w="w-32" h="h-4" tono="bg-surface-200" />
+                <Bar w="w-full" />
+                <Bar w="w-2/3" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3 rounded-lg border border-surface-200 p-4">
+            <Bar w="w-28" h="h-3" tono="bg-surface-200" />
+            <Bar w="w-full" h="h-9" className="rounded-lg" />
+            <Bar w="w-28" h="h-3" tono="bg-surface-200" />
+            <Bar w="w-full" h="h-9" className="rounded-lg" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PanelState({ children }) {

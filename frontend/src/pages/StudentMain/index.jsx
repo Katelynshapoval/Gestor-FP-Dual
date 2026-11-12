@@ -11,6 +11,7 @@ import Pendientes from "../../components/portal/Pendientes.jsx";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
 import { anexoNombre, label } from "../../utils/labels.js";
 import "../../styles/forms.css";
+import { SkeletonPortal } from "../../components/ui/Loading.jsx";
 
 const firmaPendienteDe = (resumenDoc, rol) =>
   (resumenDoc?.firmas_pendientes || []).some((r) => String(r).toUpperCase() === rol);
@@ -163,7 +164,7 @@ function StudentMain() {
       />
 
       {loading ? (
-        <p role="status" className="py-16 text-center text-muted">Cargando tu proceso Dual…</p>
+        <SkeletonPortal label="Cargando tu proceso Dual…" />
       ) : error ? (
         <div role="alert" className="form-card text-center">
           <p className="font-semibold text-charcoal-950">No se pudo cargar tu proceso Dual.</p>

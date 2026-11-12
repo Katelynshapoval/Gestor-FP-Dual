@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getJSON, patchJSON, postJSON } from "../../utils/api.js";
 import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
+import { SkeletonRows } from "../../components/ui/Loading.jsx";
 
 const emptyForm = () => ({
   nombre: "",
@@ -107,7 +108,11 @@ const TutoresEmpresa = () => {
   const activos = tutores.filter((t) => Number(t.activo) === 1).length;
 
   if (loading) {
-    return <p className="py-8 text-center text-muted">Cargando tutores…</p>;
+    return (
+      <div className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card">
+        <SkeletonRows count={3} label="Cargando tutores…" />
+      </div>
+    );
   }
 
   return (

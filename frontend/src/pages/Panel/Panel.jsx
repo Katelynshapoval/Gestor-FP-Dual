@@ -146,14 +146,14 @@ const Skeleton = () => (
   <div aria-hidden="true" className="space-y-6">
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: 4 }, (_, i) => (
-        <div key={i} className="h-48 animate-pulse rounded-xl2 border border-surface-200 bg-white p-5 shadow-card">
+        <div key={i} className="h-48 motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white p-5 shadow-card">
           <div className="h-10 w-10 rounded-lg bg-surface-100" />
           <div className="mt-4 h-7 w-12 rounded bg-surface-200" />
           <div className="mt-3 h-3 w-40 rounded bg-surface-100" />
         </div>
       ))}
     </div>
-    <div className="h-40 animate-pulse rounded-xl2 border border-surface-200 bg-white shadow-card" />
+    <div className="h-40 motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white shadow-card" />
   </div>
 );
 

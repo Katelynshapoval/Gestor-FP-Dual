@@ -6,6 +6,7 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import ResetPasswordButton from "../../components/ResetPasswordButton.jsx";
 import { useConfirm } from "../../components/feedback/ToastProvider.jsx";
 import LongText from "../../components/ui/LongText.jsx";
+import { SkeletonRows } from "../../components/ui/Loading.jsx";
 
 const VISIBLE_MS = 2 * 60 * 1000;
 const ROL_LABEL = {
@@ -225,7 +226,7 @@ export default function Personal() {
           <div className="form-section-title mb-0">Cuentas</div>
         </div>
         {loading ? (
-          <p className="px-6 py-8 text-sm text-muted">Cargando…</p>
+          <SkeletonRows count={3} label="Cargando cuentas…" />
         ) : personal.length === 0 ? (
           <p className="px-6 py-8 text-sm text-muted">
             No hay cuentas de personal.

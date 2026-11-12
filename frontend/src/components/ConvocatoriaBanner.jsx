@@ -6,7 +6,7 @@ import { formatFecha } from "../utils/fechas.js";
 const ConvocatoriaBanner = ({ estado, className = "" }) => {
   if (estado.status === "loading") {
     return (
-      <div role="status" className={`h-[4.5rem] animate-pulse rounded-xl2 border border-surface-200 bg-white ${className}`}>
+      <div role="status" className={`h-[4.5rem] motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white ${className}`}>
         <span className="sr-only">Comprobando el plazo de solicitudes…</span>
       </div>
     );

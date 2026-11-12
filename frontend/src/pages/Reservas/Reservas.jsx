@@ -3,6 +3,7 @@ import { getJSON } from "../../utils/api.js";
 import PageHeader from "../../components/ui/PageHeader";
 import ReservasLista from "./ReservasLista";
 import { useConvocatoriaEstado } from "../../hooks/useConvocatoriaEstado.js";
+import { SkeletonCards } from "../../components/ui/Loading.jsx";
 
 // Staff reservations list, its own menu entry since Phase 4 (D.1). All actions
 // happen in the shared ReservaDetalle panel opened from each row.
@@ -28,9 +29,7 @@ const Reservas = () => {
     <div className="page-container space-y-6">
       <PageHeader kicker="Gestión" title="Reservas" subtitle="Agrupadas por lo que necesitan a continuación. Cada reserva se gestiona desde su panel." />
       {loading ? (
-        <p role="status" className="rounded-xl2 border border-surface-200 bg-white py-12 text-center text-sm text-muted shadow-card">
-          Cargando reservas…
-        </p>
+        <SkeletonCards count={5} label="Cargando reservas…" />
       ) : error ? (
         <div role="alert" className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
           <p className="font-semibold text-charcoal-950">No se pudieron cargar las reservas.</p>

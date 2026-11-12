@@ -3,6 +3,7 @@ import Modal from "./Modal.jsx";
 import EstadoBadge from "./EstadoBadge.jsx";
 import { getBlob } from "../../utils/api.js";
 import { FIRMA } from "../../utils/labels.js";
+import { InlineLoading } from "./Loading.jsx";
 
 // One PDF viewer for every document (replaces DocViewer, ReservaDocViewer and
 // ConvenioViewer; PM-7). It downloads the file with the session token, shows
@@ -122,7 +123,9 @@ export default function PdfViewer({
           {!idDocumento ? (
             <Centered>No hay ningún archivo para este documento.</Centered>
           ) : loading ? (
-            <Centered>Cargando documento…</Centered>
+            <Centered>
+              <InlineLoading>Cargando documento…</InlineLoading>
+            </Centered>
           ) : error ? (
             <Centered>
               <p className="font-semibold text-charcoal-950">No se pudo cargar el documento.</p>

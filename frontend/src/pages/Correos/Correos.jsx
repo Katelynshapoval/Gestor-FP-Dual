@@ -31,6 +31,7 @@ import PlantillaCampo from "./PlantillaCampo.jsx";
 import HistorialDialog from "./HistorialDialog.jsx";
 import AdjuntosCorreo from "./AdjuntosCorreo.jsx";
 import { envolver, insertar, variablesUsadas } from "./plantillaTokens";
+import { Bar, useAparecer } from "../../components/ui/Loading.jsx";
 
 const GRUPOS = {
   SOLICITUD_ALUMNO: "Solicitudes de alumnos",
@@ -681,7 +682,7 @@ export default function Correos() {
       )}
 
       {cargando ? (
-        <p className="text-sm text-muted">Cargando…</p>
+        <SkeletonCorreos />
       ) : (
         <div className="grid items-start gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
           {/* Small screens: a select instead of the long list */}
@@ -715,7 +716,7 @@ export default function Correos() {
           </div>
 
           {!detalle ? (
-            <p className="text-sm text-muted">Cargando correo…</p>
+            <SkeletonEditor />
           ) : (
             <div className="min-w-0">
               {/* Below 1600px the editor and the preview share the space: switch between them. */}
@@ -1096,5 +1097,53 @@ function Interruptor({ activa, desactivable, onChange }) {
         />
       </span>
     </label>
+  );
+}
+
+// Loading: the editor card (subject, body, attachments) of one email.
+function SkeletonEditor() {
+  const visible = useAparecer();
+  return (
+    <div className="min-w-0">
+      <span role="status" className="sr-only">Cargando el correo…</span>
+      {visible && (
+        <div className="space-y-4 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card motion-safe:animate-pulse" aria-hidden="true">
+          <Bar w="w-28" h="h-3" tono="bg-surface-200" />
+          <Bar w="w-64" h="h-6" tono="bg-surface-200" className="max-w-full" />
+          <Bar w="w-full" h="h-10" className="rounded-lg" />
+          <Bar w="w-full" h="h-40" className="rounded-lg" />
+          <Bar w="w-full" h="h-24" className="rounded-lg" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Loading: the list of emails beside the editor (only a select on small screens).
+function SkeletonCorreos() {
+  const visible = useAparecer();
+  return (
+    <div>
+      <span role="status" className="sr-only">Cargando los correos…</span>
+      {visible && (
+        <div className="grid items-start gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] motion-safe:animate-pulse" aria-hidden="true">
+          <div className="hidden space-y-2 rounded-xl2 border border-surface-200 bg-white p-3 shadow-card lg:block">
+            {Array.from({ length: 8 }, (_, i) => (
+              <Bar key={i} w={i % 3 ? "w-40" : "w-24"} h={i % 3 ? "h-8" : "h-3"} tono={i % 3 ? "bg-surface-100" : "bg-surface-200"} className="rounded-md" />
+            ))}
+          </div>
+          <div className="space-y-2 lg:hidden">
+            <Bar w="w-16" h="h-3" tono="bg-surface-200" />
+            <Bar w="w-full" h="h-11" className="rounded-lg" />
+          </div>
+          <div className="space-y-4 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card">
+            <Bar w="w-28" h="h-3" tono="bg-surface-200" />
+            <Bar w="w-64" h="h-6" tono="bg-surface-200" className="max-w-full" />
+            <Bar w="w-full" h="h-10" className="rounded-lg" />
+            <Bar w="w-full" h="h-40" className="rounded-lg" />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

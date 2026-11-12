@@ -4,6 +4,7 @@ import { formatFecha } from "../utils/fechas.js";
 import { label } from "../utils/labels.js";
 import MotivoDialog from "./ui/MotivoDialog.jsx";
 import { useToast } from "./feedback/ToastProvider.jsx";
+import { InlineLoading } from "./ui/Loading.jsx";
 
 // «Dar de baja» / «Reactivar» for one student or company application
 // (Phase 5, Administración only: render it only for ADMINISTRADOR; the
@@ -106,7 +107,7 @@ function BajaDialog({ open, base, tipo, nombre, onClose, onDone }) {
         {error ? (
           <p className="m-0 mt-1 text-red-700">{error}</p>
         ) : reservas === null ? (
-          <p className="m-0 mt-1 text-muted">Cargando…</p>
+          <InlineLoading className="mt-1">Cargando reservas…</InlineLoading>
         ) : reservas.length === 0 ? (
           <p className="m-0 mt-1 text-muted">No tiene reservas activas.</p>
         ) : (

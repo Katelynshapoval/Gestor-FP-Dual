@@ -140,9 +140,10 @@ export default function Plantillas() {
 
   if (loading) {
     return (
-      <div className="space-y-3" aria-hidden="true">
+      <div className="space-y-3">
+        <span role="status" className="sr-only">Cargando plantillas…</span>
         {Array.from({ length: 3 }, (_, index) => (
-          <div key={index} className="animate-pulse rounded-xl2 border border-surface-200 bg-white p-4 shadow-card">
+          <div key={index} aria-hidden="true" className="motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white p-4 shadow-card">
             <div className="h-4 w-40 rounded bg-surface-200" />
             <div className="mt-3 h-3 w-64 rounded bg-surface-100" />
             <div className="mt-4 h-8 w-40 rounded bg-surface-100" />

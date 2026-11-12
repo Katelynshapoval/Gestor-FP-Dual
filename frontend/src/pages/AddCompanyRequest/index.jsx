@@ -19,6 +19,7 @@ import {
   useUnsavedWarning,
 } from "../../components/forms/StepForm.jsx";
 import "../../styles/forms.css";
+import { InlineLoading } from "../../components/ui/Loading.jsx";
 
 // Company application to join the FP Dual programme, in steps (Phase 4, D.3).
 // Same fields and endpoint as before (WF-12: nothing is invented or copied).
@@ -392,9 +393,7 @@ const AddCompanyRequest = () => {
                     </button>
                   </p>
                 ) : catalogo.status === "loading" ? (
-                  <p role="status" className="text-sm text-muted">
-                    Cargando ciclos…
-                  </p>
+                  <InlineLoading>Cargando ciclos…</InlineLoading>
                 ) : (
                   <>
                     <SpecialitySelector

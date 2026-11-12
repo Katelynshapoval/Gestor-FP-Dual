@@ -714,7 +714,7 @@ function SkeletonList() {
   return (
     <div className="space-y-3" aria-hidden="true">
       {Array.from({ length: 4 }, (_, index) => (
-        <div key={index} className="animate-pulse rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card">
+        <div key={index} className="motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <div className="h-4 w-36 rounded bg-surface-200" />

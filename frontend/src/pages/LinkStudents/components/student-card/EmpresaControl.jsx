@@ -6,6 +6,7 @@ import { useConfirm } from "../../../../components/feedback/ToastProvider.jsx";
 import ReservaDetalle from "../../../../components/reservas/ReservaDetalle.jsx";
 import ReservaResumenBadges from "../../../../components/reservas/ReservaResumenBadges.jsx";
 import { tipoContratoLabel } from "../../../../utils/labels.js";
+import { InlineLoading } from "../../../../components/ui/Loading.jsx";
 
 // Staff "Reservas" tab of a student card: the student's reservations (each one
 // managed in the shared ReservaDetalle panel) and the form to create a new one.
@@ -93,7 +94,7 @@ const EmpresaControl = ({ r, onAdminReserve, onChanged }) => {
       <div className={empresaSlotClass}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">Reservar en empresa</p>
         {ofertas === null ? (
-          <p className="text-sm text-muted">Cargando ofertas…</p>
+          <InlineLoading>Cargando ofertas…</InlineLoading>
         ) : ofertasError ? (
           <p className="text-sm text-red-700" role="alert">{ofertasError}</p>
         ) : ofertas.length === 0 ? (

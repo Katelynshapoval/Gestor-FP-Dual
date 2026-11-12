@@ -24,6 +24,7 @@ import Pendientes from "../../components/portal/Pendientes.jsx";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
 import { anexoNombre, label } from "../../utils/labels.js";
 import "../../styles/forms.css";
+import { SkeletonPortal } from "../../components/ui/Loading.jsx";
 
 const pendienteDeEmpresa = (doc) =>
   doc &&
@@ -756,7 +757,7 @@ const CompanyView = () => {
       />
 
       {loading ? (
-        <p role="status" className="py-16 text-center text-muted">Cargando el portal de tu empresa…</p>
+        <SkeletonPortal label="Cargando el portal de tu empresa…" />
       ) : (
         <>
           <Pendientes

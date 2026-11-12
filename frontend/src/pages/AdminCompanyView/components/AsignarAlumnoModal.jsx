@@ -3,6 +3,7 @@ import Modal from "../../../components/ui/Modal.jsx";
 import { getJSON, postJSON } from "../../../utils/api.js";
 import { cicloLabel } from "../../../utils/especialidades.js";
 import { useConfirm, useToast } from "../../../components/feedback/ToastProvider.jsx";
+import { InlineLoading } from "../../../components/ui/Loading.jsx";
 
 export default function AsignarAlumnoModal({ solicitudId, onClose, onAssigned }) {
   const toast = useToast();
@@ -101,7 +102,7 @@ export default function AsignarAlumnoModal({ solicitudId, onClose, onAssigned })
     >
       <div className="space-y-4">
         {loading ? (
-          <p className="text-sm text-muted">Cargando ciclos…</p>
+          <InlineLoading>Cargando ciclos…</InlineLoading>
         ) : (
           <>
             <label className="block text-xs font-semibold text-muted">
@@ -119,7 +120,7 @@ export default function AsignarAlumnoModal({ solicitudId, onClose, onAssigned })
               <>
                 <input className="input" aria-label="Buscar alumno por nombre o DNI" placeholder="Buscar por nombre o DNI" value={query} onChange={(event) => setQuery(event.target.value)} />
                 {loadingAlumnos ? (
-                  <p className="text-sm text-muted">Cargando alumnos elegibles…</p>
+                  <InlineLoading>Cargando alumnos elegibles…</InlineLoading>
                 ) : visibles.length === 0 ? (
                   <p className="text-sm text-muted">No hay alumnos elegibles para este ciclo.</p>
                 ) : (

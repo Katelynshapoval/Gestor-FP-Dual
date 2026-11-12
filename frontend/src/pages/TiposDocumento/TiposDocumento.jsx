@@ -7,6 +7,7 @@ import StatusBadge from "../../components/ui/StatusBadge.jsx";
 import InlineNotice from "../../components/ui/InlineNotice.jsx";
 import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
 import TipoDocumentoDialog from "./TipoDocumentoDialog.jsx";
+import { SkeletonCards } from "../../components/ui/Loading.jsx";
 import { AMBITOS, firmantesTexto } from "./tiposDocumentoTextos.js";
 import "../../styles/forms.css";
 
@@ -169,11 +170,7 @@ export default function TiposDocumento() {
       </div>
 
       {loading ? (
-        <div className="space-y-3" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl2 border border-surface-200 bg-white shadow-card" />
-          ))}
-        </div>
+        <SkeletonCards count={4} label="Cargando documentos…" />
       ) : loadError ? (
         <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-6 shadow-card">
           <InlineNotice tone="error">{loadError}</InlineNotice>

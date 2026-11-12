@@ -245,7 +245,7 @@ function ChapterNav({ chapters, active, onGo }) {
 
 function ManualSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Cargando el manual" className="animate-pulse rounded-xl2 border border-surface-200 bg-white p-6 shadow-card">
+    <div aria-busy="true" aria-label="Cargando el manual" className="motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white p-6 shadow-card">
       <div className="mb-5 h-6 w-1/2 rounded bg-surface-200" />
       {[100, 92, 96, 70, 0, 100, 88, 60].map((width, index) =>
         width ? (

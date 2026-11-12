@@ -5,6 +5,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { useConfirm, useToast } from '../../components/feedback/ToastProvider.jsx';
 import '../../styles/forms.css';
 import { formatFecha as formatDate } from '../../utils/fechas.js';
+import { SkeletonRows } from '../../components/ui/Loading.jsx';
 
 const VACIO = { nombre: '', fecha_inicio: '', fecha_fin: '' };
 const soloFecha = (f) => (typeof f === 'string' ? f.split('T')[0] : f || '');
@@ -180,7 +181,7 @@ export default function Convocatorias() {
           <div className="form-section-title mb-0">Convocatorias registradas</div>
         </div>
         {loading ? (
-          <p className="px-6 py-8 text-sm text-muted">Cargando…</p>
+          <SkeletonRows count={3} label="Cargando convocatorias…" />
         ) : loadError ? (
           <div className="px-6 py-6">
             <Aviso>{loadError}</Aviso>

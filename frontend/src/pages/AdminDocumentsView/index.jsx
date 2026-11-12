@@ -7,6 +7,7 @@ import Tabs from "../../components/ui/Tabs.jsx";
 import Seguimiento from "./Seguimiento.jsx";
 import Plantillas from "./Plantillas.jsx";
 import "../../styles/forms.css";
+import { SkeletonCards } from "../../components/ui/Loading.jsx";
 
 export default function AdminDocumentsView() {
   // ?vista=plantillas opens the Plantillas tab (link from the panel warning).
@@ -59,7 +60,7 @@ export default function AdminDocumentsView() {
           defaultReady ? (
             <Seguimiento onSummary={setSummary} onOpenTemplates={() => setTab("plantillas")} />
           ) : (
-            <p className="text-sm text-muted">Cargando…</p>
+            <SkeletonCards count={4} lines={2} label="Cargando documentos…" />
           )
         ) : (
           <Plantillas />
