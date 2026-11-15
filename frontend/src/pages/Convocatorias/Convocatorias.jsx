@@ -3,9 +3,9 @@ import { getJSON, postJSON, putJSON } from '../../utils/api';
 import { SeccionIntro } from '../Configuracion/Configuracion.jsx';
 import StatusBadge from '../../components/ui/StatusBadge';
 import { useConfirm, useToast } from '../../components/feedback/ToastProvider.jsx';
-import '../../styles/forms.css';
 import { formatFecha as formatDate } from '../../utils/fechas.js';
 import { SkeletonRows } from '../../components/ui/Loading.jsx';
+import InlineNotice from '../../components/ui/InlineNotice.jsx';
 
 const VACIO = { nombre: '', fecha_inicio: '', fecha_fin: '' };
 const soloFecha = (f) => (typeof f === 'string' ? f.split('T')[0] : f || '');
@@ -30,12 +30,6 @@ function problemaFechas(form, { activa = false } = {}) {
   return null;
 }
 
-const Aviso = ({ children }) =>
-  children ? (
-    <p role="alert" className="animate-fade-in rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-      {children}
-    </p>
-  ) : null;
 
 export default function Convocatorias() {
   const toast = useToast();
@@ -169,14 +163,14 @@ export default function Convocatorias() {
               />
             </div>
           </div>
-          <Aviso>{formError}</Aviso>
+          <InlineNotice tone="error">{formError}</InlineNotice>
           <button type="submit" disabled={saving} className="btn btn-primary shadow-none">
             {saving ? 'Creando…' : 'Crear convocatoria'}
           </button>
         </form>
       </div>
 
-      <div className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card">
+      <div className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card">
         <div className="border-b border-surface-200 px-6 py-5">
           <div className="form-section-title mb-0">Convocatorias registradas</div>
         </div>
@@ -184,7 +178,7 @@ export default function Convocatorias() {
           <SkeletonRows count={3} label="Cargando convocatorias…" />
         ) : loadError ? (
           <div className="px-6 py-6">
-            <Aviso>{loadError}</Aviso>
+            <InlineNotice tone="error">{loadError}</InlineNotice>
             <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={cargar}>
               Reintentar
             </button>
@@ -230,7 +224,7 @@ export default function Convocatorias() {
                           />
                         </div>
                       </div>
-                      <Aviso>{editError}</Aviso>
+                      <InlineNotice tone="error">{editError}</InlineNotice>
                       <div className="flex gap-2">
                         <button
                           type="button"

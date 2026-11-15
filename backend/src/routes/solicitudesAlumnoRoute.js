@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { signupRateLimit } = require('../middleware/loginRateLimit');
 const asyncHandler = require('../middleware/asyncHandler');
-const { pdfUpload, requirePdfSignature, NOT_PDF, uploadErrorMessage } = require('../middleware/pdfUpload');
+const { solicitudAlumnoUpload, requirePdfSignature, NOT_PDF, uploadErrorMessage } = require('../middleware/pdfUpload');
 const svc = require('../services/solicitudesAlumnoService');
 const cambios = require('../services/alumnoCambiosService');
 const baja = require('../services/bajaService').handlers('SOLICITUD_ALUMNO');
@@ -10,11 +10,12 @@ const baja = require('../services/bajaService').handlers('SOLICITUD_ALUMNO');
 const router = Router();
 
 
-// Public: submit student application with CV + Anexo DGA
+// Public: submit student application with CV + Anexo DGA (and, if the student
+// drew it in the form, their signature)
 router.post(
   '/solicitudes/alumno',
   signupRateLimit,
-  pdfUpload.fields([{ name: 'cv', maxCount: 1 }, { name: 'anexoDga', maxCount: 1 }]),
+  solicitudAlumnoUpload.fields([{ name: 'cv', maxCount: 1 }, { name: 'anexoDga', maxCount: 1 }, { name: 'firma', maxCount: 1 }]),
   requirePdfSignature,
   asyncHandler(svc.create)
 );

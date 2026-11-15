@@ -130,7 +130,7 @@ export default function TipoDocumentoDialog({ open, tipo, onClose, onSave }) {
           )}
           <div className="grid gap-2 sm:grid-cols-3">
             {Object.entries(AMBITOS).map(([valor, a]) => (
-              <label key={valor} className={`checkbox-item !items-start ${form.ambito === valor ? "checked" : ""} ${ambitoFijo ? "cursor-not-allowed opacity-70" : ""}`}>
+              <label key={valor} className={`checkbox-item items-start ${form.ambito === valor ? "checked" : ""} ${ambitoFijo ? "cursor-not-allowed opacity-70" : ""}`}>
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="item-label">{a.titulo}</span>
                   <span className="text-xs leading-5 text-muted">{a.cada}</span>

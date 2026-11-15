@@ -78,10 +78,13 @@ export function countLabel(n, singular, plural) {
   return `${n} ${n === 1 ? singular : plural}`;
 }
 
-// Desktop: the controls wrap in rows that always fill the width (no lonely
-// filter on a row of its own); the search box takes double width. Phones:
+// From sm up the controls sit on a grid, so no filter is left stretched across
+// a row of its own: sm, two columns (the search box takes both); lg, three
+// (the search box on its own row, filters three by three); xl, equal columns
+// for every control on one row when they fit (up to 5), else four. Phones:
 // only the search box shows, the selects open below a "Filtros" button so
 // the results are not pushed a whole screen down.
+const XL_COLS = { 2: "xl:grid-cols-2", 3: "xl:grid-cols-3", 4: "xl:grid-cols-4", 5: "xl:grid-cols-5" };
 const FilterBar = ({ children, count, onReset, active, label = "Filtros" }) => {
   const panelId = useId();
   const [open, setOpen] = useState(false);
@@ -89,15 +92,18 @@ const FilterBar = ({ children, count, onReset, active, label = "Filtros" }) => {
   const search = items.filter((c) => c.type === SearchField);
   const selects = items.filter((c) => c.type !== SearchField);
   const grow = (child, basis) => <div key={child.key} className={`min-w-0 ${basis}`}>{child}</div>;
+  // One column per control on wide screens; more than 5 wrap on four columns.
+  const columnas = search.length + selects.length;
+  const xlCols = XL_COLS[columnas] || (columnas > 5 ? XL_COLS[4] : "");
 
   return (
-    <section aria-label={label} className="rounded-xl2 border border-surface-200 bg-white p-4 shadow-card">
-      <div className="flex flex-wrap items-end gap-3">
-        {search.map((c) => grow(c, "flex-[2_1_18rem]"))}
+    <section aria-label={label} className="rounded-lg border border-surface-200 bg-white p-4 shadow-card">
+      <div className={`flex flex-wrap items-end gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-3 ${xlCols}`}>
+        {search.map((c) => grow(c, "flex-[2_1_18rem] sm:col-span-2 lg:col-span-3 xl:col-span-1"))}
         {selects.length > 0 && (
           <button
             type="button"
-            className={`btn btn-secondary h-10 sm:hidden ${open ? "!border-charcoal-300" : ""}`}
+            className={`btn btn-secondary h-10 sm:hidden ${open ? "border-charcoal-300" : ""}`}
             aria-expanded={open}
             aria-controls={panelId}
             onClick={() => setOpen((v) => !v)}
@@ -115,7 +121,7 @@ const FilterBar = ({ children, count, onReset, active, label = "Filtros" }) => {
           }`}
         >
           <div className={`flex flex-wrap gap-3 overflow-hidden sm:contents ${open ? "" : "invisible sm:visible"}`}>
-            {selects.map((c) => grow(c, "flex-[1_1_100%] sm:flex-[1_1_11rem]"))}
+            {selects.map((c) => grow(c, "flex-[1_1_100%]"))}
           </div>
         </div>
       </div>

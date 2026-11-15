@@ -99,9 +99,15 @@ async function saveByClave(clave, parents, buffer, provenance = {}, { conn = nul
               origen_documento = ?,
               id_plantilla = ?,
               registrado_en = NOW(),
-              firmas_exentas_legacy = 0
+              firmas_exentas_legacy = 0,
+              firma_posiciones = ?
         WHERE id_documento = ?`,
-      [def?.workflowOnUpload || "SUBIDO", idUsuario, origen, idPlantilla, idDocumento],
+      // Signature marks belong to the file too (migration 027): a new file
+      // brings its own or has none.
+      [
+        def?.workflowOnUpload || "SUBIDO", idUsuario, origen, idPlantilla,
+        provenance.posiciones ? JSON.stringify(provenance.posiciones) : null, idDocumento,
+      ],
     );
 
     // Signatures belong to a file: a new file starts unsigned. D1: when the

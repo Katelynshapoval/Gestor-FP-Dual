@@ -30,7 +30,7 @@ const Pendientes = ({ items, titulo = "Qué tienes pendiente" }) => {
         {items.map((item) => {
           const t = TONES[item.tone] || TONES.info;
           return (
-            <li key={item.key} className={`flex gap-3 rounded-xl2 border px-4 py-3 ${t.cls}`}>
+            <li key={item.key} className={`flex gap-3 rounded-lg border px-4 py-3 ${t.cls}`}>
               <t.Icon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${t.icon}`} />
               <div className="min-w-0 flex-1">
                 <p className="m-0 text-sm font-semibold text-charcoal-950">

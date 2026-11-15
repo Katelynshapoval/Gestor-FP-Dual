@@ -1,412 +1,193 @@
-.page-container {
-  @apply mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 text-base sm:px-6 md:px-8 md:py-8;
-}
+/* Forms and buttons: fields, choices, file pickers, edit dialogs and the
+   shared .btn styles. Page layout is in layout.css, the manual in manual.css. */
 
-.page-title {
-  @apply m-0 break-words text-2xl font-semibold tracking-normal text-charcoal-950 md:text-[1.75rem];
-}
+@layer components {
+  .form-card {
+    @apply mb-6 rounded-lg border border-surface-200 bg-white p-5 shadow-card md:p-8;
+  }
 
-.page-subtitle {
-  @apply mb-8 mt-2 max-w-3xl text-sm leading-6 text-muted md:text-base;
-}
+  .form-section-title {
+    @apply mb-5 flex items-center gap-3 text-sm font-semibold uppercase tracking-widest text-charcoal-900;
+  }
 
-.page-kicker {
-  @apply mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-brand-700;
-}
+  .form-section-title::before {
+    @apply h-4 w-1 rounded bg-brand-600 content-[''];
+  }
 
-.page-kicker::before {
-  @apply h-4 w-1 rounded bg-brand-600 content-[''];
-}
+  .field {
+    @apply mb-5;
+  }
 
-.form-card {
-  @apply mb-6 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card md:p-8;
-}
+  .field > label {
+    @apply mb-2 block text-sm font-semibold text-charcoal-800;
+  }
 
-.form-section-title {
-  @apply mb-5 flex items-center gap-3 text-sm font-semibold uppercase tracking-widest text-charcoal-900;
-}
+  .field-hint {
+    @apply mb-4 text-sm leading-relaxed text-muted;
+  }
 
-.form-section-title::before {
-  @apply h-4 w-1 rounded bg-brand-600 content-[''];
-}
+  .field-hint strong {
+    @apply font-semibold text-brand-700;
+  }
 
-.field {
-  @apply mb-5;
-}
+  .input,
+  .textarea,
+  .select-input {
+    @apply w-full rounded-lg border border-surface-200 bg-white px-3 py-2.5 text-base font-normal text-charcoal-950 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out placeholder:text-charcoal-400 placeholder:italic hover:border-surface-300 focus:outline-none focus-visible:border-charcoal-500 focus-visible:ring-2 focus-visible:ring-charcoal-400/25 disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-muted;
+  }
 
-.field > label {
-  @apply mb-2 block text-sm font-semibold text-charcoal-800;
-}
+  .select-input {
+    @apply cursor-pointer;
+  }
 
-.field-hint {
-  @apply mb-4 text-sm leading-relaxed text-muted;
-}
+  .textarea {
+    @apply min-h-[104px] resize-y;
+  }
 
-.field-hint strong {
-  @apply font-semibold text-brand-700;
-}
+  .radio-group {
+    @apply flex flex-col gap-1.5;
+  }
 
-.input,
-.textarea,
-.select-input {
-  @apply w-full rounded-lg border border-surface-200 bg-white px-3 py-2.5 text-base font-normal text-charcoal-950 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out placeholder:text-charcoal-400 placeholder:italic hover:border-surface-300 focus:outline-none focus-visible:border-charcoal-500 focus-visible:ring-2 focus-visible:ring-charcoal-400/25 disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-muted;
-}
+  .radio-option {
+    @apply flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-100 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:bg-brand-50;
+  }
 
-.select-input {
-  @apply cursor-pointer;
-}
+  .radio-option input[type="radio"] {
+    @apply align-middle outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25;
+    accent-color: var(--color-brand);
+  }
 
-.textarea {
-  @apply min-h-[104px] resize-y;
-}
+  .radio-option span {
+    @apply text-sm font-normal text-charcoal-800;
+  }
 
-.radio-group {
-  @apply flex flex-col gap-1.5;
-}
+  .checkbox-grid {
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
 
-.radio-option {
-  @apply flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-100 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:bg-brand-50;
-}
+  .checkbox-item {
+    @apply flex cursor-pointer items-center justify-between rounded-lg border border-surface-200 bg-white px-3 py-2.5 font-normal transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-300 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:ring-2 focus-within:ring-charcoal-400/25;
+  }
 
-.radio-option input[type="radio"] {
-  @apply align-middle outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25;
-  accent-color: var(--color-brand);
-}
+  .checkbox-item.checked {
+    @apply items-start border-brand-300 bg-brand-50 ring-1 ring-brand-500/10;
+  }
 
-.radio-option span {
-  @apply text-sm font-normal text-charcoal-800;
-}
+  .checkbox-item input[type="checkbox"] {
+    accent-color: var(--color-brand);
+  }
 
-.checkbox-grid {
-  @apply grid gap-3;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-}
+  .checkbox-item .item-label {
+    @apply text-sm font-medium text-charcoal-800;
+  }
 
-.checkbox-left {
-  @apply flex items-center gap-2;
-}
+  .btn {
+    @apply inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-semibold outline-none transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out active:translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30;
+  }
 
-.checkbox-item {
-  @apply flex cursor-pointer items-center justify-between rounded-lg border border-surface-200 bg-white px-3 py-2.5 font-normal transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-300 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:ring-2 focus-within:ring-charcoal-400/25;
-}
+  .btn-primary {
+    @apply border-brand-700 bg-brand-700 text-white shadow-none hover:border-brand-800 hover:bg-brand-800;
+  }
 
-.checkbox-item.checked {
-  @apply items-start border-brand-300 bg-brand-50 ring-1 ring-brand-500/10;
-}
+  .btn-secondary {
+    @apply border-surface-200 bg-white text-charcoal-800 hover:border-charcoal-300 hover:bg-surface-50;
+  }
 
-.checkbox-item input[type="checkbox"] {
-  accent-color: var(--color-brand);
-}
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-muted hover:bg-surface-100 hover:text-charcoal-900;
+  }
 
-.checkbox-item .item-label {
-  @apply text-sm font-medium text-charcoal-800;
-}
+  .btn-outline-brand {
+    @apply border-brand-300 bg-white text-brand-700 hover:border-brand-600 hover:bg-brand-50 hover:text-brand-800;
+  }
 
-.count-input {
-  @apply flex items-center gap-1;
-}
+  /* Destructive actions (cancel, reject): red outline; positive actions use .btn-primary */
+  .btn-danger {
+    @apply border-red-200 bg-white text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800;
+  }
 
-.count-input label {
-  @apply whitespace-nowrap text-sm text-muted;
-}
+  /* Small buttons: a comfortable 40px touch target on phones, compact from sm up. */
+  .btn-sm {
+    @apply min-h-10 px-3 py-2 text-sm sm:min-h-8 sm:py-1.5 sm:text-xs;
+  }
 
-.count-input input {
-  @apply w-[60px] rounded border border-surface-200 px-1 py-0.5 text-sm;
-}
+  .btn:disabled {
+    @apply pointer-events-none cursor-not-allowed opacity-50 shadow-none;
+  }
 
-.btn {
-  @apply inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-semibold outline-none transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out active:translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30;
-}
+  .file-upload {
+    @apply flex w-full cursor-pointer flex-row items-center gap-3 rounded-lg border border-dashed border-brand-200 bg-white px-4 py-4 text-charcoal-700 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-400 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:ring-2 focus-within:ring-charcoal-400/25;
+  }
 
-.btn-primary {
-  @apply border-brand-700 bg-brand-700 text-white shadow-none hover:border-brand-800 hover:bg-brand-800;
-}
+  .file-upload-icon {
+    @apply mr-1 inline-block h-5 w-5 align-middle text-brand-600;
+  }
 
-.btn-secondary {
-  @apply border-surface-200 bg-white text-charcoal-800 hover:border-charcoal-300 hover:bg-surface-50;
-}
+  .file-upload-text {
+    @apply min-w-0 truncate align-middle text-base font-medium;
+  }
 
-.btn-ghost {
-  @apply border-transparent bg-transparent text-muted hover:bg-surface-100 hover:text-charcoal-900;
-}
+  /* Visually hidden but still focusable: keyboard users reach the file picker
+     and the label shows the focus ring (focus-within). */
+  .file-upload input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
 
-.btn-outline-brand {
-  @apply border-brand-300 bg-white text-brand-700 hover:border-brand-600 hover:bg-brand-50 hover:text-brand-800;
-}
+  .file-upload {
+    position: relative;
+  }
 
-/* Destructive actions (cancel, reject): red outline; positive actions use .btn-primary */
-.btn-danger {
-  @apply border-red-200 bg-white text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800;
-}
+  /* Edit dialogs (EditDialog.jsx): two equal columns, the gap is the only
+     spacing, and slightly smaller labels and inputs than the long forms. */
+  .edit-grid {
+    @apply grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2;
+  }
 
-.btn-sm {
-  @apply min-h-8 px-3 py-1.5 text-xs;
-}
+  .edit-grid > .field {
+    @apply mb-0 min-w-0;
+  }
 
-.btn:disabled,
-.btn-disabled {
-  @apply pointer-events-none cursor-not-allowed opacity-50 shadow-none;
-}
+  .edit-grid .field > label,
+  .edit-grid .field > legend,
+  .edit-grid .field > p:first-child {
+    @apply mb-1.5 text-[0.8125rem] font-medium text-charcoal-700;
+  }
 
-.form-message {
-  @apply mt-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-base text-green-800 animate-slide-in;
-}
+  .edit-grid .input,
+  .edit-grid .select-input {
+    @apply py-2 text-sm;
+  }
 
-.form-message-error {
-  @apply border-red-200 bg-red-50 text-red-800;
-}
+  /* Sí / No as side-by-side buttons (RadioField variant="segmented") */
+  .segmented {
+    @apply inline-flex rounded-lg border border-surface-200 bg-surface-50 p-0.5;
+  }
 
-.file-upload {
-  @apply flex w-full cursor-pointer flex-row items-center gap-3 rounded-lg border border-dashed border-brand-200 bg-white px-4 py-4 text-charcoal-700 outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-brand-400 hover:bg-brand-50 focus-within:border-charcoal-500 focus-within:ring-2 focus-within:ring-charcoal-400/25;
-}
+  .segmented-option {
+    @apply relative flex min-h-9 min-w-[4.5rem] cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium text-charcoal-700 transition-colors duration-150 hover:text-charcoal-950 focus-within:ring-2 focus-within:ring-brand-500/30;
+  }
 
-.file-upload-icon {
-  @apply mr-1 inline-block h-5 w-5 align-middle text-brand-600;
-}
-
-.file-upload-text {
-  @apply min-w-0 truncate align-middle text-base font-medium;
-}
-
-/* Visually hidden but still focusable: keyboard users reach the file picker
-   and the label shows the focus ring (focus-within). */
-.file-upload input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-
-.file-upload {
-  position: relative;
-}
-
-.manual-body {
-  max-width: 46rem;
-  overflow-wrap: anywhere;
-}
-.manual-body > :first-child {
-  margin-top: 0;
-}
-.manual-body [id] {
-  scroll-margin-top: 5.5rem;
-}
-.manual-body h2,
-.manual-body h3 {
-  margin: 2.5rem 0 0.75rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e8e6df;
-  font-size: 1.2rem;
-  line-height: 1.3;
-  font-weight: 650;
-  color: #1c1c1a;
-}
-.manual-body > h3:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-.manual-body h4 {
-  margin: 1.75rem 0 0.5rem;
-  font-size: 1rem;
-  line-height: 1.35;
-  font-weight: 650;
-  color: #1c1c1a;
-}
-.manual-body h3:target,
-.manual-body h4:target {
-  animation: manual-target 1.6s ease-out;
-}
-@keyframes manual-target {
-  from {
-    color: #bd1710;
+  .segmented-option.checked {
+    @apply bg-white text-brand-800 shadow-card ring-1 ring-surface-200;
   }
 }
-.manual-body p,
-.manual-body li {
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: #292927;
-}
-.manual-body p {
-  margin: 0.75rem 0;
-}
-.manual-body strong {
-  font-weight: 600;
-  color: #1c1c1a;
-}
-.manual-body a {
-  color: #bd1710;
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-color: #ffa9a0;
-  text-underline-offset: 3px;
-}
-.manual-body a:hover {
-  text-decoration-color: currentColor;
-}
-.manual-body ul,
-.manual-body ol {
-  margin: 0.5rem 0 1rem;
-  padding-left: 1.4rem;
-}
-.manual-body ul {
-  list-style: disc;
-}
-.manual-body ol {
-  list-style: decimal;
-}
-.manual-body li::marker {
-  color: #87877a;
-}
-.manual-body ol > li::marker {
-  font-weight: 600;
-  color: #bd1710;
-}
-.manual-body li + li {
-  margin-top: 0.35rem;
-}
-.manual-body li > p {
-  margin: 0.25rem 0;
-}
-.manual-body blockquote {
-  margin: 1.25rem 0;
-  border: 1px solid #ffe7e4;
-  border-left: 3px solid #e01f16;
-  background: #fff5f4;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-}
-.manual-body blockquote p {
-  margin: 0;
-  font-size: 0.9rem;
-}
-.manual-body blockquote p + p {
-  margin-top: 0.5rem;
-}
-.manual-body img {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  margin: 1.25rem 0 0.5rem;
-  border: 1px solid #e8e6df;
-  border-radius: 0.5rem;
-  background: white;
-  box-shadow: 0 8px 20px -18px rgb(17 17 16 / 0.32), 0 1px 4px -3px rgb(17 17 16 / 0.16);
-}
-.manual-body img + em,
-.manual-body p > em:only-child {
-  display: block;
-  font-size: 0.8125rem;
-  color: #6b6b61;
-}
-.manual-body table {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  margin: 1rem 0 1.25rem;
-  overflow-x: auto;
-  border: 1px solid #e8e6df;
-  border-radius: 0.5rem;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 0.875rem;
-}
-.manual-body th,
-.manual-body td {
-  border-bottom: 1px solid #e8e6df;
-  padding: 0.55rem 0.85rem;
-  text-align: left;
-  vertical-align: top;
-  line-height: 1.5;
-  overflow-wrap: normal;
-}
-.manual-body tr:last-child td {
-  border-bottom: 0;
-}
-.manual-body tbody tr:nth-child(even) td {
-  background: #fbfaf8;
-}
-.manual-body th {
-  background: #f4f3ef;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: #55554d;
-}
-.manual-body hr {
-  margin: 2rem 0;
-  border: 0;
-  border-top: 1px solid #e8e6df;
-}
-.manual-body code {
-  border-radius: 0.25rem;
-  background: #f4f3ef;
-  padding: 0.05rem 0.3rem;
-  font-size: 0.85em;
-}
 
-/* Version line and screenshot note at the start of the manual. */
-.manual-intro p {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: #6b6b61;
-}
-.manual-intro em {
-  display: block;
-  font-style: normal;
-}
-.manual-intro blockquote {
-  margin-top: 0.75rem;
-  border-left-color: #aeaea3;
-  border-color: #e8e6df;
-  background: #fbfaf8;
-}
-
-/* Edit dialogs (EditDialog.jsx): two equal columns, the gap is the only
-   spacing, and slightly smaller labels and inputs than the long forms. */
-.edit-grid {
-  @apply grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2;
-}
-
-.edit-grid > .field {
-  @apply mb-0 min-w-0;
-}
-
-.no-scrollbar {
-  scrollbar-width: none;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.edit-grid .field > label,
-.edit-grid .field > legend,
-.edit-grid .field > p:first-child {
-  @apply mb-1.5 text-[0.8125rem] font-medium text-charcoal-700;
-}
-
-.edit-grid .input,
-.edit-grid .select-input {
-  @apply py-2 text-sm;
-}
-
-/* Sí / No as side-by-side buttons (RadioField variant="segmented") */
-.segmented {
-  @apply inline-flex rounded-lg border border-surface-200 bg-surface-50 p-0.5;
-}
-
-.segmented-option {
-  @apply relative flex min-h-9 min-w-[4.5rem] cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium text-charcoal-700 transition-colors duration-150 hover:text-charcoal-950 focus-within:ring-2 focus-within:ring-brand-500/30;
-}
-
-.segmented-option.checked {
-  @apply bg-white text-brand-800 shadow-card ring-1 ring-surface-200;
+/* Signatures (components/firma): where a saved signature is shown, on a sheet
+   of faintly ruled paper so a transparent PNG reads as ink on a page. */
+@layer components {
+  .firma-papel {
+    background-color: #fff;
+    background-image: linear-gradient(to bottom, transparent calc(100% - 1px), rgb(17 17 16 / 0.07) calc(100% - 1px));
+    background-size: 100% 1.6rem;
+    background-position: 0 0.9rem;
+  }
 }

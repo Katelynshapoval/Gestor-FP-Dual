@@ -53,7 +53,7 @@ function Home() {
             <li key={c.to}>
               <Link
                 to={c.to}
-                className="group flex h-full min-w-0 flex-col rounded-xl2 border border-surface-200 bg-white p-6 shadow-card outline-none transition-[border-color,box-shadow] duration-150 ease-out hover:border-brand-200 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30"
+                className="group flex h-full min-w-0 flex-col rounded-lg border border-surface-200 bg-white p-6 shadow-card outline-none transition-[border-color,box-shadow] duration-150 ease-out hover:border-brand-200 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30"
               >
                 <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-700">
                   <c.Icon aria-hidden="true" className="h-4 w-4" />
@@ -69,7 +69,7 @@ function Home() {
           ))}
         </ul>
 
-        <div className="mt-8 flex flex-col gap-3 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col gap-3 rounded-lg border border-surface-200 bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="m-0 font-semibold text-charcoal-950">¿Ya has presentado tu solicitud?</p>
             <p className="m-0 mt-1 text-sm text-muted">

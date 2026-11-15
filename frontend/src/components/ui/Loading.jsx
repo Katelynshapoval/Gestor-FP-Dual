@@ -70,7 +70,7 @@ export function SkeletonCards({ count = 4, lines = 1, badges = true, label = "Ca
       {visible && (
         <div className="space-y-3" aria-hidden="true">
           {Array.from({ length: count }, (_, i) => (
-            <div key={i} className={`rounded-xl2 border border-surface-200 bg-white px-5 py-4 shadow-card ${pulso}`}>
+            <div key={i} className={`rounded-lg border border-surface-200 bg-white px-5 py-4 shadow-card ${pulso}`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 space-y-2">
                   <Bar w={i % 2 ? "w-44" : "w-56"} h="h-4" tono="bg-surface-200" className="max-w-full" />
@@ -135,14 +135,14 @@ export function SkeletonPortal({ label = "Cargando…", delay = 150 }) {
               <Bar key={i} w={w} h="h-4" tono="bg-surface-200" />
             ))}
           </div>
-          <div className="rounded-xl2 border border-surface-200 bg-white p-5 shadow-card">
+          <div className="rounded-lg border border-surface-200 bg-white p-5 shadow-card">
             <Bar w="w-40" h="h-4" tono="bg-surface-200" />
             <Bar w="w-72" className="mt-3 max-w-full" />
             <Bar w="w-56" className="mt-2 max-w-full" />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {[0, 1].map((i) => (
-              <div key={i} className="space-y-3 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card">
+              <div key={i} className="space-y-3 rounded-lg border border-surface-200 bg-white p-5 shadow-card">
                 <Bar w="w-32" h="h-4" tono="bg-surface-200" />
                 <Bar w="w-full" />
                 <Bar w="w-5/6" />

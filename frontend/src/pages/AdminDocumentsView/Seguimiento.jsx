@@ -9,6 +9,9 @@ import MotivoDialog from "../../components/ui/MotivoDialog.jsx";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
 import { ACTOR, tipoContratoLabel } from "../../utils/labels.js";
 import PaginationBar from "../../components/ui/PaginationBar";
+import StateCard from "../../components/ui/StateCard.jsx";
+import { SkeletonCards } from "../../components/ui/Loading.jsx";
+import { useFirmarDocumentos } from "../../components/firma/FirmarDocumentos.jsx";
 
 const FILTER_SELECT_CLASS =
   "rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-charcoal-900 outline-none transition-colors duration-150 focus:outline-none focus-visible:border-charcoal-500 focus-visible:ring-2 focus-visible:ring-charcoal-400/25";
@@ -124,6 +127,14 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
+  // Signing anywhere (a row, the viewer, "Firmar documentos") reloads the list.
+  const { abrirFirma, version: firmasVersion } = useFirmarDocumentos();
+  const firmasVistas = useRef(firmasVersion);
+  useEffect(() => {
+    if (firmasVistas.current === firmasVersion) return;
+    firmasVistas.current = firmasVersion;
+    setReloadToken((value) => value + 1);
+  }, [firmasVersion]);
   const [rejecting, setRejecting] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [reservaAbierta, setReservaAbierta] = useState(null);
@@ -273,7 +284,7 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
           </button>
         </StateCard>
       ) : showInitialSkeleton || (loading && !filtersMatch) ? (
-        <SkeletonList />
+        <SkeletonCards count={4} lines={2} label="Cargando documentos…" />
       ) : emptyFiltered ? (
         <StateCard>
           <p className="font-semibold text-charcoal-950">No se han encontrado documentos con estos filtros.</p>
@@ -290,7 +301,7 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
           <h2 className="sr-only">Documentos encontrados</h2>
           <div className="space-y-3" aria-busy={loading}>
             {loading ? (
-              <SkeletonList />
+              <SkeletonCards count={4} lines={2} label="Cargando documentos…" />
             ) : (
               items.map((item) => (
                 <DocumentRow
@@ -308,12 +319,7 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
                   onReject={() => setRejecting(item)}
                   onGenerate={() => generar(item, false)}
                   onRegenerate={() => generar(item, true)}
-                  onSign={() =>
-                    run(itemKey(item), async () => {
-                      await postJSON(`/documentos/${item.id_documento}/firmar`, {});
-                      toast.success("Firma registrada.");
-                    })
-                  }
+                  onSign={() => abrirFirma({ ids: [item.id_documento] })}
                   onOpenTemplates={onOpenTemplates}
                 />
               ))
@@ -366,13 +372,11 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
-                  onClick={() =>
-                    run(itemKey(viewing), async () => {
-                      await postJSON(`/documentos/${viewing.id_documento}/firmar`, {});
-                      toast.success("Firma registrada.");
-                      setViewing(null);
-                    })
-                  }
+                  onClick={() => {
+                    const id = viewing.id_documento;
+                    setViewing(null);
+                    abrirFirma({ ids: [id] });
+                  }}
                 >
                   Firmar
                 </button>
@@ -426,7 +430,7 @@ function FilterPanel({
   // Phones: search and convocatoria only; the rest opens with «Filtros».
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
-    <div className="space-y-3 rounded-xl2 border border-surface-200 bg-white p-3 shadow-card sm:p-4">
+    <div className="space-y-3 rounded-lg border border-surface-200 bg-white p-3 shadow-card sm:p-4">
       <div className="grid gap-3 md:grid-cols-[minmax(0,1.7fr)_minmax(12rem,0.8fr)]">
         <Field label="Buscar">
           <input
@@ -602,7 +606,7 @@ function DocumentRow({
   ].filter(Boolean);
 
   return (
-    <article className="rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card">
+    <article className="rounded-lg border border-surface-200 bg-white px-4 py-3 shadow-card">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -710,27 +714,4 @@ function DocumentActions({ item, busy, onView, onOpenReserva, onValidate, onReje
   return <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">{buttons}</div>;
 }
 
-function SkeletonList() {
-  return (
-    <div className="space-y-3" aria-hidden="true">
-      {Array.from({ length: 4 }, (_, index) => (
-        <div key={index} className="motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="h-4 w-36 rounded bg-surface-200" />
-              <div className="h-3 w-56 rounded bg-surface-100" />
-              <div className="h-3 w-40 rounded bg-surface-100" />
-            </div>
-            <div className="h-7 w-28 rounded-md bg-surface-200" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
-function StateCard({ children }) {
-  return (
-    <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">{children}</div>
-  );
-}

@@ -5,7 +5,6 @@ import { useUser } from "../context/UserContext.jsx";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import InlineNotice from "../components/ui/InlineNotice.jsx";
 import { useToast } from "../components/feedback/ToastProvider.jsx";
-import "../styles/forms.css";
 
 // Rough strength from length and character variety; only a visual guide, the
 // backend rule is still "at least 8 characters".
@@ -161,7 +160,7 @@ const CambiarPassword = () => {
             <button
               type="submit"
               disabled={submitting}
-              className={`btn btn-primary ${submitting ? "btn-disabled" : ""}`}
+              className={`btn btn-primary`}
             >
               {submitting ? "Guardando…" : "Cambiar contraseña"}
             </button>
@@ -169,7 +168,7 @@ const CambiarPassword = () => {
         </form>
 
         <aside className="space-y-4" aria-label="Requisitos y consejos">
-          <section className="rounded-xl2 border border-surface-200 bg-white p-5 shadow-card">
+          <section className="rounded-lg border border-surface-200 bg-white p-5 shadow-card">
             <h2 className="m-0 flex items-center gap-2 text-sm font-semibold text-charcoal-950">
               <FaShieldHalved aria-hidden="true" className="h-4 w-4 text-brand-700" />
               Tu nueva contraseña
@@ -190,7 +189,7 @@ const CambiarPassword = () => {
             </ul>
           </section>
 
-          <section className="rounded-xl2 border border-surface-200 bg-surface-50 p-5">
+          <section className="rounded-lg border border-surface-200 bg-surface-50 p-5">
             <h2 className="m-0 flex items-center gap-2 text-sm font-semibold text-charcoal-950">
               <FaLightbulb aria-hidden="true" className="h-4 w-4 text-amber-600" />
               Consejos

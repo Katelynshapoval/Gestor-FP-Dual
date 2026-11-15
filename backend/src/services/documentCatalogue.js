@@ -107,7 +107,10 @@ const CATALOGUE = [
     requeridoParaValidarAlumno: false,
     replaceIfValidated: false,
     workflowOnUpload: "SUBIDO",
-    signers: ["EMPRESA"],
+    // Migration 027: the centre signs the convenio too. Convenios validated
+    // before that have no row for the centre and stay valid (firmaListFor).
+    signers: ["EMPRESA", "GESTOR"],
+    signersAddedLater: ["GESTOR"],
     required: true,
     // The convenio is a company document: the student never sees it.
     actor: { EMPRESA: "upload", GESTOR: "review", ALUMNO: "hidden" },
@@ -384,11 +387,18 @@ function signatureApplies(def, row) {
 const FIRMA_METODO_LABEL = {
   CONFIRMACION_APP: "Firma registrada en la aplicación",
   SUBIDA_FIRMADA: "Declarada al subir el documento firmado",
+  FIRMA_IMAGEN: "Firma insertada en el documento",
 };
 
 function firmaListFor(def, row, firmas) {
   if (!signatureApplies(def, row)) return [];
-  return def.signers.map((signRol) => {
+  // A signer added to the type after a document was validated (the centre on
+  // the convenio, migration 027) has no row on that document and is not owed.
+  const validado = row?.estado_validacion === "VALIDADO";
+  const signers = def.signers.filter((signRol) => !(
+    validado && def.signersAddedLater?.includes(signRol) && !(firmas || []).some((f) => f.rol === signRol)
+  ));
+  return signers.map((signRol) => {
     const found = (firmas || []).find((f) => f.rol === signRol);
     const estado = found?.estado === "FIRMADO" ? "FIRMADO" : "SIN_FIRMAR";
     const metodo = estado === "FIRMADO" ? found?.metodo || null : null;
@@ -399,6 +409,7 @@ function firmaListFor(def, row, firmas) {
       estado_label: estado === "FIRMADO" ? "Firmado" : "Sin firmar",
       metodo,
       metodo_label: metodo ? FIRMA_METODO_LABEL[metodo] || null : null,
+      con_tutor: estado === "FIRMADO" && Boolean(found?.id_firma_tutor),
       firmado_en: estado === "FIRMADO" ? found?.firmado_en || null : null,
     };
   });

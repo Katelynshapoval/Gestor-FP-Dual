@@ -6,8 +6,8 @@ import PageHeader from "../../components/ui/PageHeader.jsx";
 import Tabs from "../../components/ui/Tabs.jsx";
 import Seguimiento from "./Seguimiento.jsx";
 import Plantillas from "./Plantillas.jsx";
-import "../../styles/forms.css";
 import { SkeletonCards } from "../../components/ui/Loading.jsx";
+import { FirmarTodoBoton } from "../../components/firma/FirmarDocumentos.jsx";
 
 export default function AdminDocumentsView() {
   // ?vista=plantillas opens the Plantillas tab (link from the panel warning).
@@ -42,7 +42,8 @@ export default function AdminDocumentsView() {
           kicker="Gestión"
           title="Documentos"
           subtitle="Consulta, valida y controla los documentos del proceso Dual."
-          className="!mb-0"
+          espacio="ninguno"
+          actions={<FirmarTodoBoton />}
         />
 
         {tab === "seguimiento" && <SummaryCards summary={summary} />}
@@ -72,7 +73,8 @@ export default function AdminDocumentsView() {
 }
 
 // Totals for the current filters. "Total" also shows how many are already
-// complete (total minus pendientes).
+// complete (total minus pendientes). Phones: three compact tiles in one row
+// (number and label only), so the list starts on the first screen.
 function SummaryCards({ summary }) {
   const total = summary?.total;
   const pendientes = summary?.pendientes;
@@ -103,24 +105,24 @@ function SummaryCards({ summary }) {
     },
   ];
   return (
-    <div className="grid gap-3 sm:grid-cols-3" aria-live="polite">
+    <div className="grid grid-cols-3 gap-2 sm:gap-3" aria-live="polite">
       {cards.map(({ label, value, hint, Icon, tone, progress }) => (
-        <div key={label} className="rounded-xl2 border border-surface-200 bg-white p-4 shadow-card">
+        <div key={label} className="min-w-0 rounded-lg border border-surface-200 bg-white p-3 shadow-card sm:p-4">
           <div className="flex items-start gap-3">
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+            <span className={`hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:flex ${tone}`}>
               <Icon aria-hidden="true" className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="m-0 text-sm font-medium text-charcoal-700">{label}</p>
-              <p className="m-0 mt-0.5 text-2xl font-semibold leading-tight text-charcoal-950">{value == null ? "—" : value}</p>
+              <p className="m-0 text-xs font-medium leading-tight text-charcoal-700 sm:text-sm">{label}</p>
+              <p className="m-0 mt-1 text-xl font-semibold leading-tight text-charcoal-950 sm:mt-0.5 sm:text-2xl">{value == null ? "—" : value}</p>
             </div>
           </div>
           {progress != null && (
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-100" aria-hidden="true">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-100 sm:mt-3" aria-hidden="true">
               <div className="h-full rounded-full bg-green-600 transition-[width] duration-300" style={{ width: `${progress}%` }} />
             </div>
           )}
-          <p className={`m-0 text-xs text-muted ${progress != null ? "mt-2" : "mt-3"}`}>{hint}</p>
+          <p className={`m-0 hidden text-xs text-muted sm:block ${progress != null ? "mt-2" : "mt-3"}`}>{hint}</p>
         </div>
       ))}
     </div>

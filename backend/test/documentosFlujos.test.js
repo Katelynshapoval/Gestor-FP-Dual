@@ -165,6 +165,22 @@ test('a refusal while saving is returned as is; other errors as SQL errors', asy
 
 // ── Signatures ──────────────────────────────────────────────────────────────
 
+// Migration 027: signing stamps the signer's saved image into the PDF.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+let PDF;
+test.before(async () => {
+  const { PDFDocument } = require('pdf-lib');
+  const doc = await PDFDocument.create();
+  doc.addPage([595, 842]);
+  PDF = Buffer.from(await doc.save());
+});
+const conFirma = (archivo = () => PDF, posiciones = null) => [
+  ['FROM dual_firmas', [{ id_firma: 70, imagen: PNG, ancho: 300, alto: 100, origen: 'PANTALLA' }]],
+  ['SELECT archivo, firma_posiciones FROM dual_documentos', () => [{ archivo: archivo(), firma_posiciones: posiciones }]],
+  ['SELECT empresa FROM ge_empresas', [{ empresa: 'ACME S.L.' }]],
+  ['SELECT nombre, fechaNacimiento, tutorLegal FROM gf_alumnosfct', [{ nombre: 'Ana Ruiz', fechaNacimiento: '2000-01-01', tutorLegal: null }]],
+];
+
 const DOC = { id_documento: 50, id_reserva: 8, id_solicitud_alumno: null, id_solicitud_empresa: null, es_actual: 1, tiene_archivo: 1, tipo: 'ANEXO_II', estado_validacion: 'PENDIENTE', estado_reserva: 'PENDIENTE' };
 const conDoc = (doc, extra = []) => [
   ['SELECT id_solicitud_alumno, id_solicitud_empresa, id_reserva FROM dual_documentos', [{ id_reserva: doc?.id_reserva ?? 8 }]],
@@ -174,18 +190,85 @@ const conDoc = (doc, extra = []) => [
 ];
 
 test('sign: the caller\'s role signs the current file once, in a transaction, audited', async () => {
-  const res = await llamar('firmar', { user: EMPRESA, params: { id: '50' }, respuestas: conDoc(DOC) });
+  const res = await llamar('firmar', { user: EMPRESA, params: { id: '50' }, respuestas: conDoc(DOC, conFirma()) });
   assert.equal(res.statusCode, 200, JSON.stringify(res.body));
-  assert.deepEqual(res.body, { message: 'Firma registrada.', id_documento: 50, rol: 'EMPRESA', estado: 'FIRMADO' });
+  assert.deepEqual(res.body, { message: 'Documento firmado.', id_documento: 50, rol: 'EMPRESA', estado: 'FIRMADO', metodo: 'FIRMA_IMAGEN' });
+  // The file is replaced by the stamped one; without a mark, on a Hoja de firmas.
+  const upd = pool.calls.find((c) => c.sql.startsWith('UPDATE dual_documentos SET archivo = ?'));
+  assert.ok(upd.params[0].length > PDF.length && upd.params[0].subarray(0, 5).toString() === '%PDF-');
+  assert.deepEqual(JSON.parse(upd.params[1]), { _hoja: { p: 2, n: 1 } });
   const ins = pool.calls.find((c) => c.sql.startsWith('INSERT INTO dual_documento_firmas'));
-  assert.deepEqual(ins.params, [50, 'EMPRESA', 3, 3]);
-  assert.ok(pool.calls.some((c) => c.sql.startsWith('INSERT INTO dual_eventos') && c.params[2] === 'FIRMAR'));
+  assert.deepEqual(ins.params, [50, 'EMPRESA', 3, 'FIRMA_IMAGEN', 70, null]);
+  const ev = pool.calls.find((c) => c.sql.startsWith('INSERT INTO dual_eventos') && c.params[2] === 'FIRMAR');
+  const detalle = JSON.parse(ev.params[8]);
+  assert.deepEqual([detalle.metodo, detalle.id_firma, detalle.ubicacion], ['FIRMA_IMAGEN', 70, { EMPRESA: 'HOJA' }]);
+  assert.match(detalle.sha256_antes, /^[0-9a-f]{64}$/);
+  assert.notEqual(detalle.sha256_antes, detalle.sha256_despues);
   assert.ok(pool.calls.some((c) => c.sql === 'COMMIT'));
 });
 
+test('sign: the image goes inside the mark of the file when it has one', async () => {
+  const marca = { EMPRESA: { p: 1, x: 60, y: 100, w: 150, h: 60 } };
+  const res = await llamar('firmar', { user: EMPRESA, params: { id: '50' }, respuestas: conDoc(DOC, conFirma(() => PDF, JSON.stringify(marca))) });
+  assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+  const upd = pool.calls.find((c) => c.sql.startsWith('UPDATE dual_documentos SET archivo = ?'));
+  assert.deepEqual(JSON.parse(upd.params[1]), marca, 'no extra page');
+  const { PDFDocument } = require('pdf-lib');
+  assert.equal((await PDFDocument.load(upd.params[0])).getPageCount(), 1);
+});
+
+test('sign: nobody signs without a saved signature; an under-18 student also needs the guardian\'s', async () => {
+  let res = await llamar('firmar', { user: EMPRESA, params: { id: '50' }, respuestas: conDoc(DOC) });
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.code, 'SIN_FIRMA_GUARDADA');
+  res = await llamar('firmar', { params: { id: '50' }, respuestas: conDoc(DOC) });
+  assert.equal(res.body.code, 'SIN_FIRMA_CENTRO');
+  assert.ok(!pool.calls.some((c) => c.sql.startsWith('INSERT')));
+
+  const menor = ['SELECT nombre, fechaNacimiento, tutorLegal FROM gf_alumnosfct', [{ nombre: 'Leo Gil', fechaNacimiento: new Date(Date.now() - 16 * 365.25 * 864e5), tutorLegal: 'Marta Gil' }]];
+  const soloPropia = ['FROM dual_firmas', (_sql, params) => (params[0] === 'USUARIO' ? [{ id_firma: 70, imagen: PNG }] : [])];
+  const alumnoDoc = [['SELECT sa.id_alumno FROM dual_reservas r', [{ id_alumno: 7 }]]];
+  res = await llamar('firmar', { user: ALUMNO, params: { id: '50' }, respuestas: conDoc(DOC, [menor, soloPropia, ...alumnoDoc]) });
+  assert.equal(res.body.code, 'SIN_FIRMA_TUTOR');
+
+  const ambas = ['FROM dual_firmas', (_sql, params) => [{ id_firma: params[0] === 'TUTOR' ? 71 : 70, imagen: PNG }]];
+  res = await llamar('firmar', { user: ALUMNO, params: { id: '50' }, respuestas: conDoc(DOC, [menor, ambas, ...alumnoDoc, ...conFirma()]) });
+  assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+  const ins = pool.calls.find((c) => c.sql.startsWith('INSERT INTO dual_documento_firmas'));
+  assert.deepEqual(ins.params, [50, 'ALUMNO', 4, 'FIRMA_IMAGEN', 70, 71]);
+});
+
+test('sign: a PDF that cannot be changed keeps the signature as a confirmation', async () => {
+  const res = await llamar('firmar', { user: EMPRESA, params: { id: '50' }, respuestas: conDoc(DOC, conFirma(() => Buffer.from('%PDF-1.4 roto'))) });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.metodo, 'CONFIRMACION_APP');
+  assert.ok(!pool.calls.some((c) => c.sql.startsWith('UPDATE dual_documentos SET archivo')));
+  const ins = pool.calls.find((c) => c.sql.startsWith('INSERT INTO dual_documento_firmas'));
+  assert.deepEqual(ins.params, [50, 'EMPRESA', 3, 'CONFIRMACION_APP', null, null]);
+});
+
+test('sign all: each document on its own; one refusal does not stop the rest', async () => {
+  const respuestas = [
+    ['SELECT id_solicitud_alumno, id_solicitud_empresa, id_reserva FROM dual_documentos', [{ id_reserva: 8 }]],
+    ['FOR UPDATE OF d, r, se', (_sql, params) => [{ ...DOC, id_documento: params[0], estado_validacion: params[0] === 51 ? 'RECHAZADO' : 'PENDIENTE' }]],
+    ['SELECT se.id_empresa FROM dual_reservas r', [{ id_empresa: 100 }]],
+    ...conFirma(),
+  ];
+  const res = await llamar('firmarLote', { user: EMPRESA, body: { ids: [50, '51', 52, 50] }, respuestas });
+  assert.equal(res.statusCode, 200, JSON.stringify(res.body));
+  assert.deepEqual([res.body.firmados, res.body.fallidos], [2, 1]);
+  assert.deepEqual(res.body.resultados.map((r) => [r.id_documento, r.ok, r.code]), [[50, true, null], [51, false, 'RECHAZADO'], [52, true, null]]);
+  assert.equal(res.body.message, '2 de 3 documentos firmados.');
+  assert.equal((await llamar('firmarLote', { user: EMPRESA, body: { ids: [] } })).statusCode, 400);
+  assert.equal((await llamar('firmarLote', { user: EMPRESA, body: { ids: Array.from({ length: 201 }, (_, i) => i + 1) } })).statusCode, 400);
+  const sinFirma = await llamar('firmarLote', { user: EMPRESA, body: { ids: [50, 52] }, respuestas: respuestas.slice(0, 3) });
+  assert.deepEqual([sinFirma.statusCode, sinFirma.body.code], [409, 'SIN_FIRMA_GUARDADA']);
+});
+
 test('sign: staff sign as the centre; a second signature is a no-op', async () => {
-  let res = await llamar('firmar', { params: { id: '50' }, respuestas: conDoc(DOC) });
+  let res = await llamar('firmar', { params: { id: '50' }, respuestas: conDoc(DOC, conFirma()) });
   assert.equal(res.body.rol, 'GESTOR');
+  assert.deepEqual(pool.calls.find((c) => c.sql.includes('FROM dual_firmas')).params, ['CENTRO', null], 'the centre\'s shared image');
   res = await llamar('firmar', { params: { id: '50' }, respuestas: conDoc(DOC, [['SELECT rol, estado, metodo FROM dual_documento_firmas', [{ rol: 'GESTOR', estado: 'FIRMADO' }]]]) });
   assert.equal(res.statusCode, 200);
   assert.match(res.body.message, /ya estaba registrada/);
@@ -198,6 +281,7 @@ test('sign: refused for missing files, old versions, rejected files, cancelled r
     [{ ...DOC, tiene_archivo: 0 }, 404],
     [{ ...DOC, es_actual: 0 }, 409],
     [{ ...DOC, estado_validacion: 'RECHAZADO' }, 400],
+    [{ ...DOC, estado_validacion: 'VALIDADO' }, 400],
     [{ ...DOC, estado_reserva: 'CANCELADA' }, 400],
     [{ ...DOC, tipo: 'CV' }, 400],
   ];
@@ -213,7 +297,7 @@ test('sign: refused for missing files, old versions, rejected files, cancelled r
 
 test('sign by context: the reservation\'s current file of that type, for its company or student only', async () => {
   const actual = ['SELECT id_documento FROM dual_documentos WHERE id_reserva = ?', [{ id_documento: 50 }]];
-  let res = await llamar('firmarContexto', { user: EMPRESA, body: { clave: 'anexo_ii', id_reserva: '8' }, respuestas: [actual, ...conDoc(DOC)] });
+  let res = await llamar('firmarContexto', { user: EMPRESA, body: { clave: 'anexo_ii', id_reserva: '8' }, respuestas: [actual, ...conDoc(DOC, conFirma())] });
   assert.equal(res.statusCode, 200, JSON.stringify(res.body));
   assert.equal(res.body.id_documento, 50);
 

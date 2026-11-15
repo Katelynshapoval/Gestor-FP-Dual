@@ -2,8 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { label } from "../../../utils/labels.js";
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "../../../context/UserContext";
-import { IoMdClose, IoMdMenu } from "react-icons/io";
-import { FaAnglesLeft, FaAnglesRight, FaKey, FaRightFromBracket } from "react-icons/fa6";
+import { FaAnglesLeft, FaAnglesRight, FaBars, FaKey, FaPenNib, FaRightFromBracket, FaXmark } from "react-icons/fa6";
 import { homeForRole, isActivePath, navForUser } from "../../../navigation.js";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), select, input, textarea, [tabindex]:not([tabindex="-1"])';
@@ -21,7 +20,7 @@ const Brand = ({ to, compact = false, onNavigate }) => (
       <div className="truncate font-display text-base font-semibold leading-tight tracking-normal text-white">
         Gestor FP Dual
       </div>
-      <div className="mt-0.5 truncate text-[0.66rem] font-semibold uppercase tracking-widest text-white/70">
+      <div className="mt-0.5 truncate text-xs font-semibold uppercase tracking-widest text-white/70">
         Salesianos Zaragoza
       </div>
     </div>
@@ -148,6 +147,8 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
   };
 
   const showAccount = Boolean(user) && pathname !== "/login";
+  // Students and companies keep their own signature; the centre's is in Configuración.
+  const tieneFirma = user?.rol === "ALUMNO" || user?.rol === "EMPRESA";
 
   return (
     <>
@@ -192,6 +193,13 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
         {/* Logging out lives in the top bar ("Salir"), so it appears once on desktop. */}
         {showAccount && (
           <div className="mt-5 flex flex-col gap-1.5 border-t border-white/10 pt-4">
+            {tieneFirma && (
+              <SidebarLink
+                item={{ to: "/mi-firma", label: "Mi firma", Icon: FaPenNib }}
+                active={pathname === "/mi-firma"}
+                collapsed={sidebarCollapsed}
+              />
+            )}
             <SidebarLink
               item={{ to: "/cambiarPassword", label: "Cambiar contraseña", Icon: FaKey }}
               active={pathname === "/cambiarPassword"}
@@ -217,7 +225,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
             <div className="hidden min-w-0 lg:flex lg:max-w-56 lg:flex-col">
               <span className="truncate text-sm font-semibold text-white" title={user.nombre || undefined}>{user.nombre}</span>
               {user.rol && (
-                <span className="truncate text-[0.68rem] font-semibold uppercase tracking-wider text-white/70">
+                <span className="truncate text-xs font-semibold uppercase tracking-wider text-white/70">
                   {label("rol", user.rol)}
                 </span>
               )}
@@ -246,7 +254,7 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
           aria-controls="menu-movil"
           className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-2xl outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-brand-300/70 motion-reduce:transition-none"
         >
-          <IoMdMenu aria-hidden="true" />
+          <FaBars aria-hidden="true" />
         </button>
       </header>
 
@@ -283,14 +291,14 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
             aria-label="Cerrar menú"
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-2xl outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-brand-300/70 motion-reduce:transition-none"
           >
-            <IoMdClose aria-hidden="true" />
+            <FaXmark aria-hidden="true" />
           </button>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
           {user && (
             <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-3">
-              <span className="block text-[0.66rem] font-semibold uppercase tracking-widest text-brand-200">Sesión</span>
+              <span className="block text-xs font-semibold uppercase tracking-widest text-brand-200">Sesión</span>
               <span className="mt-1 block truncate text-sm font-semibold text-white" title={user.nombre || undefined}>{user.nombre}</span>
               {user.rol && <span className="mt-1 block truncate text-xs text-white/70">{label("rol", user.rol)}</span>}
             </div>
@@ -308,6 +316,13 @@ function Header({ sidebarCollapsed = false, onSidebarToggle }) {
 
           {showAccount && (
             <div className="mt-auto flex flex-col gap-1.5 border-t border-white/10 pt-4">
+              {tieneFirma && (
+                <DrawerLink
+                  item={{ to: "/mi-firma", label: "Mi firma", Icon: FaPenNib }}
+                  active={pathname === "/mi-firma"}
+                  onNavigate={closeDrawer}
+                />
+              )}
               <DrawerLink
                 item={{ to: "/cambiarPassword", label: "Cambiar contraseña", Icon: FaKey }}
                 active={pathname === "/cambiarPassword"}

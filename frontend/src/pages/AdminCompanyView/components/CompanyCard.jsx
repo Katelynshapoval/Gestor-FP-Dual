@@ -1,30 +1,22 @@
 import { useState } from "react";
-import { FaBuilding, FaCheck, FaPlus, FaXmark } from "react-icons/fa6";
+import { FaBuilding, FaCheck, FaFileLines, FaHourglassHalf, FaPen, FaPlus, FaRegCircleCheck, FaRegCircleXmark, FaXmark } from "react-icons/fa6";
 import { formatDate, InfoRow } from "../helpers";
-import { IoMdArrowDropdown } from "react-icons/io";
-import {
-  MdEdit,
-  MdOutlineCancel,
-  MdOutlineFileUpload,
-  MdPendingActions,
-} from "react-icons/md";
-import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 
 import {
   cardBodyClass,
   cardClass,
   cardEspClass,
-  cardHeaderClass,
   cardNameClass,
   sectionLabelClass,
+  sectionLabelBaseClass,
   signedBadgeClass,
-  toggleBtnClass,
 } from "../../../components/ui/cardStyles";
 import ReservaDetalle from "../../../components/reservas/ReservaDetalle.jsx";
 import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBadges.jsx";
 import EmpresaDatosActions from "./EmpresaDatosActions.jsx";
 import AsignarAlumnoModal from "./AsignarAlumnoModal.jsx";
 import EstadoSolicitudEmpresa from "./EstadoSolicitudEmpresa.jsx";
+import CardActions, { cardHeaderActions, cardHeaderBadges, cardHeaderGrid, cardHeaderName } from "../../../components/ui/CardActions.jsx";
 import RenovacionConvenio from "./RenovacionConvenio.jsx";
 import CuentaPanel from "../../../components/CuentaPanel.jsx";
 import CupoReductionDialog from "../../../components/CupoReductionDialog.jsx";
@@ -156,7 +148,7 @@ const EspecialidadList = ({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className={`${sectionLabelClass} !mb-0`}>Especialidades solicitadas</p>
+        <p className={sectionLabelBaseClass}>Especialidades solicitadas</p>
         {canEdit && missing.length > 0 && !adding && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAdding(true)}>
             <FaPlus aria-hidden="true" className="h-3 w-3" />
@@ -228,7 +220,7 @@ const EspecialidadList = ({
                         aria-label={`Cambiar plazas de ${cicloLabel(e)}`}
                         title="Cambiar plazas"
                       >
-                        <MdEdit aria-hidden="true" className="h-4 w-4" />
+                        <FaPen aria-hidden="true" className="h-4 w-4" />
                       </button>
                     )}
                   </span>
@@ -390,22 +382,22 @@ const CompanyCard = ({
     validado: {
       label: "Convenio validado",
       cls: "bg-green-500/10 text-green-800",
-      Icon: IoIosCheckmarkCircleOutline,
+      Icon: FaRegCircleCheck,
     },
     rechazado: {
       label: "Convenio rechazado",
       cls: "bg-red-500/10 text-red-800",
-      Icon: MdOutlineCancel,
+      Icon: FaRegCircleXmark,
     },
     pendiente: {
       label: "Convenio pendiente de validar",
-      cls: "bg-yellow-400/15 text-yellow-800",
-      Icon: MdPendingActions,
+      cls: "bg-amber-100 text-amber-800",
+      Icon: FaHourglassHalf,
     },
     sin_convenio: {
       label: "Sin convenio",
       cls: "bg-red-500/10 text-red-800",
-      Icon: MdOutlineCancel,
+      Icon: FaRegCircleXmark,
     },
   };
   const { label, cls, Icon } = statusConfig[convenioStatus];
@@ -438,15 +430,12 @@ const CompanyCard = ({
   return (
     <div className={cardClass}>
       {/* Card header */}
-      <div
-        className={`${cardHeaderClass} flex-wrap`}
-        onClick={() => onToggle(id)}
-      >
-        <div className="min-w-0 flex-1 basis-full overflow-hidden sm:basis-0">
-          <p className={`${cardNameClass} flex min-w-0 items-center gap-2`}>
-            <FaBuilding aria-hidden="true" className="shrink-0 text-brand-600" />
-            <span className="truncate" title={razonSocial || undefined}>{razonSocial}</span>
-            <span className="hidden shrink-0 text-[.8rem] text-muted sm:inline">
+      <div className={cardHeaderGrid} onClick={() => onToggle(id)}>
+        <div className={cardHeaderName}>
+          <p className={`${cardNameClass} flex min-w-0 items-start gap-2`}>
+            <FaBuilding aria-hidden="true" className="mt-1 shrink-0 text-brand-600" />
+            <span className="min-w-0 break-words">{razonSocial}</span>
+            <span className="hidden shrink-0 text-xs text-muted sm:inline">
               ({empresa.cif})
             </span>
           </p>
@@ -457,53 +446,35 @@ const CompanyCard = ({
             {formatDate(empresa.fechaPeticion)} · {emailCoord}
           </p>
         </div>
-        <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+        <div className={cardHeaderBadges}>
           {empresa.cambio_pendiente ? (
             <span
               className={`${signedBadgeClass} max-w-full bg-amber-100 text-amber-800`}
             >
-              <MdPendingActions className="text-[13px]" />
+              <FaHourglassHalf className="text-sm" />
               Cambios pendientes
             </span>
           ) : null}
           <span
             className={`${signedBadgeClass} ${cls} max-w-full`}
           >
-            <Icon className="text-[13px]" />
+            <Icon className="text-sm" />
             {label}
           </span>
           {reservations.length > 0 && (
-            <span className="text-[0.7rem] bg-surface-100 text-muted rounded-full px-2 py-0.5 shrink-0">
+            <span className="text-xs bg-surface-100 text-muted rounded-full px-2 py-0.5 shrink-0">
               {reservations.length} reserva
               {reservations.length !== 1 ? "s" : ""}
             </span>
           )}
-          {empresa.convocatoria_activa && !editingCompany && (
-            <button
-              type="button"
-              title="Editar datos"
-              aria-label={`Editar los datos de ${razonSocial}`}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-100 hover:text-brand-600"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditSignal((v) => v + 1);
-              }}
-            >
-              <MdEdit aria-hidden="true" className="text-lg" />
-            </button>
-          )}
-          <button
-            type="button"
-            aria-expanded={isExpanded}
-            aria-label={`${isExpanded ? "Ocultar" : "Mostrar"} el detalle de ${razonSocial}`}
-            className={`${toggleBtnClass} ${isExpanded ? "rotate-180" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle(id);
-            }}
-          >
-            <IoMdArrowDropdown aria-hidden="true" className="text-[1.5rem]" />
-          </button>
+        </div>
+        <div className={cardHeaderActions}>
+          <CardActions
+            nombre={razonSocial}
+            expanded={isExpanded}
+            onToggle={() => onToggle(id)}
+            onEdit={empresa.convocatoria_activa && !editingCompany ? () => setEditSignal((v) => v + 1) : null}
+          />
         </div>
       </div>
 
@@ -529,7 +500,7 @@ const CompanyCard = ({
               >
                 Reservas
                 {reservations.length > 0 && (
-                  <span className="ml-1 text-[0.65rem] bg-red-600/10 text-red-700 rounded-full px-1.5 py-0.5">
+                  <span className="ml-1 text-xs bg-red-600/10 text-red-700 rounded-full px-1.5 py-0.5">
                     {reservations.length}
                   </span>
                 )}
@@ -623,7 +594,7 @@ const CompanyCard = ({
                           convenioStatus === "validado"
                             ? "border-green-200 bg-green-50 text-green-700"
                             : convenioStatus === "pendiente"
-                              ? "border-yellow-200 bg-yellow-50 text-yellow-700"
+                              ? "border-amber-200 bg-amber-50 text-amber-800"
                               : "border-red-200 bg-red-50 text-red-700"
                         }`}
                       >
@@ -655,18 +626,19 @@ const CompanyCard = ({
                           <button
                             type="button"
                             onClick={() => onViewConvenio(empresa)}
-                            className="flex items-center gap-1.5 rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-sm text-charcoal-700 transition-[background-color,border-color,color] duration-150 ease-out hover:bg-surface-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
+                            className="btn btn-secondary btn-sm"
                           >
-                            <MdOutlineFileUpload className="text-brand-600" />
+                            <FaFileLines aria-hidden="true" className="text-brand-600" />
                             Ver convenio
                           </button>
                           {convenioStatus === "pendiente" && (
                             <button
                               type="button"
                               onClick={() => onViewConvenio(empresa)}
-                              className="flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-700 transition-colors duration-150 hover:bg-green-100"
+                              className="btn btn-primary btn-sm"
                             >
-                              ✓ Validar
+                              <FaCheck aria-hidden="true" />
+                              Validar
                             </button>
                           )}
                         </div>

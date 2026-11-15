@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MdContactMail, MdDirectionsCar, MdPersonOutline, MdSchool } from "react-icons/md";
+import { FaAddressCard, FaCar, FaGraduationCap, FaRegUser } from "react-icons/fa6";
 import { publicJSON } from "../../utils/api.js";
 import { RadioField, SelectField, TextField } from "../../components/forms/StepForm.jsx";
 import { EditGrid, EditSection, LockedField, W, focusFirstError } from "../../components/forms/EditDialog.jsx";
@@ -143,7 +143,7 @@ const AlumnoEditForm = ({
 
   return (
     <form id={formId} noValidate onSubmit={submit}>
-      <EditSection id="alu-ciclo" icon={MdSchool} title="Ciclo">
+      <EditSection id="alu-ciclo" icon={FaGraduationCap} title="Ciclo">
         <EditGrid>
           <SelectField
             {...field("id_especialidad")}
@@ -156,7 +156,7 @@ const AlumnoEditForm = ({
         {cicloAviso}
       </EditSection>
 
-      <EditSection id="alu-personales" icon={MdPersonOutline} title="Datos personales">
+      <EditSection id="alu-personales" icon={FaRegUser} title="Datos personales">
         <EditGrid>
           <TextField {...field("nombre")} maxLength={100} className={W.full} />
           <LockedField label="DNI / NIE" value={dni} hint="El DNI/NIE no se puede modificar." className={W.half} />
@@ -183,7 +183,7 @@ const AlumnoEditForm = ({
         </EditGrid>
       </EditSection>
 
-      <EditSection id="alu-contacto" icon={MdContactMail} title="Contacto" description="Dónde te escriben el centro y la empresa.">
+      <EditSection id="alu-contacto" icon={FaAddressCard} title="Contacto" description="Dónde te escriben el centro y la empresa.">
         <EditGrid>
           <TextField {...field("email")} type="email" maxLength={100} className={W.half} />
           <TextField {...field("emailColegio")} type="email" maxLength={100} className={W.half} />
@@ -195,7 +195,7 @@ const AlumnoEditForm = ({
         </EditGrid>
       </EditSection>
 
-      <EditSection id="alu-otros" icon={MdDirectionsCar} title="Movilidad y otros datos">
+      <EditSection id="alu-otros" icon={FaCar} title="Movilidad y otros datos">
         <EditGrid>
           <RadioField {...field("carnetDeConducir")} options={SI_NO} variant="segmented" className={W.half} />
           <RadioField {...field("tieneCoche")} options={SI_NO} variant="segmented" className={W.half} />

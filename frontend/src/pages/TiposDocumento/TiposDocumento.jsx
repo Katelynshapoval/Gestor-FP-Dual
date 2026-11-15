@@ -9,7 +9,6 @@ import { useConfirm, useToast } from "../../components/feedback/ToastProvider.js
 import TipoDocumentoDialog from "./TipoDocumentoDialog.jsx";
 import { SkeletonCards } from "../../components/ui/Loading.jsx";
 import { AMBITOS, firmantesTexto } from "./tiposDocumentoTextos.js";
-import "../../styles/forms.css";
 
 const PLANTILLAS = "/documentos?vista=plantillas";
 
@@ -172,7 +171,7 @@ export default function TiposDocumento() {
       {loading ? (
         <SkeletonCards count={4} label="Cargando documentos…" />
       ) : loadError ? (
-        <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-6 shadow-card">
+        <div className="rounded-lg border border-surface-200 bg-white px-6 py-6 shadow-card">
           <InlineNotice tone="error">{loadError}</InlineNotice>
           <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={cargar}>
             Reintentar
@@ -186,7 +185,7 @@ export default function TiposDocumento() {
               <section
                 key={ambito}
                 aria-labelledby={`tipos-${ambito}`}
-                className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card"
+                className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card"
               >
                 <header className="border-b border-surface-200 px-5 py-4 sm:px-6">
                   <h2 id={`tipos-${ambito}`} className="form-section-title mb-0">

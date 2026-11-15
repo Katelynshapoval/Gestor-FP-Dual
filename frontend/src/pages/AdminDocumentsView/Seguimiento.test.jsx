@@ -4,7 +4,7 @@
 // regenerate after confirming, go to templates).
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import Seguimiento from "./Seguimiento.jsx";
-import { iniciarSesion, renderPagina, simularApi } from "../../testUtils";
+import { FIRMA_PRUEBA, iniciarSesion, porFirmar, renderPagina, rutasDeFirma, simularApi } from "../../testUtils";
 
 const item = (extra) => ({
   clave: "CV", nombre: "CV", contexto: "solicitud_alumno", id_documento: 1, id_solicitud_alumno: 40,
@@ -66,13 +66,20 @@ test("validate and sign act on that document and reload the list", async () => {
   const { llamadas } = simularApi({
     "GET /documentos/seguimiento": pagina([item({ puede_revisar: true }), item({ clave: "ANEXO_II", nombre: "Anexo II", id_documento: 2, id_reserva: 8, contexto: "reserva", puede_firmar: true })]),
     "POST /documentos/1/validar": { message: "Documento validado correctamente." },
-    "POST /documentos/2/firmar": {},
+    ...rutasDeFirma([porFirmar({ id_documento: 2 })], { titular: "CENTRO", firma: FIRMA_PRUEBA, puede_cambiar: true }),
+    "POST /documentos/firmar-lote": { firmados: 1, fallidos: 0, message: "Documento firmado.", resultados: [{ id_documento: 2, ok: true }] },
   });
   renderPagina(<Seguimiento />);
   fireEvent.click(await screen.findByRole("button", { name: "Validar" }));
   expect(await screen.findByText("Documento validado correctamente.")).toBeInTheDocument();
+  // Signing goes through the dialog: the centre's image, one confirmation.
   fireEvent.click(await screen.findByRole("button", { name: "Firmar" }));
-  expect(await screen.findByText("Firma registrada.")).toBeInTheDocument();
+  const dialogo = await screen.findByRole("dialog", { name: "Firmar Anexo II" });
+  expect(await within(dialogo).findByRole("img", { name: "Firma del centro" })).toBeInTheDocument();
+  fireEvent.click(within(dialogo).getByRole("button", { name: "Firmar el documento" }));
+  fireEvent.click(within(await screen.findByRole("dialog", { name: "Confirmar firma" })).getByRole("button", { name: "Firmar" }));
+  expect(await screen.findByText("Documento firmado.")).toBeInTheDocument();
+  expect(llamadas.find((l) => l.path === "/documentos/firmar-lote").body).toEqual({ ids: [2] });
   await waitFor(() => expect(peticiones(llamadas).length).toBe(3));
   expect(await screen.findByRole("button", { name: "Gestionar reserva" })).toBeInTheDocument();
 });

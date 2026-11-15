@@ -20,7 +20,7 @@ const MisDocumentos = ({ documentos, onRefresh }) => {
           Todavía no hay documentos asociados a tu empresa.
         </p>
       ) : (
-        <div className="divide-y divide-surface-200 overflow-hidden rounded-xl2 border border-surface-200 bg-white">
+        <div className="divide-y divide-surface-200 overflow-hidden rounded-lg border border-surface-200 bg-white">
           {items.map((doc) => (
             <DocumentoItem
               key={`${doc.clave}-${doc.id_solicitud_empresa || 0}-${doc.id_reserva || 0}-${doc.id_documento || 0}`}

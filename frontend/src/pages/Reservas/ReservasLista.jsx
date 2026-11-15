@@ -136,7 +136,7 @@ const ReservasLista = ({ reservations, onReservationUpdate, activaNombre }) => {
       </FilterBar>
 
       {visibles.length === 0 ? (
-        <div role="status" className="rounded-xl2 border border-surface-200 bg-white p-10 text-center text-sm text-muted shadow-card">
+        <div role="status" className="rounded-lg border border-surface-200 bg-white p-10 text-center text-sm text-muted shadow-card">
           {todas.length === 0
             ? "Todavía no hay reservas."
             : active

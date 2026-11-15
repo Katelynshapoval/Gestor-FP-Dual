@@ -71,7 +71,7 @@ export default function MotivoDialog({
           <button
             type="submit"
             form={`${fieldId}-form`}
-            className={`btn btn-sm ${tone === "danger" ? "btn-danger" : "btn-primary"} ${disabled ? "btn-disabled" : ""}`}
+            className={`btn btn-sm ${tone === "danger" ? "btn-danger" : "btn-primary"}`}
             disabled={disabled}
           >
             {busy ? busyLabel : confirmLabel}

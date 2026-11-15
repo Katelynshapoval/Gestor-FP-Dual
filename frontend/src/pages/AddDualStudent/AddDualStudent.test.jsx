@@ -129,6 +129,9 @@ test("documents must be PDFs; the whole application is uploaded once with both f
   expect(errores()).toMatch(/debe ser un PDF/);
   subir("campo-cv", pdf("cv.pdf"));
   siguiente();
+  // The signature step is optional: it can be skipped and created later.
+  expect(screen.getByRole("heading", { name: "Tu firma" })).toBeInTheDocument();
+  siguiente();
   escribir("Contraseña", "secreta1");
   escribir("Repetir contraseña", "secreta1");
   siguiente();
@@ -148,6 +151,7 @@ test("documents must be PDFs; the whole application is uploaded once with both f
   expect(fd.get("tutorLegal")).toBe("", "adults send no guardian");
   expect(fd.get("cv").name).toBe("cv.pdf");
   expect(fd.get("anexoDga").name).toBe("dga.pdf");
+  expect(fd.get("firma")).toBeNull();
   expect(fd.get("password")).toBe("secreta1");
 
   fireEvent.click(screen.getByRole("button", { name: "Presentar otra solicitud" }));
@@ -167,6 +171,7 @@ test("a refusal from the server is shown and nothing is lost", async () => {
   subir("campo-cv", pdf("cv.pdf"));
   subir("campo-anexoDga", pdf("dga.pdf"));
   siguiente();
+  siguiente(); // optional signature step
   escribir("Contraseña", "secreta1");
   escribir("Repetir contraseña", "secreta1");
   siguiente();

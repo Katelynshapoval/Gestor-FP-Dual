@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RxClock } from "react-icons/rx";
+import { FaRegClock } from "react-icons/fa6";
 import { isCancelledReserva } from "../../utils/reservaEstados.js";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
 import ReservaResumenBadges from "../../components/reservas/ReservaResumenBadges.jsx";
@@ -14,8 +14,8 @@ const MisReservas = ({ reservations, onChanged }) => {
 
   if (!reservations || reservations.length === 0) {
     return (
-      <div className="rounded-xl2 border border-surface-200 bg-surface-50 px-6 py-10 text-center">
-        <RxClock className="mx-auto mb-2 text-2xl text-surface-300" aria-hidden="true" />
+      <div className="rounded-lg border border-surface-200 bg-surface-50 px-6 py-10 text-center">
+        <FaRegClock className="mx-auto mb-2 text-2xl text-surface-300" aria-hidden="true" />
         <p className="text-sm text-muted">No tienes alumnos reservados todavía.</p>
       </div>
     );
@@ -23,7 +23,7 @@ const MisReservas = ({ reservations, onChanged }) => {
 
   return (
     <>
-      <div className="divide-y divide-surface-200 overflow-hidden rounded-xl2 border border-surface-200 bg-white">
+      <div className="divide-y divide-surface-200 overflow-hidden rounded-lg border border-surface-200 bg-white">
         {reservations.map((reserva) => {
           const isCancelled = isCancelledReserva(reserva.estado_reserva);
           return (

@@ -18,6 +18,19 @@ const pdfUpload = multer({
   },
 });
 
+// The public student form may also bring the student's signature (a PNG drawn
+// in the form, migration 027): that field is not a PDF and the service checks it.
+const CAMPO_FIRMA = 'firma';
+const solicitudAlumnoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === CAMPO_FIRMA) return cb(null, file.mimetype === 'image/png');
+    if (file.mimetype !== 'application/pdf') return cb(new Error(NOT_PDF));
+    return cb(null, true);
+  },
+});
+
 function isPdf(buffer) {
   return Buffer.isBuffer(buffer) && buffer.subarray(0, SIGNATURE_WINDOW).indexOf(PDF_SIGNATURE) !== -1;
 }
@@ -30,7 +43,7 @@ function uploadedFiles(req) {
 }
 
 function requirePdfSignature(req, res, next) {
-  if (uploadedFiles(req).some((f) => !isPdf(f.buffer))) {
+  if (uploadedFiles(req).some((f) => f.fieldname !== CAMPO_FIRMA && !isPdf(f.buffer))) {
     return res.status(400).json({ error: NOT_PDF });
   }
   return next();
@@ -50,4 +63,4 @@ function uploadErrorMessage(err) {
   return err?.message;
 }
 
-module.exports = { pdfUpload, requirePdfSignature, isPdf, NOT_PDF, uploadErrorMessage };
+module.exports = { pdfUpload, solicitudAlumnoUpload, requirePdfSignature, isPdf, NOT_PDF, uploadErrorMessage };

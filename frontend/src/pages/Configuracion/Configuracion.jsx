@@ -9,6 +9,7 @@ export const CONFIG_TABS = [
   { id: "personal", label: "Personal" },
   { id: "correos", label: "Correos" },
   { id: "documentos", label: "Documentos" },
+  { id: "firma", label: "Firma del centro" },
 ];
 
 export default function Configuracion() {
@@ -21,15 +22,15 @@ export default function Configuracion() {
   }
 
   // Correos has a list beside the editor and needs the extra width.
-  const ancho = actual === "correos" ? " !max-w-[100rem]" : "";
+  const ancho = actual === "correos" ? " max-w-[100rem]" : "";
 
   return (
     <div className={`page-container${ancho}`}>
       <PageHeader
         kicker="Administración"
         title="Configuración"
-        subtitle="Periodos de solicitud, cuentas del personal, correos automáticos y documentos."
-        className="!mb-5"
+        subtitle="Periodos de solicitud, cuentas del personal, correos automáticos, documentos y la firma del centro."
+        espacio="corto"
       />
       <Tabs
         label="Secciones de configuración"

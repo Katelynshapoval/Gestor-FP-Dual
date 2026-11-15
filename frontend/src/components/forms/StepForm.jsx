@@ -1,7 +1,6 @@
 import { formatBytes, MAX_PDF_BYTES, problemaPdf } from "../../utils/formatValidation.js";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { FaCheck } from "react-icons/fa6";
-import { MdOutlineFileUpload } from "react-icons/md";
+import { FaCheck, FaFileArrowUp } from "react-icons/fa6";
 
 // Building blocks for the public multi-step forms (Phase 4, D.3):
 // - every field has a visible label, a required marker, an optional hint and
@@ -165,7 +164,7 @@ export const ErrorSummary = ({ errors, labels }) => {
       id="form-error-summary"
       tabIndex={-1}
       role="alert"
-      className="mb-6 rounded-xl2 border border-red-200 bg-red-50 px-5 py-4 text-red-900 outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+      className="mb-6 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-red-900 outline-none focus-visible:ring-2 focus-visible:ring-red-400"
     >
       <p className="m-0 font-semibold">
         {entries.length === 1 ? "Revisa este campo antes de continuar:" : `Revisa estos ${entries.length} campos antes de continuar:`}
@@ -330,7 +329,7 @@ export const FileField = ({ name, label, file, onChange, error, hint, required, 
       error={shown}
     >
       <label className={`file-upload ${shown ? "border-red-400" : file ? "border-emerald-300 bg-emerald-50/40" : ""}`}>
-        <MdOutlineFileUpload aria-hidden="true" className="file-upload-icon" />
+        <FaFileArrowUp aria-hidden="true" className="file-upload-icon" />
         <span className="file-upload-text">
           {file ? (
             <>

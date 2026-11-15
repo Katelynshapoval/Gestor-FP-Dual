@@ -8,6 +8,7 @@ const { cicloCorregido, solicitudAlumnoRecibida } = require('./notificaciones');
 const alumnoDatos = require('./alumnoDatos');
 const { recordEvent } = require('./auditLog');
 const { campoNoEscalar } = require('../helpers/formInput');
+const firmas = require('./firmasService');
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_OBSERVACIONES = 2000;
 // Student fields of the public form that the admin correction also edits.
@@ -71,6 +72,18 @@ exports.create = async function (req, res) {
   }
   if (!dniNieValido(dniNorm)) {
     return res.status(400).json({ error: 'No es un DNI/NIE válido.' });
+  }
+
+  // Optional: the signature drawn in the form (migration 027).
+  const firmaPng = req.files?.firma?.[0]?.buffer || null;
+  let firmaTam = null;
+  if (firmaPng) {
+    try {
+      firmaTam = await firmas.validarPng(firmaPng);
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message, code: err.code });
+      throw err;
+    }
   }
 
   const convocatoria = await getActiveConvocatoria();
@@ -257,6 +270,26 @@ exports.create = async function (req, res) {
         WHERE id_solicitud_alumno = ?`,
       [idUsuarioOrigen, idSolicitudAlumno]
     );
+
+    // The signature is saved only when the account has none: an existing one
+    // changes only when its owner asks for it (Mi firma).
+    if (firmaPng) {
+      const [yaTiene] = await conn.query(
+        "SELECT id_firma FROM dual_firmas WHERE titular = 'USUARIO' AND id_usuario = ? AND activa = 1",
+        [idUsuarioOrigen]
+      );
+      if (!yaTiene[0]) {
+        const [firma] = await conn.query(
+          `INSERT INTO dual_firmas (titular, id_usuario, imagen, ancho, alto, origen, creado_por)
+           VALUES ('USUARIO', ?, ?, ?, ?, ?, ?)`,
+          [idUsuarioOrigen, firmaPng, firmaTam.ancho, firmaTam.alto, body.firmaOrigen === 'MOVIL' ? 'MOVIL' : 'PANTALLA', idUsuarioOrigen]
+        );
+        await recordEvent(conn, {
+          entidad: 'FIRMA', id: firma.insertId, accion: 'CREAR',
+          user: { id: idUsuarioOrigen, rol: 'ALUMNO' }, detalle: { titular: 'USUARIO', en_solicitud: idSolicitudAlumno },
+        });
+      }
+    }
 
     await conn.commit();
 

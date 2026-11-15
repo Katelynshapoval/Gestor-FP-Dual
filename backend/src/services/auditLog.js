@@ -9,9 +9,9 @@
 const pool = require("../db/pool");
 
 // OFERTA and TUTOR since migration 018, USUARIO since 019, CORREO since 022,
-// TIPO_DOCUMENTO since 025 (chk_de_entidad).
+// TIPO_DOCUMENTO since 025, FIRMA since 027 (chk_de_entidad).
 const ENTIDADES = [
-  "SOLICITUD_ALUMNO", "SOLICITUD_EMPRESA", "RESERVA", "DOCUMENTO", "OFERTA", "TUTOR", "USUARIO", "CORREO", "TIPO_DOCUMENTO",
+  "SOLICITUD_ALUMNO", "SOLICITUD_EMPRESA", "RESERVA", "DOCUMENTO", "OFERTA", "TUTOR", "USUARIO", "CORREO", "TIPO_DOCUMENTO", "FIRMA",
 ];
 
 function actorFrom(user) {

@@ -57,9 +57,6 @@ module.exports = {
         brand: "0 10px 18px -12px rgb(224 31 22 / .65)",
         shell: "0 20px 45px -30px rgb(17 17 16 / .45)",
       },
-      borderRadius: {
-        xl2: "0.5rem",
-      },
       // Short, soft and interruptible; all of it is switched off for people
       // who ask for reduced motion (main.css).
       animation: {

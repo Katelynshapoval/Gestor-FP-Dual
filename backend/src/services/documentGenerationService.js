@@ -6,6 +6,7 @@ const { defByClave } = require("./documentCatalogue");
 const { generationConfig } = require("./documentGenerationConfig");
 const { saveByClave } = require("./documentosStore");
 const workflow = require("./documentosWorkflow");
+const firmaPdf = require("./firmaPdf");
 
 async function loadActiveTemplate(clave) {
   const [rows] = await pool.query(
@@ -47,7 +48,10 @@ function runTemplateCommand({ sandbox }) {
 }
 
 async function docxBufferToPdf(docxBuffer) {
-  const { value: html } = await mammoth.convertToHtml({ buffer: docxBuffer });
+  const { value: convertido } = await mammoth.convertToHtml({ buffer: docxBuffer });
+  // Migration 027: each signature variable becomes an empty box whose position
+  // is read back from the PDF (firmaPdf.leerMarcas).
+  const html = firmaPdf.marcasEnHtml(convertido);
   // Docker: Chromium's sandbox needs privileges a container does not have.
   // PUPPETEER_NO_SANDBOX=true (docker-compose.yml) turns it off; the page
   // below still runs no script and makes no request.
@@ -128,16 +132,18 @@ async function generateDocument({ clave, parents, userId = null, userRol = null,
   const data = await config.loadData(parents);
   const filled = await createReport({
     template: template.archivo,
-    data,
+    data: { ...data, ...firmaPdf.datosDeMarcas() },
     cmdDelimiter: ["<<", ">>"],
     runJs: runTemplateCommand,
   });
-  const pdf = await docxBufferToPdf(Buffer.from(filled));
+  // Where each signature goes; the file is saved without the mark links.
+  const { pdf, posiciones } = await firmaPdf.leerMarcas(await docxBufferToPdf(Buffer.from(filled)));
   const idDocumento = await saveByClave(clave, parents, pdf, {
     origen: "GENERADO",
     idUsuario: userId,
     rol: userRol,
     idPlantilla: template.id_plantilla,
+    ...(posiciones ? { posiciones } : {}),
   });
 
   return {

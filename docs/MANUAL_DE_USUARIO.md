@@ -252,6 +252,29 @@ En cada documento también se indica **quién tiene que actuar** (por ejemplo «
 
 El color sigue la regla de antes (verde, amarillo, rojo, gris). **Pasa el ratón por encima del icono (o tócalo en el móvil) para ver el texto completo**, por ejemplo «Anexo: falta tipo de contrato».
 
+<a id="firmar-documentos"></a>
+### Firmar documentos
+
+Los documentos se firman dentro de la aplicación: tu firma se inserta en el PDF, en su sitio.
+
+**Tu firma, una sola vez.** La primera vez que firmas se te pide crearla. Puedes:
+- **Con el móvil**: en el ordenador aparece un código QR. Apunta con la cámara del móvil, dibuja la firma con el dedo y pulsa **«Enviar firma»**. La firma aparece en el ordenador; pulsa **«Guardar y continuar»** o **«Repetir»**. El código dura 10 minutos y sirve una vez.
+- **Dibujar aquí**: con el dedo, un lápiz o el ratón. **«Deshacer»** quita el último trazo y **«Borrar»** lo limpia todo.
+
+Después no se vuelve a pedir. Para cambiarla o eliminarla, entra en **«Mi firma»** (menú, junto a «Cambiar contraseña»). Los documentos que ya has firmado conservan la firma anterior.
+
+**Firmar.** Cuando tengas documentos por firmar aparece el botón rojo **«Firmar N documentos»** (en tu portal y, para el centro, en Documentos). También puedes pulsar **«Firmar»** en un documento concreto.
+1. Se abre la página del documento donde vas a firmar, con tu firma ya colocada en su sitio (recuadro rojo).
+2. Con las **flechas** (o las teclas ← →, o deslizando en el móvil) pasas de un documento a otro. La lupa amplía la página y **«Ver el documento completo»** abre el PDF entero.
+3. Si quieres dejar alguno para más tarde, desmarca **«Firmar este documento»**.
+4. Pulsa **«Firmar los N documentos»** y confirma. Si alguno no se puede firmar, se indica cuál y por qué; los demás quedan firmados.
+
+- **Menores de edad**: hasta cumplir 18 años, tus documentos llevan también la firma de tu tutor o tutora legal. Se crea igual que la tuya (la dibuja tu tutor en persona) y se guarda en «Mi firma».
+- **Centro**: administración y coordinación firman con **la firma del centro**, una imagen con la firma y el sello que un administrador sube una vez en **Configuración › Firma del centro**. Mientras no exista, el personal no puede firmar.
+- **Empresas**: podéis firmar en la aplicación o, como antes, descargar el documento, firmarlo a mano y subirlo. Si lo subís escaneado, las firmas del alumno y del centro irán en una **hoja de firmas** al final.
+- Si un documento no tiene un sitio marcado para tu firma, esta va en una **hoja de firmas** añadida al final; la pantalla lo avisa.
+- Un documento ya **validado** no se puede firmar ni cambiar.
+
 <a id="botones"></a>
 
 ### Botones y ventanas habituales
@@ -384,7 +407,7 @@ Al terminar aparece el mensaje **«Solicitud enviada»** con un botón **«Acced
 
 - Entrad en el portal con el **CIF** y la contraseña elegida.
 - Al enviar la solicitud, el coordinador recibe un correo de confirmación. Si el centro ya tiene preparado el modelo de **convenio**, el convenio va adjunto (salvo que el centro haya quitado los adjuntos de ese correo; entonces está en el portal); si no, el correo avisa de que estará en el portal cuando el centro lo genere, y entonces llega otro correo, «Tu convenio está disponible», normalmente con el convenio adjunto.
-- Mientras tanto, en el portal el convenio aparece como **«Convenio: en preparación por el centro»**. Cuando ya está, hay que firmarlo y subirlo firmado ([cómo](#empresa-documentos)).
+- Mientras tanto, en el portal el convenio aparece como **«Convenio: en preparación por el centro»**. Cuando ya está, hay que firmarlo: en la aplicación ([cómo](#firmar-documentos)) o subiéndolo firmado ([cómo](#empresa-documentos)). Después lo firma el centro.
 - La solicitud queda **validada cuando el centro valida el convenio firmado**. Hasta entonces no podéis reservar alumnos.
 
 > **Correos.** La aplicación envía avisos por correo electrónico (validaciones, rechazos, reservas, confirmaciones…) cuando el centro tiene activado el envío. Lo que cuenta siempre es lo que aparece en el portal: si esperas un aviso y no llega, consulta el portal.

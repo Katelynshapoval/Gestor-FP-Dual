@@ -83,7 +83,7 @@ function ListaCorreos({ correos, seleccionada, onSelect, sucio }) {
   return (
     <nav
       aria-label="Correos"
-      className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card lg:sticky lg:top-4"
+      className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card lg:sticky lg:top-4"
     >
       <div className="border-b border-surface-200 p-3">
         <label htmlFor="correos-buscar" className="sr-only">
@@ -112,7 +112,7 @@ function ListaCorreos({ correos, seleccionada, onSelect, sucio }) {
         )}
         {grupos.map((g) => (
           <div key={g.id} className="mb-1">
-            <div className="px-4 pb-1 pt-3 text-[0.68rem] font-semibold uppercase tracking-widest text-charcoal-500">
+            <div className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-widest text-charcoal-500">
               {g.label}
             </div>
             <ul className="m-0 list-none p-0">
@@ -209,7 +209,7 @@ function Chips({ variables, usadas, campo, onInsert }) {
               // Keep the caret where it is: insert without stealing focus.
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onInsert(v)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.8125rem] font-medium transition-[background-color,border-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-40 ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-40 ${
                 falta
                   ? "border-red-300 bg-red-50 text-red-700 hover:border-red-400"
                   : usada
@@ -271,7 +271,7 @@ function VistaPrevia({ correo, preview, cargando }) {
   return (
     <section
       aria-labelledby="preview-title"
-      className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card"
+      className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card"
     >
       <div className="flex items-center justify-between gap-3 border-b border-surface-200 px-5 py-3.5">
         <h2
@@ -750,11 +750,11 @@ export default function Correos() {
               <div className="grid min-w-0 items-start gap-6 min-[1600px]:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
                 <section
                   aria-labelledby="editor-title"
-                  className={`min-w-0 rounded-xl2 border border-surface-200 bg-white shadow-card ${vista === "previa" ? "hidden min-[1600px]:block" : ""}`}
+                  className={`min-w-0 rounded-lg border border-surface-200 bg-white shadow-card ${vista === "previa" ? "hidden min-[1600px]:block" : ""}`}
                 >
                   <header className="flex flex-col gap-4 border-b border-surface-200 px-5 py-5 sm:flex-row sm:items-start sm:justify-between md:px-6">
                     <div className="min-w-0">
-                      <div className="mb-1 text-[0.68rem] font-semibold uppercase tracking-widest text-brand-700">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-brand-700">
                         {GRUPOS[detalle.grupo] || detalle.grupo}
                       </div>
                       <h2
@@ -997,7 +997,7 @@ export default function Correos() {
                     </details>
                   </div>
 
-                  <footer className="z-10 flex flex-wrap md:sticky md:bottom-0 items-center gap-2 rounded-b-xl2 border-t border-surface-200 bg-white/95 px-5 py-3.5 backdrop-blur md:px-6">
+                  <footer className="z-10 flex flex-wrap md:sticky md:bottom-0 items-center gap-2 rounded-b-lg border-t border-surface-200 bg-white/95 px-5 py-3.5 backdrop-blur md:px-6">
                     <button
                       type="button"
                       className="btn btn-primary"
@@ -1107,7 +1107,7 @@ function SkeletonEditor() {
     <div className="min-w-0">
       <span role="status" className="sr-only">Cargando el correo…</span>
       {visible && (
-        <div className="space-y-4 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card motion-safe:animate-pulse" aria-hidden="true">
+        <div className="space-y-4 rounded-lg border border-surface-200 bg-white p-5 shadow-card motion-safe:animate-pulse" aria-hidden="true">
           <Bar w="w-28" h="h-3" tono="bg-surface-200" />
           <Bar w="w-64" h="h-6" tono="bg-surface-200" className="max-w-full" />
           <Bar w="w-full" h="h-10" className="rounded-lg" />
@@ -1127,7 +1127,7 @@ function SkeletonCorreos() {
       <span role="status" className="sr-only">Cargando los correos…</span>
       {visible && (
         <div className="grid items-start gap-6 lg:grid-cols-[16rem_minmax(0,1fr)] motion-safe:animate-pulse" aria-hidden="true">
-          <div className="hidden space-y-2 rounded-xl2 border border-surface-200 bg-white p-3 shadow-card lg:block">
+          <div className="hidden space-y-2 rounded-lg border border-surface-200 bg-white p-3 shadow-card lg:block">
             {Array.from({ length: 8 }, (_, i) => (
               <Bar key={i} w={i % 3 ? "w-40" : "w-24"} h={i % 3 ? "h-8" : "h-3"} tono={i % 3 ? "bg-surface-100" : "bg-surface-200"} className="rounded-md" />
             ))}
@@ -1136,7 +1136,7 @@ function SkeletonCorreos() {
             <Bar w="w-16" h="h-3" tono="bg-surface-200" />
             <Bar w="w-full" h="h-11" className="rounded-lg" />
           </div>
-          <div className="space-y-4 rounded-xl2 border border-surface-200 bg-white p-5 shadow-card">
+          <div className="space-y-4 rounded-lg border border-surface-200 bg-white p-5 shadow-card">
             <Bar w="w-28" h="h-3" tono="bg-surface-200" />
             <Bar w="w-64" h="h-6" tono="bg-surface-200" className="max-w-full" />
             <Bar w="w-full" h="h-10" className="rounded-lg" />

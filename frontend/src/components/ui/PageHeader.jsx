@@ -1,5 +1,9 @@
-const PageHeader = ({ kicker, title, subtitle, meta, actions, className = "" }) => (
-  <div className={`mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${className}`}>
+// `espacio`: the gap below the header — "normal" (default), "corto" (tabs
+// follow) or "ninguno" (the parent spaces it, e.g. with space-y).
+const ESPACIO = { normal: "mb-7", corto: "mb-5", ninguno: "mb-0" };
+
+const PageHeader = ({ kicker, title, subtitle, meta, actions, espacio = "normal", className = "" }) => (
+  <div className={`${ESPACIO[espacio] || ESPACIO.normal} flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${className}`}>
     <div className="min-w-0">
       {kicker && <div className="page-kicker">{kicker}</div>}
       <h1 className="page-title">{title}</h1>

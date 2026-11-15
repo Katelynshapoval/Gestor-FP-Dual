@@ -21,6 +21,29 @@
 - **Comportamiento**: no se les exigen ni muestran firmas; al validar, el evento lo indica. **Cualquier fichero nuevo** sobre ese documento elimina la exención.
 - **Referencia**: migración 013, `documentCatalogue.signatureApplies`.
 
+### La firma cambia el fichero (migración 027)
+- **Comportamiento**: firmar inserta la imagen en el PDF y lo guarda en la misma fila, sin archivar versión ni reiniciar las firmas de los demás. La huella del fichero antes y después queda en el evento `FIRMAR`.
+- **Consecuencias**: un documento VALIDADO ya no se puede firmar (400 `VALIDADO`). Las firmas hechas antes de la 027 (`CONFIRMACION_APP`, sin imagen) siguen valiendo y no se re-estampan.
+
+### Documento sin marcas de firma
+- **Condición**: PDF subido (Calendario, un anexo escaneado), plantilla sin el campo de ese firmante, o documento generado antes de la 027.
+- **Comportamiento**: la firma va en una «Hoja de firmas» añadida al final; las siguientes firmas ocupan la plaza siguiente de la misma hoja.
+- **Ejemplo**: la empresa sube el anexo firmado a mano y escaneado → firma EMPRESA declarada; alumno y centro firman en la hoja.
+
+### PDF que no admite la imagen
+- **Condición**: fichero cifrado o dañado que `pdf-lib` no abre.
+- **Comportamiento**: la firma se registra como confirmación (`CONFIRMACION_APP`), sin tocar el fichero, y el mensaje lo dice.
+
+### Alumno menor de edad
+- **Comportamiento**: al firmar se insertan su firma y la de su tutor legal (guardada en su cuenta). Sin la del tutor → 409 `SIN_FIRMA_TUTOR`. Al cumplir 18 deja de pedirse; la firma del tutor guardada se puede eliminar.
+- **Límite**: la aplicación no comprueba quién dibuja la firma del tutor.
+
+### Convenios validados antes de que firmara el centro
+- **Comportamiento**: siguen validados y no muestran una firma del centro pendiente. Un convenio todavía sin validar sí necesita la firma del centro antes de validarse.
+
+### Firmar varios a la vez
+- **Comportamiento**: `firmar-lote` firma uno a uno; un fallo (rechazado, versión anterior, otra persona acaba de firmarlo) no detiene los demás y se devuelve con su motivo. Sin firma guardada no se firma ninguno (409).
+
 ### Firma repetida
 - **Comportamiento**: firmar algo ya firmado por el mismo rol devuelve 200 «La firma ya estaba registrada.» sin cambios ni evento.
 - **Consecuencias**: el personal es un único firmante «GESTOR»: si un coordinador firma, otro administrador ya no puede firmar «de nuevo».

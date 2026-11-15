@@ -57,6 +57,8 @@ function documentoFirmable(def, doc, rolFirma) {
   if (doc.estado_validacion === "RECHAZADO") {
     return deny(400, "RECHAZADO", "El documento fue rechazado: hay que sustituirlo antes de firmar.");
   }
+  // Signing changes the file (migration 027): a validated file stays as reviewed.
+  if (doc.estado_validacion === "VALIDADO") return deny(400, "VALIDADO", "El documento ya está validado.");
   return null;
 }
 

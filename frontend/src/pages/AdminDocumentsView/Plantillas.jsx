@@ -7,12 +7,30 @@ import StatusBadge from "../../components/ui/StatusBadge.jsx";
 import { useUser } from "../../context/UserContext";
 
 // The fields a template can use, as they must be written in the .docx.
-function CamposPlantilla({ variables }) {
+function CamposPlantilla({ variables, firmas = [] }) {
   return (
     <details className="group mt-3 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2">
       <summary className="cursor-pointer select-none text-sm font-medium text-charcoal-800 marker:text-muted">
-        Campos que puede usar la plantilla ({variables.length})
+        Campos que puede usar la plantilla ({variables.length + firmas.length})
       </summary>
+      {firmas.length > 0 && (
+        <>
+          <p className="mb-2 mt-2 text-xs text-muted">
+            <strong className="font-semibold text-charcoal-800">Firmas.</strong> Pon cada uno donde firma esa persona:
+            al firmar, su imagen se inserta en ese sitio. Sin él, la firma va en una hoja de firmas al final.
+          </p>
+          <ul className="m-0 mb-3 grid list-none gap-x-4 gap-y-1.5 p-0 sm:grid-cols-2">
+            {firmas.map((v) => (
+              <li key={v.nombre} className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm">
+                <code className="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-mono text-xs text-brand-800">
+                  {v.marcador}
+                </code>
+                <span className="text-muted">{v.etiqueta}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <p className="mb-2 mt-2 text-xs text-muted">
         Escríbelos tal cual en el documento Word; al generarlo se sustituyen por los datos de cada solicitud o reserva.
       </p>
@@ -143,7 +161,7 @@ export default function Plantillas() {
       <div className="space-y-3">
         <span role="status" className="sr-only">Cargando plantillas…</span>
         {Array.from({ length: 3 }, (_, index) => (
-          <div key={index} aria-hidden="true" className="motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white p-4 shadow-card">
+          <div key={index} aria-hidden="true" className="motion-safe:animate-pulse rounded-lg border border-surface-200 bg-white p-4 shadow-card">
             <div className="h-4 w-40 rounded bg-surface-200" />
             <div className="mt-3 h-3 w-64 rounded bg-surface-100" />
             <div className="mt-4 h-8 w-40 rounded bg-surface-100" />
@@ -155,7 +173,7 @@ export default function Plantillas() {
 
   if (error) {
     return (
-      <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
+      <div className="rounded-lg border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
         <p className="font-semibold text-charcoal-950">No se pudieron cargar las plantillas.</p>
         <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={() => setReloadToken((value) => value + 1)}>
           Reintentar
@@ -207,7 +225,7 @@ export default function Plantillas() {
         </InlineNotice>
       )}
       {tipos.map((tipo) => (
-        <article key={tipo.clave} className="rounded-xl2 border border-surface-200 bg-white p-4 shadow-card">
+        <article key={tipo.clave} className="rounded-lg border border-surface-200 bg-white p-4 shadow-card">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="font-display text-base font-semibold text-charcoal-950">{tipo.nombre}</h3>
@@ -234,7 +252,13 @@ export default function Plantillas() {
               {tipo.activa ? "Activa" : "Sin plantilla"}
             </StatusBadge>
           </div>
-          {tipo.variables?.length > 0 && <CamposPlantilla variables={tipo.variables} />}
+          {tipo.firmas_sin_marca?.length > 0 && (
+            <InlineNotice tone="warning" className="mt-3 px-3 py-2 text-xs">
+              Esta plantilla no dice dónde firma {tipo.firmas_sin_marca.join(" ni ")}: su firma irá en una hoja de
+              firmas al final del documento. Añade el campo de firma a la plantilla para colocarla en su sitio.
+            </InlineNotice>
+          )}
+          {tipo.variables?.length > 0 && <CamposPlantilla variables={tipo.variables} firmas={tipo.variables_firma} />}
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
             {canUpload && (
               <>
@@ -270,7 +294,7 @@ export default function Plantillas() {
         </article>
       ))}
       {tipos.length === 0 && (
-        <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center text-sm text-muted shadow-card">
+        <div className="rounded-lg border border-surface-200 bg-white px-6 py-12 text-center text-sm text-muted shadow-card">
           No hay tipos de documento generables. Añádelos en Configuración › Documentos.
         </div>
       )}

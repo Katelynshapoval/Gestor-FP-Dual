@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FaHourglassHalf, FaRegCircleCheck, FaRegCircleXmark } from "react-icons/fa6";
 import { useUrlFilters } from "../../hooks/useUrlFilters.js";
 import { useConvocatoriaEstado } from "../../hooks/useConvocatoriaEstado.js";
 import { coincide } from "../../utils/busqueda.js";
@@ -6,10 +7,7 @@ import { SOLICITUD } from "../../utils/labels.js";
 import FilterBar, { FilterSelect, SearchField, countLabel } from "../../components/ui/FilterBar.jsx";
 import { useUser } from "../../context/UserContext";
 import { useNavigate } from "react-router-dom";
-import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-import { MdOutlineCancel, MdPendingActions } from "react-icons/md";
 
-import "../../styles/forms.css";
 import { signedBadgeClass } from "../../components/ui/cardStyles";
 import { getJSON, postJSON } from "../../utils/api.js";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
@@ -194,21 +192,21 @@ const AdminCompanyView = () => {
   // Each chip toggles its filter; clicking the active one clears it.
   const chips = [
     // The same four states as the badge on each card, so the numbers add up.
-    { key: "convenio", value: "validado", tone: "bg-green-500/10 text-green-800", Icon: IoIosCheckmarkCircleOutline, text: plural(totalValidado, "convenio validado", "convenios validados") },
+    { key: "convenio", value: "validado", tone: "bg-green-500/10 text-green-800", Icon: FaRegCircleCheck, text: plural(totalValidado, "convenio validado", "convenios validados") },
     ...(totalPendiente
-      ? [{ key: "convenio", value: "pendiente", tone: "bg-yellow-400/15 text-yellow-800", Icon: MdPendingActions, text: `${totalPendiente} por validar` }]
+      ? [{ key: "convenio", value: "pendiente", tone: "bg-amber-100 text-amber-800", Icon: FaHourglassHalf, text: `${totalPendiente} por validar` }]
       : []),
     ...(totalRechazado
-      ? [{ key: "convenio", value: "rechazado", tone: "bg-red-500/10 text-red-800", Icon: MdOutlineCancel, text: plural(totalRechazado, "rechazado", "rechazados") }]
+      ? [{ key: "convenio", value: "rechazado", tone: "bg-red-500/10 text-red-800", Icon: FaRegCircleXmark, text: plural(totalRechazado, "rechazado", "rechazados") }]
       : []),
     ...(totalSin
-      ? [{ key: "convenio", value: "sin_convenio", tone: "bg-surface-100 text-charcoal-700", Icon: MdOutlineCancel, text: `${totalSin} sin convenio` }]
+      ? [{ key: "convenio", value: "sin_convenio", tone: "bg-surface-100 text-charcoal-700", Icon: FaRegCircleXmark, text: `${totalSin} sin convenio` }]
       : []),
     ...(totalRenovar
-      ? [{ key: "convenio", value: "renovar", tone: "bg-amber-100 text-amber-900", Icon: MdPendingActions, text: plural(totalRenovar, "convenio por renovar", "convenios por renovar") }]
+      ? [{ key: "convenio", value: "renovar", tone: "bg-amber-100 text-amber-900", Icon: FaHourglassHalf, text: plural(totalRenovar, "convenio por renovar", "convenios por renovar") }]
       : []),
     ...(totalCambios
-      ? [{ key: "cambios", value: "pendiente", tone: "bg-amber-100 text-amber-800", Icon: MdPendingActions, text: plural(totalCambios, "cambio pendiente", "cambios pendientes") }]
+      ? [{ key: "cambios", value: "pendiente", tone: "bg-amber-100 text-amber-800", Icon: FaHourglassHalf, text: plural(totalCambios, "cambio pendiente", "cambios pendientes") }]
       : []),
   ];
 
@@ -226,7 +224,7 @@ const AdminCompanyView = () => {
   if (error)
     return (
       <div className="page-container">
-        <div role="alert" className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
+        <div role="alert" className="rounded-lg border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
           <p className="font-semibold text-charcoal-950">No se pudieron cargar las empresas.</p>
           <p className="mt-2 text-sm text-muted">{error}</p>
           <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={() => setReloadToken((n) => n + 1)}>
@@ -336,7 +334,7 @@ const AdminCompanyView = () => {
 
           <div className="space-y-4">
             {filtered.length === 0 && (
-              <div role="status" className="rounded-xl2 border border-surface-200 bg-white p-12 text-center shadow-card">
+              <div role="status" className="rounded-lg border border-surface-200 bg-white p-12 text-center shadow-card">
                 <p className="font-semibold text-charcoal-950">
                   {filtersActive ? "No hay empresas que coincidan con la búsqueda o los filtros." : "No hay empresas en la convocatoria activa."}
                 </p>

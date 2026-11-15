@@ -109,7 +109,7 @@ const TutoresEmpresa = () => {
 
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card">
+      <div className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card">
         <SkeletonRows count={3} label="Cargando tutores…" />
       </div>
     );
@@ -175,9 +175,7 @@ const TutoresEmpresa = () => {
             </button>
             <button
               type="button"
-              className={`btn btn-outline-brand btn-sm ${
-                submitting || !form.nombre || !form.email || !form.telefono ? "btn-disabled" : ""
-              }`}
+              className={`btn btn-outline-brand btn-sm`}
               onClick={handleCreate}
               disabled={submitting || !form.nombre || !form.email || !form.telefono}
             >
@@ -188,7 +186,7 @@ const TutoresEmpresa = () => {
       )}
 
       {tutores.length === 0 && !loadError ? (
-        <div className="rounded-xl2 border border-surface-200 bg-white px-6 py-10 text-center shadow-card">
+        <div className="rounded-lg border border-surface-200 bg-white px-6 py-10 text-center shadow-card">
           <p className="text-sm text-muted">Todavía no hay tutores registrados.</p>
         </div>
       ) : (
@@ -202,7 +200,7 @@ const TutoresEmpresa = () => {
             return (
               <article
                 key={t.id_empresa_tutor}
-                className={`rounded-xl2 border bg-white p-5 shadow-card ${
+                className={`rounded-lg border bg-white p-5 shadow-card ${
                   activo ? "border-surface-200" : "border-surface-200 bg-surface-50"
                 }`}
               >
@@ -234,7 +232,7 @@ const TutoresEmpresa = () => {
                       {activo && (
                         <button
                           type="button"
-                          className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          className="btn btn-danger btn-sm"
                           onClick={() => handleDeactivate(t)}
                           disabled={submitting}
                         >
@@ -290,7 +288,7 @@ const TutoresEmpresa = () => {
                       </button>
                       <button
                         type="button"
-                        className={`btn btn-primary btn-sm ${submitting ? "btn-disabled" : ""}`}
+                        className={`btn btn-primary btn-sm`}
                         onClick={handleUpdate}
                         disabled={submitting}
                       >

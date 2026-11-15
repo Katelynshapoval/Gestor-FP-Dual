@@ -221,7 +221,7 @@ export default function Personal() {
         <ClaveTemporal password={clave} onHide={() => setClave(null)} />
       </div>
 
-      <div className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card">
+      <div className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card">
         <div className="border-b border-surface-200 px-6 py-5">
           <div className="form-section-title mb-0">Cuentas</div>
         </div>

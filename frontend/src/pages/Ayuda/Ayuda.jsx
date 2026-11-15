@@ -48,7 +48,7 @@ function ProfileCards({ perfiles, onGo }) {
             <a
               href={perfil.href}
               onClick={(event) => onGo(event, perfil.href.slice(1))}
-              className="group flex h-full min-w-0 flex-col rounded-xl2 border border-surface-200 bg-white p-4 shadow-card outline-none transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30"
+              className="group flex h-full min-w-0 flex-col rounded-lg border border-surface-200 bg-white p-4 shadow-card outline-none transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30"
             >
               <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-600 group-hover:text-white">
                 <Icon aria-hidden="true" className="h-4 w-4" />
@@ -77,10 +77,10 @@ function SearchBox({ value, onChange }) {
       <input
         id="ayuda-buscar"
         type="search"
-        className="input !py-3.5 !pl-11 !pr-11 shadow-card [&::-webkit-search-cancel-button]:hidden"
+        className="input py-3.5 pl-11 pr-11 shadow-card [&::-webkit-search-cancel-button]:hidden"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Busca en la ayuda: contraseña, convenio, reserva, plazo…"
+        placeholder="Ej.: contraseña, convenio…"
         autoComplete="off"
       />
       {value && (
@@ -103,9 +103,9 @@ function FaqList({ items, hasAnchor, onGo }) {
       {items.map((item) => (
         <details
           key={item.q}
-          className="group rounded-xl2 border border-surface-200 bg-white shadow-card transition-[border-color,box-shadow] duration-150 open:border-brand-200 open:shadow-card-hover"
+          className="group rounded-lg border border-surface-200 bg-white shadow-card transition-[border-color,box-shadow] duration-150 open:border-brand-200 open:shadow-card-hover"
         >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl2 px-4 py-3.5 font-semibold text-charcoal-950 outline-none marker:content-none hover:bg-surface-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/30 [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3.5 font-semibold text-charcoal-950 outline-none marker:content-none hover:bg-surface-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/30 [&::-webkit-details-marker]:hidden">
             <span className="min-w-0 break-words">{item.q}</span>
             <FaChevronDown
               aria-hidden="true"
@@ -139,7 +139,7 @@ function ManualHits({ hits, onGo }) {
           <a
             href={`#${hit.id}`}
             onClick={(event) => onGo(event, hit.id)}
-            className="block rounded-xl2 border border-surface-200 bg-white px-4 py-3 shadow-card outline-none transition-[border-color,box-shadow] duration-150 hover:border-brand-200 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30"
+            className="block rounded-lg border border-surface-200 bg-white px-4 py-3 shadow-card outline-none transition-[border-color,box-shadow] duration-150 hover:border-brand-200 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30"
           >
             <span className="block text-xs font-semibold uppercase tracking-wide text-muted">{hit.chapter}</span>
             <span className="mt-0.5 block break-words font-semibold text-charcoal-950">{hit.title}</span>
@@ -154,7 +154,7 @@ function ManualHits({ hits, onGo }) {
 function SearchResults({ query, preguntas, hits, hasAnchor, onGo }) {
   if (!preguntas.length && !hits.length) {
     return (
-      <div className="rounded-xl2 border border-dashed border-surface-300 bg-white px-6 py-10 text-center">
+      <div className="rounded-lg border border-dashed border-surface-300 bg-white px-6 py-10 text-center">
         <FaMagnifyingGlass aria-hidden="true" className="mx-auto mb-3 h-5 w-5 text-charcoal-300" />
         <p className="m-0 font-semibold text-charcoal-900">Nada coincide con «{query}»</p>
         <p className="m-0 mt-1 text-sm text-muted">Prueba con otras palabras o recorre el manual por capítulos.</p>
@@ -227,7 +227,7 @@ function ChapterNav({ chapters, active, onGo }) {
                       <a
                         href={`#${section.id}`}
                         onClick={(event) => onGo(event, section.id)}
-                        className="block break-words py-1 pl-3 text-[0.8125rem] leading-5 text-muted hover:text-charcoal-950"
+                        className="block break-words py-1 pl-3 text-sm leading-5 text-muted hover:text-charcoal-950"
                       >
                         {section.title}
                       </a>
@@ -245,7 +245,7 @@ function ChapterNav({ chapters, active, onGo }) {
 
 function ManualSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Cargando el manual" className="motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white p-6 shadow-card">
+    <div aria-busy="true" aria-label="Cargando el manual" className="motion-safe:animate-pulse rounded-lg border border-surface-200 bg-white p-6 shadow-card">
       <div className="mb-5 h-6 w-1/2 rounded bg-surface-200" />
       {[100, 92, 96, 70, 0, 100, 88, 60].map((width, index) =>
         width ? (
@@ -266,7 +266,7 @@ function ChapterReader({ intro, chapters, chapter, onGo }) {
   const introHtml = useMemo(() => (intro ? manualHtml(intro) : ""), [intro]);
 
   return (
-    <article className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card">
+    <article className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card">
       <header id={chapter.id} className="scroll-mt-24 border-b border-surface-200 bg-surface-50 px-5 py-5 sm:px-8">
         <p className="m-0 text-xs font-semibold uppercase tracking-widest text-brand-700">
           Capítulo {index + 1} de {chapters.length}

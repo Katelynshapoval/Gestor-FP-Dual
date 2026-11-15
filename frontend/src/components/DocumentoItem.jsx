@@ -1,23 +1,27 @@
 import { avisoRegenerar } from "../utils/documentos.js";
+import { FaFileArrowUp } from "react-icons/fa6";
 import { formatBytes, problemaPdf } from "../utils/formatValidation.js";
 import { useRef, useState } from "react";
 import { postForm, postJSON } from "../utils/api.js";
-import { MdOutlineFileUpload } from "react-icons/md";
 import EstadoBadge from "./ui/EstadoBadge.jsx";
 import InlineNotice from "./ui/InlineNotice.jsx";
 import PdfViewer from "./ui/PdfViewer.jsx";
 import MotivoDialog from "./ui/MotivoDialog.jsx";
 import { useConfirm, useToast } from "./feedback/ToastProvider.jsx";
 import { FIRMA, tipoContratoLabel } from "../utils/labels.js";
+import { useFirmarDocumentos } from "./firma/FirmarDocumentos.jsx";
 
 // One component for every document a user can act on: view (shared PdfViewer),
 // upload/replace, generate/regenerate, sign, and — for staff — validate or
 // reject. What is offered comes from the backend projection (`puede_*` flags
 // of the document catalogue), so each role only sees its own actions; the
 // endpoints check the same rules again (Phase 2: sign before validate).
-const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) => {
+// `sinContexto`: the list already says whose documents these are (a student's
+// own card), so the student / ciclo / convocatoria line is left out.
+const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false, sinContexto = false }) => {
   const toast = useToast();
   const confirm = useConfirm();
+  const { abrirFirma } = useFirmarDocumentos();
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [fileError, setFileError] = useState("");
@@ -27,7 +31,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
   const canUpload = doc.puede_subir || doc.puede_reemplazar;
   const status = doc.estado_operativo || "PENDIENTE_SUBIDA";
 
-  const context = compact
+  const context = compact || sinContexto
     ? null
     : [doc.alumno, doc.empresa, doc.especialidad, tipoContratoLabel(doc.tipo_contrato), doc.convocatoria].filter(Boolean).join(" · ");
 
@@ -83,8 +87,12 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
     }
   };
 
-  const handleFirmar = () =>
-    run(() => postJSON(`/documentos/${doc.id_documento}/firmar`, {}), "Firma registrada.");
+  // Migration 027: signing shows the page with the saved signature in place
+  // (and asks for the signature the first time) before it is stamped.
+  const handleFirmar = () => {
+    setViewing(false);
+    abrirFirma({ ids: [doc.id_documento], onDone: refresh });
+  };
 
   const handleValidar = async () => {
     const ok = await run(() => postJSON(`/documentos/${doc.id_documento}/validar`, {}), "Documento validado.");
@@ -207,7 +215,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
         <div className="mt-3 border-t border-surface-200 pt-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <label className="file-upload min-h-10 flex-1 px-3 py-2">
-              <MdOutlineFileUpload className="file-upload-icon" aria-hidden="true" />
+              <FaFileArrowUp className="file-upload-icon" aria-hidden="true" />
               <span className="file-upload-text text-sm">{file ? `${file.name} · ${formatBytes(file.size)}` : `Seleccionar PDF de ${doc.nombre} (máx. 10 MB)`}</span>
               <input
                 ref={inputRef}
@@ -230,7 +238,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
             </label>
             <button
               type="button"
-              className={`btn btn-outline-brand btn-sm ${!file || busy ? "btn-disabled" : ""}`}
+              className={`btn btn-outline-brand btn-sm`}
               disabled={!file || busy}
               onClick={handleUpload}
             >
@@ -239,7 +247,7 @@ const DocumentoItem = ({ doc, onRefresh, showStatus = true, compact = false }) =
           </div>
           {doc.firmas?.some((f) => f.rol === "EMPRESA" || f.rol === "ALUMNO") && (
             <p className="mt-2 text-xs text-muted">
-              Al subir el documento declaras que lleva tu firma. El centro lo revisa antes de validarlo.
+              Si lo subes firmado a mano, declaras que lleva tu firma y el centro lo revisa antes de validarlo. También puedes firmarlo aquí con «Firmar».
             </p>
           )}
         </div>

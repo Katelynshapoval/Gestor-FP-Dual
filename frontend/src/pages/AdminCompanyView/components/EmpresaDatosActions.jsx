@@ -179,7 +179,7 @@ const EmpresaDatosActions = ({
               </ul>
               <button
                 type="button"
-                className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm text-red-800"
+                className="btn btn-danger btn-sm"
                 disabled={submitting}
                 onClick={() => aprobar(true)}
               >
@@ -191,7 +191,7 @@ const EmpresaDatosActions = ({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <button
               type="button"
-              className="rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-800"
+              className="btn btn-primary btn-sm"
               disabled={submitting}
               onClick={() => aprobar(false)}
             >
@@ -215,7 +215,7 @@ const EmpresaDatosActions = ({
             </div>
             <button
               type="button"
-              className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm text-red-800"
+              className="btn btn-danger btn-sm"
               disabled={submitting}
               onClick={rechazar}
             >

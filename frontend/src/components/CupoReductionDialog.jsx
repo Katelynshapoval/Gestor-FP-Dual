@@ -46,7 +46,7 @@ export default function CupoReductionDialog({
           </button>
           <button
             type="button"
-            className={`btn btn-danger btn-sm ${!ready || busy ? "btn-disabled" : ""}`}
+            className={`btn btn-danger btn-sm`}
             disabled={!ready || busy}
             onClick={() => onConfirm(selected)}
           >

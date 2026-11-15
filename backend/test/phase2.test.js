@@ -201,7 +201,8 @@ test('WF-6/WF-7: a signed convenio validates the PENDIENTE company in the same t
       return [docRow({ tipo: 'CONVENIO', id_reserva: null, id_solicitud_empresa: 4, estado_reserva: null, estado_solicitud_empresa: 'PENDIENTE' })];
     }
     if (sql.startsWith('SELECT rol, estado, metodo FROM dual_documento_firmas')) {
-      return [{ rol: 'EMPRESA', estado: 'FIRMADO', metodo: 'SUBIDA_FIRMADA' }];
+      // Migration 027: the centre signs the convenio too.
+      return [{ rol: 'EMPRESA', estado: 'FIRMADO', metodo: 'SUBIDA_FIRMADA' }, { rol: 'GESTOR', estado: 'FIRMADO', metodo: 'FIRMA_IMAGEN' }];
     }
     return [];
   });

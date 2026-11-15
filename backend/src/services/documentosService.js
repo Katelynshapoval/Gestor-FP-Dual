@@ -12,6 +12,9 @@ const { generateDocument } = require("./documentGenerationService");
 const { recordEvent } = require("./auditLog");
 const reglas = require("./estadoReglas");
 const notificar = require("./notificaciones");
+const crypto = require("crypto");
+const firmas = require("./firmasService");
+const firmaPdf = require("./firmaPdf");
 
 function provenance(req) {
   return { origen: "SUBIDA", idUsuario: req.user?.id || null, rol: req.user?.rol || null };
@@ -550,48 +553,193 @@ exports.uploadContexto = async function (req, res) {
   return guardedSave(req, res, def, parents, "Documento subido correctamente.");
 };
 
-// Records the caller's signature (method CONFIRMACION_APP) on the current file.
-async function registrarFirma(req, res, idDocumento) {
-  const rolFirma = workflow.actorOf(req.user.rol);
+// Signs the current file as the caller's role (migration 027): stamps the
+// saved signature image into the PDF (at its mark, or on a "Hoja de firmas"
+// page when the file has none) and records the signature, in one transaction.
+// A PDF that cannot be changed (encrypted, damaged) keeps the signature as a
+// confirmation only (CONFIRMACION_APP). → { status, body }
+async function firmarDocumento(user, idDocumento) {
+  const rolFirma = workflow.actorOf(user.rol);
   const conn = await pool.getConnection();
+  const salir = async (status, body) => {
+    await conn.rollback();
+    return { status, body };
+  };
   try {
     await conn.beginTransaction();
     const doc = await lockDocumento(conn, idDocumento);
     const def = doc ? defByClave(doc.tipo) : null;
     const denied = reglas.documentoFirmable(def, doc, rolFirma);
-    if (denied) {
-      await conn.rollback();
-      return res.status(denied.status).json({ error: denied.error, code: denied.code });
-    }
-    if (!(await canDownloadDocumento(req.user, { ...doc, tipo: doc.tipo }))) {
-      await conn.rollback();
-      return res.status(403).json({ error: "No puedes firmar este documento." });
+    if (denied) return await salir(denied.status, { error: denied.error, code: denied.code });
+    if (!(await canDownloadDocumento(user, { ...doc, tipo: doc.tipo }))) {
+      return await salir(403, { error: "No puedes firmar este documento." });
     }
     const previa = (await firmasDe(conn, idDocumento)).find((f) => f.rol === rolFirma);
     if (previa?.estado === "FIRMADO") {
-      await conn.rollback();
-      return res.json({ message: "La firma ya estaba registrada.", id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO" });
+      return await salir(200, {
+        message: "La firma ya estaba registrada.", id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO", ya_firmado: true,
+      });
     }
+
+    let sellos;
+    try {
+      sellos = await firmas.sellosPara(conn, user, rolFirma);
+    } catch (err) {
+      if (err.status) return await salir(err.status, { error: err.message, code: err.code });
+      throw err;
+    }
+
+    const [[fila]] = await conn.query(
+      "SELECT archivo, firma_posiciones FROM dual_documentos WHERE id_documento = ?",
+      [idDocumento],
+    );
+    const original = Buffer.isBuffer(fila.archivo) ? fila.archivo : Buffer.from(fila.archivo);
+    const posiciones = typeof fila.firma_posiciones === "string" ? JSON.parse(fila.firma_posiciones) : fila.firma_posiciones;
+    const sha = (buffer) => crypto.createHash("sha256").update(buffer).digest("hex");
+    let metodo = "FIRMA_IMAGEN";
+    let detalle = {};
+    try {
+      const sellado = await firmaPdf.estampar(original, posiciones, sellos, { nombreDocumento: def.nombre });
+      await conn.query(
+        "UPDATE dual_documentos SET archivo = ?, firma_posiciones = ? WHERE id_documento = ?",
+        [sellado.pdf, JSON.stringify(sellado.posiciones), idDocumento],
+      );
+      detalle = { ubicacion: sellado.ubicaciones, sha256_antes: sha(original), sha256_despues: sha(sellado.pdf) };
+    } catch (err) {
+      if (err.sqlMessage) throw err;
+      console.warn(`[firmas] el documento ${idDocumento} no admite la imagen de la firma:`, err.message);
+      metodo = "CONFIRMACION_APP";
+      detalle = { sin_imagen: true };
+    }
+
+    const conImagen = metodo === "FIRMA_IMAGEN";
+    const idFirma = conImagen ? sellos[0].id_firma : null;
+    const idFirmaTutor = conImagen ? sellos.find((s) => s.marca === "TUTOR")?.id_firma || null : null;
     await conn.query(
-      `INSERT INTO dual_documento_firmas (id_documento, rol, estado, firmado_en, firmado_por, metodo)
-       VALUES (?, ?, 'FIRMADO', NOW(), ?, 'CONFIRMACION_APP')
-       ON DUPLICATE KEY UPDATE estado = 'FIRMADO', firmado_en = NOW(), firmado_por = ?, metodo = 'CONFIRMACION_APP'`,
-      [idDocumento, rolFirma, req.user.id, req.user.id],
+      `INSERT INTO dual_documento_firmas
+         (id_documento, rol, estado, firmado_en, firmado_por, metodo, id_firma_imagen, id_firma_tutor)
+       VALUES (?, ?, 'FIRMADO', NOW(), ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE estado = 'FIRMADO', firmado_en = NOW(), firmado_por = VALUES(firmado_por),
+         metodo = VALUES(metodo), id_firma_imagen = VALUES(id_firma_imagen), id_firma_tutor = VALUES(id_firma_tutor)`,
+      [idDocumento, rolFirma, user.id, metodo, idFirma, idFirmaTutor],
     );
     await recordEvent(conn, {
       entidad: "DOCUMENTO", id: idDocumento, accion: "FIRMAR",
-      antes: "SIN_FIRMAR", despues: "FIRMADO", user: req.user,
-      detalle: { clave: doc.tipo, rol_firma: rolFirma, metodo: "CONFIRMACION_APP" },
+      antes: "SIN_FIRMAR", despues: "FIRMADO", user,
+      detalle: {
+        clave: doc.tipo, rol_firma: rolFirma, metodo,
+        ...(idFirma ? { id_firma: idFirma } : {}),
+        ...(idFirmaTutor ? { id_firma_tutor: idFirmaTutor } : {}),
+        ...detalle,
+      },
     });
     await conn.commit();
-    return res.json({ message: "Firma registrada.", id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO" });
+    return {
+      status: 200,
+      body: {
+        message: conImagen ? "Documento firmado." : "Firma registrada. Este PDF no admite insertar la imagen de la firma.",
+        id_documento: idDocumento, rol: rolFirma, estado: "FIRMADO", metodo,
+      },
+    };
   } catch (err) {
     await conn.rollback();
-    return sendSqlError(res, err);
+    throw err;
   } finally {
     conn.release();
   }
 }
+
+async function registrarFirma(req, res, idDocumento) {
+  try {
+    const { status, body } = await firmarDocumento(req.user, idDocumento);
+    return res.status(status).json(body);
+  } catch (err) {
+    return sendSqlError(res, err);
+  }
+}
+
+// POST /documentos/firmar-lote { ids } — "sign all". Each document is its own
+// transaction: one that cannot be signed does not stop the others.
+const MAX_LOTE = 200;
+const SIN_FIRMA = ["SIN_FIRMA_GUARDADA", "SIN_FIRMA_CENTRO", "SIN_FIRMA_TUTOR"];
+exports.firmarLote = async function (req, res) {
+  const ids = [...new Set((Array.isArray(req.body?.ids) ? req.body.ids : []).map((id) => parseInt(id, 10)).filter(Boolean))];
+  if (!ids.length) return res.status(400).json({ error: "No hay documentos que firmar." });
+  if (ids.length > MAX_LOTE) {
+    return res.status(400).json({ error: `Se firman como máximo ${MAX_LOTE} documentos cada vez.` });
+  }
+  const resultados = [];
+  for (const id of ids) {
+    try {
+      const { status, body } = await firmarDocumento(req.user, id);
+      // Without a saved signature none of them can be signed: say it once.
+      if (SIN_FIRMA.includes(body.code)) return res.status(status).json({ error: body.error, code: body.code });
+      resultados.push({ id_documento: id, ok: status === 200, message: body.message || body.error, code: body.code || null });
+    } catch (err) {
+      console.error(`[firmas] error al firmar el documento ${id}:`, err.message);
+      resultados.push({ id_documento: id, ok: false, message: "No se pudo firmar este documento.", code: "ERROR" });
+    }
+  }
+  const firmados = resultados.filter((r) => r.ok).length;
+  return res.json({
+    message: firmados === ids.length
+      ? (firmados === 1 ? "Documento firmado." : `${firmados} documentos firmados.`)
+      : `${firmados} de ${ids.length} documentos firmados.`,
+    firmados,
+    fallidos: ids.length - firmados,
+    resultados,
+  });
+};
+
+// GET /documentos/pendientes-firma — what the caller can sign now, with where
+// the signature will go in each file (for the preview of "Firmar documentos").
+const MARCA_DE_ROL = { GESTOR: ["CENTRO"], EMPRESA: ["EMPRESA"], ALUMNO: ["ALUMNO", "TUTOR"] };
+exports.pendientesFirma = async function (req, res) {
+  let items;
+  if (req.user.rol === "ALUMNO") {
+    const idAlumno = await getStudentIdFromUser(req.user.id);
+    items = idAlumno ? await workflow.buildAlumnoList(idAlumno) : [];
+  } else if (req.user.rol === "EMPRESA") {
+    const idEmpresa = await getCompanyIdFromUser(req.user.id);
+    items = idEmpresa ? await workflow.buildEmpresaList(idEmpresa) : [];
+  } else {
+    items = await workflow.buildStaffList();
+  }
+  items = items.filter((item) => item.puede_firmar && item.id_documento);
+  if (!items.length) return res.json({ items: [] });
+
+  // Current files only, never of a cancelled reservation (the rule of firmar).
+  const [rows] = await pool.query(
+    `SELECT d.id_documento, d.firma_posiciones
+       FROM dual_documentos d
+       LEFT JOIN dual_reservas r ON r.id_reserva = d.id_reserva
+       LEFT JOIN dual_estados_reserva er ON er.id_estado_reserva = r.id_estado_reserva
+      WHERE d.id_documento IN (?) AND d.es_actual = 1 AND d.archivo IS NOT NULL
+        AND (er.nombre IS NULL OR er.nombre <> 'CANCELADA')`,
+    [items.map((item) => item.id_documento)],
+  );
+  const porId = new Map(rows.map((row) => [row.id_documento, row]));
+  const marcas = MARCA_DE_ROL[workflow.actorOf(req.user.rol)] || [];
+  return res.json({
+    items: items.filter((item) => porId.has(item.id_documento)).map((item) => {
+      const crudo = porId.get(item.id_documento).firma_posiciones;
+      const posiciones = (typeof crudo === "string" ? JSON.parse(crudo) : crudo) || {};
+      return {
+        id_documento: item.id_documento,
+        clave: item.clave,
+        nombre: item.nombre,
+        alumno: item.alumno,
+        empresa: item.empresa,
+        especialidad: item.especialidad,
+        convocatoria: item.convocatoria,
+        tipo_contrato: item.tipo_contrato,
+        firmas: item.firmas,
+        // { ALUMNO: { p, x, y, w, h } }: only the caller's own marks.
+        marcas: Object.fromEntries(marcas.filter((m) => posiciones[m]).map((m) => [m, posiciones[m]])),
+      };
+    }),
+  });
+};
 
 exports.firmar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
@@ -726,3 +874,5 @@ exports.generar = async function (req, res) {
     return sendSqlError(res, err);
   }
 };
+
+exports.firmarDocumento = firmarDocumento;

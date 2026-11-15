@@ -19,6 +19,7 @@ const Documentos = ({ r, user, onRefresh }) => {
               key={doc.clave}
               doc={{ ...doc, alumno: doc.alumno || r.nombre }}
               showStatus={!(isEmpresa && doc.clave === "CV")}
+              sinContexto
               onRefresh={onRefresh}
             />
           ))}

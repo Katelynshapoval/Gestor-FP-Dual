@@ -88,7 +88,7 @@ function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
   const puedeRevisar = isStaff && derived.estado_operativo === "PENDIENTE_VALIDACION" && Boolean(row?.id_documento);
   const puedeFirmar = Boolean(
     file && ownSignature && ownSignature.estado !== "FIRMADO" && def.signers?.includes(signRole)
-      && derived.estado_validacion !== "RECHAZADO",
+      && derived.estado_validacion !== "RECHAZADO" && !validated,
   );
   const puedeGenerar = isStaff && def.generated && !file && templateAvailable;
   const puedeRegenerar = isStaff && def.generated && file && (def.replaceIfValidated || !validated);
@@ -163,7 +163,7 @@ function projectItem(def, rol, ctx, row, firmas = [], options = {}) {
 async function loadFirmas(ids) {
   if (!ids.length) return {};
   const [rows] = await pool.query(
-    `SELECT id_documento, rol, estado, metodo, firmado_en FROM dual_documento_firmas WHERE id_documento IN (?)`,
+    `SELECT id_documento, rol, estado, metodo, firmado_en, id_firma_tutor FROM dual_documento_firmas WHERE id_documento IN (?)`,
     [ids],
   );
   const map = {};

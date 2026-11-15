@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MdBadge, MdBusiness, MdGavel, MdLocationOn, MdWorkOutline } from "react-icons/md";
+import { FaBriefcase, FaBuilding, FaGavel, FaIdCard, FaLocationDot } from "react-icons/fa6";
 import TransportSelector from "../AddCompanyRequest/TransportSelector.jsx";
 import { TextField } from "../../components/forms/StepForm.jsx";
 import {
@@ -177,7 +177,7 @@ const CompanyEditForm = ({ formId, values, onChange, allowCif = false, transport
 
   return (
     <form id={formId} noValidate onSubmit={submit}>
-      <EditSection id="emp-empresa" icon={MdBusiness} title="Empresa" description="Datos generales y de contacto.">
+      <EditSection id="emp-empresa" icon={FaBuilding} title="Empresa" description="Datos generales y de contacto.">
         <EditGrid>
           <TextField {...field("empresa", "Razón social")} required maxLength={100} className={W.full} />
           {allowCif ? (
@@ -199,11 +199,11 @@ const CompanyEditForm = ({ formId, values, onChange, allowCif = false, transport
         </EditGrid>
       </EditSection>
 
-      <EditSection id="emp-fiscal" icon={MdLocationOn} title="Domicilio fiscal" description="El que figura en el convenio.">
+      <EditSection id="emp-fiscal" icon={FaLocationDot} title="Domicilio fiscal" description="El que figura en el convenio.">
         {address("Legal")}
       </EditSection>
 
-      <EditSection id="emp-trabajo" icon={MdLocationOn} title="Lugar de trabajo" description="Donde el alumno hará las prácticas.">
+      <EditSection id="emp-trabajo" icon={FaLocationDot} title="Lugar de trabajo" description="Donde el alumno hará las prácticas.">
         <SwitchField
           id="emp-mismo-domicilio"
           label="Coincide con el domicilio fiscal"
@@ -214,20 +214,20 @@ const CompanyEditForm = ({ formId, values, onChange, allowCif = false, transport
         {!sameWork && <div className="mt-4">{address("Trabajo")}</div>}
       </EditSection>
 
-      <EditSection id="emp-legal" icon={MdGavel} title="Responsable legal" description="Persona que firma el convenio.">
+      <EditSection id="emp-legal" icon={FaGavel} title="Responsable legal" description="Persona que firma el convenio.">
         {person("Representante")}
       </EditSection>
 
       <EditSection
         id="emp-coord"
-        icon={MdBadge}
+        icon={FaIdCard}
         title="Coordinador principal"
         description="Contacto del acceso al portal. Los tutores de alumnos se gestionan aparte."
       >
         {person("Coordinador")}
       </EditSection>
 
-      <EditSection id="emp-puesto" icon={MdWorkOutline} title="Puesto y transporte" description="Qué hará el alumno y cómo puede llegar.">
+      <EditSection id="emp-puesto" icon={FaBriefcase} title="Puesto y transporte" description="Qué hará el alumno y cómo puede llegar.">
         <EditGrid>
           <div className={`field ${W.full}`}>
             <label htmlFor="campo-descripcion_puesto">Descripción del puesto</label>

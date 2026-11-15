@@ -1,19 +1,13 @@
 import { useState } from "react";
-import { IoMdArrowDropdown } from "react-icons/io";
-import { MdEdit, MdOutlineCancel, MdPendingActions } from "react-icons/md";
-import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-import { RxLockClosed, RxClock } from "react-icons/rx";
+import { FaHourglassHalf, FaLock, FaRegCircleCheck, FaRegCircleXmark, FaRegClock } from "react-icons/fa6";
 
 import {
   cardBodyClass,
-  cardChipsClass,
   cardClass,
   cardEspClass,
-  cardHeaderClass,
   cardNameClass,
   empresaChipClass,
   signedBadgeClass,
-  toggleBtnClass,
 } from "../../../components/ui/cardStyles";
 
 import DatosRapidos from "./student-card/DatosRapidos";
@@ -29,6 +23,7 @@ import ReservaResumenBadges from "../../../components/reservas/ReservaResumenBad
 import CuentaPanel from "../../../components/CuentaPanel.jsx";
 import { label } from "../../../utils/labels.js";
 import LongText from "../../../components/ui/LongText.jsx";
+import CardActions, { cardHeaderActions, cardHeaderBadges, cardHeaderGrid, cardHeaderName } from "../../../components/ui/CardActions.jsx";
 import {
   isCancelledReserva,
   isConfirmedReserva,
@@ -60,13 +55,13 @@ const ReservasChips = ({ reservas, excludeId }) => {
           title={`${rv.empresa} · ${label("reserva", rv.estado_reserva)}`}
         >
           {isConfirmedReserva(rv.estado_reserva) && (
-            <IoIosCheckmarkCircleOutline className="text-green-600 text-[11px]" />
+            <FaRegCircleCheck className="text-green-600 text-xs" />
           )}
           {isPendingReserva(rv.estado_reserva) && (
-            <RxClock className="text-yellow-600 text-[11px]" />
+            <FaRegClock className="text-amber-600 text-xs" />
           )}
           {isCancelledReserva(rv.estado_reserva) && (
-            <MdOutlineCancel className="text-red-500 text-[11px]" />
+            <FaRegCircleXmark className="text-red-500 text-xs" />
           )}
           <span className="truncate">{rv.empresa}</span>
         </span>
@@ -91,7 +86,7 @@ const ReservaButton = ({ r, companyOffers, onReserve, onCancel }) => {
   if (reservaConfirmada || r.asignado_definitivo) {
     return (
       <span className="flex items-center gap-1.5 rounded-lg border border-surface-200 bg-surface-50 px-3 py-1.5 text-xs font-medium text-muted">
-        <RxLockClosed className="shrink-0" aria-hidden="true" />
+        <FaLock className="shrink-0" aria-hidden="true" />
         Plaza confirmada en otra empresa
       </span>
     );
@@ -196,14 +191,11 @@ const StudentCard = ({
   return (
     <div className={cardClass}>
       {/* Card header — always visible, toggles the expanded panel */}
-      <div
-        className={`${cardHeaderClass} flex-wrap !items-start !gap-x-3 !gap-y-2.5 sm:flex-nowrap sm:!items-center sm:!gap-4`}
-        onClick={handleToggle}
-      >
-        <div className="min-w-0 flex-1">
+      <div className={cardHeaderGrid} onClick={handleToggle}>
+        <div className={cardHeaderName}>
           <p className={`${cardNameClass} break-words`}>
             <LongText>{r.nombre}</LongText>{" "}
-            <span className="whitespace-nowrap text-[.8rem] font-normal text-muted">
+            <span className="whitespace-nowrap text-xs font-normal text-muted">
               ({r.dni})
             </span>
           </p>
@@ -215,35 +207,37 @@ const StudentCard = ({
           )}
         </div>
 
-        {/* Phones: chips on their own row under the name, left-aligned.
-            From sm up: chips then buttons, right-aligned on the same row. */}
-        <div className="order-last flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:order-none sm:w-auto sm:flex-1 sm:justify-end">
+        {/* In reading order: the application, then its confirmed reservation
+            and that reservation's documents, then other reservations. */}
+        <div className={cardHeaderBadges}>
           {!isEmpresa ? (
-            <div className={`${cardChipsClass} items-center !justify-start sm:!justify-end`}>
+            <>
               {r.id_cambio_pendiente ? (
                 <span className={`${signedBadgeClass} max-w-full bg-amber-100 text-amber-800`}>
-                  <MdPendingActions className="text-[13px]" />
+                  <FaHourglassHalf className="text-sm" />
                   Cambios pendientes
                 </span>
               ) : null}
               <EstadoBadge kind="solicitud" value={r.estado_validacion} />
-              {confirmedReserva && (
-                // Phones: last, so the short badges and icons share the first row.
-                <StatusBadge variant="success" className="order-last sm:order-none">
-                  Confirmada: {confirmedReserva.empresa}
-                </StatusBadge>
-              )}
-              {referencia && (
-                <ReservaResumenBadges
-                  compact
-                  estado={referencia.estado_reserva}
-                  resumen={referencia.documentos_resumen}
-                  showEstado={false}
-                />
+              {/* The reservation and its document icons stay together. */}
+              {(confirmedReserva || referencia) && (
+                <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
+                  {confirmedReserva && (
+                    <StatusBadge variant="success">Confirmada: {confirmedReserva.empresa}</StatusBadge>
+                  )}
+                  {referencia && (
+                    <ReservaResumenBadges
+                      compact
+                      estado={referencia.estado_reserva}
+                      resumen={referencia.documentos_resumen}
+                      showEstado={false}
+                    />
+                  )}
+                </span>
               )}
 
               <ReservasChips reservas={r.reservas} excludeId={confirmedReserva?.id_reserva} />
-            </div>
+            </>
           ) : (
             <ReservaButton
               r={r}
@@ -254,34 +248,13 @@ const StudentCard = ({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
-          {isAdmin && r.convocatoria_activa && !editingAlumno && (
-            <button
-              type="button"
-              title="Editar datos"
-              aria-label={`Editar los datos de ${r.nombre}`}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-100 hover:text-brand-600"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditSignal((v) => v + 1);
-              }}
-            >
-              <MdEdit aria-hidden="true" className="text-lg" />
-            </button>
-          )}
-
-          <button
-            type="button"
-            className={`${toggleBtnClass} ${isExpanded ? "rotate-180" : ""}`}
-            aria-expanded={isExpanded}
-            aria-label={`${isExpanded ? "Ocultar" : "Ver"} detalle de ${r.nombre}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleToggle();
-            }}
-          >
-            <IoMdArrowDropdown className="text-[1.5rem]" aria-hidden="true" />
-          </button>
+        <div className={cardHeaderActions}>
+          <CardActions
+            nombre={r.nombre}
+            expanded={isExpanded}
+            onToggle={handleToggle}
+            onEdit={isAdmin && r.convocatoria_activa && !editingAlumno ? () => setEditSignal((v) => v + 1) : null}
+          />
         </div>
       </div>
 
@@ -322,7 +295,7 @@ const StudentCard = ({
                 >
                   Reservas
                   {r.reservas?.length > 0 && (
-                    <span className="ml-1.5 text-[0.65rem] bg-surface-200 text-muted rounded-full px-1.5 py-0.5 leading-none">
+                    <span className="ml-1.5 text-xs bg-surface-200 text-muted rounded-full px-1.5 py-0.5 leading-none">
                       {r.reservas.length}
                     </span>
                   )}

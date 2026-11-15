@@ -4,6 +4,32 @@ const { variablesPorAmbito } = require("./documentGenerationConfig");
 const workflow = require("./documentosWorkflow");
 const { getActiveConvocatoria } = require("../helpers/dbHelpers");
 const conveniosPendientes = require("./conveniosPendientes");
+const mammoth = require("mammoth");
+const firmaPdf = require("./firmaPdf");
+
+// Signer of the catalogue → its mark in a template.
+const MARCA_DE = { EMPRESA: "EMPRESA", GESTOR: "CENTRO", ALUMNO: "ALUMNO" };
+const MARCA_LABEL = { EMPRESA: "la empresa", CENTRO: "el centro", ALUMNO: "el alumno" };
+
+// Which signature variables the active template of each type contains.
+async function marcasDePlantillasActivas() {
+  const [rows] = await pool.query(
+    `SELECT td.nombre AS clave, p.archivo AS plantilla
+       FROM dual_documento_plantillas p
+       JOIN dual_tipos_documento td ON td.id_tipo_documento = p.id_tipo_documento
+      WHERE p.es_activa = 1`,
+  );
+  const out = {};
+  for (const row of rows || []) {
+    try {
+      const { value } = await mammoth.extractRawText({ buffer: Buffer.from(row.plantilla) });
+      out[row.clave] = firmaPdf.marcasEnTexto(value);
+    } catch {
+      out[row.clave] = null; // unreadable template: no warning rather than a wrong one
+    }
+  }
+  return out;
+}
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -39,9 +65,12 @@ exports.list = async function (req, res) {
       ORDER BY td.nombre, p.version DESC`,
   );
 
+  const marcas = await marcasDePlantillasActivas();
   const tipos = defs.map((def) => {
     const versions = rows.filter((row) => row.clave === def.clave);
     const activa = versions.find((row) => Number(row.es_activa) === 1) || null;
+    const firmantes = (def.signers || []).map((rol) => MARCA_DE[rol]).filter(Boolean);
+    const presentes = marcas[def.clave];
     return {
       clave: def.clave,
       nombre: def.nombre,
@@ -49,6 +78,14 @@ exports.list = async function (req, res) {
       ambito_label: CONTEXTO_LABEL[def.ambito] || def.ambito,
       personalizado: Boolean(def.custom),
       variables: variablesPorAmbito(def.ambito),
+      // Migration 027: where each signer's image goes. Without its variable the
+      // signature goes on a "Hoja de firmas" page at the end.
+      variables_firma: firmaPdf.VARIABLES_FIRMA
+        .filter(([, marca]) => firmantes.includes(marca) || (marca === "TUTOR" && firmantes.includes("ALUMNO")))
+        .map(([nombre, , etiqueta]) => ({ nombre, etiqueta, marcador: `<<${nombre}>>` })),
+      firmas_sin_marca: activa && Array.isArray(presentes)
+        ? firmantes.filter((marca) => !presentes.includes(marca)).map((marca) => MARCA_LABEL[marca])
+        : [],
       activa: activa
         ? {
             id_plantilla: activa.id_plantilla,

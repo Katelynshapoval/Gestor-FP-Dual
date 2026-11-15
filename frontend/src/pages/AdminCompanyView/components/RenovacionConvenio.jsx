@@ -59,7 +59,7 @@ export default function RenovacionConvenio({ empresa, convenioStatus, onUpdated 
           <>
             <button
               type="button"
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-sm text-charcoal-700 transition-[background-color,border-color] duration-150 ease-out hover:bg-surface-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/25"
+              className="btn btn-secondary btn-sm mt-2"
               onClick={() => setSustituyendo(true)}
             >
               <FaArrowsRotate aria-hidden="true" className="text-xs text-brand-600" />
@@ -123,7 +123,7 @@ export default function RenovacionConvenio({ empresa, convenioStatus, onUpdated 
             ) : (
               <span
                 aria-hidden="true"
-                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${
+                className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${
                   i === siguiente ? "border-amber-700 bg-amber-700 text-white" : "border-amber-400 text-amber-800"
                 }`}
               >

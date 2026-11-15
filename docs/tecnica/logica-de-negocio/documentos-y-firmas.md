@@ -10,7 +10,7 @@ El catálogo de Node decide, por tipo de documento (`clave` = `dual_tipos_docume
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `CV` | solicitud alumno | ALUMNO | — | Sí | No | No | Centro revisa; empresa **ve**; alumno sube |
 | `ANEXO_DGA` | solicitud alumno | ALUMNO | — | Sí | No | No | Empresa **no lo ve** |
-| `CONVENIO` | solicitud empresa | EMPRESA | **EMPRESA** | Sí | **Sí** | No | Alumno no lo ve: es un documento de empresa |
+| `CONVENIO` | solicitud empresa | EMPRESA | **EMPRESA, GESTOR** (el centro desde la 027) | Sí | **Sí** | No | Alumno no lo ve: es un documento de empresa |
 | `ANEXO_XIV` | solicitud empresa | EMPRESA | — | Sí | No | No | Alumno no lo ve |
 | `ANEXO_G` | solicitud empresa | CENTRO | — | No | No | Sí | Solo el centro |
 | `EXCEL` | solicitud empresa | CENTRO | — | No | No | Sí | Solo el centro |
@@ -107,17 +107,56 @@ No se comprueba la convocatoria ni el estado de la solicitud.
 
 Consecuencias: cada fichero nuevo **reinicia la revisión y todas las firmas**; la versión anterior se archiva sin sus firmas. Ejemplo: la empresa sube el Anexo II → firma EMPRESA declarada, GESTOR y ALUMNO pendientes.
 
-## 4. Firmar
+## 4. Firmar (migración 027)
 
-`POST /documentos/:id/firmar` o `POST /documentos/firmar { clave, id_reserva }` (este último busca el documento actual con fichero de esa reserva y tipo).
+> Código: [`firmasService.js`](../../../backend/src/services/firmasService.js) (firmas guardadas y sesiones de móvil), [`firmaPdf.js`](../../../backend/src/services/firmaPdf.js) (marcas y estampado), `documentosService.firmarDocumento`. Frontend: [`components/firma/`](../../../frontend/src/components/firma/). Pruebas: `backend/test/firmas.test.js`, `documentosFlujos.test.js`, `frontend/src/components/firma/firmas.test.jsx`. Plan: [`PLAN_FIRMAS.md`](../../PLAN_FIRMAS.md).
+
+Firmar ya no es solo una anotación: **inserta en el PDF la imagen de la firma guardada** de quien firma.
+
+### 4.1 Firmas guardadas — `dual_firmas`
+
+| `titular` | De quién | Quién la cambia |
+| --- | --- | --- |
+| `USUARIO` | La firma propia de un alumno o de una empresa (`id_usuario` = su usuario) | Su dueño: «Mi firma», o la primera vez que firma. El alumno también puede dibujarla en el formulario público de solicitud (opcional) |
+| `TUTOR` | La del tutor legal de un alumno **menor de 18 años**, guardada en la cuenta del alumno | El alumno (la dibuja el tutor en persona) |
+| `CENTRO` | Una sola imagen con firma y sello, para todo el personal (`id_usuario` NULL) | Solo ADMINISTRADOR, en Configuración › Firma del centro |
+
+- Una activa por titular y dueño (`uq_firmas_activa`). Cambiarla desactiva la fila anterior y crea otra: los documentos ya firmados conservan la imagen con la que se firmaron. Eliminarla vacía `imagen` y conserva la fila.
+- Imagen: PNG comprobado por contenido (cabecera, tamaño en píxeles 60×20 a 2400×2400, ≤ 400 KB; la del centro ≤ 1 MB) y que `pdf-lib` puede incrustar.
+- Solo se devuelve a su dueño (`GET /firmas/mia`); la del centro, al personal. Los eventos `FIRMA` (`CREAR`, `CAMBIAR`, `ELIMINAR`) nunca llevan la imagen.
+- **Menor de edad**: `esMenor(fechaNacimiento)` en el momento de firmar. Sin fecha de nacimiento, cuenta como mayor.
+
+### 4.2 Dónde va la firma
+
+- Las plantillas tienen cuatro campos más: `<<firmaEmpresa>>`, `<<firmaCentro>>`, `<<firmaAlumno>>` y `<<firmaTutorLegal>>`. Al generar, cada uno se convierte en una caja vacía que enlaza a `https://firma.invalid/<MARCA>`; Chromium escribe los enlaces como anotaciones del PDF con su rectángulo exacto y `firmaPdf.leerMarcas` guarda página y rectángulo en `dual_documentos.firma_posiciones` (JSON) y quita la anotación.
+- Al firmar, `firmaPdf.estampar` dibuja la imagen dentro de su rectángulo, sin deformarla. **Sin marca** (PDF subidos, plantillas sin el campo, documentos anteriores) la firma va en una **«Hoja de firmas»** añadida al final (título del documento, quién firma, fecha e imagen); `_hoja` en el mismo JSON recuerda la página y las plazas ocupadas.
+- Documentos › Plantillas avisa cuando la plantilla activa de un tipo no tiene el campo de alguno de sus firmantes (`firmas_sin_marca`).
+- Cualquier fichero nuevo (subida o regeneración) reinicia `firma_posiciones` junto con las firmas.
+
+### 4.3 Firmar
+
+`POST /documentos/:id/firmar`, `POST /documentos/firmar { clave, id_reserva }` o, para varios, **`POST /documentos/firmar-lote { ids }`** (hasta 200; cada documento en su propia transacción; la respuesta dice cuáles se firmaron y por qué falló cada uno de los demás).
 
 Reglas (`documentoFirmable` + permisos), con el documento bloqueado:
 - con fichero (404); tipo con firmantes (400 `SIN_FIRMA`); el rol del usuario es firmante (403 `ROL_NO_FIRMA`);
-- versión actual (409 `VERSION_ANTERIOR`); reserva no cancelada (400); documento no RECHAZADO (400);
+- versión actual (409 `VERSION_ANTERIOR`); reserva no cancelada (400); documento no RECHAZADO (400) ni **VALIDADO** (400 `VALIDADO`: firmar cambia el fichero);
 - el usuario podría descargarlo (propiedad) → si no, 403;
-- si ya estaba firmado por ese rol → **200 «La firma ya estaba registrada.»** sin cambios ni evento (idempotente).
+- si ya estaba firmado por ese rol → **200 «La firma ya estaba registrada.»** sin cambios ni evento (idempotente);
+- quien firma tiene su firma guardada → si no, **409** `SIN_FIRMA_GUARDADA`, `SIN_FIRMA_CENTRO` o `SIN_FIRMA_TUTOR` (alumno menor sin la firma de su tutor).
 
-Registra `FIRMADO`, `firmado_en`, `firmado_por`, método **`CONFIRMACION_APP`** y evento `FIRMAR`. **Ninguna firma es criptográfica**: el centro revisa el fichero antes de validar (la verificación de firmas PDF está planificada).
+Efecto, en una transacción: el PDF sellado sustituye al fichero **en la misma fila** (las firmas de los demás no se reinician: el contenido es el mismo con una imagen más), `dual_documento_firmas` queda `FIRMADO` con método **`FIRMA_IMAGEN`**, `id_firma_imagen` y, si firma un menor, `id_firma_tutor`; evento `FIRMAR` con el método, la ubicación (`MARCA` u `HOJA`) y el SHA-256 del fichero antes y después. Un PDF que `pdf-lib` no puede abrir o cambiar (cifrado, dañado) conserva la firma como confirmación (`CONFIRMACION_APP`, `sin_imagen`).
+
+`GET /documentos/pendientes-firma` devuelve lo que el usuario puede firmar ahora, con sus propias marcas, para la pantalla **«Firmar documentos»** (última página o página de la marca, flechas, una sola confirmación para todos).
+
+Es una **firma electrónica simple** (una firma manuscrita digitalizada), no criptográfica: la prueba es el registro (cuenta, fecha, imagen usada y huella del fichero). El centro sigue revisando el documento antes de validarlo.
+
+### 4.4 Firmar con el móvil — `dual_firma_sesiones`
+
+El ordenador abre una sesión (`POST /firmas/sesiones`, pública y limitada a 20 por IP cada 15 min y 300 abiertas) y muestra un QR con `/firma-movil#<token>`. El móvil, sin iniciar sesión, envía **un** dibujo (`POST /firmas/sesiones/movil`, cabecera `X-Firma-Token`); el ordenador lo lee con su propia clave (`GET /firmas/sesiones/:id`, `X-Firma-Lectura`) y solo al aceptarlo se guarda con `PUT /firmas/mia`. La sesión es un relevo: no pertenece a ninguna cuenta, no firma nada, dura 10 minutos, sirve una vez y solo se guardan los SHA-256 de los dos secretos. Con la aplicación abierta en `localhost` no se ofrece el QR (el móvil no puede abrir esa dirección).
+
+### 4.5 El centro firma el convenio
+
+Desde la 027 el convenio lo firman la empresa y el centro. Los convenios **validados antes** no tienen fila de firma del centro y siguen siendo válidos (`signersAddedLater` en el catálogo: en un documento validado no se debe la firma de un firmante añadido después).
 
 ## 5. Validar y rechazar (personal)
 
@@ -137,7 +176,8 @@ Efecto: `sp_validar_documento` + evento. Si es un **CONVENIO** y la solicitud de
 4. Ya hay fichero y no se pidió `regenerar` → 409; ya está VALIDADO → 400.
 5. Datos (`documentGenerationConfig`), **por ámbito**, iguales para todos los tipos de ese ámbito: solicitud de empresa = los del convenio (razón social, representante, DNI, domicilio legal, CIF, cargo, códigos de ciclos, fecha, convocatoria, email del coordinador); reserva = los de los anexos (alumno, DNI, empresa, CIF, ciclo, código, tipo de contrato, convocatoria, tutor con email y teléfono, fecha); solicitud de alumno = alumno, DNI, email, teléfono, domicilio, ciclo, código, convocatoria y fecha. La pestaña Plantillas los muestra tal como se escriben (`<<razonSocial>>`).
 6. `docx-templates` (delimitadores `<<` `>>`) → `mammoth` (HTML) → `puppeteer` (PDF A4, márgenes 2 cm). **Se lanza un Chromium por generación.** Desde SEC-004 cada comando `<<…>>` solo puede ser un **nombre de variable** (`razonSocial`, `$fila.codigo`): se resuelve con `resolveTemplateVariable` y nunca se ejecuta como JavaScript; cualquier otra cosa da error. Chromium genera el PDF con JavaScript desactivado y sin red (solo se permiten recursos `data:`).
-7. `saveByClave` con origen `GENERADO` (sin firmas).
+7. `firmaPdf.leerMarcas` lee del PDF dónde va cada firma (§ 4.2).
+8. `saveByClave` con origen `GENERADO` (sin firmas) y esas posiciones.
 
 El PDF refleja los datos **del momento**: cambios posteriores (tutor, datos de empresa) no se aplican hasta regenerar, y solo puede regenerarse mientras no esté validado.
 

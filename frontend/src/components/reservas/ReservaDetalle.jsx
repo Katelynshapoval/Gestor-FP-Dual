@@ -23,6 +23,7 @@ import { tipoContratoLabel } from "../../utils/labels.js";
 import { formatDocumentDate } from "../../utils/documentos.js";
 import LongText from "../ui/LongText.jsx";
 import { Bar, InlineLoading, useAparecer } from "../ui/Loading.jsx";
+import StateCard from "../ui/StateCard.jsx";
 
 // The whole lifecycle of one reservation in one place (Phase 3, D.1):
 // state, contract type, Anexo II/III and calendar (upload, generate, sign,
@@ -151,7 +152,7 @@ export default function ReservaDetalle({ idReserva: idInicial, open, onClose, on
         {loading && !data ? (
           <SkeletonReserva />
         ) : error ? (
-          <PanelState>
+          <StateCard plano>
             <p className="font-semibold text-charcoal-950">
               {error.status === 403 ? "No tienes acceso a esta reserva." : "No se pudo cargar la reserva."}
             </p>
@@ -161,7 +162,7 @@ export default function ReservaDetalle({ idReserva: idInicial, open, onClose, on
                 Reintentar
               </button>
             )}
-          </PanelState>
+          </StateCard>
         ) : r ? (
           <div className="space-y-6" aria-busy={loading}>
             <Resumen r={r} />
@@ -429,7 +430,7 @@ function Resumen({ r }) {
     },
   ];
   return (
-    <div className="rounded-xl2 border border-surface-200 bg-surface-50 p-4 sm:p-5">
+    <div className="rounded-lg border border-surface-200 bg-surface-50 p-4 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row-reverse lg:items-start">
         <div className="shrink-0">
           <EstadoBadge kind="reserva" value={r.estado_reserva} />
@@ -441,7 +442,7 @@ function Resumen({ r }) {
                 <Icon aria-hidden="true" className="h-3.5 w-3.5" />
               </span>
               <div className="min-w-0">
-                <dt className="text-[0.68rem] font-semibold uppercase tracking-wide text-muted">{term}</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-muted">{term}</dt>
                 <dd className="m-0 min-w-0 break-words text-sm font-medium text-charcoal-950">
                   {value ? <LongText>{value}</LongText> : "—"}
                 </dd>
@@ -476,7 +477,7 @@ function Section({ title, Icon, children }) {
 // Side-column card.
 function Card({ title, Icon, children }) {
   return (
-    <section className="rounded-xl2 border border-surface-200 bg-white p-4">
+    <section className="rounded-lg border border-surface-200 bg-white p-4">
       <h3 className="mb-3 mt-0 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted">
         {Icon && <Icon aria-hidden="true" className="h-3 w-3 text-brand-700" />}
         {title}
@@ -521,6 +522,3 @@ function SkeletonReserva() {
   );
 }
 
-function PanelState({ children }) {
-  return <div className="py-10 text-center text-sm text-muted">{children}</div>;
-}

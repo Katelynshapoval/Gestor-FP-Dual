@@ -11,6 +11,16 @@ const Tabs = ({ label, tabs, value, onChange, children, className = "" }) => {
   const index = Math.max(0, tabs.findIndex((t) => t.id === value));
   // One underline that slides to the selected tab instead of jumping.
   const [bar, setBar] = useState(null);
+  // Which edges hide more tabs (phones): a soft fade there says it scrolls.
+  const listRef = useRef(null);
+  const [fade, setFade] = useState({ left: false, right: false });
+  const updateFade = () => {
+    const el = listRef.current;
+    if (!el) return;
+    const left = el.scrollLeft > 2;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setFade((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+  };
   const selectedId = tabs[index]?.id;
   // Labels and badges change a tab's width, so they are part of the key.
   const shape = tabs.map((t) => `${t.id}:${t.label}:${t.badge ?? ""}`).join("|");
@@ -24,8 +34,15 @@ const Tabs = ({ label, tabs, value, onChange, children, className = "" }) => {
       );
     };
     measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    // One row on every screen: if it scrolls sideways, keep the selected tab in view.
+    refs.current[selectedId]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    updateFade();
+    const onResize = () => {
+      measure();
+      updateFade();
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [selectedId, shape]);
 
   const focusTab = (i) => {
@@ -46,10 +63,20 @@ const Tabs = ({ label, tabs, value, onChange, children, className = "" }) => {
   return (
     <div className={className}>
       <div
+        ref={listRef}
         role="tablist"
         aria-label={label}
         onKeyDown={onKeyDown}
-        className="relative mb-6 flex flex-wrap gap-x-1 border-b border-surface-200 sm:flex-nowrap sm:overflow-x-auto sm:overflow-y-hidden"
+        onScroll={updateFade}
+        style={
+          fade.left || fade.right
+            ? {
+                WebkitMaskImage: `linear-gradient(to right, ${fade.left ? "transparent, #000 2rem" : "#000"}, ${fade.right ? "#000 calc(100% - 2rem), transparent" : "#000"})`,
+                maskImage: `linear-gradient(to right, ${fade.left ? "transparent, #000 2rem" : "#000"}, ${fade.right ? "#000 calc(100% - 2rem), transparent" : "#000"})`,
+              }
+            : undefined
+        }
+        className="no-scrollbar relative mb-6 flex gap-x-0.5 overflow-x-auto overflow-y-hidden border-b border-surface-200 sm:gap-x-1"
       >
         {tabs.map((t) => {
           const selected = t.id === value;
@@ -66,14 +93,14 @@ const Tabs = ({ label, tabs, value, onChange, children, className = "" }) => {
               aria-controls={`${base}-panel`}
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(t.id)}
-              className={`relative -mb-px inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-2 border-transparent px-4 py-2.5 text-sm font-semibold outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/40 ${
+              className={`relative -mb-px inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-2 px-3 sm:px-4 py-2.5 text-sm font-semibold outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500/40 ${
                 selected ? "text-brand-700" : "text-muted hover:bg-surface-100/70 hover:text-charcoal-900"
-              } ${selected && !bar ? "!border-brand-600" : ""}`}
+              } ${selected && !bar ? "border-brand-600" : "border-transparent"}`}
             >
               {t.label}
               {t.badge ? (
                 <span
-                  className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[0.7rem] leading-none ${
+                  className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs leading-none ${
                     t.badgeTone === "action" ? "bg-amber-100 text-amber-900" : "bg-surface-200 text-charcoal-800"
                   }`}
                 >

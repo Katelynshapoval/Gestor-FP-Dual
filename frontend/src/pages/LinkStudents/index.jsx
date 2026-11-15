@@ -6,6 +6,8 @@ import { useLinkStudents } from "./hooks/useLinkStudents";
 import PageHeader from "../../components/ui/PageHeader";
 import PaginationBar, { paginate, usePageClamp } from "../../components/ui/PaginationBar";
 import { ReservaIconLegend } from "../../components/reservas/ReservaResumenBadges.jsx";
+import StateCard from "../../components/ui/StateCard.jsx";
+import { SkeletonCards } from "../../components/ui/Loading.jsx";
 
 // What a company sees instead of the list when it cannot reserve yet (WF-14).
 const COMPANY_STATE = {
@@ -33,26 +35,7 @@ const TONE = {
   danger: "border-red-200 bg-red-50 text-red-900",
 };
 
-function StateCard({ children, role }) {
-  return (
-    <div role={role} className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
-      {children}
-    </div>
-  );
-}
 
-function SkeletonList() {
-  return (
-    <div className="space-y-3" aria-hidden="true">
-      {Array.from({ length: 4 }, (_, i) => (
-        <div key={i} className="motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white px-5 py-4 shadow-card">
-          <div className="h-4 w-48 rounded bg-surface-200" />
-          <div className="mt-2 h-3 w-32 rounded bg-surface-100" />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 const LinkStudents = () => {
   const {
@@ -137,7 +120,7 @@ const LinkStudents = () => {
           )}
 
           {status === "loading" ? (
-            <SkeletonList />
+            <SkeletonCards count={4} label="Cargando alumnos…" />
           ) : status === "error" ? (
             <StateCard role="alert">
               <p className="font-semibold text-charcoal-950">No se pudieron cargar los datos.</p>
@@ -147,7 +130,7 @@ const LinkStudents = () => {
               </button>
             </StateCard>
           ) : blocked ? (
-            <div className={`rounded-xl2 border p-8 text-center shadow-card ${TONE[blocked.tone]}`}>
+            <div className={`rounded-lg border p-8 text-center shadow-card ${TONE[blocked.tone]}`}>
               <p className="font-semibold">{blocked.title}</p>
               <p className="mt-2 text-sm">{blocked.text}</p>
               {blocked.link && (

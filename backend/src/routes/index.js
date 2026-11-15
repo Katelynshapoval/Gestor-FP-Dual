@@ -15,6 +15,7 @@ router.use(require("./panelRoute"));
 router.use(require("./ayudaRoute"));
 router.use(require("./correosRoute"));
 router.use(require("./tiposDocumentoRoute"));
+router.use(require("./firmasRoute"));
 
 // Global error handler — must come after all routes
 router.use((err, req, res, _next) => {

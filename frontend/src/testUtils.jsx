@@ -5,6 +5,7 @@ import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { User } from "./context/UserContext";
 import { ToastProvider } from "./components/feedback/ToastProvider.jsx";
+import { FirmarDocumentosProvider } from "./components/firma/FirmarDocumentos.jsx";
 
 // Logs a role in, as the app stores it after login.
 export function iniciarSesion(user) {
@@ -58,6 +59,21 @@ function Ruta() {
   return <span data-testid="ruta">{location.pathname}{location.search}</span>;
 }
 
+// What the "Firmar documentos" dialog asks for: the caller's pending documents
+// and saved signature. Spread it into simularApi's routes.
+export const FIRMA_PRUEBA = { id_firma: 70, imagen: "data:image/png;base64,AAAA", creado_en: "2026-11-15T10:00:00Z", origen: "PANTALLA" };
+export function rutasDeFirma(items, mia = { titular: "USUARIO", firma: FIRMA_PRUEBA, puede_cambiar: true }) {
+  return {
+    "GET /documentos/pendientes-firma": { items },
+    "GET /firmas/mia": mia,
+    "GET /documentos/:id/descargar": {},
+  };
+}
+export const porFirmar = (extra) => ({
+  id_documento: 5, clave: "ANEXO_II", nombre: "Anexo II", alumno: "Ana Ruiz", empresa: "ACME S.L.",
+  firmas: [{ rol: "EMPRESA", rol_label: "Empresa", estado: "SIN_FIRMAR" }], marcas: {}, ...extra,
+});
+
 // Renders `ui` at `ruta` inside the app's providers. Other paths render a
 // marker so redirects can be checked with `screen.getByTestId("ruta")`.
 export function renderPagina(ui, { ruta = "/", patron = "*" } = {}) {
@@ -65,10 +81,12 @@ export function renderPagina(ui, { ruta = "/", patron = "*" } = {}) {
     <MemoryRouter initialEntries={[ruta]}>
       <User>
         <ToastProvider>
-          <Routes>
-            <Route path={patron} element={<>{ui}<Ruta /></>} />
-            <Route path="*" element={<Ruta />} />
-          </Routes>
+          <FirmarDocumentosProvider>
+            <Routes>
+              <Route path={patron} element={<>{ui}<Ruta /></>} />
+              <Route path="*" element={<Ruta />} />
+            </Routes>
+          </FirmarDocumentosProvider>
         </ToastProvider>
       </User>
     </MemoryRouter>,

@@ -4,7 +4,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import Header from "./layout/Header/Header.jsx";
 import DocumentoItem from "./DocumentoItem.jsx";
-import { iniciarSesion, renderPagina, simularApi } from "../testUtils";
+import { iniciarSesion, porFirmar, renderPagina, rutasDeFirma, simularApi } from "../testUtils";
 
 // ── Header ──────────────────────────────────────────────────────────────────
 
@@ -105,15 +105,28 @@ describe("document card", () => {
     expect(llamadas[0].path).toBe("/documentos/reserva/8/anexo");
   });
 
-  test("sign, and a refusal keeps the server's message", async () => {
-    let respuesta = { status: 409, body: { error: "Solo se firma la versión actual del documento." } };
-    simularApi({ "POST /documentos/5/firmar": () => respuesta });
-    renderPagina(<DocumentoItem doc={doc({ id_documento: 5, puede_subir: false, puede_firmar: true })} onRefresh={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Firmar" }));
+  // Migration 027: "Firmar" opens the signing dialog on that document; the
+  // saved signature is stamped after one confirmation.
+  test("sign opens the signing dialog on that document; a refusal keeps the server's message", async () => {
+    const onRefresh = vi.fn();
+    let respuesta = { firmados: 0, fallidos: 1, resultados: [{ id_documento: 5, ok: false, message: "Solo se firma la versión actual del documento." }] };
+    const { llamadas } = simularApi({ ...rutasDeFirma([porFirmar(), porFirmar({ id_documento: 6 })]), "POST /documentos/firmar-lote": () => respuesta });
+    renderPagina(<DocumentoItem doc={doc({ id_documento: 5, puede_subir: false, puede_firmar: true })} onRefresh={onRefresh} />);
+    const firmar = async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Firmar" }));
+      const dialogo = await screen.findByRole("dialog", { name: "Firmar Anexo II" });
+      fireEvent.click(await within(dialogo).findByRole("button", { name: "Firmar el documento" }));
+      fireEvent.click(within(await screen.findByRole("dialog", { name: "Confirmar firma" })).getByRole("button", { name: "Firmar" }));
+    };
+    await firmar();
     expect(await screen.findByText("Solo se firma la versión actual del documento.")).toBeInTheDocument();
-    respuesta = {};
-    fireEvent.click(screen.getByRole("button", { name: "Firmar" }));
-    expect(await screen.findByText("Firma registrada.")).toBeInTheDocument();
+    expect(llamadas.find((l) => l.path === "/documentos/firmar-lote").body).toEqual({ ids: [5] });
+    fireEvent.click(screen.getByRole("button", { name: "Entendido" }));
+    respuesta = { firmados: 1, fallidos: 0, message: "Documento firmado.", resultados: [{ id_documento: 5, ok: true }] };
+    await firmar();
+    expect(await screen.findByText("Documento firmado.")).toBeInTheDocument();
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   test("staff review: validate, or reject with a reason", async () => {

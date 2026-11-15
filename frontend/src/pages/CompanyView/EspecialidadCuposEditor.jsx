@@ -207,9 +207,7 @@ const EspecialidadCuposEditor = ({
                   {changed && (
                     <button
                       type="button"
-                      className={`btn btn-outline-brand btn-sm shadow-none ${
-                        saving ? "btn-disabled" : ""
-                      }`}
+                      className={`btn btn-outline-brand btn-sm shadow-none`}
                       disabled={saving}
                       onClick={() => save(esp)}
                     >
@@ -278,7 +276,7 @@ const EspecialidadCuposEditor = ({
               {String(newCantidad).trim() !== "" && (
                 <button
                   type="button"
-                  className={`btn btn-outline-brand btn-sm shadow-none ${savingNew ? "btn-disabled" : ""}`}
+                  className={`btn btn-outline-brand btn-sm shadow-none`}
                   disabled={savingNew}
                   onClick={add}
                 >
@@ -300,7 +298,7 @@ const EspecialidadCuposEditor = ({
       {canEdit && !soloReducir && missing.length > 0 && (
         <button
           type="button"
-          className="w-full rounded-lg border border-dashed border-surface-300 bg-white px-4 py-3 text-left text-sm font-medium text-charcoal-700 hover:border-brand-300 hover:bg-brand-50 disabled:cursor-default disabled:hover:border-surface-300 disabled:hover:bg-white"
+          className="w-full rounded-lg border border-dashed border-surface-300 bg-white px-4 py-3 text-left text-sm font-medium text-charcoal-700 outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 hover:border-brand-300 hover:bg-brand-50 disabled:cursor-default disabled:hover:border-surface-300 disabled:hover:bg-white"
           disabled={adding}
           onClick={() => setAdding(true)}
         >

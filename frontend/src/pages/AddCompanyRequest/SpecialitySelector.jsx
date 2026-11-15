@@ -22,7 +22,7 @@ const SpecialitySelector = ({ dataSpecialities, selected, onToggle, onAmountChan
         // The first checkbox carries the field id the error summary links to.
         const checkId = index === 0 ? "campo-especialidades" : `esp-${id}`;
         return (
-          <div key={id} className={`checkbox-item flex-col !items-stretch gap-2 ${isSelected ? "checked" : ""}`}>
+          <div key={id} className={`checkbox-item flex-col items-stretch gap-2 ${isSelected ? "checked" : ""}`}>
             <label htmlFor={checkId} className="flex cursor-pointer items-center gap-2">
               <input
                 id={checkId}

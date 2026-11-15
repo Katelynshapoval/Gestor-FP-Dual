@@ -191,8 +191,8 @@ async function alSolicitarDeNuevo(conn, { idSolicitud, idEmpresa, user = null })
 
 // The steps the administrators receive, depending on what is already done.
 function pasosRenovacion({ generado, sinPlantilla }) {
-  const firmar = "Esperar a que la empresa firme el convenio nuevo y lo suba (aparece en Documentos como «Pendiente de validar»).";
-  const validar = "Revisar y validar el convenio firmado en Documentos o en la tarjeta de la empresa. Al validarlo se cierra la renovación.";
+  const firmar = "Esperar a que la empresa firme el convenio nuevo, en el portal o subiéndolo firmado (después aparece en Documentos como «Pendiente de firma» del centro).";
+  const validar = "Firmar el convenio por el centro, revisarlo y validarlo en Documentos o en la tarjeta de la empresa. Al validarlo se cierra la renovación.";
   if (generado) return ["El convenio nuevo ya se ha generado y se ha enviado a la empresa.", firmar, validar];
   if (sinPlantilla) {
     return [

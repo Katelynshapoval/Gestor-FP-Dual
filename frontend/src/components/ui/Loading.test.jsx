@@ -9,7 +9,7 @@ test("a skeleton announces at once and shows its shapes only after the delay", (
   vi.useFakeTimers();
   const { container } = render(<SkeletonCards count={3} label="Cargando empresas…" />);
   expect(screen.getByRole("status")).toHaveTextContent("Cargando empresas…");
-  expect(container.querySelectorAll('[aria-hidden="true"] .rounded-xl2')).toHaveLength(0);
+  expect(container.querySelectorAll('[aria-hidden="true"] .rounded-lg')).toHaveLength(0);
   act(() => vi.advanceTimersByTime(200));
   expect(container.querySelectorAll('[aria-hidden="true"] > div')).toHaveLength(3);
 });

@@ -104,11 +104,28 @@ const TareaCard = ({ t }) => {
     <li className="flex min-w-0 flex-[1_1_15rem]">
       <Link
         to={t.to}
-        className={`group flex h-full w-full flex-col gap-3 rounded-xl2 border bg-white p-5 shadow-card outline-none transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30 ${
+        className={`group flex h-full w-full flex-col gap-3 rounded-lg border bg-white px-4 py-3 shadow-card outline-none transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-brand-500/30 sm:p-5 ${
           done ? "border-surface-200" : "border-amber-300"
         }`}
       >
-        <div className="flex items-start justify-between gap-3">
+        {/* Phones: one compact row — number, what it is, and an arrow. */}
+        <div className="flex items-center gap-3 sm:hidden">
+          <span
+            className={`w-10 shrink-0 text-2xl font-semibold leading-none ${done ? "text-charcoal-500" : "text-charcoal-950"}`}
+          >
+            {t.n}
+          </span>
+          <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-charcoal-900">
+            {t.n === 1 ? t.singular : t.plural}
+          </span>
+          {done ? (
+            <FaCircleCheck aria-label="Al día" className="shrink-0 text-green-700" />
+          ) : (
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" aria-label="Pendiente" role="img" />
+          )}
+          <FaArrowRightLong aria-hidden="true" className="shrink-0 text-brand-700" />
+        </div>
+        <div className="hidden items-start justify-between gap-3 sm:flex">
           <span
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
               done ? "border-surface-200 bg-surface-50 text-muted" : "border-amber-200 bg-amber-50 text-amber-800"
@@ -126,14 +143,14 @@ const TareaCard = ({ t }) => {
             </span>
           )}
         </div>
-        <p className="m-0">
+        <p className="m-0 hidden sm:block">
           <span className={`block text-3xl font-semibold leading-none ${done ? "text-charcoal-700" : "text-charcoal-950"}`}>
             {t.n}
           </span>
           <span className="mt-1.5 block text-sm font-semibold text-charcoal-900">{t.n === 1 ? t.singular : t.plural}</span>
         </p>
-        <p className="m-0 text-xs leading-5 text-muted">{t.hint}</p>
-        <span className="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-brand-700">
+        <p className="m-0 hidden text-xs leading-5 text-muted sm:block">{t.hint}</p>
+        <span className="mt-auto hidden items-center gap-2 text-sm font-semibold text-brand-700 sm:inline-flex">
           <span className="sr-only">{text}: </span>Ver lista
           <FaArrowRightLong aria-hidden="true" className="transition-transform duration-150 group-hover:translate-x-1 motion-reduce:transition-none" />
         </span>
@@ -146,14 +163,14 @@ const Skeleton = () => (
   <div aria-hidden="true" className="space-y-6">
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: 4 }, (_, i) => (
-        <div key={i} className="h-48 motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white p-5 shadow-card">
+        <div key={i} className="h-48 motion-safe:animate-pulse rounded-lg border border-surface-200 bg-white p-5 shadow-card">
           <div className="h-10 w-10 rounded-lg bg-surface-100" />
           <div className="mt-4 h-7 w-12 rounded bg-surface-200" />
           <div className="mt-3 h-3 w-40 rounded bg-surface-100" />
         </div>
       ))}
     </div>
-    <div className="h-40 motion-safe:animate-pulse rounded-xl2 border border-surface-200 bg-white shadow-card" />
+    <div className="h-40 motion-safe:animate-pulse rounded-lg border border-surface-200 bg-white shadow-card" />
   </div>
 );
 
@@ -224,7 +241,7 @@ const Panel = () => {
           <Skeleton />
         </>
       ) : status === "error" ? (
-        <div role="alert" className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
+        <div role="alert" className="rounded-lg border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
           <p className="font-semibold text-charcoal-950">No se pudo cargar el panel.</p>
           <p className="mt-2 text-sm text-muted">{error?.message}</p>
           <button type="button" className="btn btn-secondary btn-sm mt-4" onClick={load}>
@@ -232,7 +249,7 @@ const Panel = () => {
           </button>
         </div>
       ) : !conv ? (
-        <div role="status" className="rounded-xl2 border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
+        <div role="status" className="rounded-lg border border-surface-200 bg-white px-6 py-12 text-center shadow-card">
           <p className="font-semibold text-charcoal-950">Todavía no hay ninguna convocatoria.</p>
           {user?.rol === "ADMINISTRADOR" ? (
             <Link to="/configuracion/convocatorias" className="btn btn-primary btn-sm mt-4">
@@ -296,12 +313,12 @@ const Panel = () => {
               </Link>
             </div>
             {grupos.every((g) => g.n === 0) && (
-              <p className="m-0 rounded-xl2 border border-surface-200 bg-white px-5 py-4 text-sm text-muted shadow-card">
+              <p className="m-0 rounded-lg border border-surface-200 bg-white px-5 py-4 text-sm text-muted shadow-card">
                 No hay reservas pendientes en esta convocatoria.
               </p>
             )}
             {/* Only the groups that have something: rows of zeros were noise. */}
-            <ul className="overflow-hidden rounded-xl2 border border-surface-200 bg-white shadow-card empty:hidden">
+            <ul className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card empty:hidden">
               {grupos.filter((g) => g.n > 0).map((g) => (
                 <li key={g.key} className="border-b border-surface-200 last:border-b-0">
                   <Link

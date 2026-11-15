@@ -37,6 +37,19 @@ router.post(
   asyncHandler(svc.uploadContexto)
 );
 
+router.get(
+  '/documentos/pendientes-firma',
+  requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA', 'ALUMNO'),
+  asyncHandler(svc.pendientesFirma)
+);
+
+// "Sign all": the saved signature image is stamped into each PDF (migration 027).
+router.post(
+  '/documentos/firmar-lote',
+  requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA', 'ALUMNO'),
+  asyncHandler(svc.firmarLote)
+);
+
 router.post(
   '/documentos/firmar',
   requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA', 'ALUMNO'),

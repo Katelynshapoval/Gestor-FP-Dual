@@ -18,7 +18,6 @@ import {
   useStepForm,
   useUnsavedWarning,
 } from "../../components/forms/StepForm.jsx";
-import "../../styles/forms.css";
 import { InlineLoading } from "../../components/ui/Loading.jsx";
 
 // Company application to join the FP Dual programme, in steps (Phase 4, D.3).

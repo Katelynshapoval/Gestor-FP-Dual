@@ -23,10 +23,13 @@ import RequireRole from "./components/auth/RequireRole.jsx";
 import CambiarPassword from "./pages/CambiarPassword.jsx";
 import { RecuperarPassword, RestablecerPassword } from "./pages/RecuperarPassword.jsx";
 import Ayuda from "./pages/Ayuda/Ayuda.jsx";
+import MiFirma from "./pages/MiFirma.jsx";
+import FirmaMovil from "./pages/FirmaMovil.jsx";
+import FirmaCentro from "./pages/Configuracion/FirmaCentro.jsx";
+import { FirmarDocumentosProvider } from "./components/firma/FirmarDocumentos.jsx";
 import { STAFF } from "./navigation.js";
 
 import "./styles/main.css";
-import "./styles/forms.css";
 
 // Old paths keep working (bookmarks, links in emails); the query string is kept.
 const Legacy = ({ to }) => {
@@ -42,7 +45,10 @@ function App() {
       <ToastProvider>
         <div className="app">
           <BrowserRouter>
+            <FirmarDocumentosProvider>
             <Routes>
+              {/* The page a phone opens from the signature QR: no menu, only the pad. */}
+              <Route path="/firma-movil" element={<FirmaMovil />} />
               <Route element={<PageLayout />}>
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
@@ -62,12 +68,14 @@ function App() {
                   <Route path="personal" element={<Personal />} />
                   <Route path="correos" element={<Correos />} />
                   <Route path="documentos" element={<TiposDocumento />} />
+                  <Route path="firma" element={<FirmaCentro />} />
                   <Route path="*" element={null} />
                 </Route>
 
                 <Route path="/companyMain" element={guard(["EMPRESA"], <CompanyView />)} />
                 <Route path="/studentMain" element={guard(["ALUMNO"], <StudentMain />)} />
                 <Route path="/cambiarPassword" element={guard(undefined, <CambiarPassword />)} />
+                <Route path="/mi-firma" element={guard(["ALUMNO", "EMPRESA"], <MiFirma />)} />
 
                 <Route path="/linkStudents" element={<Legacy to="/alumnos" />} />
                 <Route path="/companiesView" element={<Legacy to="/empresas" />} />
@@ -78,6 +86,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
+            </FirmarDocumentosProvider>
           </BrowserRouter>
         </div>
       </ToastProvider>

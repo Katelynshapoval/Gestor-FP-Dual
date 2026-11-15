@@ -136,7 +136,9 @@
 | `POST /documentos/convenios/generar-pendientes` | Personal | Sin cuerpo. Genera, uno a uno, el convenio de cada solicitud de empresa de la convocatoria activa (no rechazada) que no tiene fichero de convenio, y lo envía por correo → `{ message, convocatoria, generados[], fallidos[{ id_solicitud_empresa, empresa, error }] }` · 409 `SIN_PLANTILLA` · 409 si ya hay otra ejecución en curso · 400 sin convocatoria activa |
 | `POST /documentos/subir` | Todos (catálogo + propiedad) | `multipart`: `archivo`, `clave`, id del padre |
 | `POST /documentos/firmar` | Todos (catálogo + propiedad) | `{ clave, id_reserva }` |
-| `POST /documentos/:id/firmar` | Todos (catálogo + propiedad) | |
+| `POST /documentos/:id/firmar` | Todos (catálogo + propiedad) | Inserta la firma guardada en el PDF · 409 `SIN_FIRMA_GUARDADA` / `SIN_FIRMA_CENTRO` / `SIN_FIRMA_TUTOR` |
+| `POST /documentos/firmar-lote` | Todos (catálogo + propiedad) | `{ ids }` (≤ 200) → `{ firmados, fallidos, resultados[] }` |
+| `GET /documentos/pendientes-firma` | Todos | Documentos que el usuario puede firmar, con sus marcas |
 | `POST /documentos/empresa/:idSolicitud/convenio` | Personal, EMPRESA | `multipart` |
 | `POST /documentos/reserva/:idReserva/anexo` | Personal, EMPRESA | `multipart`; familia según el tipo guardado |
 | `GET /documentos/:id/descargar` | Autenticado (permisos por rol y propiedad) | PDF `attachment` |
@@ -147,6 +149,18 @@
 | `GET /documentos/plantillas/:id/descargar` | Personal | DOCX `attachment` `plantilla-<clave>-v<n>.docx` |
 
 Atención al orden de rutas en Express: `GET /solicitudes/alumno/mia` se declara antes que `GET /solicitudes/alumno/:id` (lo indica un comentario en la ruta), y `GET /solicitudes/empresa/mia` y `/todas` antes que `GET /solicitudes/empresa/:id`. Invertir ese orden haría que `mia`/`todas` se interpretaran como ids. En `documentosRoute` y `reservasRoute` no hay colisiones porque las rutas con `:id` tienen un segmento más (`/:id/descargar`, `/:id/detalle`…).
+
+## Firmas — `firmasRoute` (migración 027)
+
+| Endpoint | Acceso | Notas |
+| --- | --- | --- |
+| `GET /firmas/mia` | Autenticado | La firma propia (y la del tutor si es menor); para el personal, la del centro |
+| `PUT /firmas/mia` | ALUMNO, EMPRESA | `multipart`: `imagen` (PNG), `origen`, `titular` (`USUARIO` o `TUTOR`) |
+| `DELETE /firmas/mia?titular=` | ALUMNO, EMPRESA | Borra la imagen; los documentos firmados no cambian |
+| `PUT /firmas/centro` | ADMINISTRADOR | `multipart`: `imagen` (PNG con firma y sello) |
+| `POST /firmas/sesiones` | Público (20 por IP cada 15 min) | Abre la sesión del QR → `{ id, token, lectura, minutos }` |
+| `GET /firmas/sesiones/movil` · `POST /firmas/sesiones/movil` | Público, cabecera `X-Firma-Token` | El móvil consulta el estado y envía un dibujo (una vez) |
+| `GET /firmas/sesiones/:id` · `DELETE /firmas/sesiones/:id` | Público, cabecera `X-Firma-Lectura` | El ordenador lee el dibujo o cierra la sesión |
 
 ## Correos automáticos — `correosRoute`
 

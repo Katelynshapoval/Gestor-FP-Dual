@@ -140,6 +140,18 @@ const ESPERADO = [
   'GET /tipos-documento :: AUTH ROLE:ADMINISTRADOR,COORDINADOR',
   'POST /tipos-documento :: AUTH ROLE:ADMINISTRADOR',
   'PUT /tipos-documento/:clave :: AUTH ROLE:ADMINISTRADOR',
+  // Migration 027: saved signatures, signing in bulk and the phone hand-off.
+  'GET /documentos/pendientes-firma :: AUTH ROLE:ADMINISTRADOR,COORDINADOR,EMPRESA,ALUMNO',
+  'POST /documentos/firmar-lote :: AUTH ROLE:ADMINISTRADOR,COORDINADOR,EMPRESA,ALUMNO',
+  'GET /firmas/mia :: AUTH',
+  'PUT /firmas/mia :: AUTH ROLE:ALUMNO,EMPRESA',
+  'DELETE /firmas/mia :: AUTH ROLE:ALUMNO,EMPRESA',
+  'PUT /firmas/centro :: AUTH ROLE:ADMINISTRADOR',
+  'POST /firmas/sesiones :: PUBLIC',
+  'GET /firmas/sesiones/movil :: PUBLIC',
+  'POST /firmas/sesiones/movil :: PUBLIC',
+  'GET /firmas/sesiones/:id :: PUBLIC',
+  'DELETE /firmas/sesiones/:id :: PUBLIC',
 ];
 
 function rutas() {
@@ -175,16 +187,23 @@ test('login always comes before the role check', () => {
 test('only the expected endpoints are public', () => {
   const publicas = rutas().filter((r) => r.endsWith(':: PUBLIC')).map((r) => r.split(' :: ')[0]);
   assert.deepEqual(publicas.sort(), [
+    // Phone hand-off of a signature drawing: a relay protected by two random
+    // secrets; it reads no account and signs nothing (firmasService).
+    'DELETE /firmas/sesiones/:id',
     'GET /ayuda/imagenes/:file',
     'GET /ayuda/manual',
     'GET /convocatorias/activa',
     'GET /convocatorias/estado',
     'GET /especialidades',
+    'GET /firmas/sesiones/:id',
+    'GET /firmas/sesiones/movil',
     'GET /tiposContrato',
     'GET /transportes',
     'POST /auth/forgotPassword',
     'POST /auth/login',
     'POST /auth/resetPassword',
+    'POST /firmas/sesiones',
+    'POST /firmas/sesiones/movil',
     'POST /solicitudes/alumno',
     'POST /solicitudes/empresa',
   ]);

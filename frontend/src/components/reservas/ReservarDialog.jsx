@@ -66,7 +66,7 @@ export default function ReservarDialog({ open, onClose, onConfirm, nombre }) {
             <button
               type="submit"
               form={`${fieldId}-form`}
-              className={`btn btn-primary btn-sm ${disabled ? "btn-disabled" : ""}`}
+              className={`btn btn-primary btn-sm`}
               disabled={disabled}
             >
               {busy ? "Reservando…" : "Reservar"}

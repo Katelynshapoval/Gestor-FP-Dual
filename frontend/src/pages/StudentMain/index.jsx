@@ -10,8 +10,8 @@ import Tabs from "../../components/ui/Tabs.jsx";
 import Pendientes from "../../components/portal/Pendientes.jsx";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
 import { anexoNombre, label } from "../../utils/labels.js";
-import "../../styles/forms.css";
 import { SkeletonPortal } from "../../components/ui/Loading.jsx";
+import { FirmarTodoBoton } from "../../components/firma/FirmarDocumentos.jsx";
 
 const firmaPendienteDe = (resumenDoc, rol) =>
   (resumenDoc?.firmas_pendientes || []).some((r) => String(r).toUpperCase() === rol);
@@ -161,6 +161,7 @@ function StudentMain() {
             ? [solicitud.especialidad, solicitud.convocatoria && `Convocatoria ${solicitud.convocatoria}`].filter(Boolean).join(" · ")
             : "Portal del alumno"
         }
+        actions={<FirmarTodoBoton onDone={refresh} />}
       />
 
       {loading ? (

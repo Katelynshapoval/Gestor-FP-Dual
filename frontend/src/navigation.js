@@ -90,6 +90,8 @@ const TITLES = {
   "/companyMain": "Mi empresa",
   "/studentMain": "Mi proceso Dual",
   "/cambiarPassword": "Cambiar contraseña",
+  "/mi-firma": "Mi firma",
+  "/configuracion/firma": "Firma del centro · Configuración",
 };
 
 export function pageTitle(pathname, user) {

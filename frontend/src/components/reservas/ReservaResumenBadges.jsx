@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { FaCalendarDays, FaCheck, FaExclamation, FaFileSignature, FaHandshake, FaMinus, FaXmark } from "react-icons/fa6";
 import EstadoBadge from "../ui/EstadoBadge.jsx";
 import Tooltip from "../ui/Tooltip.jsx";
@@ -27,7 +28,18 @@ const StateMark = ({ variant, inline = false }) => {
 };
 
 // Key for the compact icons, shown once above the staff lists that use them.
+// Remembered per browser: open the first time, then as the user left it.
+const LEYENDA_KEY = "fpdual.leyendaIconos";
+function leerLeyendaAbierta() {
+  try {
+    return localStorage.getItem(LEYENDA_KEY) !== "cerrada";
+  } catch {
+    return true;
+  }
+}
+
 export function ReservaIconLegend({ className = "" }) {
+  const [abierta, setAbierta] = useState(leerLeyendaAbierta);
   const items = [
     [FaHandshake, "Reserva"],
     [FaFileSignature, "Anexo"],
@@ -39,29 +51,43 @@ export function ReservaIconLegend({ className = "" }) {
     ["danger", "rechazado"],
     ["neutral", "no aplica"],
   ];
+  const cambiar = (e) => {
+    const open = e.currentTarget.open;
+    setAbierta(open);
+    try {
+      localStorage.setItem(LEYENDA_KEY, open ? "abierta" : "cerrada");
+    } catch {
+      /* private mode: just not remembered */
+    }
+  };
   return (
-    <div
-      className={`flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-dashed border-surface-200 bg-white/60 px-3 py-2 text-xs text-muted ${className}`}
-      aria-hidden="true"
+    <details
+      open={abierta}
+      onToggle={cambiar}
+      className={`group rounded-lg border border-dashed border-surface-200 bg-white/60 px-3 py-2 text-xs text-muted ${className}`}
     >
-      <span className="font-semibold uppercase tracking-wide text-charcoal-700">Leyenda</span>
-      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="text-charcoal-500">Iconos:</span>
-        {items.map(([Icon, text]) => (
-          <span key={text} className="inline-flex items-center gap-1.5">
-            <Icon className="h-3.5 w-3.5 text-charcoal-700" /> {text}
-          </span>
-        ))}
-      </span>
-      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="text-charcoal-500">Punto de color:</span>
-        {marks.map(([variant, text]) => (
-          <span key={variant} className="inline-flex items-center gap-1.5">
-            <StateMark variant={variant} inline /> {text}
-          </span>
-        ))}
-      </span>
-    </div>
+      <summary className="cursor-pointer select-none font-semibold text-charcoal-700 marker:text-charcoal-400">
+        Qué significan los iconos
+      </summary>
+      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-charcoal-500">Iconos:</span>
+          {items.map(([Icon, text]) => (
+            <span key={text} className="inline-flex items-center gap-1.5">
+              <Icon aria-hidden="true" className="h-3.5 w-3.5 text-charcoal-700" /> {text}
+            </span>
+          ))}
+        </span>
+        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-charcoal-500">Punto de color:</span>
+          {marks.map(([variant, text]) => (
+            <span key={variant} className="inline-flex items-center gap-1.5">
+              <StateMark variant={variant} inline /> {text}
+            </span>
+          ))}
+        </span>
+      </div>
+    </details>
   );
 }
 

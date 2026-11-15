@@ -23,8 +23,8 @@ import Tabs from "../../components/ui/Tabs.jsx";
 import Pendientes from "../../components/portal/Pendientes.jsx";
 import ReservaDetalle from "../../components/reservas/ReservaDetalle.jsx";
 import { anexoNombre, label } from "../../utils/labels.js";
-import "../../styles/forms.css";
 import { SkeletonPortal } from "../../components/ui/Loading.jsx";
+import { FirmarTodoBoton } from "../../components/firma/FirmarDocumentos.jsx";
 
 const pendienteDeEmpresa = (doc) =>
   doc &&
@@ -639,7 +639,7 @@ const ReapplyForm = ({ solicitud, specialities, transports, onSuccess }) => {
         type="button"
         onClick={handleSubmit}
         disabled={submitting}
-        className={`btn btn-primary ${submitting ? "btn-disabled" : ""}`}
+        className={`btn btn-primary`}
       >
         {submitting ? "Enviando…" : "Enviar reaplicación"}
       </button>
@@ -754,6 +754,7 @@ const CompanyView = () => {
         kicker="Mi empresa"
         title={empresaNombre}
         subtitle={[solicitud?.cif || user.cif, solicitud?.convocatoria && `Convocatoria ${solicitud.convocatoria}`].filter(Boolean).join(" · ")}
+        actions={<FirmarTodoBoton onDone={refreshReservasYDocumentos} />}
       />
 
       {loading ? (

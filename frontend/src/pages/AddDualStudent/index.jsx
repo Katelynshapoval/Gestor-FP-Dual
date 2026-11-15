@@ -5,6 +5,8 @@ import PageHeader from "../../components/ui/PageHeader.jsx";
 import { useToast } from "../../components/feedback/ToastProvider.jsx";
 import ConvocatoriaGate from "../../components/forms/ConvocatoriaGate.jsx";
 import SubmitSuccess from "../../components/forms/SubmitSuccess.jsx";
+import FirmaCaptura from "../../components/firma/FirmaCaptura.jsx";
+import InlineNotice from "../../components/ui/InlineNotice.jsx";
 import {
   ErrorSummary,
   FileField,
@@ -20,7 +22,6 @@ import {
   useUnsavedWarning,
 } from "../../components/forms/StepForm.jsx";
 
-import "../../styles/forms.css";
 
 // Student application for the FP Dual programme, in steps (Phase 4, D.3).
 // Same fields, rules and endpoint as before; only the presentation changed.
@@ -30,6 +31,7 @@ const STEPS = [
   { id: "personales", title: "Datos personales" },
   { id: "contacto", title: "Contacto y movilidad" },
   { id: "documentos", title: "Documentos" },
+  { id: "firma", title: "Firma" },
   { id: "cuenta", title: "Cuenta" },
   { id: "revision", title: "Revisión y envío" },
 ];
@@ -55,6 +57,7 @@ const INITIAL = {
   numeroSS: "",
   cv: null,
   anexoDga: null,
+  firma: null, // { blob, origen, url }: optional, drawn in the form
   password: "",
   password2: "",
 };
@@ -194,6 +197,10 @@ function AddDualStudent() {
       data.append("anexoDga", v.anexoDga);
       data.append("cv", v.cv);
       data.append("password", v.password);
+      if (v.firma) {
+        data.append("firma", v.firma.blob, "firma.png");
+        data.append("firmaOrigen", v.firma.origen);
+      }
       const result = await postForm("/solicitudes/alumno", data);
       setEnviado({ cuentaExistente: Boolean(result?.cuenta_existente) });
       form.setDirty(false);
@@ -264,8 +271,8 @@ function AddDualStudent() {
                   required
                   autoComplete="email"
                   maxLength={60}
-                  hint="El correo que te da el centro: termina en @zaragoza.salesianos.edu."
-                  placeholder="Ej.: nombre.apellido@zaragoza.salesianos.edu"
+                  hint="El correo que te da el centro, por ejemplo nombre.apellido@zaragoza.salesianos.edu."
+                  placeholder="nombre.apellido@…"
                 />
                 {especialidades.status === "error" ? (
                   <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -407,6 +414,37 @@ function AddDualStudent() {
               </>
             )}
 
+            {current === "firma" && (
+              <>
+                <StepHeading
+                  headingRef={headingRef}
+                  title="Tu firma"
+                  description="Opcional. Con ella firmarás los documentos del programa con un clic. Si ahora no te viene bien, sigue: te la pediremos la primera vez que tengas que firmar."
+                />
+                {v.firma ? (
+                  <div className="animate-fade-in">
+                    <div className="firma-papel flex h-44 items-center justify-center rounded-xl border border-surface-200 p-5">
+                      <img src={v.firma.url} alt="Tu firma" className="max-h-full max-w-full object-contain" />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="m-0 text-sm text-green-800">Firma lista. Se guardará al enviar la solicitud.</p>
+                      <button type="button" className="btn btn-secondary btn-sm shrink-0" onClick={() => set("firma", null)}>
+                        Repetir
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <FirmaCaptura onListo={(firma) => set("firma", firma)} textoAceptar="Usar esta firma" />
+                )}
+                {menor && (
+                  <InlineNotice tone="info" className="mt-4">
+                    Como eres menor de edad, tus documentos llevarán también la firma de tu tutor o tutora legal. Se
+                    pide en el portal, la primera vez que firmes.
+                  </InlineNotice>
+                )}
+              </>
+            )}
+
             {current === "cuenta" && (
               <>
                 <StepHeading
@@ -477,6 +515,11 @@ function AddDualStudent() {
                       [LABELS.cv, v.cv?.name],
                       [LABELS.anexoDga, v.anexoDga?.name],
                     ]}
+                  />
+                  <ReviewSection
+                    title="Firma"
+                    onEdit={() => form.goTo(4)}
+                    rows={[["Tu firma", v.firma ? "Creada: se guardará con la solicitud" : "Más adelante, al firmar el primer documento"]]}
                   />
                 </div>
                 <p className="mb-0 mt-4 text-xs leading-5 text-muted">
