@@ -1,6 +1,6 @@
 # Integridad, procedimientos, triggers y transacciones
 
-> Parte de la [base de datos](vision-general.md). Definiciones vigentes: `000_baseline.sql`, sustituidas en parte por [`012`](../../../db/migrations/012_reglas_por_nombre_y_reservas.sql), [`017`](../../../db/migrations/017_integridad_especialidad_documentos_cupos.sql) y [`018`](../../../db/migrations/018_reservas_por_intento_y_transacciones.sql). Cuando un objeto se redefine, vale **la última migración que lo crea**.
+> Parte de la [base de datos](vision-general.md). Definiciones vigentes: `000_baseline.sql`, sustituidas en parte por [`012`](../../../db/migrations/012_reglas_por_nombre_y_reservas.sql), [`017`](../../../db/migrations/017_integridad_especialidad_documentos_cupos.sql) y [`018`](../../../db/migrations/018_reservas_por_intento_y_transacciones.sql) y [`028`](../../../db/migrations/028_limpieza_bd.sql). Cuando un objeto se redefine, vale **la última migración que lo crea**.
 
 ## 1. Restricciones declarativas
 
@@ -11,7 +11,8 @@
 | `chk_dual_especialidades_turno` | especialidades | 0 o 1 |
 | `chk_dsee_cantidad_alumnos` | ofertas | `>= 0` |
 | `chk_dd_un_padre` | documentos | exactamente un padre |
-| `chk_documentos_origen` | documentos | `SUBIDA`, `GENERADO`, `LEGACY` |
+| `chk_documentos_origen` | documentos | `SUBIDA`, `GENERADO`, `LEGACY`, `HEREDADO` |
+| `chk_dd_estado_workflow` (028) | documentos | `NULL`, `SUBIDO` o `SUBIDO_FIRMADO` |
 | `chk_dd_firmas_exentas` | documentos | 0 o 1 |
 | `chk_dual_documento_firmas_estado` / `_rol` / `chk_ddf_metodo` | firmas | valores cerrados |
 | `chk_dec_estado` | cambios de empresa | `PENDIENTE`, `APROBADO`, `RECHAZADO` |
@@ -29,18 +30,33 @@ Unicidades de negocio con **columna generada** (patrón «único solo cuando…�
 | `uq_dac_solicitud_pendiente` (020) | `id_solicitud_pendiente` = solicitud si `PENDIENTE` | Una petición de corrección de alumno pendiente por solicitud |
 | `uq_plantilla_activa` | `activa_tipo` = tipo si `es_activa = 1` | Una plantilla activa por tipo |
 | `uq_dd_actual` | `padre_actual` = `A|E|R` + id si `es_actual = 1` | Un documento actual por padre y tipo |
+| `uq_dual_convocatorias_una_activa` (028) | `activa_unica` = 1 si `activa = 1` | Como mucho una convocatoria activa (sustituye a los triggers que contaban filas) |
 
 Además, `dual_reservas.id_reserva_origen` es único (018): una reserva solo se reasigna una vez.
 
-Una violación de `CHECK` llega al cliente como **400 `RESTRICCION`** con el mensaje de MySQL; una de unicidad como **409 `DUPLICADO`** (o `DOCUMENTO_CONCURRENTE` si es `uq_dd_actual`). Ver [mapeo de errores](../api-e-integraciones/README.md#mapeo-de-errores-sql).
+Una violación de `CHECK` llega al cliente como **400 `RESTRICCION`** con un mensaje en castellano (propio para las que un formulario puede provocar; genérico para el resto, con el nombre solo en el registro del servidor); una de unicidad como **409 `DUPLICADO`** (o `DOCUMENTO_CONCURRENTE` si es `uq_dd_actual`, `CONVOCATORIA_ACTIVA` si es `uq_dual_convocatorias_una_activa`). Ningún mensaje de MySQL ni nombre del esquema llega al usuario. Ver [mapeo de errores](../api-e-integraciones/README.md#mapeo-de-errores-sql).
 
 ## 2. Funciones
 
 | Función | Devuelve | Notas |
 | --- | --- | --- |
 | `fn_id_estado_reserva(nombre)`, `fn_id_estado_validacion(nombre)`, `fn_id_tipo_documento(nombre)` | id del catálogo | `SIGNAL 45000` («… no configurado») si el nombre no existe → 400 `REGLA_NEGOCIO`. Declaradas `DETERMINISTIC` aunque leen datos |
-| `fn_reservas_activas(id_oferta)` | nº de reservas PENDIENTE + CONFIRMADA | Lectura simple. Se usa en listados; desde la 018 `trg_dsee_bu_cupo` cuenta con lectura bloqueante en su lugar |
-| `fn_cupos_disponibles(id_oferta)` | `GREATEST(cantidad − activas, 0)` | Listados de ofertas elegibles |
+
+`fn_reservas_activas` y `fn_cupos_disponibles` se quitaron en la 028: hacían tres `COUNT` por fila. Los sustituye la vista `vw_plazas_oferta`.
+
+### 2.1 Vista `vw_plazas_oferta` (028)
+
+Es la única vista del esquema, y el backend la usa en todos los recuentos de plazas (`reservasService`, `solicitudesEmpresaService.getEspecialidades`, `solicitudEmpresaOfertasService`).
+
+| Columna | Valor |
+| --- | --- |
+| `id_solicitud_empresa_especialidad` | La oferta |
+| `plazas_ofertadas` | `cantidad_alumnos` |
+| `plazas_pendientes` / `plazas_confirmadas` | Reservas PENDIENTE (1) / CONFIRMADA (2) |
+| `plazas_ocupadas` | Las dos anteriores |
+| `plazas_disponibles` | `GREATEST(ofertadas − ocupadas, 0)` |
+
+`ALGORITHM=MERGE`: se funde en la consulta que la usa, así que un filtro por oferta llega al índice. Los recuentos salen de una tabla `LATERAL` que lee `ix_dual_reservas_oferta_estado` **una vez por oferta**. `SQL SECURITY INVOKER`: se ejecuta con los permisos de quien consulta. Las tres vistas anteriores (`vw_alumnos_disponibles`, `vw_cupos_empresa_disponibles`, `vw_reservas_detalle`) no las leía nadie y se ejecutaban con los permisos de su creador: se quitaron en la 028.
 
 ## 3. Procedimientos almacenados
 
@@ -48,19 +64,20 @@ Leyenda de transacción: **del llamante** = se ejecuta en la transacción (o aut
 
 | Procedimiento | Transacción | Llamado desde | Qué hace |
 | --- | --- | --- | --- |
-| `sp_validar_solicitud_alumno(id)` | del llamante | `solicitudTransiciones` | Exige CV y ANEXO_DGA **actuales y VALIDADO**; pone VALIDADO y `motivo = NULL` |
+| `sp_validar_solicitud_alumno(id)` | del llamante | `solicitudTransiciones` | Exige un documento **actual y VALIDADO** de cada tipo activo con `requerido = 1` y `ambito = 'solicitud_alumno'` (CV y Anexo DGA, más los que añada el centro); el error nombra los que faltan. Pone VALIDADO y `motivo = NULL` |
 | `sp_rechazar_solicitud_alumno(id, motivo)` | del llamante | ídem | Motivo obligatorio; RECHAZADO |
-| `sp_validar_solicitud_empresa(id)` | del llamante | `solicitudTransiciones`, `documentosService.validar` (cascada del convenio) | Exige CONVENIO actual VALIDADO y ≥ 1 oferta |
+| `sp_validar_solicitud_empresa(id)` | del llamante | `solicitudTransiciones`, `documentosService.validar` (cascada del convenio) | Igual con `ambito = 'solicitud_empresa'` (el convenio) y ≥ 1 oferta |
 | `sp_rechazar_solicitud_empresa(id, motivo)` | del llamante | ídem | |
 | `sp_validar_documento(id)` / `sp_rechazar_documento(id, motivo)` | del llamante | `documentosService` | Envoltorios finos: las reglas (firmas, versión actual) están en Node |
-| `sp_guardar_documento(padres…, tipo, archivo)` | del llamante | `documentosStore.saveByClave`, alta de alumno | Busca el documento actual con **lectura bloqueante** (`FOR UPDATE`, desde 017). Si existe: copia fila a `dual_documento_versiones` y lo sustituye (PENDIENTE, `motivo` NULL, `estado_workflow` `SUBIDO`). Si no: lo inserta con `origen_documento = 'LEGACY'` (el llamante lo corrige). Devuelve `SELECT id_documento` |
+| `sp_guardar_documento(padres…, tipo, archivo)` | del llamante | `documentosStore.saveByClave`, alta de alumno | Busca el documento actual con **lectura bloqueante** (`FOR UPDATE`, desde 017). Si existe: sustituye el fichero en la misma fila (PENDIENTE, `motivo` NULL, `estado_workflow` `SUBIDO`); el anterior no se guarda (hasta la 028 se copiaba a `dual_documento_versiones`, que nadie leía). Si no: lo inserta con `origen_documento = 'LEGACY'` (el llamante lo corrige). Devuelve `SELECT id_documento` |
 | `sp_reservar_alumno(id_sol_alumno, id_oferta)` | **del llamante, obligatoria** | `reservasTx.reservar` | Ver § 3.1 |
 | `sp_cancelar_reserva(id, motivo)` | **del llamante, obligatoria** | `reservasTx.cancelarPendiente` (empresa, reducción de cupo) | Bloquea la oferta y luego la reserva; solo PENDIENTE → CANCELADA. **Conserva** tipo de contrato, tutor y documentos (D5) |
 | `sp_cancelar_reserva_admin(id, motivo)` | **del llamante, obligatoria** | `reservasTx.cancelarAdmin` (personal, baja) | Mismo orden de bloqueo; PENDIENTE o CONFIRMADA → CANCELADA; ya cancelada → error. Conserva el tipo |
 | `sp_confirmar_reserva(id, id_tipo)` | **del llamante, obligatoria** | `reservasTx.confirmar` | Ver § 3.2 |
 | `sp_reasignar_reserva(id_origen, id_oferta_destino, motivo)` | **del llamante, obligatoria** | `reservasTx.reasignar` | Ver § 3.3 |
-| `sp_activar_convocatoria(id)` | propia | **nadie** (obsoleto; la activación es por fechas) | |
-| `sp_asignar_transporte_empresa` | del llamante | **nadie** (escribe la tabla obsoleta) | |
+| `sp_regla_motivo`, `sp_regla_documento`, `sp_regla_solicitud_empresa`, `sp_regla_usuario` (028) | del trigger | Los triggers (§ 4) | Las reglas que comparte cada par de triggers INSERT/UPDATE, escritas una sola vez |
+
+`sp_activar_convocatoria` (abría su propia transacción) y `sp_asignar_transporte_empresa` (escribía la tabla obsoleta `dual_empresa_transportes`) no los llamaba nadie: se quitaron en la 028, junto con esa tabla.
 
 **Orden de bloqueo único (018)**: solicitud de alumno → solicitud de empresa → ofertas (por id ascendente) → reservas. Nada cambia el estado de una reserva sin tener antes el bloqueo de **su oferta**, y los recuentos que bloquean nombran su índice (`FORCE INDEX`). Así una cancelación y una reserva sobre la misma oferta se serializan en lugar de interbloquearse.
 
@@ -73,8 +90,8 @@ Leyenda de transacción: **del llamante** = se ejecuta en la transacción (o aut
 ### 3.2 `sp_confirmar_reserva`
 1. Bloquea en el orden común; la reserva debe existir y estar PENDIENTE.
 2. Exige `id_tipo_contrato` guardado; si se pasa otro distinto → error.
-3. Familia: `IF(LOWER(nombre) LIKE '%beca%', 'ANEXO_III', 'ANEXO_II')`.
-4. Exige el anexo de esa familia **actual, con fichero y VALIDADO**. Las firmas las comprueba Node antes, en la misma transacción y con los bloqueos ya tomados (`reservasTx.bloquearParaConfirmar`).
+3. Familia del contrato: `IF(LOWER(nombre) LIKE '%beca%', 'beca', 'contrato')`, la misma regla que `documentCatalogue.familiaContrato`.
+4. Exige, de cada tipo activo con `requerido = 1`, `ambito = 'reserva'` y `familia_contrato` igual a esa familia (o vacía), un documento **actual, con fichero y VALIDADO**: el Anexo II o el III, más los que añada el centro (028). Las firmas las comprueba Node antes, en la misma transacción y con los bloqueos ya tomados (`reservasTx.bloquearParaConfirmar`).
 5. Pasa la reserva a CONFIRMADA (`motivo` NULL).
 6. Cancela **las demás reservas PENDIENTE del mismo alumno** con `motivo = 'Alumno asignado a otra empresa.'`; **conservan** su tipo de contrato (D5).
 
@@ -91,19 +108,19 @@ Funciona también desde una reserva **CONFIRMADA**: el alumno pierde la plaza co
 
 | Trigger | Momento | Regla |
 | --- | --- | --- |
-| `trg_convocatorias_bi_una_activa` / `_bu_` | BEFORE INSERT/UPDATE | Como mucho una convocatoria `activa = 1`. El mensaje del BU nombra `sp_activar_convocatoria` (obsoleto) |
-| `trg_dsa_bi_reglas` (017) | BEFORE INSERT solicitud alumno | `id_especialidad` obligatoria; convocatoria activa; RECHAZADO exige motivo |
-| `trg_dsa_bu_reglas` (017) | BEFORE UPDATE solicitud alumno | Motivo **solo** si RECHAZADO (y obligatorio entonces); `id_especialidad` no cambia si hay reservas activas |
-| `trg_dse_bi_reglas` | BEFORE INSERT solicitud empresa | Representante, coordinador y domicilios de la misma empresa; convocatoria activa; motivo si RECHAZADO |
-| `trg_dse_bu_reglas` | BEFORE UPDATE | Misma pertenencia; motivo solo si RECHAZADO |
+| `trg_dsa_bi_reglas` (017, 028) | BEFORE INSERT solicitud alumno | `id_especialidad` obligatoria; convocatoria activa; motivo **solo** si RECHAZADO y obligatorio entonces (`sp_regla_motivo`) |
+| `trg_dsa_bu_reglas` (017, 028) | BEFORE UPDATE solicitud alumno | `sp_regla_motivo`; `id_especialidad` no cambia si hay reservas activas |
+| `trg_dse_bi_reglas` / `_bu_` (028) | BEFORE INSERT/UPDATE solicitud empresa | `sp_regla_solicitud_empresa`: representante, coordinador y domicilios de la misma empresa; motivo solo si RECHAZADO y obligatorio entonces. El INSERT exige además la convocatoria activa |
 | `trg_dsee_bu_cupo` (018) | BEFORE UPDATE oferta | Al **reducir** `cantidad_alumnos`, no por debajo de las reservas activas, contadas con lectura bloqueante |
 | `trg_dr_bi_reglas` (018) | BEFORE INSERT reserva | Lecturas bloqueantes. Ambas solicitudes VALIDADO; misma convocatoria; **ciclo de la solicitud = ciclo de la oferta**; si activa: plazas libres y sin confirmada previa; `id_reserva_origen`, si lo hay, es una reserva cancelada de la misma solicitud; CONFIRMADA exige tipo; una fila nueva no-CONFIRMADA no admite tipo; CANCELADA exige motivo |
 | `trg_dr_bu_reglas` (018) | BEFORE UPDATE reserva | **CANCELADA es definitiva**: cualquier cambio real se rechaza. Par e `id_reserva_origen` inmutables; CONFIRMADA solo → CONFIRMADA/CANCELADA, y a CANCELADA solo por la vía administrativa; → CONFIRMADA solo desde PENDIENTE (o 2→2 para cambiar el tutor); CONFIRMADA exige tipo; CANCELADA exige motivo y **conserva el tipo**; motivo solo en CANCELADA |
-| `trg_dd_bi_reglas` / `_bu_` (012) | BEFORE INSERT/UPDATE documento | Un padre; tipo ↔ padre (`CV, ANEXO_DGA, ANEXO_2, FORMULARIO` → alumno; `CONVENIO, ANEXO_XIV, ANEXO_G, EXCEL` → empresa; `ANEXO_II, ANEXO_III, CALENDARIO, ANEXO_H` → reserva; `OTRO` en cualquiera); RECHAZADO exige motivo; (BU) motivo solo si RECHAZADO |
+| `trg_dd_bi_reglas` / `_bu_` (028) | BEFORE INSERT/UPDATE documento | `sp_regla_documento`: un padre; el padre que indica el `ambito` del tipo (`OTRO`, sin ámbito, en cualquiera); motivo solo si RECHAZADO y obligatorio entonces |
 | `trg_de_bu_inmutable` / `trg_de_bd_inmutable` (013) | BEFORE UPDATE/DELETE eventos | Siempre error |
-| `trg_dual_usuarios_bi_role_links` / `_bu_` | BEFORE INSERT/UPDATE usuario | EMPRESA ↔ contacto; ALUMNO ↔ alumno; personal ↔ email |
+| `trg_dual_usuarios_bi_role_links` / `_bu_` | BEFORE INSERT/UPDATE usuario | `sp_regla_usuario`: EMPRESA ↔ contacto; ALUMNO ↔ alumno; personal ↔ email |
 
-Todos señalan con `SQLSTATE '45000'`, que el backend traduce a **400 `REGLA_NEGOCIO`** con el texto del trigger. Esa es la razón de algunos mensajes técnicos que puede ver el usuario (p. ej. «Una reserva cancelada es definitiva y no se puede modificar. Crea una reserva nueva.»). `SQLSTATE '45001'` (procedimiento llamado sin transacción) llega como **500**.
+Todos señalan con `SQLSTATE '45000'`, que el backend traduce a **400 `REGLA_NEGOCIO`** con el texto del trigger: por eso esos textos están escritos para el usuario, en castellano y sin nombres de objetos (p. ej. «Una reserva cancelada es definitiva y no se puede modificar. Crea una reserva nueva.»).
+
+Cada par INSERT/UPDATE llama al mismo procedimiento `sp_regla_*` (028), así que una regla cambia en un solo sitio. La regla de `chk_dd_un_padre` también está en `sp_regla_documento`, porque MySQL comprueba los `CHECK` después del trigger: así el usuario recibe un mensaje legible. `SQLSTATE '45001'` (procedimiento llamado sin transacción) llega como **500**.
 
 ### 4.1 Consecuencias de diseño de los triggers
 
@@ -156,7 +173,7 @@ Atómico (todo o nada):
 | Confirmación y reserva nueva del mismo alumno | Bloqueo de la solicitud de alumno (primer paso del orden común) | La segunda espera y ve el resultado de la primera |
 | Reducción de cupo y reserva sobre la misma oferta | Bloqueo de la oferta + `trg_dsee_bu_cupo` con recuento bloqueante | Nunca se supera el cupo |
 | Dos confirmaciones del mismo alumno | `uq_dual_reservas_confirmada_alumno` | `ER_DUP_ENTRY` → 409 «El alumno ya tiene otra reserva confirmada.» |
-| Dos subidas simultáneas del mismo documento | `SELECT padre FOR UPDATE` al inicio de `saveByClave` + `FOR UPDATE` en el procedimiento + `uq_dd_actual` | Se serializan: un documento actual y el otro archivado; si aun así colisionan → 409 `DOCUMENTO_CONCURRENTE` |
+| Dos subidas simultáneas del mismo documento | `SELECT padre FOR UPDATE` al inicio de `saveByClave` + `FOR UPDATE` en el procedimiento + `uq_dd_actual` | Se serializan: un documento actual con el último fichero; si aun así colisionan → 409 `DOCUMENTO_CONCURRENTE` |
 | Dos altas públicas del mismo CIF o DNI | `SELECT … FOR UPDATE` (bloqueo de hueco) + índice único | 409 (`EMPRESA_YA_REGISTRADA` / `DUPLICADO`) o interbloqueo → 409 `CONCURRENCIA` |
 | Interbloqueo | `inTransaction` repite **toda** la operación con otra conexión (máx. 2 reintentos); fuera de `inTransaction`, `mapSqlError` | Si persiste, 409 `CONCURRENCIA` |
 | Espera de bloqueo agotada (50 s) | `mapSqlError` (017) | 409 `CONCURRENCIA`, sin reintento |
@@ -166,8 +183,8 @@ Atómico (todo o nada):
 ## 6. Consultas y patrones de acceso importantes
 
 - **Documento actual por padre y tipo** (`documentosWorkflow.latestDocs`): `WHERE (padres…) AND es_actual = 1 ORDER BY id_documento DESC`, y en memoria se queda el primero de cada `padre:clave`. Con `uq_dd_actual` ya no puede haber dos.
-- **Plazas** (`getCuposEmpresa`, `getEspecialidades`): `COUNT(CASE …)` por estado con subconsultas al catálogo por nombre, o `fn_reservas_activas`/`fn_cupos_disponibles` por fila.
+- **Plazas**: `JOIN vw_plazas_oferta` (§ 2.1) en los listados de ofertas y alumnos elegibles y en `getEspecialidades`; `getCuposEmpresa` sigue con `COUNT(CASE …)` por estado en su propia consulta.
 - **Alumnos disponibles para una empresa** (`getAlumnosDisponibles`): solicitudes VALIDADO de la convocatoria activa, con `sa.id_especialidad` dentro de las especialidades de las ofertas VALIDADO de la empresa, **sin** reserva confirmada (`LEFT JOIN … IS NULL`), con `mi_reserva_id` si la empresa ya tiene una activa.
-- **Ofertas/alumnos elegibles** para el personal: misma convocatoria y ciclo, ambos VALIDADO, `fn_cupos_disponibles > 0`, sin reserva activa del par y sin confirmada del alumno (`ACTIVE_PAIR_SQL`). En reasignación no se excluye al alumno confirmado.
+- **Ofertas/alumnos elegibles** para el personal: misma convocatoria y ciclo, ambos VALIDADO, `plazas_disponibles > 0` (vista), sin reserva activa del par y sin confirmada del alumno (`ACTIVE_PAIR_SQL`). En reasignación no se excluye al alumno confirmado.
 - **Motivo/fecha de baja**: subconsultas correlacionadas al último evento `BAJA`.
 - **Seguimiento documental**: tres consultas (todas las solicitudes de alumno, de empresa y reservas no canceladas de **todos los años**) + documentos actuales + firmas + plantillas activas; la proyección, filtrado y paginación se hacen en Node ([panel y seguimiento](../logica-de-negocio/panel-y-seguimiento.md)).

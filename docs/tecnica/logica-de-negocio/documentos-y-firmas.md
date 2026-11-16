@@ -100,7 +100,7 @@ No se comprueba la convocatoria ni el estado de la solicitud.
 
 ### 3.2 Guardado — `saveByClave` (una transacción)
 1. `SELECT … FOR UPDATE` del **padre** (antes de cualquier otra lectura, para no fijar una instantánea antigua bajo REPEATABLE READ).
-2. `CALL sp_guardar_documento`: si hay documento actual, copia la fila a `dual_documento_versiones` y la reemplaza (PENDIENTE, sin motivo); si no, inserta.
+2. `CALL sp_guardar_documento`: si hay documento actual, sustituye su fichero (PENDIENTE, sin motivo; el anterior no se guarda); si no, inserta.
 3. Procedencia: `estado_workflow` del catálogo, usuario, `origen_documento` (`SUBIDA`/`GENERADO`), plantilla, `registrado_en`, y `firmas_exentas_legacy = 0` (un fichero nuevo nunca está exento).
 4. **Firmas**: para cada firmante del tipo, si el que sube es ese firmante y es una subida, `FIRMADO` con método **`SUBIDA_FIRMADA`** (declara que el fichero lleva su firma); el resto, `SIN_FIRMAR`. Un fichero **generado** queda sin ninguna firma.
 5. Evento `SUBIR` o `GENERAR` (con `firma_declarada` si procede).

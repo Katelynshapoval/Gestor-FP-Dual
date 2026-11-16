@@ -106,7 +106,7 @@ function cupoResp({ cantidad = 3, reservas = [], oferta = true } = {}) {
     ['SELECT cantidad_alumnos FROM dual_solicitud_empresa_especialidades', oferta ? [{ cantidad_alumnos: cantidad }] : []],
     ['SELECT esp.nombre AS especialidad, emp.empresa', [{ especialidad: 'Joyería', empresa: 'ACME', email_coordinador: 'l@acme.test' }]],
     ['FOR UPDATE OF r', reservas],
-    ['fn_reservas_activas(?) AS plazas_ocupadas', [{ plazas_ocupadas: 1, plazas_disponibles: 1, plazas_confirmadas: 1, plazas_pendientes: 0 }]],
+    ['FROM vw_plazas_oferta', [{ plazas_ocupadas: 1, plazas_disponibles: 1, plazas_confirmadas: 1, plazas_pendientes: 0 }]],
   ];
 }
 

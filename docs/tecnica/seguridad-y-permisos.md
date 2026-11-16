@@ -81,7 +81,7 @@
 
 | Riesgo | Situación | Dónde |
 | --- | --- | --- |
-| Conexión a MySQL como `root` | Confirmado en desarrollo; rutinas y vistas `SQL SECURITY DEFINER` con `root`. Pendiente fuera del código: una cuenta con privilegios mínimos (SEC-010) | BD |
+| Cuenta de MySQL de la API | **Resuelto** (028, SEC-010): la API usa `DBUSER`, sin permisos sobre el esquema (`scripts/cuentaApp.js`); migraciones y copias usan la cuenta dueña. Los procedimientos y triggers se ejecutan como su creador; la única vista, como quien consulta | BD |
 | Datos personales sensibles en claro | `numeroSS`, fecha de nacimiento, DNI del tutor legal en `gf_alumnosfct` (tabla protegida); ficheros con DNI y firmas como BLOB sin cifrado a nivel de aplicación. Pendiente: cifrado del disco y de las copias, y por columna si el centro lo exige | BD |
 | Sin retención ni anonimización | No se puede borrar a nadie (FK `RESTRICT` + auditoría inmutable) | BD |
 | Tokens en `localStorage` | Accesibles a cualquier script de la página (riesgo XSS). Pendiente (SEC-011): llevar la sesión a una cookie `HttpOnly` con CSRF | `UserContext.js` |

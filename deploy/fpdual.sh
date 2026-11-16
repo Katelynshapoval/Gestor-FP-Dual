@@ -36,10 +36,12 @@ valor_env() { grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- || true; 
 comprobar_env() {
   [ -f .env ] || fallo "Falta .env. Créalo con: cp .env.example .env && chmod 600 .env, y rellénalo."
   local falta=()
-  for v in SITE_ADDRESS APP_URL DBPASS DB_ROOT_PASSWORD JWT_SECRET; do
+  for v in SITE_ADDRESS APP_URL DBADMIN_PASS DBPASS DB_ROOT_PASSWORD JWT_SECRET; do
     [ -n "$(valor_env "$v")" ] || falta+=("$v")
   done
   [ ${#falta[@]} -eq 0 ] || fallo "En .env faltan valores: ${falta[*]}"
+  [ "$(cuenta_app_nombre)" != "$(cuenta_admin_nombre)" ] && [ "$(cuenta_app_nombre)" != root ] \
+    || fallo "DBUSER tiene que ser una cuenta propia de la aplicación, distinta de DBADMIN_USER y de root."
   local jwt
   jwt="$(valor_env JWT_SECRET)"
   [ "${#jwt}" -ge 32 ] || fallo "JWT_SECRET tiene que tener al menos 32 caracteres (openssl rand -base64 48)."
@@ -48,9 +50,25 @@ comprobar_env() {
   fi
 }
 
+cuenta_admin_nombre() { local v; v="$(valor_env DBADMIN_USER)"; echo "${v:-fpdual_admin}"; }
+cuenta_app_nombre() { local v; v="$(valor_env DBUSER)"; echo "${v:-fpdual_app}"; }
+
 # A one-off backend container for the scripts: works even if the API is not
-# healthy yet (for example before the first migration).
-backend_run() { "${DC[@]}" run --rm --no-deps -T backend "$@"; }
+# healthy yet (for example before the first migration). The scripts run with
+# the schema owner; the API itself keeps its own limited account (DBUSER).
+# The passwords travel as environment variables, never on the command line.
+backend_run() {
+  DBADMIN_USER="$(cuenta_admin_nombre)" DBADMIN_PASS="$(valor_env DBADMIN_PASS)" \
+    "${DC[@]}" run --rm --no-deps -T -e DBADMIN_USER -e DBADMIN_PASS backend "$@"
+}
+
+# Creates or updates the API's account with only the rights it uses
+# (scripts/cuentaApp.js). Needs root, the only account that can grant.
+cuenta_app() {
+  DBADMIN_USER=root DBADMIN_PASS="$(valor_env DB_ROOT_PASSWORD)" \
+    "${DC[@]}" run --rm --no-deps -T -e DBADMIN_USER -e DBADMIN_PASS backend \
+    node scripts/cuentaApp.js --yes --allow-production --host %
+}
 
 confirmar() {
   local palabra="$1" texto="$2"
@@ -62,6 +80,8 @@ confirmar() {
 migrar() {
   backend_run node scripts/migrate.js up --yes --allow-production
   backend_run node scripts/migrate.js status
+  # After the migrations: the account's DELETE rights name tables.
+  cuenta_app
 }
 
 orden="${1:-}"

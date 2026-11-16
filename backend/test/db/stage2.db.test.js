@@ -242,6 +242,14 @@ test('rollback (no attempts, no new events yet): restores the 017 schema exactly
   const again = verifyDb('migrate', '--to', '018');
   assert.ok(again.ok, again.out);
   assert.deepEqual(schemaDump.diffSchemas(fx.schema018, await dump()), []);
+});
+
+// The tests below run today's backend (028 added vw_plazas_oferta, which it
+// reads): migrate to the latest version first. The 018 rules they check are
+// unchanged; the last test only checks that the 018 rollback refuses.
+test('the backend checks run on the latest schema: migrate up from 018', opts, async () => {
+  const r = verifyDb('migrate');
+  assert.ok(r.ok, r.out);
   deadlocksAntes = await deadlockStamp();
 });
 
@@ -450,7 +458,7 @@ test('invalid transitions are refused', opts, async () => {
   assert.match(await sqlError(conn.query('UPDATE dual_reservas SET id_estado_reserva = 1 WHERE id_reserva = ?', [conf.id_reserva])), /solo puede cancelarse de forma administrativa/);
   assert.match(await sqlError(inTransaction((c) => tx.cancelarPendiente(c, { idReserva: conf.id_reserva, motivo: 'x', user: user() }))), /Solo una reserva PENDIENTE/);
   assert.match(await sqlError(inTransaction((c) => tx.confirmar(c, { idReserva: fx.cancelada, idTipoContrato: null, user: user() }))), /Solo una reserva PENDIENTE puede confirmarse/);
-  assert.match(await sqlError(inTransaction((c) => tx.cancelarAdmin(c, { idReserva: fx.cancelada, motivo: 'x', user: user() }))), /ya esta cancelada/);
+  assert.match(await sqlError(inTransaction((c) => tx.cancelarAdmin(c, { idReserva: fx.cancelada, motivo: 'x', user: user() }))), /ya está cancelada/);
   assert.match(await sqlError(inTransaction((c) => tx.reasignar(c, { idReservaOrigen: fx.cancelada, idOferta: fx.e2.ofertas[fx.esp.A], motivo: 'x', user: user() }))), /reasignar una reserva cancelada/);
   assert.match(await sqlError(conn.query('UPDATE dual_reservas SET id_solicitud_empresa_especialidad = ? WHERE id_reserva = ?', [fx.e2.ofertas[fx.esp.A], fx.rebook])), /No se puede cambiar el alumno ni la especialidad/);
   assert.match(await sqlError(conn.query(

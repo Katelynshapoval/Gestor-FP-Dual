@@ -36,7 +36,7 @@ En `.env` hay que rellenar como mínimo:
 | `SITE_ADDRESS` | El nombre con el que se abre la aplicación, p. ej. `fpdual.centro.local`. |
 | `APP_URL` | El mismo con `https://` delante. Se usa en los enlaces de los correos. |
 | `CADDY_TLS` | `internal` en una intranet (certificado propio de Caddy). Un correo electrónico para usar Let's Encrypt con un dominio público. |
-| `DBPASS`, `DB_ROOT_PASSWORD` | Dos contraseñas largas: `openssl rand -base64 33`. |
+| `DBADMIN_PASS`, `DBPASS`, `DB_ROOT_PASSWORD` | Tres contraseñas largas distintas: `openssl rand -base64 33`. `DBADMIN_USER` (por defecto `fpdual_admin`) es la cuenta dueña del esquema, con la que se aplican las migraciones; `DBUSER` (por defecto `fpdual_app`) es la de la API, que `instalar` y `migrar` crean con solo los permisos que usa. |
 | `JWT_SECRET` | 32 caracteres o más: `openssl rand -base64 48`. |
 | `MAIL_MODE` | `mailpit` para la demo (con `COMPOSE_PROFILES=mailpit`), `smtp` para enviar de verdad, `log` para no enviar nada. |
 
@@ -137,7 +137,7 @@ En el equipo de desarrollo, `npm run db:backup` (en `backend/`) y `npm run db:ba
 ./deploy/fpdual.sh migrar
 ```
 
-Revisa antes las cuentas que lleva: una cuenta de desarrollo con una contraseña fácil sería una puerta abierta en el servidor. Si el volcado tiene cláusulas `DEFINER=` de un usuario que no existe en el servidor, las vistas y procedimientos fallan: sustitúyelo por el usuario de la aplicación (`DBUSER`) antes de importarlo. Borra la copia del servidor al terminar.
+Revisa antes las cuentas que lleva: una cuenta de desarrollo con una contraseña fácil sería una puerta abierta en el servidor. Si el volcado tiene cláusulas `DEFINER=` de un usuario que no existe en el servidor, las vistas y procedimientos fallan: sustitúyelo por la cuenta dueña (`DBADMIN_USER`) antes de importarlo. Borra la copia del servidor al terminar.
 
 ## Actualizar a una versión nueva
 

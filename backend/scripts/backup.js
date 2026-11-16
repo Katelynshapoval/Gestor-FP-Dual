@@ -13,7 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { connect, target } = require('./lib/connect');
+const { connect, target, adminPassword } = require('./lib/connect');
 const { dumpSchema, diffSchemas } = require('./lib/schemaDump');
 
 const BIN_DIR = process.env.MYSQL_BIN || 'C:/Program Files/MySQL/MySQL Server 8.0/bin';
@@ -26,7 +26,7 @@ function bin(name) {
 
 function run(cmd, args, { input, output } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { env: { ...process.env, MYSQL_PWD: process.env.DBPASS || '' } });
+    const child = spawn(cmd, args, { env: { ...process.env, MYSQL_PWD: adminPassword() } });
     let stderr = '';
     child.stderr.on('data', (d) => { stderr += d; });
     if (output) child.stdout.pipe(output);

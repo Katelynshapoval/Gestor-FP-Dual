@@ -17,8 +17,16 @@ const PDF = Buffer.from('%PDF-1.4 documento');
 //       empresaDeReserva, alumnoDeSolicitud, alumnoDeReserva, alumnoConReservaEn,
 //       empresaVeAlumno }
 function responder(sql, params) {
+  // The file itself, read only after the permission check.
+  if (sql.startsWith('SELECT archivo FROM dual_documentos WHERE id_documento = ?')) {
+    const d = db.docs[params[0]];
+    return d ? [{ archivo: d.archivo }] : [];
+  }
   if (sql.includes('FROM dual_documentos d') && sql.includes('WHERE d.id_documento = ?')) {
-    return db.docs[params[0]] ? [db.docs[params[0]]] : [];
+    const d = db.docs[params[0]];
+    if (!d) return [];
+    const { archivo, ...meta } = d;
+    return [{ ...meta, tiene_archivo: archivo ? 1 : 0 }];
   }
   if (sql.includes('SELECT d.idempresa FROM dual_usuarios u')) {
     return db.empresaDeUsuario ? [{ idempresa: db.empresaDeUsuario }] : [];
@@ -119,7 +127,9 @@ test('a company downloads its own convenio and reservation documents, never anot
   const como = (id, empresa = 100) => descargar(EMPRESA, id, { empresaDeUsuario: empresa });
   assert.equal((await como(1)).statusCode, 200);
   assert.equal((await como(3)).statusCode, 200);
+  pool.calls.length = 0;
   assert.equal((await como(2)).statusCode, 403);
+  assert.ok(!pool.calls.some((c) => c.sql.startsWith('SELECT archivo')), 'a refused download never reads the file');
   assert.equal((await como(1, 200)).statusCode, 403);
   assert.equal((await como(3, 200)).statusCode, 403);
   assert.equal((await como(2, 200)).statusCode, 200);

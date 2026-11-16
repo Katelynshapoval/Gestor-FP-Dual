@@ -59,7 +59,7 @@ Requisitos: Node.js 24 (npm 11) y MySQL 8.
    cp .env.example .env
    ```
 
-   Rellena en `backend/.env` al menos `DBUSER`, `DBPASS`, `DBNAME` y `JWT_SECRET` (32 caracteres aleatorios como mínimo). Para el correo:
+   Rellena en `backend/.env` al menos `DBNAME`, `DBUSER`, `DBPASS` y `JWT_SECRET` (32 caracteres aleatorios como mínimo). `DBUSER` es la cuenta de la API, con solo los permisos que usa; `DBADMIN_USER` y `DBADMIN_PASS`, la dueña del esquema (por ejemplo `root`), que usan las migraciones y los demás scripts. Crea o actualiza la de la API con `node scripts/cuentaApp.js --yes --pruebas` (con `DBADMIN_USER` = `root`). Si dejas `DBADMIN_USER` vacío, los scripts usan `DBUSER`. Para el correo:
    - `MAIL_MODE=log` no envía nada: solo lo anota en el registro del servidor.
    - `MAIL_MODE=mailpit` deja cada correo en una bandeja local en http://localhost:8025. Arráncala con `npm run mailpit` (necesita Docker).
    - `MAIL_MODE=smtp` envía de verdad.

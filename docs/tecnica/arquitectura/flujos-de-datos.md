@@ -158,7 +158,7 @@ sequenceDiagram
   ST->>DB: BEGIN
   ST->>DB: SELECT <padre> FOR UPDATE   (serializa subidas concurrentes)
   ST->>DB: CALL sp_guardar_documento
-  Note over DB: si hay documento actual: copia a dual_documento_versiones y lo reemplaza (PENDIENTE, motivo NULL)<br/>si no: INSERT (uq_dd_actual impide duplicados)
+  Note over DB: si hay documento actual: sustituye el fichero (PENDIENTE, motivo NULL)<br/>si no: INSERT (uq_dd_actual impide duplicados)
   ST->>DB: UPDATE procedencia, registrado_en, firmas_exentas_legacy = 0
   ST->>DB: firmas: el que sube y firma → FIRMADO (SUBIDA_FIRMADA); el resto → SIN_FIRMAR
   ST->>DB: INSERT dual_eventos (SUBIR | GENERAR)

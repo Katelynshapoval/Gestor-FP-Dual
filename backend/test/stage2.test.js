@@ -113,7 +113,7 @@ test('reservation endpoint: the event is written on the same connection before C
   pool.calls.length = 0;
   avisos.length = 0;
   handler = (sql) => {
-    if (sql.includes('FROM dual_solicitudes_alumno sa') && sql.includes('fn_cupos_disponibles')) {
+    if (sql.includes('FROM dual_solicitudes_alumno sa') && sql.includes('vw_plazas_oferta')) {
       return [{ estado_alumno: 'VALIDADO', estado_empresa: 'VALIDADO', conv_alumno: 1, conv_empresa: 1, esp_oferta: 2, id_especialidad_solicitud: 2, activa: 1 }];
     }
     if (sql.startsWith('CALL sp_reservar_alumno')) return [[{ id_reserva: 55 }], {}];
@@ -137,14 +137,14 @@ test('reservation endpoint: a refused transition rolls back and sends nothing', 
   pool.calls.length = 0;
   avisos.length = 0;
   handler = (sql) => {
-    if (sql.startsWith('CALL sp_cancelar_reserva_admin')) throw Object.assign(new Error('La reserva ya esta cancelada.'), { sqlState: '45000' });
+    if (sql.startsWith('CALL sp_cancelar_reserva_admin')) throw Object.assign(new Error('La reserva ya está cancelada.'), { sqlState: '45000' });
     if (sql.includes('FROM dual_reservas r') && sql.includes('FOR UPDATE')) return [{ id_reserva: 7, estado: 'CANCELADA' }];
     return [];
   };
   const res = mockRes();
   await svc.cancelarAdmin(mockReq({ params: { id: '7' }, body: { motivo: 'x' }, user: { id: 1, rol: 'ADMINISTRADOR' } }), res);
   assert.equal(res.statusCode, 400);
-  assert.match(res.body.error, /ya esta cancelada/);
+  assert.match(res.body.error, /ya está cancelada/);
   const sqls = pool.calls.map((c) => c.sql);
   assert.ok(sqls.includes('ROLLBACK'));
   assert.ok(!sqls.includes('COMMIT'));

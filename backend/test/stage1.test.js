@@ -84,3 +84,34 @@ test('mapSqlError: duplicate current document, deadlock and lock timeout become 
   const quota = mapSqlError({ sqlState: '45000', message: 'No se pueden reducir las plazas por debajo de las reservas activas.' });
   assert.equal(quota.status, 400);
 });
+
+test('mapSqlError: no MySQL wording or schema name reaches the user (028)', () => {
+  const { mapSqlError } = load('src/helpers/dbHelpers');
+  const original = console.error;
+  console.error = () => {};
+  try {
+    const activa = mapSqlError({ code: 'ER_DUP_ENTRY', sqlMessage: "Duplicate entry '1' for key 'dual_convocatorias.uq_dual_convocatorias_una_activa'" });
+    assert.deepEqual([activa.status, activa.code], [409, 'CONVOCATORIA_ACTIVA']);
+
+    const fechas = mapSqlError({ code: 'ER_CHECK_CONSTRAINT_VIOLATED', sqlMessage: "Check constraint 'chk_dual_convocatorias_fechas' is violated." });
+    assert.deepEqual([fechas.status, fechas.message], [400, 'La fecha de fin no puede ser anterior a la de inicio.']);
+    const interna = mapSqlError({ code: 'ER_CHECK_CONSTRAINT_VIOLATED', sqlMessage: "Check constraint 'chk_dd_un_padre' is violated." });
+    assert.equal(interna.status, 400);
+
+    const casos = [
+      [{ code: 'ER_NO_REFERENCED_ROW_2', sqlMessage: 'Cannot add or update a child row: a foreign key constraint fails (`proyecto_dual`.`x`)' }, 409, 'REFERENCIA'],
+      [{ code: 'ER_ROW_IS_REFERENCED_2', sqlMessage: 'Cannot delete or update a parent row' }, 409, 'EN_USO'],
+      [{ code: 'ER_DATA_TOO_LONG', sqlMessage: "Data too long for column 'motivo' at row 1" }, 400, 'DEMASIADO_LARGO'],
+      [{ code: 'ER_TRUNCATED_WRONG_VALUE', sqlMessage: "Incorrect date value: 'x' for column 'fecha_inicio'" }, 400, 'VALOR_NO_VALIDO'],
+    ];
+    for (const [err, status, code] of casos) {
+      const m = mapSqlError(err);
+      assert.deepEqual([m.status, m.code], [status, code], err.code);
+    }
+    for (const m of [interna, ...casos.map(([err]) => mapSqlError(err))]) {
+      assert.doesNotMatch(m.message, /chk_|uq_|fk_|dual_|constraint|column|Cannot|Data too/i, m.message);
+    }
+  } finally {
+    console.error = original;
+  }
+});

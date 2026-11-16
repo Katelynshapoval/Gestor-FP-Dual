@@ -38,12 +38,13 @@ async function validateReservaTargets(idSolicitudAlumno, idOferta, { requireActi
         se.id_empresa,
         ev_e.nombre AS estado_empresa,
         c.activa,
-        fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) AS plazas_disponibles
+        po.plazas_disponibles
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
        JOIN dual_estados_validacion ev_a ON ev_a.id_estado_validacion = sa.id_estado_validacion
        JOIN dual_solicitud_empresa_especialidades ee
          ON ee.id_solicitud_empresa_especialidad = ?
+       JOIN vw_plazas_oferta po ON po.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
        JOIN dual_estados_validacion ev_e ON ev_e.id_estado_validacion = se.id_estado_validacion
        JOIN dual_convocatorias c ON c.id_convocatoria = se.id_convocatoria
@@ -395,8 +396,8 @@ exports.getOfertasElegibles = async function (req, res) {
         esp.nombre AS especialidad,
         esp.codigo AS codigo_especialidad,
         ee.cantidad_alumnos AS plazas_ofertadas,
-        fn_reservas_activas(ee.id_solicitud_empresa_especialidad) AS plazas_ocupadas,
-        fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) AS plazas_disponibles
+        po.plazas_ocupadas,
+        po.plazas_disponibles
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
        JOIN dual_estados_validacion ev_a
@@ -404,6 +405,7 @@ exports.getOfertasElegibles = async function (req, res) {
         AND ev_a.nombre = 'VALIDADO'
        JOIN dual_solicitud_empresa_especialidades ee
          ON ee.id_especialidad = sa.id_especialidad
+       JOIN vw_plazas_oferta po ON po.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
         AND se.id_convocatoria = sa.id_convocatoria
        JOIN dual_estados_validacion ev_e
@@ -413,7 +415,7 @@ exports.getOfertasElegibles = async function (req, res) {
        JOIN dual_especialidades esp ON esp.id_especialidad = ee.id_especialidad
        JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
       WHERE sa.id_solicitud_alumno = ?
-        AND fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) > 0
+        AND po.plazas_disponibles > 0
         ${ACTIVE_PAIR_SQL}
       ORDER BY emp.empresa, esp.nombre`,
     [idSolicitudAlumno, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, ESTADOS_RESERVA.CONFIRMADA]
@@ -446,12 +448,13 @@ async function ofertasParaReasignar(res, idSolicitudAlumno, idOrigen) {
         esp.nombre AS especialidad,
         esp.codigo AS codigo_especialidad,
         ee.cantidad_alumnos AS plazas_ofertadas,
-        fn_reservas_activas(ee.id_solicitud_empresa_especialidad) AS plazas_ocupadas,
-        fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) AS plazas_disponibles
+        po.plazas_ocupadas,
+        po.plazas_disponibles
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
        JOIN dual_solicitud_empresa_especialidades ee
          ON ee.id_especialidad = sa.id_especialidad
+       JOIN vw_plazas_oferta po ON po.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
         AND se.id_convocatoria = sa.id_convocatoria
        JOIN dual_estados_validacion ev_e
@@ -462,7 +465,7 @@ async function ofertasParaReasignar(res, idSolicitudAlumno, idOrigen) {
        JOIN ge_empresas emp ON emp.idempresa = se.id_empresa
       WHERE sa.id_solicitud_alumno = ?
         AND ee.id_solicitud_empresa_especialidad <> ?
-        AND fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) > 0
+        AND po.plazas_disponibles > 0
         AND NOT EXISTS (
               SELECT 1
                 FROM dual_reservas r
@@ -512,6 +515,7 @@ exports.getAlumnosElegibles = async function (req, res) {
              AND er2.nombre = ?
         ) AS reserva_actual
        FROM dual_solicitud_empresa_especialidades ee
+       JOIN vw_plazas_oferta po ON po.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
        JOIN dual_estados_validacion ev_e
          ON ev_e.id_estado_validacion = se.id_estado_validacion
@@ -526,7 +530,7 @@ exports.getAlumnosElegibles = async function (req, res) {
          ON a.idalumno = sa.id_alumno
         AND sa.id_especialidad = ee.id_especialidad
       WHERE ee.id_solicitud_empresa_especialidad = ?
-        AND fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) > 0
+        AND po.plazas_disponibles > 0
         ${ACTIVE_PAIR_SQL}
       ORDER BY a.nombre`,
     [ESTADOS_RESERVA.PENDIENTE, idOferta, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, ESTADOS_RESERVA.CONFIRMADA]

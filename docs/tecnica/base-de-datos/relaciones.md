@@ -41,7 +41,6 @@ erDiagram
   dual_reservas ||--o{ dual_documentos : "ANEXO_II/III, CALENDARIO"
   dual_tipos_documento ||--o{ dual_documentos : "tipo"
   dual_documentos ||--o{ dual_documento_firmas : "1 por rol firmante"
-  dual_documentos ||--o{ dual_documento_versiones : "ficheros anteriores"
   dual_documento_plantillas |o--o{ dual_documentos : "generado desde"
   dual_tipos_documento ||--o{ dual_documento_plantillas : "versiones"
   dual_usuarios |o--o{ dual_documentos : "origen"

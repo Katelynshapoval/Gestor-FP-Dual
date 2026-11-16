@@ -720,33 +720,13 @@ exports.getEspecialidades = async function (req, res) {
          WHEN 0 THEN 'DIURNO'
          WHEN 1 THEN 'VESPERTINO'
        END AS turno,
-       fn_cupos_disponibles(
-         see.id_solicitud_empresa_especialidad
-       ) AS plazas_disponibles,
-       fn_reservas_activas(
-         see.id_solicitud_empresa_especialidad
-       ) AS plazas_ocupadas,
-       (
-         SELECT COUNT(*)
-         FROM dual_reservas r
-         JOIN dual_estados_reserva er
-           ON er.id_estado_reserva = r.id_estado_reserva
-         WHERE
-           r.id_solicitud_empresa_especialidad =
-             see.id_solicitud_empresa_especialidad
-           AND er.nombre = 'CONFIRMADA'
-       ) AS plazas_confirmadas,
-       (
-         SELECT COUNT(*)
-         FROM dual_reservas r
-         JOIN dual_estados_reserva er
-           ON er.id_estado_reserva = r.id_estado_reserva
-         WHERE
-           r.id_solicitud_empresa_especialidad =
-             see.id_solicitud_empresa_especialidad
-           AND er.nombre = 'PENDIENTE'
-       ) AS plazas_pendientes
+       po.plazas_disponibles,
+       po.plazas_ocupadas,
+       po.plazas_confirmadas,
+       po.plazas_pendientes
      FROM dual_solicitud_empresa_especialidades see
+     JOIN vw_plazas_oferta po
+       ON po.id_solicitud_empresa_especialidad = see.id_solicitud_empresa_especialidad
      JOIN dual_especialidades esp
        ON esp.id_especialidad = see.id_especialidad
      WHERE see.id_solicitud_empresa = ?`,

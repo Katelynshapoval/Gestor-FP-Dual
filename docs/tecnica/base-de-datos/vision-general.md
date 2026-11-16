@@ -33,8 +33,7 @@ flowchart TB
     OF --> RES
   end
   subgraph Doc["Documentos"]
-    DOC[dual_documentos] --> VER[dual_documento_versiones]
-    DOC --> FIR[dual_documento_firmas]
+    DOC[dual_documentos] --> FIR[dual_documento_firmas]
     PLA[dual_documento_plantillas] --> DOC
   end
   subgraph X["Cuentas, historial, catálogos"]
@@ -78,20 +77,30 @@ flowchart TB
 | Convocatoria | `dual_convocatorias.activa` | `CHECK` 0/1 | derivado de fechas por el backend |
 | Tutor, usuario, especialidad | `activo` / `activa` | `CHECK` 0/1 | — |
 
-El código resuelve los estados **por nombre** (funciones `fn_id_estado_*` en BD y subconsultas `WHERE nombre = …` en Node) desde la migración 012. Quedan identificadores numéricos fijos en: las columnas generadas `dual_reservas.id_solicitud_alumno_confirmada` (`= 2`) e `id_alumno_activo` (`IN (1, 2)`, 018), dos consultas de `reservasTx.bloquearParaConfirmar` y `bajaService`, las tres vistas (no usadas) y los `INSERT … id_estado_validacion = 1` de las altas de solicitud. Las filas de catálogo se cargan con ids fijos en el baseline, por lo que **no deben renumerarse** ([decisiones técnicas](../decisiones-tecnicas.md#ids-fijos-de-catálogo)).
+El código resuelve los estados **por nombre** (funciones `fn_id_estado_*` en BD y subconsultas `WHERE nombre = …` en Node) desde la migración 012. Quedan identificadores numéricos fijos en: las columnas generadas `dual_reservas.id_solicitud_alumno_confirmada` (`= 2`) e `id_alumno_activo` (`IN (1, 2)`, 018), dos consultas de `reservasTx.bloquearParaConfirmar` y `bajaService`, la vista `vw_plazas_oferta`, algunos triggers de reservas y los `INSERT … id_estado_validacion = 1` de las altas de solicitud. Las filas de catálogo se cargan con ids fijos en el baseline, por lo que **no deben renumerarse** ([decisiones técnicas](../decisiones-tecnicas.md#ids-fijos-de-catálogo)).
 
 ## 3. Inventario de objetos
 
 | Tipo | Cantidad | Detalle |
 | --- | --- | --- |
-| Tablas | 29 (incluida `schema_migrations`), tras añadir `dual_alumno_cambios` (020) y quitar las dos de preferencias (021) | [modelo de datos](modelo-de-datos.md) |
-| Vistas | 3: `vw_alumnos_disponibles`, `vw_cupos_empresa_disponibles`, `vw_reservas_detalle` | **Ninguna se usa** desde el backend, pruebas o scripts. Usan ids fijos (`= 2`). Pendientes de eliminar. |
-| Funciones | `fn_id_estado_reserva`, `fn_id_estado_validacion`, `fn_id_tipo_documento` (nombre → id, error si no existe); `fn_reservas_activas`, `fn_cupos_disponibles` | [integridad](integridad-y-transacciones.md#2-funciones) |
-| Procedimientos | 14 en uso o heredados | [integridad](integridad-y-transacciones.md#3-procedimientos-almacenados) |
-| Triggers | 15 (14 de la auditoría + `trg_dsee_bu_cupo` de la 017) | [integridad](integridad-y-transacciones.md#4-triggers) |
-| Claves foráneas | 55 (todas `RESTRICT` desde la 021) | [relaciones](relaciones.md) |
+| Tablas | 34 (incluida `schema_migrations`), tras la 028 | [modelo de datos](modelo-de-datos.md) |
+| Vistas | 1: `vw_plazas_oferta` (028), la usa el backend en todos los recuentos de plazas | [integridad](integridad-y-transacciones.md#21-vista-vw_plazas_oferta-028) |
+| Funciones | 3: `fn_id_estado_reserva`, `fn_id_estado_validacion`, `fn_id_tipo_documento` (nombre → id, error si no existe) | [integridad](integridad-y-transacciones.md#2-funciones) |
+| Procedimientos | 16, todos en uso: 12 que llama el backend y 4 `sp_regla_*` que llaman los triggers (028) | [integridad](integridad-y-transacciones.md#3-procedimientos-almacenados) |
+| Triggers | 13 | [integridad](integridad-y-transacciones.md#4-triggers) |
+| Claves foráneas | 68 (todas `RESTRICT`, salvo las `CASCADE` de las tablas de correo) | [relaciones](relaciones.md) |
 
-Objetos obsoletos que siguen en el esquema: tabla `calendario` (2 filas con fichero en desarrollo), tabla `dual_empresa_transportes` (sustituida por la 014), procedimientos `sp_activar_convocatoria` y `sp_asignar_transporte_empresa`, y las tres vistas. Ninguno lo usa la aplicación ([limitaciones](../limitaciones-y-pendientes.md)).
+La 028 quitó lo que no usaba nada: tres vistas, dos funciones, dos procedimientos, las tablas `dual_empresa_transportes` y `dual_documento_versiones` y tres índices redundantes. Queda la tabla `calendario` (2 filas con fichero en desarrollo): no la usa la aplicación, pero puede leerla otra herramienta del centro ([limitaciones](../limitaciones-y-pendientes.md)).
+
+### 3.1 Cuentas de MySQL
+
+| Cuenta | Para qué | Permisos |
+| --- | --- | --- |
+| `DBUSER` (`fpdual_app`) | La API | `SELECT`, `INSERT`, `UPDATE`, `EXECUTE` en la base; `DELETE` solo en `dual_correo_adjuntos`, `dual_firma_sesiones` y `dual_solicitud_empresa_transportes`. Sin `CREATE`, `ALTER`, `DROP`, `TRIGGER` ni `GRANT` |
+| `DBADMIN_USER` | Migraciones, copias, datos de demostración, pruebas de BD | Dueña del esquema (todos los permisos sobre la base) |
+| `root` | Crear la cuenta de la API y las copias del servidor | — |
+
+[`scripts/cuentaApp.js`](../../../backend/scripts/cuentaApp.js) crea o actualiza la cuenta de la API y es la única lista de sus permisos: un `DELETE FROM` nuevo en el backend necesita su tabla en `BORRADO`. Los triggers y procedimientos se ejecutan con los permisos de su creador (la cuenta dueña), así que la API solo necesita `EXECUTE`; la vista, con los de quien consulta. Como la API no puede tocar el esquema, tampoco puede quitar los triggers que hacen inmutable `dual_eventos`.
 
 ## 4. Datos de catálogo y datos de entorno
 
@@ -104,7 +113,7 @@ Objetos obsoletos que siguen en el esquema: tabla `calendario` (2 filas con fich
 
 - **Acceso directo con SQL parametrizado** desde los servicios; no hay ORM ni repositorios.
 - **Lecturas de listados**: consultas con muchos `JOIN` sobre claves primarias/foráneas (los planes revisados en la auditoría son `eq_ref`/`ref`). Los listados del personal **no filtran por convocatoria en SQL** (`GET /reservas`, Seguimiento, `/solicitudes/empresa/todas`): cargan todos los años y, en Seguimiento, filtran y paginan en memoria ([limitaciones](../limitaciones-y-pendientes.md#2-rendimiento)).
-- **Ficheros**: PDF y DOCX se guardan como `LONGBLOB` en `dual_documentos.archivo`, `dual_documento_versiones.archivo` y `dual_documento_plantillas.archivo`. Los listados nunca seleccionan `archivo`; calculan `archivo IS NULL` como `tiene_archivo`.
+- **Ficheros**: PDF y DOCX se guardan en la base de datos (`LONGBLOB` en `dual_documentos.archivo` y `dual_documento_plantillas.archivo`; imágenes de firma y PDF adjuntos de correo en `MEDIUMBLOB`). Así un documento, sus firmas, su estado y su evento se guardan juntos o no se guarda nada, y una sola copia de la base lo incluye todo. InnoDB guarda los ficheros grandes fuera de la fila, y los listados nunca seleccionan `archivo` (calculan `archivo IS NULL` como `tiene_archivo`), así que no los leen. La descarga comprueba el permiso antes de leer el fichero. Al sustituir un fichero no se guarda el anterior (028). Si el volumen llegara a varios GB, la alternativa es guardar en la base solo la ruta y una suma de comprobación ([decisiones técnicas](../decisiones-tecnicas.md)).
 - **Escrituras críticas** dentro de transacciones del backend. Desde la 018 ningún procedimiento abre su propia transacción: las reservas se hacen con `inTransaction` ([integridad y transacciones](integridad-y-transacciones.md)).
 - **Auditoría** en `dual_eventos` (solo ids y estados, sin datos personales).
 

@@ -45,7 +45,7 @@ async function withTransaction(conn, fn) {
   }
 }
 
-// PM-6: the procedure (which archives the previous version), the provenance
+// PM-6: the procedure (which replaces the file in place), the provenance
 // update, the signature reset and the audit event commit together.
 // provenance: { origen: 'SUBIDA'|'GENERADO', idUsuario, rol, idPlantilla }
 async function saveByClave(clave, parents, buffer, provenance = {}, { conn = null } = {}) {

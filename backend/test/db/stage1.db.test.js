@@ -276,6 +276,9 @@ test('DB-03: a second current document for the same parent and type is refused',
 // (027 added columns it reads and writes): migrate to the latest version first.
 // The last test rolls back to 017 again.
 test('the backend checks run on the latest schema: migrate up from 017', opts, async () => {
+  // 028 drops dual_documento_versiones and stops while it has rows (export
+  // first, D4). These are the synthetic copies the 017 uploads above made.
+  await conn.query('DELETE FROM dual_documento_versiones');
   const r = verifyDb('migrate');
   assert.ok(r.ok, r.out);
 });
@@ -299,8 +302,9 @@ test('DB-03: concurrent first uploads through the backend leave exactly one curr
   assert.equal(ids.size, 1, 'the three uploads hit the same document row');
   const cur = await one("SELECT COUNT(*) AS n FROM dual_documentos WHERE id_solicitud_alumno = ? AND es_actual = 1", [fx.sol2]);
   assert.equal(Number(cur.n), 1);
-  const ver = await one('SELECT COUNT(*) AS n FROM dual_documento_versiones WHERE id_documento = ?', [[...ids][0]]);
-  assert.equal(Number(ver.n), 2, 'the first file is current, the other two writes archived one version each');
+  // 028: a replaced file is not kept anywhere; the row holds the last write.
+  const fila = await one('SELECT archivo FROM dual_documentos WHERE id_documento = ?', [[...ids][0]]);
+  assert.match(fila.archivo.toString(), /^%PDF concurrente [123]$/);
 });
 
 test('DB-03: an upload inside a transaction whose snapshot predates another upload does not duplicate', opts, async () => {
@@ -348,7 +352,7 @@ test('DB-10: the backend maps the refusal to HTTP 400', opts, async () => {
 });
 
 test('rollback restores the 016 schema; 017 can then be applied again', opts, async () => {
-  for (const v of ['027', '026', '025', '024', '023', '022', '021', '020', '019', '018']) {
+  for (const v of ['028', '027', '026', '025', '024', '023', '022', '021', '020', '019', '018']) {
     const back = verifyDb('rollback', v);
     assert.ok(back.ok, `rollback ${v}\n${back.out}`);
   }

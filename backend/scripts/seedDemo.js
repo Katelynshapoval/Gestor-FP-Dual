@@ -163,7 +163,7 @@ async function main() {
     // TRUNCATE is DDL (it commits), so the real run wipes first and then loads inside one
     // transaction; if the load fails the tables stay empty: restore backups/ or run again.
     // The dry run wipes inside its transaction with DELETE (audit events are left alone).
-    const TABLAS = ['dual_documento_firmas', 'dual_documento_versiones', 'dual_documentos', 'dual_empresa_cambios', 'dual_empresa_transportes',
+    const TABLAS = ['dual_documento_firmas', 'dual_documentos', 'dual_empresa_cambios',
       'dual_empresa_tutores', 'dual_eventos', 'dual_reservas', 'dual_solicitud_empresa_especialidades', 'dual_solicitud_empresa_transportes',
       'dual_solicitudes_alumno', 'dual_solicitudes_empresa', 'dual_especialidades',
       'ge_contactos', 'ge_domicilios', 'ge_empresas', 'gf_alumnosfct',

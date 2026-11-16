@@ -4,7 +4,7 @@
 
 ### Cada fichero nuevo reinicia revisión y firmas
 - **Contexto**: `documentosStore.saveByClave` (todas las subidas y generaciones).
-- **Comportamiento**: el documento vuelve a PENDIENTE sin motivo; todas las firmas pasan a `SIN_FIRMAR` salvo la del que sube si es firmante; el fichero anterior se archiva en `dual_documento_versiones` **sin** sus firmas.
+- **Comportamiento**: el documento vuelve a PENDIENTE sin motivo; todas las firmas pasan a `SIN_FIRMAR` salvo la del que sube si es firmante; el fichero anterior no se guarda (desde la 028).
 - **Motivo**: «Signatures belong to a file: a new file starts unsigned» (comentario); impide que firmas antiguas validen un fichero nuevo.
 - **Consecuencias**: se pierde quién firmó la versión anterior. Sustituir un Anexo firmado por dos partes obliga a recoger otra vez las tres firmas.
 

@@ -1,6 +1,6 @@
 // Phase 2 integration tests against the REAL development database.
-// Skipped unless DB_INTEGRATION=1. Requires migrations 012–018 applied (018: the reservation
-// procedures run only inside a transaction, and re-booking creates a new row).
+// Skipped unless DB_INTEGRATION=1. Requires migrations 012–028 applied (018: the reservation
+// procedures run only inside a transaction, and re-booking creates a new row; 028: vw_plazas_oferta).
 //   DB_INTEGRATION=1 node --test test/db/phase2.db.test.js
 //
 // What they write: two temporary reservations (two attempts for one student/offer pair
@@ -26,7 +26,6 @@ test.after(async () => {
   try {
     if (created.documentos.length) {
       await conn.query('DELETE FROM dual_documento_firmas WHERE id_documento IN (?)', [created.documentos]);
-      await conn.query('DELETE FROM dual_documento_versiones WHERE id_documento IN (?)', [created.documentos]);
       await conn.query('DELETE FROM dual_documentos WHERE id_documento IN (?)', [created.documentos]);
     }
     if (created.reservas.length) {
@@ -52,10 +51,10 @@ test('baseline and migrations are recorded', opts, async () => {
   for (const v of ['000', '012', '013', '014', '015']) assert.ok(versions.includes(v), `falta ${v}`);
 });
 
-test('V-1: the student validation procedure asks for CV and ANEXO_DGA by name', opts, async () => {
+test('V-1: the student validation procedure names the required types it misses (028: from dual_tipos_documento)', opts, async () => {
   // A non-existent application has no documents: the procedure stops before any UPDATE.
   const msg = await sqlError(conn.query('CALL sp_validar_solicitud_alumno(-1)'));
-  assert.match(msg, /CV y el Anexo DGA/);
+  assert.match(msg, /faltan por validar: CV, Anexo DGA/);
 });
 
 test('triggers resolve document types by name (ANEXO_DGA cannot hang from a reservation)', opts, async () => {
@@ -94,11 +93,12 @@ async function freePair() {
        FROM dual_solicitudes_alumno sa
        JOIN gf_alumnosfct a ON a.idalumno = sa.id_alumno
        JOIN dual_solicitud_empresa_especialidades ee ON ee.id_especialidad = sa.id_especialidad
+       JOIN vw_plazas_oferta po ON po.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad
        JOIN dual_solicitudes_empresa se ON se.id_solicitud_empresa = ee.id_solicitud_empresa
                                        AND se.id_convocatoria = sa.id_convocatoria
       WHERE sa.id_estado_validacion = fn_id_estado_validacion('VALIDADO')
         AND se.id_estado_validacion = fn_id_estado_validacion('VALIDADO')
-        AND fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) > 0
+        AND po.plazas_disponibles > 0
         AND NOT EXISTS (SELECT 1 FROM dual_reservas r
                          WHERE r.id_solicitud_alumno = sa.id_solicitud_alumno
                            AND r.id_solicitud_empresa_especialidad = ee.id_solicitud_empresa_especialidad)
@@ -140,7 +140,7 @@ test('WF-4 / WF-5 (as of 018): re-booking creates a new attempt; confirmation ne
   await inTx(async () => {
     assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idReserva])), /tipo de contrato/);
     await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [beca.id_tipo_contrato, idReserva]);
-    assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idReserva])), /firmado y validado/);
+    assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idReserva])), /faltan firmados y validados: Anexo/);
     assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, ?)', [idReserva, beca.id_tipo_contrato + 1])), /no coincide/);
   });
 
@@ -175,7 +175,7 @@ test('WF-4 / WF-5 (as of 018): re-booking creates a new attempt; confirmation ne
   // The earlier attempt's validated annex cannot support the new one.
   await inTx(async () => {
     await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [beca.id_tipo_contrato, idNueva]);
-    assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idNueva])), /firmado y validado/);
+    assert.match(await sqlError(conn.query('CALL sp_confirmar_reserva(?, NULL)', [idNueva])), /faltan firmados y validados: Anexo III/);
   });
   await inTx(() => conn.query('CALL sp_cancelar_reserva(?, ?)', [idNueva, 'Fin de la prueba de integración']));
 });

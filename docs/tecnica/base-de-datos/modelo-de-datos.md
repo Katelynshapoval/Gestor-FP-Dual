@@ -14,7 +14,7 @@ Curso académico del programa. Todo el proceso se agrupa por convocatoria.
 | `id_convocatoria` | INT PK AI | |
 | `nombre` | VARCHAR(20) NN **UQ** | p. ej. «2026/2027». Duplicado → 409 `DUPLICADO` |
 | `fecha_inicio`, `fecha_fin` | DATE NN | `CHECK fecha_fin >= fecha_inicio` |
-| `activa` | TINYINT(1) NN, por defecto 0 | **Derivado**: el backend lo recalcula según `CURDATE()` ([convocatorias](../logica-de-negocio/convocatorias.md)). Triggers `trg_convocatorias_bi/bu_una_activa`: como mucho una activa |
+| `activa` | TINYINT(1) NN, por defecto 0 | **Derivado**: el backend lo recalcula según `CURDATE()` ([convocatorias](../logica-de-negocio/convocatorias.md)). Columna generada `activa_unica` con índice único `uq_dual_convocatorias_una_activa` (028): como mucho una activa |
 
 Uso: casi todas las consultas filtran por `c.activa = 1` para decidir qué se puede crear o editar. No hay endpoint de borrado.
 
@@ -128,9 +128,6 @@ Ciclo ofertado y número de plazas de una solicitud de empresa. En el código se
 ### `dual_solicitud_empresa_transportes` (014)
 PK `(id_solicitud_empresa, id_transporte)`. Se reescribe entera (`DELETE` + `INSERT IGNORE`) al guardar.
 
-### `dual_empresa_transportes` (obsoleta)
-Transportes por empresa anteriores a la 014. No la lee nada; se conserva para el rollback.
-
 ### `dual_empresa_tutores`
 Vincula una empresa con un contacto que actúa como tutor. **Es por empresa, no por convocatoria.**
 
@@ -200,7 +197,7 @@ Documento **actual** (o histórico, si `es_actual = 0`) de un padre y tipo.
 | `archivo` LONGBLOB NULL | PDF. Los listados solo calculan `archivo IS NULL` |
 | `id_estado_validacion` NN, por defecto 1 | Estado de **revisión** (independiente de las firmas) |
 | `motivo` | Solo si RECHAZADO |
-| `estado_workflow` VARCHAR(30) | Informativo heredado (`SUBIDO`, `SUBIDO_FIRMADO`); no gobierna reglas |
+| `estado_workflow` VARCHAR(30) | Informativo heredado; no gobierna reglas. `chk_dd_estado_workflow` (028): `NULL`, `SUBIDO` o `SUBIDO_FIRMADO` |
 | `es_actual` TINYINT NN, por defecto 1 | 0 = versión retirada (cambio de familia de contrato o, antes de la 018, reserva reactivada) que se conserva como historial |
 | `id_usuario_origen` FK, `origen_documento` (`CHECK IN ('SUBIDA','GENERADO','LEGACY','HEREDADO')`), `id_plantilla` FK, `registrado_en` | Procedencia. `LEGACY` = anterior al registro de procedencia. `HEREDADO` (026) = copia del convenio vigente de la empresa en una solicitud nueva |
 | `id_documento_origen` FK NULL (026) | Documento del que es copia un `HEREDADO` (`chk_documentos_heredado`: HEREDADO ⇔ con origen) |
@@ -208,8 +205,7 @@ Documento **actual** (o histórico, si `es_actual = 0`) de un padre y tipo.
 | `firma_posiciones` JSON NULL (027) | Página y rectángulo de cada marca de firma del fichero actual, y `_hoja` si se añadió una «Hoja de firmas». NULL = sin marcas |
 | `padre_actual` VARCHAR(16) (generada, 017) | `'A'|'E'|'R' + id` si `es_actual = 1`, si no NULL; **UQ `uq_dd_actual (padre_actual, id_tipo_documento)`** → como mucho un documento actual por padre y tipo |
 
-### `dual_documento_versiones`
-Copia de un fichero anterior cada vez que se sustituye (`sp_guardar_documento`): `archivo`, estado, motivo, `estado_workflow`, procedencia, `archivado_en`. **Ningún código la lee** todavía. No guarda las firmas del fichero sustituido, ni tiene FK sobre estado/usuario/plantilla, y su `id_estado_validacion` es `INT` ().
+Al subir o generar un fichero nuevo se sustituye el anterior en la misma fila; el anterior no se guarda. La tabla `dual_documento_versiones`, donde se copiaba sin que nadie la leyera, se quitó en la 028.
 
 ### `dual_documento_firmas`
 Una fila por documento y rol firmante.
@@ -339,8 +335,8 @@ Historial del ejecutor de migraciones: `version` CHAR(3) PK, `name`, `checksum` 
 
 | Concepto | Cálculo | Dónde |
 | --- | --- | --- |
-| Plazas ocupadas | Reservas PENDIENTE + CONFIRMADA de la oferta | `fn_reservas_activas`, consultas de cupos |
-| Plazas disponibles | `GREATEST(cantidad_alumnos − ocupadas, 0)` | `fn_cupos_disponibles` |
+| Plazas ocupadas | Reservas PENDIENTE + CONFIRMADA de la oferta | Vista `vw_plazas_oferta` (028) |
+| Plazas disponibles | `GREATEST(cantidad_alumnos − ocupadas, 0)` | Vista `vw_plazas_oferta` |
 | Familia de anexo de una reserva | `anexoClaveForContrato(tc.nombre)` / `anexoClaveSql` / `sp_confirmar_reserva` | [`documentCatalogue.js`](../../../backend/src/services/documentCatalogue.js) |
 | Estado operativo de un documento | `deriveDocumentState`: sin fichero → `PENDIENTE_SUBIDA`/`PENDIENTE_GENERACION`; VALIDADO; RECHAZADO; firmas pendientes → `PENDIENTE_FIRMA`; revisable → `PENDIENTE_VALIDACION`; si no → `COMPLETO` | Ídem |
 | Motivo y fecha de baja | Último evento `BAJA` de la solicitud | Subconsultas en `getAll` de solicitudes |

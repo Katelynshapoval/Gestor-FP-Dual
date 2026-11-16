@@ -43,10 +43,18 @@
 | --- | --- | --- | --- |
 | `SQLSTATE 45000` (procedimientos y triggers) | 400 | `REGLA_NEGOCIO` | El texto del `SIGNAL` |
 | `ER_DUP_ENTRY` en `uq_dd_actual` | 409 | `DOCUMENTO_CONCURRENTE` | «Este documento se acaba de guardar desde otra sesión…» |
+| `ER_DUP_ENTRY` en `uq_dual_convocatorias_una_activa` (028) | 409 | `CONVOCATORIA_ACTIVA` | «Ya hay otra convocatoria activa. Solo puede haber una.» |
+| `ER_DUP_ENTRY` en `uq_dual_convocatorias_nombre` | 409 | `DUPLICADO` | «Ya existe una convocatoria con ese nombre.» |
 | Otro `ER_DUP_ENTRY` | 409 | `DUPLICADO` | «Ya existe un registro con esos datos.» |
 | `ER_LOCK_DEADLOCK`, `ER_LOCK_WAIT_TIMEOUT` | 409 | `CONCURRENCIA` | «Otra operación estaba modificando los mismos datos…» |
-| `ER_CHECK_CONSTRAINT_VIOLATED` | 400 | `RESTRICCION` | Texto de MySQL |
+| `ER_CHECK_CONSTRAINT_VIOLATED` | 400 | `RESTRICCION` | Un texto propio para las restricciones que puede provocar un formulario (fechas de la convocatoria, plazas, tipos de documento); para el resto, «Los datos no cumplen las reglas de la aplicación.» y el nombre solo en el registro |
+| `ER_NO_REFERENCED_ROW_2` (clave foránea) | 409 | `REFERENCIA` | «Alguno de los datos elegidos ya no existe…» |
+| `ER_ROW_IS_REFERENCED_2` | 409 | `EN_USO` | «No se puede borrar: hay otros datos que dependen de este registro.» |
+| `ER_DATA_TOO_LONG` | 400 | `DEMASIADO_LARGO` | «Alguno de los textos es demasiado largo.» |
+| Fecha o número no válido, `NULL` no admitido | 400 | `VALOR_NO_VALIDO` | «Alguno de los datos no tiene un valor válido.» |
 | Cualquier otro | 500 | `INTERNAL` | «Error interno del servidor.» (y `console.error`) |
+
+Todos los mensajes están en castellano y ninguno muestra nombres de tablas, columnas o restricciones.
 
 Varios servicios capturan antes casos concretos (p. ej. CIF duplicado en el alta → 409 con mensaje propio; `ER_DUP_ENTRY` al confirmar → 409 «El alumno ya tiene otra reserva confirmada.»).
 
@@ -69,7 +77,7 @@ Varios servicios capturan antes casos concretos (p. ej. CIF duplicado en el alta
 
 | Integración | Uso | Configuración | Reintentos / timeouts | Si falla |
 | --- | --- | --- | --- | --- |
-| **MySQL 8** | Persistencia | `DBHOST`, `DBUSER`, `DBPASS`, `DBNAME`, `DBSSL`, `DBSSL_CA` | Pool sin reintentos de conexión; `inTransaction` repite la operación tras un interbloqueo (máx. 2); espera de bloqueo de InnoDB (50 s en desarrollo); `queueLimit: 0` (cola ilimitada de peticiones de conexión) | Errores mapeados (§ 2); con la BD caída, 500 |
+| **MySQL 8** | Persistencia | `DBHOST`, `DBUSER`, `DBPASS`, `DBNAME`, `DBSSL`, `DBSSL_CA` (scripts: `DBADMIN_USER`, `DBADMIN_PASS`) | Pool sin reintentos de conexión; `inTransaction` repite la operación tras un interbloqueo (máx. 2); espera de bloqueo de InnoDB (50 s en desarrollo); `queueLimit: 0` (cola ilimitada de peticiones de conexión) | Errores mapeados (§ 2); con la BD caída, 500 |
 | **Gmail SMTP** (`nodemailer`, `service: 'gmail'`) | Notificaciones, confirmaciones, convenio adjunto, recuperación | `MAIL_MODE`, `EMAIL_USER`, `EMAIL_PASS`, `MAIL_REDIRECT_TO`, `APP_URL` | Ninguno | Se registra y se pierde ([correo](correo-electronico.md)) |
 | **Chromium** (`puppeteer`) | DOCX→HTML→PDF | Navegador descargado por `puppeteer`; sin JavaScript y sin red (solo `data:`) | Ninguno; `waitUntil: 'load'` sin timeout propio | Error en la petición de generación; consola en el alta de empresa |
 | **`docx-templates` / `mammoth`** | Relleno de plantillas y conversión | Plantilla activa en BD | — | Ídem |

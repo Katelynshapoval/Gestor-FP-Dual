@@ -397,28 +397,10 @@ exports.updateCupoEspecialidad = async function (req, res) {
   }
 
   const [ocup] = await pool.query(
-    `SELECT
-       fn_reservas_activas(?) AS plazas_ocupadas,
-       fn_cupos_disponibles(?) AS plazas_disponibles,
-       (
-         SELECT COUNT(*)
-         FROM dual_reservas r
-         JOIN dual_estados_reserva er
-           ON er.id_estado_reserva = r.id_estado_reserva
-         WHERE
-           r.id_solicitud_empresa_especialidad = ?
-           AND er.nombre = 'CONFIRMADA'
-       ) AS plazas_confirmadas,
-       (
-         SELECT COUNT(*)
-         FROM dual_reservas r
-         JOIN dual_estados_reserva er
-           ON er.id_estado_reserva = r.id_estado_reserva
-         WHERE
-           r.id_solicitud_empresa_especialidad = ?
-           AND er.nombre = 'PENDIENTE'
-       ) AS plazas_pendientes`,
-    [idOferta, idOferta, idOferta, idOferta],
+    `SELECT plazas_ocupadas, plazas_disponibles, plazas_confirmadas, plazas_pendientes
+       FROM vw_plazas_oferta
+      WHERE id_solicitud_empresa_especialidad = ?`,
+    [idOferta],
   );
 
   const stats = ocup[0] || {};

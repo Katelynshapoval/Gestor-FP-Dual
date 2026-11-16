@@ -56,7 +56,7 @@ Every writing command needs `--yes`, prints the target database first, records e
 
 MySQL commits DDL statement by statement, so a failing file can be half applied. The runner stops at the failing statement, prints it and records nothing for that file. Read the error, run the matching `rollback/NNN_*.down.sql` (or only its steps for the objects that were created), fix the cause and run `up` again.
 
-Migrations 015, 017 and 018 start with a guard procedure that checks the data and stops **before changing anything** when a new rule would be violated. When a guard stops the run, only the guard procedure itself is left behind (`sp_015_comprobar_dni`, `sp_017_comprobar`, `sp_018_comprobar`): drop it, fix the rows with the audit queries at the end of the migration file, and run `up` again.
+Migrations 015, 017, 018 and 028 start with a guard procedure that checks the data and stops **before changing anything** when a new rule would be violated. When a guard stops the run, only the guard procedure itself is left behind (`sp_015_comprobar_dni`, `sp_017_comprobar`, `sp_018_comprobar`, `sp_028_comprobar`): drop it, fix the rows with the audit queries at the end of the migration file, and run `up` again.
 
 ## Rolling back
 

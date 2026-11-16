@@ -11,16 +11,17 @@
 | Procedimientos con transacción propia: la auditoría se escribe tras el commit y la baja no es atómica | **Resuelta** en la 018 (`inTransaction`) |
 | Órdenes de bloqueo distintos entre procedimientos (posibles interbloqueos) | **Resuelta** en la 018 (orden único; un interbloqueo real encontrado en pruebas y eliminado) |
 | La reversión de la 018 solo es posible antes del primer reintento de un par o del primer evento `OFERTA`/`TUTOR`; después, solo restaurando la copia | Aceptada |
-| Firmas de versiones anteriores perdidas; `dual_documento_versiones` incompleta y sin lectores | Abierta |
+| Al sustituir un fichero se pierden el anterior y sus firmas (la 028 quitó `dual_documento_versiones`, que nadie leía) | Aceptada |
 | Auditoría: no cubre los datos de empresa, convocatorias, plantillas ni la contraseña de alumnos y empresas | Abierta |
 | Las ediciones de `ge_empresas` y de tutores no guardan historial | Abierta |
 | Familia de anexo deducida del nombre del tipo de contrato | Baja prioridad |
-| Objetos obsoletos: `calendario`, `dual_empresa_transportes`, `sp_activar_convocatoria`, `sp_asignar_transporte_empresa`, 3 vistas, índices `ix_dual_empresa_tutores_empresa` e `ix_plantilla_tipo` | Pendiente de exportar y borrar |
+| Objetos obsoletos | **Resuelta** en la 028, salvo la tabla `calendario` (puede leerla otra herramienta del centro) |
+| Un convenio heredado (026) guarda su propia copia del PDF en vez de leer el del original | Aceptada: un PDF por empresa y año; evitarlo obligaría a cambiar una docena de consultas de documentos |
 
 ## 2. Rendimiento
 
 - `GET /reservas`, `GET /solicitudes/empresa/todas`, `GET /solicitudes/alumno` (sin parámetro) y Seguimiento cargan todos los años; Seguimiento construye en memoria los documentos esperados y luego filtra y pagina. Crecen con los años; no se ha medido con volúmenes reales.
-- Subconsultas correlacionadas por fila (`fn_cupos_disponibles`, últimos eventos de baja, anexo actual por reserva).
+- Subconsultas correlacionadas por fila (últimos eventos de baja, anexo actual por reserva). Las plazas se leen de `vw_plazas_oferta` (028): un recuento por oferta en lugar de tres.
 - Un Chromium por generación de documento.
 - Búsquedas `LIKE '%…%'` y en memoria.
 
@@ -59,13 +60,11 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 
 | Dónde | Dice | Hace |
 | --- | --- | --- |
-| Mensaje de `trg_convocatorias_bu_una_activa` | «Use sp_activar_convocatoria…» | El procedimiento no se usa; la activación es por fechas |
 
 ## 7. Pendiente de confirmar
 
 | Cuestión | Motivo |
 | --- | --- |
 | Si otras herramientas del centro leen las tablas protegidas o `calendario` | Fuera del repositorio |
-| Volúmenes reales y tamaño de ficheros; cuenta de MySQL, zona horaria y despliegue de un entorno real | No hay producción |
+| Volúmenes reales y tamaño de ficheros, zona horaria y despliegue de un entorno real | No hay producción |
 | Comportamiento detrás de un proxy inverso (CORS, servido de la SPA) | No hay configuración de despliegue. La IP del limitador se ajusta con `TRUST_PROXY` |
-| Uso previsto de `dual_documento_versiones` | Ningún código la lee |

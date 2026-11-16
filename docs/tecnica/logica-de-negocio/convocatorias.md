@@ -1,6 +1,6 @@
 # Convocatorias
 
-> Código: [`convocatoriasService.js`](../../../backend/src/services/convocatoriasService.js), triggers `trg_convocatorias_bi/bu_una_activa`. Pruebas: `backend/test/phase3.test.js`, `phase4.test.js` (estado público).
+> Código: [`convocatoriasService.js`](../../../backend/src/services/convocatoriasService.js), índice único `uq_dual_convocatorias_una_activa` (028). Pruebas: `backend/test/phase3.test.js`, `phase4.test.js` (estado público).
 
 ## 1. Activación automática por fechas — `syncConvocatoriaActiva`
 
@@ -41,5 +41,5 @@ Las operaciones de escritura leen la convocatoria activa con `getActiveConvocato
 ## 5. Lo que no existe
 
 - No hay borrado de convocatorias.
-- No hay activación manual: `sp_activar_convocatoria` existe en BD pero no se usa (y el mensaje del trigger de actualización todavía lo menciona).
+- No hay activación manual: la activa la deciden las fechas. Una segunda convocatoria activa la rechaza el índice único y llega como 409 `CONVOCATORIA_ACTIVA`.
 - No hay cierre anticipado distinto de cambiar las fechas (que solo es posible con la convocatoria inactiva).

@@ -13,13 +13,15 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: ${DBNAME:-proyecto_dual}
-      MYSQL_USER: ${DBUSER:-fpdual}
-      MYSQL_PASSWORD: ${DBPASS:?Set DBPASS in .env}
+      # The schema owner (migrations). The API's own account, DBUSER, is
+      # created by ./deploy/fpdual.sh with scripts/cuentaApp.js.
+      MYSQL_USER: ${DBADMIN_USER:-fpdual_admin}
+      MYSQL_PASSWORD: ${DBADMIN_PASS:?Set DBADMIN_PASS in .env}
       TZ: Europe/Madrid
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
-      # The baseline creates functions and triggers with the app user.
+      # Migrations create functions and triggers with the owner account.
       - --log-bin-trust-function-creators=1
     volumes:
       - db-data:/var/lib/mysql
@@ -46,7 +48,7 @@ services:
       TZ: Europe/Madrid
       DBHOST: db
       DBNAME: ${DBNAME:-proyecto_dual}
-      DBUSER: ${DBUSER:-fpdual}
+      DBUSER: ${DBUSER:-fpdual_app}
       DBPASS: ${DBPASS}
       DBSSL: "false"
       # One proxy (nginx in the web container) sits in front of the API.

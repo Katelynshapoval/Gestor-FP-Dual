@@ -207,7 +207,7 @@ async function loadDocumentoMeta(idDocumento) {
   const [rows] = await pool.query(
     `SELECT
         d.id_documento,
-        d.archivo,
+        d.archivo IS NOT NULL AS tiene_archivo,
         d.id_solicitud_alumno,
         d.id_solicitud_empresa,
         d.id_reserva,
@@ -347,7 +347,7 @@ async function canDownloadDocumento(user, doc) {
 exports.descargar = async function (req, res) {
   const id = parseInt(req.params.id, 10);
   const doc = await loadDocumentoMeta(id);
-  if (!doc || !doc.archivo) {
+  if (!doc || !doc.tiene_archivo) {
     return res.status(404).json({ error: "Documento no encontrado." });
   }
   if (!(await canDownloadDocumento(req.user, doc))) {
@@ -356,9 +356,10 @@ exports.descargar = async function (req, res) {
       .json({ error: "No tiene permiso para descargar este documento." });
   }
 
-  const pdf = Buffer.isBuffer(doc.archivo)
-    ? doc.archivo
-    : Buffer.from(doc.archivo);
+  // The file is read only after the permission check.
+  const [[fila]] = await pool.query("SELECT archivo FROM dual_documentos WHERE id_documento = ?", [id]);
+  if (!fila?.archivo) return res.status(404).json({ error: "Documento no encontrado." });
+  const pdf = Buffer.isBuffer(fila.archivo) ? fila.archivo : Buffer.from(fila.archivo);
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Length", pdf.length);
   res.setHeader(

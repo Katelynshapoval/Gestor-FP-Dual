@@ -131,13 +131,13 @@ describe("staff", () => {
   test("a refused validation shows the server's reason", async () => {
     simularApi({
       "GET /solicitudes/alumno": [sol(1, { estado_validacion: "PENDIENTE", documentos: [doc("CV", "CV", "VALIDADO")] })],
-      "POST /solicitudes/alumno/1/validar": { status: 400, body: { error: "Para validar al alumno deben estar validados el CV y el Anexo DGA." } },
+      "POST /solicitudes/alumno/1/validar": { status: 400, body: { error: "Para validar al alumno faltan por validar: CV, Anexo DGA." } },
     });
     renderPagina(<LinkStudents />);
     await screen.findByText("Documentación completa");
     fireEvent.click(screen.getByRole("button", { name: "Validar alumno" }));
     fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Validar y avisar" }));
-    expect(await screen.findByText("Para validar al alumno deben estar validados el CV y el Anexo DGA.")).toBeInTheDocument();
+    expect(await screen.findByText("Para validar al alumno faltan por validar: CV, Anexo DGA.")).toBeInTheDocument();
   });
 
   test("reject needs a reason and sends it", async () => {

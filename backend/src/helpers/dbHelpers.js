@@ -122,23 +122,57 @@ async function callProcedureWithResult(conn, name, params) {
   return extractCallRow(results);
 }
 
-// Maps MySQL errors to HTTP-friendly objects
+// Unique keys whose clash the user can cause, in their words.
+const DUPLICADOS = {
+  uq_dd_actual: { status: 409, code: 'DOCUMENTO_CONCURRENTE', message: 'Este documento se acaba de guardar desde otra sesión. Recarga la página y vuelve a intentarlo.' },
+  uq_dual_convocatorias_una_activa: { status: 409, code: 'CONVOCATORIA_ACTIVA', message: 'Ya hay otra convocatoria activa. Solo puede haber una.' },
+  uq_dual_convocatorias_nombre: { status: 409, code: 'DUPLICADO', message: 'Ya existe una convocatoria con ese nombre.' },
+};
+
+// CHECK constraints the user can reach through a form. The rest describe
+// states the backend never writes: a generic message, the name only in the log.
+const RESTRICCIONES = {
+  chk_dual_convocatorias_fechas: 'La fecha de fin no puede ser anterior a la de inicio.',
+  chk_dsee_cantidad_alumnos: 'El número de plazas no es válido.',
+  chk_tipos_documento_familia: 'La familia de contrato solo se indica en documentos de una reserva.',
+  chk_tipos_documento_firmas: 'Ese firmante no corresponde a quien pertenece el documento.',
+  chk_tipos_documento_generado: 'Un documento añadido por el centro se genera desde una plantilla y debe indicar a quién pertenece.',
+};
+
+const nombreRestriccion = (err) => (String(err.sqlMessage || err.message).match(/(?:key|constraint) '([^']+)'/) || [])[1] || '';
+const sinPrefijoTabla = (nombre) => nombre.split('.').pop();
+
+// Maps MySQL errors to HTTP-friendly objects. Every message is in Spanish and
+// none exposes table, column or constraint names.
 function mapSqlError(err) {
+  // SIGNAL from triggers and procedures: their messages are written for users.
   if (err.sqlState === '45000') {
     return { status: 400, message: err.message, code: 'REGLA_NEGOCIO' };
   }
-  if (err.code === 'ER_DUP_ENTRY' && String(err.sqlMessage || err.message).includes('uq_dd_actual')) {
-    return { status: 409, message: 'Este documento se acaba de guardar desde otra sesión. Recarga la página y vuelve a intentarlo.', code: 'DOCUMENTO_CONCURRENTE' };
-  }
   if (err.code === 'ER_DUP_ENTRY') {
-    return { status: 409, message: 'Ya existe un registro con esos datos.', code: 'DUPLICADO' };
+    const conocido = DUPLICADOS[sinPrefijoTabla(nombreRestriccion(err))];
+    return conocido ? { ...conocido } : { status: 409, message: 'Ya existe un registro con esos datos.', code: 'DUPLICADO' };
   }
   // InnoDB rolled the statement (deadlock: the whole transaction) back; nothing was saved.
   if (err.code === 'ER_LOCK_DEADLOCK' || err.code === 'ER_LOCK_WAIT_TIMEOUT') {
     return { status: 409, message: 'Otra operación estaba modificando los mismos datos. Inténtalo de nuevo.', code: 'CONCURRENCIA' };
   }
   if (err.code === 'ER_CHECK_CONSTRAINT_VIOLATED') {
-    return { status: 400, message: err.message, code: 'RESTRICCION' };
+    const nombre = nombreRestriccion(err);
+    if (!RESTRICCIONES[nombre]) console.error('DB restricción:', nombre || err.message);
+    return { status: 400, message: RESTRICCIONES[nombre] || 'Los datos no cumplen las reglas de la aplicación.', code: 'RESTRICCION' };
+  }
+  if (err.code === 'ER_NO_REFERENCED_ROW_2' || err.code === 'ER_NO_REFERENCED_ROW') {
+    return { status: 409, message: 'Alguno de los datos elegidos ya no existe. Recarga la página y vuelve a intentarlo.', code: 'REFERENCIA' };
+  }
+  if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_ROW_IS_REFERENCED') {
+    return { status: 409, message: 'No se puede borrar: hay otros datos que dependen de este registro.', code: 'EN_USO' };
+  }
+  if (err.code === 'ER_DATA_TOO_LONG') {
+    return { status: 400, message: 'Alguno de los textos es demasiado largo.', code: 'DEMASIADO_LARGO' };
+  }
+  if (['ER_TRUNCATED_WRONG_VALUE', 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD', 'ER_WARN_DATA_OUT_OF_RANGE', 'ER_BAD_NULL_ERROR'].includes(err.code)) {
+    return { status: 400, message: 'Alguno de los datos no tiene un valor válido.', code: 'VALOR_NO_VALIDO' };
   }
   console.error('DB error:', err);
   return { status: 500, message: 'Error interno del servidor.', code: 'INTERNAL' };

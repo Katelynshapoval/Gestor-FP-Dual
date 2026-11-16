@@ -13,7 +13,7 @@ const pool = fakePool((sql, params) => {
   if (sql.startsWith('SELECT ee.id_solicitud_empresa_especialidad FROM dual_solicitud_empresa_especialidades ee JOIN')) {
     return st.ofertaPropia && params[1] === st.empresa ? [{ id_solicitud_empresa_especialidad: params[0] }] : [];
   }
-  if (sql.includes('fn_cupos_disponibles(ee.id_solicitud_empresa_especialidad) AS plazas_disponibles FROM dual_solicitudes_alumno sa')
+  if (sql.includes('po.plazas_disponibles FROM dual_solicitudes_alumno sa')
     && sql.includes('WHERE sa.id_solicitud_alumno = ?') && !sql.includes('ORDER BY')) {
     return st.objetivo ? [st.objetivo] : [];
   }

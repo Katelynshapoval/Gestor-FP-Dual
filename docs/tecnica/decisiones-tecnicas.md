@@ -56,8 +56,13 @@
 - **Consecuencia**: soluciones indirectas (empresa del contacto por su domicilio, ciclo por solicitud en una tabla nueva, motivos en eventos). Excepción aceptada: el índice único de DNI.
 
 ## Ficheros en la base de datos
-- **Qué**: PDF y DOCX como `LONGBLOB`.
-- **Motivo**: una transacción cubre fichero, versión, firmas y auditoría, y hay una sola copia de seguridad. Razonable hasta unos 5–10 GB.
+- **Qué**: PDF y DOCX como `LONGBLOB`; imágenes de firma y PDF adjuntos de correo como `MEDIUMBLOB`.
+- **Motivo**: una transacción cubre fichero, firmas, estado y auditoría (con ficheros en disco, un fallo a medias deja ficheros huérfanos o filas que apuntan a ficheros que no existen), y una sola copia de seguridad lo incluye todo. Las subidas tienen un máximo de 10 MB; para un centro, del orden de 1 GB al año. InnoDB guarda los ficheros grandes fuera de la fila y ningún listado los selecciona.
+- **Revisado en la 028**: se mantiene, igual en desarrollo que en el servidor (guardar rutas solo en desarrollo haría que lo que se prueba no fuera lo que se despliega). Se quitó lo que gastaba espacio sin uso: la copia de cada fichero sustituido en `dual_documento_versiones`. Si el volumen llegara a varios GB, el cambio sería guardar en la base la ruta y una suma SHA-256, con los ficheros en un volumen incluido en las copias.
+
+## Cuentas de MySQL separadas
+- **Qué** (028): la API usa una cuenta con `SELECT`, `INSERT`, `UPDATE` y `EXECUTE`, y `DELETE` solo en las tres tablas de las que borra ([`scripts/cuentaApp.js`](../../backend/scripts/cuentaApp.js)). Las migraciones y los demás scripts usan la cuenta dueña del esquema (`DBADMIN_USER`).
+- **Motivo**: un fallo o una inyección en la API no puede borrar tablas, cambiar procedimientos ni quitar los triggers que hacen inmutable la auditoría.
 
 ## Firmas con imagen (firma electrónica simple)
 - **Qué**: cada persona guarda una imagen de su firma; al pulsar «Firmar» se estampa en el PDF en la marca de la plantilla (`<<firmaAlumno>>`…) o en una «Hoja de firmas» al final (027). Ninguna firma es criptográfica: la prueba es el registro (cuenta, fecha, imagen usada, SHA-256 del fichero antes y después) y el centro revisa el fichero.
