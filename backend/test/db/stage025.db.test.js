@@ -135,9 +135,12 @@ test('025 applies and the 13 existing types get the rules of documentCatalogue.j
     assert.equal(Boolean(t.generado), Boolean(def.generated), def.clave);
     assert.equal(Boolean(t.activo), !def.legacy, def.clave);
     const firmas = def.signers || [];
+    // documentCatalogue.js describes today's rules: the centre signs the
+    // convenio since 027 (firma_centro set there), not yet at 025.
+    const centro = def.clave === 'CONVENIO' ? false : firmas.includes('GESTOR');
     assert.deepEqual(
       [Boolean(t.firma_empresa), Boolean(t.firma_centro), Boolean(t.firma_alumno)],
-      [firmas.includes('EMPRESA'), firmas.includes('GESTOR'), firmas.includes('ALUMNO')], def.clave);
+      [firmas.includes('EMPRESA'), centro, firmas.includes('ALUMNO')], def.clave);
     assert.equal(t.familia_contrato, def.contractFamily || null, def.clave);
   }
   assert.deepEqual(rows.filter((t) => t.requerido).map((t) => t.nombre).sort(), ['ANEXO_DGA', 'ANEXO_II', 'ANEXO_III', 'CONVENIO', 'CV']);

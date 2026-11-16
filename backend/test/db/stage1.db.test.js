@@ -244,15 +244,6 @@ test('DB-01: an application keeps its ciclo when the student re-applies with ano
     /especialidad del alumno no coincide/);
 });
 
-test('DB-01: the backend lists each application under its own ciclo', opts, async () => {
-  process.env.DBNAME = VERIFY; // the pool is created on first require, after this
-  const workflow = require('../../src/services/documentosWorkflow');
-  const items = await workflow.buildStaffList();
-  const esp = (id) => items.find((i) => i.id_solicitud_alumno === id)?.especialidad;
-  assert.equal(esp(fx.sol1), 'Ciclo sintético A');
-  assert.equal(esp(fx.sol1b), 'Ciclo sintético B');
-});
-
 test('DB-01: an application needs a ciclo, and it cannot change while reservations are active', opts, async () => {
   assert.match(await sqlError(conn.query(
     'INSERT INTO dual_solicitudes_alumno (id_alumno, id_convocatoria) VALUES (?, ?)', [fx.al2, fx.conv2])),
@@ -279,6 +270,23 @@ test('DB-03: a second current document for the same parent and type is refused',
   assert.equal(again[0].id_documento, fx.cv1);
   const cur = await one("SELECT COUNT(*) AS n FROM dual_documentos WHERE id_solicitud_alumno = ? AND id_tipo_documento = fn_id_tipo_documento('CV') AND es_actual = 1", [fx.sol1]);
   assert.equal(Number(cur.n), 1);
+});
+
+// The checks through the backend use today's code, which needs today's schema
+// (027 added columns it reads and writes): migrate to the latest version first.
+// The last test rolls back to 017 again.
+test('the backend checks run on the latest schema: migrate up from 017', opts, async () => {
+  const r = verifyDb('migrate');
+  assert.ok(r.ok, r.out);
+});
+
+test('DB-01: the backend lists each application under its own ciclo', opts, async () => {
+  process.env.DBNAME = VERIFY; // the pool is created on first require, after this
+  const workflow = require('../../src/services/documentosWorkflow');
+  const items = await workflow.buildStaffList();
+  const esp = (id) => items.find((i) => i.id_solicitud_alumno === id)?.especialidad;
+  assert.equal(esp(fx.sol1), 'Ciclo sintético A');
+  assert.equal(esp(fx.sol1b), 'Ciclo sintético B');
 });
 
 test('DB-03: concurrent first uploads through the backend leave exactly one current document', opts, async () => {
@@ -319,7 +327,11 @@ test('DB-10: places cannot drop below the active reservations', opts, async () =
   assert.match(await sqlError(setPlazas(1)), /por debajo de las reservas activas/);
   assert.equal(await sqlError(setPlazas(3)), null);
   assert.equal(await sqlError(setPlazas(2)), null);
+  // Since 018 the procedures run inside the caller's transaction.
+  await conn.query('SET autocommit = 0');
   await conn.query('CALL sp_cancelar_reserva(?, ?)', [fx.res2, 'Cancelación sintética']);
+  await conn.query('COMMIT');
+  await conn.query('SET autocommit = 1');
   assert.equal(await sqlError(setPlazas(1)), null, 'one active reservation left, one place is enough');
   assert.match(await sqlError(setPlazas(0)), /por debajo de las reservas activas/);
 });
@@ -336,6 +348,11 @@ test('DB-10: the backend maps the refusal to HTTP 400', opts, async () => {
 });
 
 test('rollback restores the 016 schema; 017 can then be applied again', opts, async () => {
+  for (const v of ['027', '026', '025', '024', '023', '022', '021', '020', '019', '018']) {
+    const back = verifyDb('rollback', v);
+    assert.ok(back.ok, `rollback ${v}\n${back.out}`);
+  }
+  assert.deepEqual(schemaDump.diffSchemas(fx.schema017, await dump()), [], 'back on the 017 schema');
   const rb = verifyDb('rollback', '017');
   assert.ok(rb.ok, rb.out);
   assert.deepEqual(schemaDump.diffSchemas(fx.schema016, await dump()), []);
