@@ -45,7 +45,6 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | Formato del NSS del alumno | Solo se valida en el formulario. El DNI/NIE se valida también en el backend (SEC-001) |
 | Firma del centro | En desarrollo hay una imagen subida el 15/11/2026. Si es provisional, sustituirla por la definitiva (firma y sello que aporta el centro) en Configuración › Firma del centro |
 | Marcas de firma en las plantillas | Las plantillas activas aún no tienen `<<firmaEmpresa>>`, `<<firmaCentro>>`, `<<firmaAlumno>>` ni `<<firmaTutorLegal>>`: las firmas van en la «Hoja de firmas». Documentos › Plantillas avisa de las que faltan |
-| Texto de los correos del convenio | Siguen diciendo «firmadlo y subidlo»; ahora la empresa también puede firmarlo en el portal. Se editan en Configuración › Correos |
 | Plantillas que se usarán este curso | Pendiente de la tabla de documentos del centro. Se añaden en Configuración › Documentos sin programar |
 | Imagen de ayuda de coordinador y administrador | Se revisará cuando la aplicación esté desplegada en el centro |
 
