@@ -1,0 +1,13 @@
+{
+  "name": "fpdual-e2e",
+  "private": true,
+  "description": "End-to-end tests: the real frontend and backend on an isolated, synthetic database.",
+  "scripts": {
+    "test": "playwright test",
+    "db:preparar": "node prepararDb.js",
+    "db:borrar": "node prepararDb.js --drop"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

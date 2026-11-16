@@ -100,6 +100,7 @@ Abre http://localhost:3000. Para firmar desde el móvil con el código QR, el m�
 | `backend` | `npm run dev` | API con recarga automática |
 | `backend` | `npm test` | Pruebas (sin base de datos) |
 | `backend` | `npm run test:coverage` | Pruebas con los mínimos de cobertura de la CI |
+| `backend` | `DB_INTEGRATION=1 node --test --test-concurrency=1 test/db/*.db.test.js` | Pruebas contra MySQL real, en la base aislada `<DBNAME>_verify` (la crea y la borra) |
 | `backend` | `npm run db:migrate -- status` | Migraciones aplicadas y pendientes |
 | `backend` | `npm run db:migrate -- up --yes` | Aplica las migraciones pendientes |
 | `backend` | `npm run db:backup` | Copia de seguridad en `backups/` |
@@ -107,6 +108,7 @@ Abre http://localhost:3000. Para firmar desde el móvil con el código QR, el m�
 | `frontend` | `npm test` | Pruebas |
 | `frontend` | `npm run lint` | Revisión de código (sin avisos permitidos) |
 | `frontend` | `npm run build` | Compilación en `frontend/build/` |
+| `e2e` | `npm test` | Recorrido completo en un navegador real (Playwright) sobre la base aislada `proyecto_dual_e2e_verify`, con datos ficticios. La primera vez: `npm install` y `npx playwright install chromium` |
 
 Antes de aplicar una migración, haz una copia con `npm run db:backup` y compruébala con `npm run db:backup -- verify <fichero>`. Nunca se edita una migración ya aplicada: los cambios van en una migración nueva. Cada una tiene su reversión en `db/rollback/`.
 

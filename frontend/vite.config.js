@@ -3,7 +3,8 @@ import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const API = "http://localhost:3001";
+// The end-to-end tests (e2e/) run their own backend on another port.
+const API = process.env.FPDUAL_API_URL || "http://localhost:3001";
 const PUBLIC_DIR = path.resolve(import.meta.dirname, "public");
 
 // The API has no /api prefix and shares paths with the app's pages
