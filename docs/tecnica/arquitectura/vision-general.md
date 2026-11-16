@@ -46,7 +46,7 @@ flowchart LR
   EXP -- "nodemailer" --> SMTP
 ```
 
-- **Un solo proceso Node** sirve la API en `PORT` (3001 por defecto). No sirve el frontend compilado ni configura CORS: en desarrollo el *proxy* de Vite (`frontend/vite.config.js`) reenvía las llamadas; en un despliegue real hace falta un proxy inverso que publique `frontend/build` y la API bajo el mismo origen 🔶 (no hay guía de despliegue en el repositorio).
+- **Un solo proceso Node** sirve la API en `PORT` (3001 por defecto). No sirve el frontend compilado ni configura CORS: en desarrollo el *proxy* de Vite (`frontend/vite.config.js`) reenvía las llamadas; en el despliegue con Docker, nginx publica `frontend/build` y reenvía la API bajo el mismo origen ([`DESPLIEGUE.md`](../../DESPLIEGUE.md)).
 - **Sin colas ni workers.** Lo asíncrono se limita a: el programador de convocatorias (`setInterval`), el envío de correos «disparar y olvidar» tras el *commit* y la generación de PDF dentro de la propia petición. Ver [procesos](../procesos/README.md).
 - **Estado en memoria del proceso:** el limitador de intentos de login y de recuperación de contraseña ([`loginRateLimit.js`](../../../backend/src/middleware/loginRateLimit.js)). Se pierde al reiniciar y no se comparte entre procesos.
 - **No existe entorno de producción** a fecha de esta documentación. Todo lo verificado contra datos se hizo en la base de desarrollo local `proyecto_dual`.

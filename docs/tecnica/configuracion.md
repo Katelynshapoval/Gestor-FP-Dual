@@ -30,7 +30,7 @@ Constantes en código (no configurables): caducidad del JWT 8 h (HS256); enlace 
 ## 2. Frontend
 
 - Sin variables de entorno propias. Las llamadas son relativas (`/auth/login`…); en desarrollo, el servidor de Vite (`npm start`, puerto 3000) las reenvía a `http://localhost:3001` (`frontend/vite.config.js`): una carga de página recibe la app y el resto va a la API, la misma regla que `deploy/nginx.conf`.
-- Compilación: `npm run build` genera `frontend/build/` (ignorado por Git). El backend **no** lo sirve: hace falta un servidor web o proxy que publique la SPA, reenvíe las rutas de la API al backend y devuelva `index.html` en las rutas de React (`BrowserRouter`) 🔶.
+- Compilación: `npm run build` genera `frontend/build/` (ignorado por Git). El backend **no** lo sirve: en el despliegue con Docker lo publica nginx (`deploy/nginx.conf`), que reenvía las rutas de la API al backend y devuelve `index.html` en las rutas de React ([`DESPLIEGUE.md`](../DESPLIEGUE.md)).
 
 ## 3. Base de datos
 
