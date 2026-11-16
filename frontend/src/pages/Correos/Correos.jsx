@@ -165,11 +165,6 @@ function ListaCorreos({ correos, seleccionada, onSelect, sucio }) {
                             · Desactivado
                           </span>
                         )}
-                        {c.editado && c.activa && (
-                          <span className="font-semibold text-brand-700">
-                            · Editado
-                          </span>
-                        )}
                       </span>
                     </button>
                   </li>
@@ -646,7 +641,6 @@ export default function Correos() {
     }
   };
 
-  const editados = correos.filter((c) => c.editado).length;
   const conProblemas = correos.filter((c) => c.problemas.length).length;
 
   return (
@@ -656,9 +650,6 @@ export default function Correos() {
           !cargando && (
             <>
               <StatusBadge>{correos.length} correos</StatusBadge>
-              {editados > 0 && (
-                <StatusBadge variant="brand">{editados} editados</StatusBadge>
-              )}
               {conProblemas > 0 && (
                 <StatusBadge variant="danger">
                   {conProblemas} con errores

@@ -892,7 +892,7 @@ La aplicación decide **cuándo** se envía cada correo y **a quién**; aquí ca
 
 **Editar un correo**
 
-1. Elige el correo en la lista de la izquierda (en el móvil, en el desplegable **«Correo»**). Debajo de su nombre se ve a quién va y si está **Editado** o **Desactivado**.
+1. Elige el correo en la lista de la izquierda (en el móvil, en el desplegable **«Correo»**). Debajo de su nombre se ve a quién va y si está **Desactivado**.
 2. Cambia el **Asunto** y el **Texto del correo**. Deja una línea en blanco para empezar otro párrafo.
 3. Para poner un dato de la persona (nombre, empresa, ciclo…), coloca el cursor donde quieras y pulsa su botón en **«Variables»**. Se inserta algo como `{{alumno}}`, resaltado en color: al enviar se sustituye por el dato real. Pasa el ratón por un botón para ver qué contiene y un ejemplo.
 4. Comprueba el resultado en **«Vista previa»**, con datos de ejemplo. En pantallas grandes está al lado; en las demás, pulsa **«Vista previa»** encima del editor.

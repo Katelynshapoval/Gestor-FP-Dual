@@ -62,7 +62,7 @@ test("lists the emails by group and opens the first one, with its text and varia
   await abrir();
   const nav = screen.getByRole("navigation", { name: "Correos" });
   expect(within(nav).getByText("Reservas")).toBeInTheDocument();
-  expect(within(nav).getByText("· Editado")).toBeInTheDocument();
+  expect(within(nav).queryByText(/Editado/)).not.toBeInTheDocument();
   expect(within(nav).getByTitle("Tiene errores: no se envía")).toBeInTheDocument();
   expect(asunto()).toHaveValue("Tu plaza");
   expect(cuerpo()).toHaveValue("Hola {{alumno}}.");
