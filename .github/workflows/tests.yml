@@ -1,6 +1,9 @@
-# Runs the backend and frontend tests on every push and pull request.
-# No database is needed: the database integration tests (backend/test/db)
-# only run with DB_INTEGRATION=1, which is not set here.
+# Runs the tests on every push and pull request:
+#   Backend, Frontend  unit tests with coverage minimums (no database)
+#   Database           backend/test/db against a real MySQL 8.0 (DB_INTEGRATION=1)
+#   End to end         the Playwright journey in e2e/ (real backend, frontend and MySQL)
+# The two MySQL jobs use a throwaway service container: nothing outside the
+# runner is touched, and its root password is only valid inside the job.
 # Node 24 (npm 11), as in development: the lockfiles are written by npm 11,
 # and npm 10's `npm ci` rejects them (it wants optional peers such as yaml@2).
 name: Tests
@@ -63,3 +66,93 @@ jobs:
       # drops below the minimum in vite.config.js (test.coverage.thresholds).
       - run: npm run test:coverage
       - run: npm run build
+
+  database:
+    name: Database
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-root"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      NODE_ENV: test
+      DB_INTEGRATION: "1"
+      DBHOST: 127.0.0.1
+      DBUSER: root
+      DBPASS: ci-root
+      # Stands in for the development database: some tests compare the
+      # protected tables of <DBNAME>_verify with it. They build and drop
+      # <DBNAME>_verify themselves.
+      DBNAME: proyecto_dual
+      JWT_SECRET: ci-placeholder-value-not-used-anywhere-0000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Create the database and apply every migration
+        run: |
+          node -e "require('./scripts/lib/connect').connect(null).then(async (c) => { await c.query('CREATE DATABASE proyecto_dual CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci'); await c.end(); })"
+          npm run db:migrate -- up --yes
+      # One file at a time: they share <DBNAME>_verify.
+      - run: node --test --test-concurrency=1 test/db/*.db.test.js
+
+  e2e:
+    name: End to end
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-root"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      CI: "true"
+      DBHOST: 127.0.0.1
+      DBUSER: root
+      DBPASS: ci-root
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            e2e/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm ci
+        working-directory: frontend
+      - run: npm ci
+        working-directory: e2e
+      - run: npx playwright install --with-deps chromium
+        working-directory: e2e
+      # Builds proyecto_dual_e2e_verify, starts the API and Vite, runs the journey.
+      - run: npm test
+        working-directory: e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: e2e/test-results/
+          retention-days: 7
