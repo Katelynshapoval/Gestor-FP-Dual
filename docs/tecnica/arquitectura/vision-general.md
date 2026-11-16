@@ -66,7 +66,6 @@ backend/
     constants/               nombres de estados de reserva
   scripts/                   migraciones, esquema, copias de seguridad, BD de verificación, datos de prueba
   test/                      pruebas node:test (con BD simulada) y test/db (contra BD real *_verify)
-  required_documents/        plantillas DOCX de partida para subir en Documentos › Plantillas (el código no las lee)
 frontend/src/
   App.jsx, navigation.js     rutas y menús por rol
   context/UserContext.jsx    sesión (localStorage) y caducidad

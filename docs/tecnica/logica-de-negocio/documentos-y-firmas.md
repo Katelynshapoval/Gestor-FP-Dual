@@ -186,7 +186,7 @@ El PDF refleja los datos **del momento**: cambios posteriores (tutor, datos de e
 - Listar y descargar: personal. Subir: **solo ADMINISTRADOR** (las plantillas ya no ejecutan código, pero definen el contenido legal de los documentos).
 - Subida: clave generable, fichero `.docx` (extensión, MIME DOCX, `application/zip` u `octet-stream`, **y** firma ZIP en los primeros bytes, SEC-012), ≤ 10 MB. El nombre original se limpia y solo se muestra en las listas. En transacción: siguiente `version`, desactiva la anterior e inserta la nueva activa.
 - Descarga: el servidor fija el tipo DOCX y el nombre `plantilla-<clave>-v<versión>.docx` (SEC-012), como `attachment`.
-- No hay borrado ni reactivación de versiones antiguas (se vuelve a subir el fichero). Las plantillas de `backend/required_documents/` son de referencia; el código no las lee 🔶.
+- No hay borrado ni reactivación de versiones antiguas (se vuelve a subir el fichero).
 
 ## 8. Descargar — `GET /documentos/:id/descargar`
 

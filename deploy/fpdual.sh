@@ -7,8 +7,6 @@
 #                            create a staff account (temporary password shown once)
 #   admin-restablecer <email>
 #                            new temporary password for an existing staff account
-#   plantillas               load the starting convenio / anexo templates (only
-#                            the types that have none)
 #   demo [--conservar-personal]
 #                            WIPE all data and load fictitious companies, students
 #                            and bookings; prints every login
@@ -87,7 +85,7 @@ case "$orden" in
 Listo. La aplicación está en ${url}
 Siguientes pasos:
   ./deploy/fpdual.sh admin tu@correo.es "Tu nombre"     primera cuenta de Administración
-  ./deploy/fpdual.sh plantillas                          plantillas de convenio y anexos
+  Documentos › Plantillas                                subir las plantillas de convenio y anexos
   ./deploy/fpdual.sh demo --conservar-personal           (opcional) datos ficticios para una demo
 EOF
     if [ "$(valor_env MAIL_MODE)" = "mailpit" ]; then
@@ -105,15 +103,11 @@ EOF
     [ $# -ge 1 ] || fallo 'Uso: ./deploy/fpdual.sh admin-restablecer <email>'
     backend_run node scripts/crearAdmin.js --email "$1" --restablecer --yes
     ;;
-  plantillas)
-    backend_run node scripts/cargarPlantillas.js --yes
-    ;;
   demo)
     extra=()
     [ "${1:-}" = "--conservar-personal" ] && extra+=(--conservar-personal)
     confirmar BORRAR "Esto BORRA todas las solicitudes, empresas, alumnos, reservas, documentos y cuentas$([ ${#extra[@]} -gt 0 ] && echo ' (menos las del personal del centro)') y carga datos ficticios."
     backend_run node scripts/seedDemo.js --yes --allow-production --mostrar ${extra[@]+"${extra[@]}"}
-    backend_run node scripts/cargarPlantillas.js --yes
     "${DC[@]}" restart backend >/dev/null
     ;;
   estado)

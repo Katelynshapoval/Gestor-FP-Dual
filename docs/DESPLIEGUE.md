@@ -45,14 +45,13 @@ En `.env` hay que rellenar como mínimo:
 ```bash
 ./deploy/fpdual.sh instalar                              # imágenes, MySQL, migraciones, todo arriba
 ./deploy/fpdual.sh admin tu@correo.es "Tu nombre"         # primera cuenta de Administración
-./deploy/fpdual.sh plantillas                             # plantillas de convenio y anexos
 ```
 
 `instalar` construye las imágenes, arranca MySQL, crea el esquema completo (`db/000_baseline.sql` y todas las migraciones) y arranca el resto. Termina cuando todos los servicios están en marcha y sanos.
 
 `admin` muestra **una sola vez** una contraseña temporal: al entrar por primera vez la aplicación obliga a cambiarla. Con `admin-restablecer <email>` se genera otra si se pierde.
 
-`plantillas` carga las plantillas `.docx` de `backend/required_documents/` para el convenio y los anexos II y III. Solo afecta a los tipos que no tienen ya una plantilla activa. Después se pueden cambiar desde *Documentos › Plantillas*.
+Las plantillas `.docx` del convenio y los anexos II y III no van en el repositorio: súbelas desde *Documentos › Plantillas* con la cuenta de Administración. Sin ellas no se pueden generar esos documentos.
 
 Los ciclos (`dual_especialidades`) y la convocatoria se crean después desde la aplicación, o los crea `demo` (abajo).
 
@@ -164,7 +163,7 @@ Lee antes `db/README.md` («Order of deployment»): alguna migración debe aplic
 | Aviso de certificado | Normal con `CADDY_TLS=internal`: acéptalo o instala `./deploy/fpdual.sh certificado`. |
 | Los puertos 80/443 están ocupados | `HTTP_PORT` y `HTTPS_PORT` en `.env`; `APP_URL` debe llevar el puerto (`https://fpdual.centro.local:8443`). Con otro puerto HTTPS, la redirección automática desde `http://` lleva al 443: abre directamente la dirección `https://` con su puerto. |
 | No llegan los correos | Con `mailpit`: mira `http://<servidor>:8025` y comprueba `COMPOSE_PROFILES=mailpit`. Con `smtp`: `./deploy/fpdual.sh logs backend` muestra el error (Gmail necesita una contraseña de aplicación; muchas redes bloquean la salida SMTP). |
-| «No hay plantilla activa» al generar un convenio | `./deploy/fpdual.sh plantillas`, o súbela en *Documentos › Plantillas*. |
+| «No hay plantilla activa» al generar un convenio | Súbela en *Documentos › Plantillas*. |
 | Contraseña de Administración perdida | `./deploy/fpdual.sh admin-restablecer <email>`. |
 | El PDF no se genera | `./deploy/fpdual.sh logs backend`: Chromium necesita RAM libre (2 GB o más en el servidor). |
 
@@ -186,5 +185,4 @@ Los mismos scripts funcionan en el equipo de desarrollo con `npm`, desde `backen
 | --- | --- |
 | `npm run mailpit` | Arranca Mailpit (bandeja en http://localhost:8025). Con `MAIL_MODE=mailpit` en `backend/.env`, todos los correos van ahí. |
 | `npm run db:admin -- --email tu@correo.es --nombre "Tu nombre" --yes` | Crea una cuenta de Administración. |
-| `npm run db:plantillas` | Carga las plantillas de partida. |
 | `npm run db:demo -- --yes` | Borra los datos y carga la demo (contraseñas en `backend/.demo.local.json`; con `--mostrar`, en pantalla). |

@@ -69,4 +69,3 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | Volúmenes reales y tamaño de ficheros; cuenta de MySQL, zona horaria y despliegue de un entorno real | No hay producción |
 | Comportamiento detrás de un proxy inverso (CORS, servido de la SPA) | No hay configuración de despliegue. La IP del limitador se ajusta con `TRUST_PROXY` |
 | Uso previsto de `dual_documento_versiones` | Ningún código la lee |
-| `backend/required_documents/` | Plantillas .docx de partida (convenio y anexos) para editarlas y subirlas en Documentos › Plantillas; el código no las lee |

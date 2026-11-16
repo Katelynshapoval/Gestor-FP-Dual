@@ -40,7 +40,6 @@ backend/              API (Express)
   src/middleware/     autenticación, límites de peticiones, validación de PDF
   scripts/            migraciones, copias de seguridad, datos de prueba
   test/               pruebas (test/db: contra una base de datos real)
-  required_documents/ plantillas .docx de partida (convenio y anexos)
 frontend/             aplicación React
   src/pages/          una carpeta por pantalla
   src/components/     componentes compartidos (firma/, reservas/, ui/...)
@@ -72,19 +71,19 @@ Requisitos: Node.js 24 (npm 11) y MySQL 8.
    npm run db:migrate -- up --yes
    ```
 
-3. Carga datos. Para probar, hay un juego de demostración ficticio con ciclos, empresas, alumnos, reservas y cuentas de personal. **Borra todos los datos** antes de cargarlos, crea la convocatoria del curso si no hay ninguna activa y guarda las contraseñas en `backend/.demo.local.json` (`--mostrar` las enseña en pantalla). Después carga las plantillas de convenio y anexos:
+3. Carga datos. Para probar, hay un juego de demostración ficticio con ciclos, empresas, alumnos, reservas y cuentas de personal. **Borra todos los datos** antes de cargarlos, crea la convocatoria del curso si no hay ninguna activa y guarda las contraseñas en `backend/.demo.local.json` (`--mostrar` las enseña en pantalla):
 
    ```bash
    npm run db:demo -- --yes
-   npm run db:plantillas
    ```
 
-   Con datos reales, en cambio, crea la primera cuenta de Administración (la contraseña temporal sale en pantalla) y carga las plantillas; los ciclos y la convocatoria se crean desde la aplicación:
+   Con datos reales, en cambio, crea la primera cuenta de Administración (la contraseña temporal sale en pantalla); los ciclos y la convocatoria se crean desde la aplicación:
 
    ```bash
    npm run db:admin -- --email tu@correo.es --nombre "Tu nombre" --yes
-   npm run db:plantillas
    ```
+
+   En los dos casos, sube después las plantillas `.docx` del convenio y los anexos II y III en *Documentos › Plantillas*: sin ellas no se pueden generar esos documentos.
 
 4. Arranca el backend (puerto 3001):
 
@@ -114,7 +113,6 @@ Abre http://localhost:3000. Para firmar desde el móvil con el código QR, el m�
 | `backend` | `npm run db:migrate -- up --yes` | Aplica las migraciones pendientes |
 | `backend` | `npm run db:backup` | Copia de seguridad en `backups/` |
 | `backend` | `npm run db:admin -- --email … --nombre "…" --yes` | Crea una cuenta de Administración (`--rol COORDINADOR`, `--restablecer`) |
-| `backend` | `npm run db:plantillas` | Carga las plantillas de partida de `required_documents/` en los tipos que no tienen ninguna |
 | `backend` | `npm run db:demo -- --yes` | Borra los datos y carga la demo ficticia |
 | `backend` | `npm run mailpit` | Bandeja de correo local en http://localhost:8025 (con `MAIL_MODE=mailpit`) |
 | `frontend` | `npm start` | Servidor de desarrollo |
@@ -133,9 +131,10 @@ La aplicación se despliega con Docker Compose en un servidor Linux, y todo se m
 cp .env.example .env && chmod 600 .env && nano .env
 ./deploy/fpdual.sh instalar
 ./deploy/fpdual.sh admin tu@correo.es "Tu nombre"
-./deploy/fpdual.sh plantillas
 ./deploy/fpdual.sh demo --conservar-personal    # opcional: datos ficticios
 ```
+
+Después, sube las plantillas del convenio y los anexos en *Documentos › Plantillas*.
 
 Las variables, HTTPS en una intranet, Mailpit, las copias de seguridad, las actualizaciones y los problemas frecuentes están en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
 
