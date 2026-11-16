@@ -1,0 +1,18 @@
+# Development helpers. The app itself runs with npm (backend: npm run dev,
+# frontend: npm start); this only starts Mailpit, which catches every email the
+# backend sends with MAIL_MODE=mailpit in backend/.env:
+#   docker compose -f docker-compose.dev.yml up -d     inbox: http://localhost:8025
+#   docker compose -f docker-compose.dev.yml down
+# Both ports listen on this computer only.
+name: fpdual-dev
+
+services:
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 2000
+      TZ: Europe/Madrid
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"

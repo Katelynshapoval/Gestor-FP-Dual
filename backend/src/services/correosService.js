@@ -549,7 +549,6 @@ exports.prueba = async function (req, res) {
       : [];
     const sinGenerar = out.adjuntos.filter((a) => a.tipo === 'DOCUMENTO').map((a) => a.nombre);
     await mail.transporter.sendMail({
-      from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
       to: usuario.email,
       subject: `[Prueba] ${out.asunto}`,
       html: out.html,
@@ -557,7 +556,7 @@ exports.prueba = async function (req, res) {
         ? { attachments: archivos.map((a) => ({ filename: a.nombre_archivo, content: a.archivo, contentType: 'application/pdf' })) }
         : {}),
     });
-    const simulado = mail.transporter.mode && mail.transporter.mode !== 'smtp';
+    const simulado = mail.transporter.entrega === false || mail.transporter.mode === 'log';
     const nota = sinGenerar.length
       ? ` ${sinGenerar.join(', ')} no va en la prueba: se genera para cada solicitud.`
       : '';
@@ -565,7 +564,9 @@ exports.prueba = async function (req, res) {
       enviado: !simulado,
       message: (simulado
         ? 'El servidor está en modo de registro (MAIL_MODE=log): el correo no se ha enviado, solo se ha anotado en el registro.'
-        : `Correo de prueba enviado a ${usuario.email}.`) + nota,
+        : mail.transporter.mode === 'mailpit'
+          ? `Correo de prueba enviado a ${usuario.email}: está en la bandeja de Mailpit (no sale del servidor).`
+          : `Correo de prueba enviado a ${usuario.email}.`) + nota,
     });
   } catch (err) {
     if (!(err instanceof HttpError)) {

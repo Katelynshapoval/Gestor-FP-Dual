@@ -1,8 +1,20 @@
 #!/usr/bin/env node
-// Realistic demo data for the DEVELOPMENT database (Salesianos Zaragoza, grado superior).
+// Realistic demo data (Salesianos Zaragoza, grado superior): for development and
+// for a demo server. Never on a database with real users.
 //
 //   node scripts/seedDemo.js --dry-run     everything runs, then rolls back
 //   node scripts/seedDemo.js --yes         WIPES all data and loads the demo set
+//   Options:
+//     --mostrar              print the logins and passwords on the terminal
+//                            instead of writing backend/.demo.local.json (the
+//                            only way inside the container, which cannot write there)
+//     --conservar-personal   keep the existing ADMINISTRADOR / COORDINADOR accounts
+//                            (e.g. the one created with scripts/crearAdmin.js)
+//     --allow-production     needed when NODE_ENV=production (the Docker image)
+//   npm run db:demo (development), ./deploy/fpdual.sh demo (server).
+//
+// With no active convocatoria it creates (or activates) the one of the current
+// school year, 1 September to 31 August.
 //
 // Wipes every data table (applications, reservations, documents, accounts, companies,
 // students, specialities, audit events). Keeps the catalogues (roles, states, contract and
@@ -107,6 +119,8 @@ async function main() {
   const argv = process.argv.slice(2);
   assertNotProduction(argv);
   const dry = argv.includes('--dry-run');
+  const mostrar = argv.includes('--mostrar');
+  const conservarPersonal = argv.includes('--conservar-personal');
   if (!dry && !argv.includes('--yes')) {
     console.error('Usa --dry-run para probar sin cambios o --yes para BORRAR todos los datos y cargar la demo.');
     process.exit(1);
@@ -124,8 +138,22 @@ async function main() {
 
   try {
     const roles = Object.fromEntries((await q('SELECT id_rol, nombre FROM dual_roles')).map((r) => [r.nombre, r.id_rol]));
-    const conv = await one('SELECT id_convocatoria, nombre FROM dual_convocatorias WHERE activa = 1');
-    if (!conv) throw new Error('No hay convocatoria activa.');
+    let conv = await one('SELECT id_convocatoria, nombre FROM dual_convocatorias WHERE activa = 1');
+    if (!conv && dry) throw new Error('No hay convocatoria activa: el dry-run no la crea (la ejecución con --yes sí).');
+    if (!conv) {
+      // The current school year: one that covers today, or a new one 1 Sep – 31 Aug.
+      const hoy = new Date();
+      const y = hoy.getMonth() >= 8 ? hoy.getFullYear() : hoy.getFullYear() - 1;
+      const cubre = await one('SELECT id_convocatoria FROM dual_convocatorias WHERE CURDATE() BETWEEN fecha_inicio AND fecha_fin LIMIT 1');
+      if (cubre) {
+        await q('UPDATE dual_convocatorias SET activa = 1 WHERE id_convocatoria = ?', [cubre.id_convocatoria]);
+      } else {
+        await q('INSERT INTO dual_convocatorias (nombre, fecha_inicio, fecha_fin, activa) VALUES (?, ?, ?, 1)',
+          [`${y}/${y + 1}`, `${y}-09-01`, `${y + 1}-08-31`]);
+      }
+      conv = await one('SELECT id_convocatoria, nombre FROM dual_convocatorias WHERE activa = 1');
+      console.log(`No había convocatoria activa: se usa ${conv.nombre}.`);
+    }
     const tipoDoc = Object.fromEntries((await q('SELECT id_tipo_documento id, nombre FROM dual_tipos_documento')).map((r) => [r.nombre, r.id]));
     const est = Object.fromEntries((await q('SELECT id_estado_validacion id, nombre FROM dual_estados_validacion')).map((r) => [r.nombre, r.id]));
     const tc = Object.fromEntries((await q('SELECT id_tipo_contrato id, nombre FROM dual_tipos_contrato')).map((r) => [r.nombre, r.id]));
@@ -137,12 +165,29 @@ async function main() {
     // The dry run wipes inside its transaction with DELETE (audit events are left alone).
     const TABLAS = ['dual_documento_firmas', 'dual_documento_versiones', 'dual_documentos', 'dual_empresa_cambios', 'dual_empresa_transportes',
       'dual_empresa_tutores', 'dual_eventos', 'dual_reservas', 'dual_solicitud_empresa_especialidades', 'dual_solicitud_empresa_transportes',
-      'dual_solicitudes_alumno', 'dual_solicitudes_empresa', 'dual_usuarios', 'dual_especialidades',
-      'ge_contactos', 'ge_domicilios', 'ge_empresas', 'gf_alumnosfct'];
+      'dual_solicitudes_alumno', 'dual_solicitudes_empresa', 'dual_especialidades',
+      'ge_contactos', 'ge_domicilios', 'ge_empresas', 'gf_alumnosfct',
+      // migrations 020–027
+      'dual_alumno_cambios', 'dual_convenio_renovaciones', 'dual_firmas', 'dual_firma_sesiones'];
+    // Accounts: all of them, or only those that are not staff (--conservar-personal).
+    const borrarUsuarios = conservarPersonal
+      ? "DELETE u FROM dual_usuarios u JOIN dual_roles r ON r.id_rol = u.id_rol WHERE r.nombre NOT IN ('ADMINISTRADOR', 'COORDINADOR')"
+      : 'DELETE FROM dual_usuarios';
     await q('SET FOREIGN_KEY_CHECKS = 0');
-    if (!dry) for (const t of TABLAS) await q('TRUNCATE TABLE `' + t + '`');
+    if (!dry) {
+      for (const t of TABLAS) await q('TRUNCATE TABLE `' + t + '`');
+      if (conservarPersonal) await q(borrarUsuarios);
+      else await q('TRUNCATE TABLE `dual_usuarios`');
+    }
     await conn.beginTransaction();
-    if (dry) for (const t of TABLAS.filter((x) => x !== 'dual_eventos')) await q('DELETE FROM `' + t + '`');
+    if (dry) {
+      for (const t of TABLAS.filter((x) => x !== 'dual_eventos')) await q('DELETE FROM `' + t + '`');
+      await q(borrarUsuarios);
+    }
+    // What stays (email texts and attachments, templates) must not point to a deleted account.
+    await q('UPDATE dual_correo_plantillas SET id_usuario_actualiza = NULL WHERE id_usuario_actualiza NOT IN (SELECT id_usuario FROM dual_usuarios)');
+    await q('UPDATE dual_correo_plantillas_historial SET id_usuario = NULL WHERE id_usuario NOT IN (SELECT id_usuario FROM dual_usuarios)');
+    await q('UPDATE dual_correo_adjuntos SET id_usuario_subida = NULL WHERE id_usuario_subida NOT IN (SELECT id_usuario FROM dual_usuarios)');
     await q('SET FOREIGN_KEY_CHECKS = 1');
 
     // ------------------------------------------------------------ specialities
@@ -167,8 +212,19 @@ async function main() {
     };
     const adminEmail = process.env.DEMO_ADMIN_EMAIL || 'admin.demo@fpdual.test';
     const coordEmail = process.env.DEMO_COORD_EMAIL || 'coord.demo@fpdual.test';
-    const idAdmin = await addUser('Administración (demo)', adminEmail, adminEmail, 'ADMINISTRADOR');
-    await addUser('Coordinación (demo)', coordEmail, coordEmail, 'COORDINADOR');
+    // A kept staff account with the same email is used as it is.
+    const staff = async (nombre, email, rol) => {
+      const ya = await one('SELECT id_usuario FROM dual_usuarios WHERE LOWER(email) = LOWER(?)', [email]);
+      if (ya) {
+        console.log(`Se conserva la cuenta existente ${email}.`);
+        return ya.id_usuario;
+      }
+      return addUser(nombre, email, email, rol);
+    };
+    const idAdmin = await staff('Administración (demo)', adminEmail, 'ADMINISTRADOR');
+    await staff('Coordinación (demo)', coordEmail, 'COORDINADOR');
+    // Templates kept from before now belong to an account that exists.
+    await q('UPDATE dual_documento_plantillas SET id_usuario_subida = ? WHERE id_usuario_subida NOT IN (SELECT id_usuario FROM dual_usuarios)', [idAdmin]);
 
     // ------------------------------------------------------------ companies
     let dniSeq = 17000000;
@@ -358,8 +414,17 @@ async function main() {
     if (dry) { await conn.rollback(); console.log('Dry-run correcto: se ha revertido todo.'); }
     else {
       await conn.commit();
-      fs.writeFileSync(OUT, JSON.stringify(secrets, null, 2), { mode: 0o600 });
-      console.log(`Datos cargados. Contraseñas en ${OUT} (no se versiona).`);
+      if (mostrar) {
+        // Staff first, then one company and one student as examples; all on request.
+        const orden = { ADMINISTRADOR: 0, COORDINADOR: 1, EMPRESA: 2, ALUMNO: 3 };
+        const filas = [...secrets].sort((a, b) => orden[a.rol] - orden[b.rol]);
+        console.log('\nDatos cargados. Cuentas (apúntalas: no se guardan en ningún sitio):\n');
+        for (const s of filas) console.log(`  ${s.rol.padEnd(14)} ${String(s.usuario).padEnd(30)} ${s.password}`);
+        console.log('');
+      } else {
+        fs.writeFileSync(OUT, JSON.stringify(secrets, null, 2), { mode: 0o600 });
+        console.log(`Datos cargados. Contraseñas en ${OUT} (no se versiona).`);
+      }
     }
     console.log(JSON.stringify(stats, null, 2));
   } catch (err) {

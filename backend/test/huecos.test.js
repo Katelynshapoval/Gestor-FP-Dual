@@ -22,7 +22,10 @@ stub('src/services/authService', { findUserByIdentifier: async () => usuario });
 
 // ── mail/config in smtp mode ────────────────────────────────────────────
 
-function loadMailConfig(env, createTransport) {
+function loadMailConfig(envPedido, createTransport) {
+  // Empty, not deleted: dotenv never overrides a variable that exists, so a
+  // developer's backend/.env cannot leak into these tests.
+  const env = { SMTP_HOST: '', SMTP_PORT: '', SMTP_SECURE: '', MAIL_FROM: '', MAILPIT_HOST: '', MAILPIT_PORT: '', EMAIL_USER: '', EMAIL_PASS: '', MAIL_REDIRECT_TO: '', ...envPedido };
   const file = require.resolve(path.join(__dirname, '..', 'src', 'mail', 'config.js'));
   const saved = {};
   for (const k of Object.keys(env)) {
@@ -75,6 +78,64 @@ test('mail smtp: if the transport cannot be created, sending fails with a clear 
   const cfg = loadMailConfig({ MAIL_MODE: 'smtp', MAIL_REDIRECT_TO: '' }, () => { throw new Error('bad config'); });
   console.log = realLog;
   await assert.rejects(cfg.transporter.sendMail({ to: 'a@x.test', subject: 'S' }), /El correo no está configurado/);
+});
+
+test('mail mailpit: local catcher on localhost:1025 by default, no login, a default sender', async () => {
+  const creados = [];
+  const enviados = [];
+  const cfg = loadMailConfig({ MAIL_MODE: 'Mailpit', MAIL_REDIRECT_TO: 'x@x.test' }, (o) => {
+    creados.push(o);
+    return { sendMail: async (m) => { enviados.push(m); return {}; } };
+  });
+  assert.equal(cfg.MAIL_MODE, 'mailpit');
+  assert.equal(cfg.transporter.entrega, true);
+  assert.deepEqual(creados[0], { host: 'localhost', port: 1025, secure: false, ignoreTLS: true });
+  assert.equal(cfg.MAIL_REDIRECT_TO, '', 'the redirect only applies to smtp');
+  await cfg.transporter.sendMail({ to: 'ana@x.test', subject: 'Hola' });
+  assert.equal(enviados[0].to, 'ana@x.test');
+  assert.equal(enviados[0].from, '"Salesianos Dual" <fpdual@localhost>');
+});
+
+test('mail mailpit inside docker-compose: host and port from MAILPIT_HOST / MAILPIT_PORT', () => {
+  const creados = [];
+  loadMailConfig({ MAIL_MODE: 'mailpit', MAILPIT_HOST: 'mailpit', MAILPIT_PORT: '2025' }, (o) => { creados.push(o); return {}; });
+  assert.equal(creados[0].host, 'mailpit');
+  assert.equal(creados[0].port, 2025);
+});
+
+test('mail smtp with SMTP_HOST: any server, STARTTLS on 587 or TLS on 465, login only when given', () => {
+  const creados = [];
+  const crear = (o) => { creados.push(o); return {}; };
+  loadMailConfig({ MAIL_MODE: 'smtp', SMTP_HOST: 'smtp.centro.es' }, crear);
+  assert.deepEqual(creados[0], { host: 'smtp.centro.es', port: 587, secure: false, auth: undefined });
+  loadMailConfig({ MAIL_MODE: 'smtp', SMTP_HOST: 'smtp.centro.es', SMTP_SECURE: 'true', EMAIL_USER: 'u@centro.es', EMAIL_PASS: 'p' }, crear);
+  assert.deepEqual(creados[1], { host: 'smtp.centro.es', port: 465, secure: true, auth: { user: 'u@centro.es', pass: 'p' } });
+  loadMailConfig({ MAIL_MODE: 'smtp', EMAIL_USER: 'u@gmail.com', EMAIL_PASS: 'p' }, crear);
+  assert.deepEqual(creados[2], { service: 'gmail', auth: { user: 'u@gmail.com', pass: 'p' } }, 'Gmail without SMTP_HOST, as before');
+});
+
+test('mail: MAIL_FROM sets the sender; a caller may still give its own', async () => {
+  const enviados = [];
+  const cfg = loadMailConfig({ MAIL_MODE: 'mailpit', MAIL_FROM: 'FP Dual <dual@centro.es>' },
+    () => ({ sendMail: async (m) => { enviados.push(m); return {}; } }));
+  await cfg.transporter.sendMail({ to: 'a@x.test', subject: 'S' });
+  await cfg.transporter.sendMail({ to: 'a@x.test', subject: 'S', from: 'otro@x.test' });
+  assert.equal(enviados[0].from, 'FP Dual <dual@centro.es>');
+  assert.equal(enviados[1].from, 'otro@x.test');
+});
+
+test('mail: an unknown MAIL_MODE sends nothing (log) and warns', () => {
+  const avisos = [];
+  const realWarn = console.warn;
+  console.warn = (l) => avisos.push(l);
+  try {
+    const cfg = loadMailConfig({ MAIL_MODE: 'gmail' }, () => { throw new Error('should not connect'); });
+    assert.equal(cfg.MAIL_MODE, 'log');
+    assert.equal(cfg.transporter.entrega, false);
+  } finally {
+    console.warn = realWarn;
+  }
+  assert.match(avisos.join(' '), /MAIL_MODE=gmail no existe/);
 });
 
 test('mail log mode never sends and masks odd recipients', async () => {

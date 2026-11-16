@@ -20,6 +20,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY backend/src ./src
 COPY backend/scripts ./scripts
+# Starting templates loaded by scripts/cargarPlantillas.js on a new installation.
+COPY backend/required_documents ./required_documents
 COPY db /app/db
 COPY docs /app/docs
 

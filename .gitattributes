@@ -1,0 +1,5 @@
+# Scripts run on the Linux server and inside the containers: always LF,
+# whatever core.autocrlf is on a Windows checkout.
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+deploy/nginx.conf text eol=lf

@@ -73,7 +73,6 @@ async function enviar(clave, to, valores, documentos = null) {
     return false;
   }
   await transporter.sendMail({
-    from: `"Salesianos Dual" <${process.env.EMAIL_USER}>`,
     to,
     subject: correo.asunto,
     html: correo.html,

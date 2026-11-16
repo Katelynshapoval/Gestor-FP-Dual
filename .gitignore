@@ -36,3 +36,6 @@ backups/
 e2e/.e2e.local.json
 e2e/test-results/
 e2e/playwright-report/
+
+# Caddy root certificate exported by ./deploy/fpdual.sh certificado
+fpdual-ca.crt

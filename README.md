@@ -60,7 +60,10 @@ Requisitos: Node.js 24 (npm 11) y MySQL 8.
    cp .env.example .env
    ```
 
-   Rellena en `backend/.env` al menos `DBUSER`, `DBPASS`, `DBNAME` y `JWT_SECRET` (32 caracteres aleatorios como mínimo). Con `MAIL_MODE=log` no se envía ningún correo: solo se anota en el registro del servidor.
+   Rellena en `backend/.env` al menos `DBUSER`, `DBPASS`, `DBNAME` y `JWT_SECRET` (32 caracteres aleatorios como mínimo). Para el correo:
+   - `MAIL_MODE=log` no envía nada: solo lo anota en el registro del servidor.
+   - `MAIL_MODE=mailpit` deja cada correo en una bandeja local en http://localhost:8025. Arráncala con `npm run mailpit` (necesita Docker).
+   - `MAIL_MODE=smtp` envía de verdad.
 
 2. Instala las dependencias y crea la base de datos (sobre una base vacía crea el esquema completo y aplica todas las migraciones):
 
@@ -69,13 +72,19 @@ Requisitos: Node.js 24 (npm 11) y MySQL 8.
    npm run db:migrate -- up --yes
    ```
 
-3. Carga datos. Para probar, hay un juego de demostración ficticio con ciclos, empresas, alumnos y cuentas de personal. Necesita una convocatoria activa (una fila en `dual_convocatorias` cuyas fechas incluyan hoy), **borra todos los datos** antes de cargarlos y guarda las contraseñas en `backend/.demo.local.json`:
+3. Carga datos. Para probar, hay un juego de demostración ficticio con ciclos, empresas, alumnos, reservas y cuentas de personal. **Borra todos los datos** antes de cargarlos, crea la convocatoria del curso si no hay ninguna activa y guarda las contraseñas en `backend/.demo.local.json` (`--mostrar` las enseña en pantalla). Después carga las plantillas de convenio y anexos:
 
    ```bash
-   node scripts/seedDemo.js --yes
+   npm run db:demo -- --yes
+   npm run db:plantillas
    ```
 
-   Con datos reales, en cambio, hay que cargar los ciclos del centro (`dual_especialidades`) y crear la primera cuenta de administración; después todo se gestiona desde la aplicación.
+   Con datos reales, en cambio, crea la primera cuenta de Administración (la contraseña temporal sale en pantalla) y carga las plantillas; los ciclos y la convocatoria se crean desde la aplicación:
+
+   ```bash
+   npm run db:admin -- --email tu@correo.es --nombre "Tu nombre" --yes
+   npm run db:plantillas
+   ```
 
 4. Arranca el backend (puerto 3001):
 
@@ -104,6 +113,10 @@ Abre http://localhost:3000. Para firmar desde el móvil con el código QR, el m�
 | `backend` | `npm run db:migrate -- status` | Migraciones aplicadas y pendientes |
 | `backend` | `npm run db:migrate -- up --yes` | Aplica las migraciones pendientes |
 | `backend` | `npm run db:backup` | Copia de seguridad en `backups/` |
+| `backend` | `npm run db:admin -- --email … --nombre "…" --yes` | Crea una cuenta de Administración (`--rol COORDINADOR`, `--restablecer`) |
+| `backend` | `npm run db:plantillas` | Carga las plantillas de partida de `required_documents/` en los tipos que no tienen ninguna |
+| `backend` | `npm run db:demo -- --yes` | Borra los datos y carga la demo ficticia |
+| `backend` | `npm run mailpit` | Bandeja de correo local en http://localhost:8025 (con `MAIL_MODE=mailpit`) |
 | `frontend` | `npm start` | Servidor de desarrollo |
 | `frontend` | `npm test` | Pruebas |
 | `frontend` | `npm run lint` | Revisión de código (sin avisos permitidos) |
@@ -114,7 +127,17 @@ Antes de aplicar una migración, haz una copia con `npm run db:backup` y compru�
 
 ## Despliegue
 
-La aplicación se despliega con Docker Compose en un servidor Linux. Los pasos (variables, primera instalación, migraciones, copias de seguridad y actualizaciones) están en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
+La aplicación se despliega con Docker Compose en un servidor Linux, y todo se maneja con `./deploy/fpdual.sh`:
+
+```bash
+cp .env.example .env && chmod 600 .env && nano .env
+./deploy/fpdual.sh instalar
+./deploy/fpdual.sh admin tu@correo.es "Tu nombre"
+./deploy/fpdual.sh plantillas
+./deploy/fpdual.sh demo --conservar-personal    # opcional: datos ficticios
+```
+
+Las variables, HTTPS en una intranet, Mailpit, las copias de seguridad, las actualizaciones y los problemas frecuentes están en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
 
 ## Documentación
 

@@ -1,7 +1,8 @@
-# Production stack: MySQL, API, web (React build + nginx) and Caddy (HTTPS).
-#   cp .env.production.example .env   # fill it in
-#   docker compose up -d --build
-# See docs/DESPLIEGUE.md for the first install, migrations and backups.
+# Production stack: MySQL, API, web (React build + nginx), Caddy (HTTPS) and,
+# optionally, Mailpit (catches every email in a web inbox, for demos).
+#   cp .env.example .env              # fill it in
+#   ./deploy/fpdual.sh instalar       # or: docker compose up -d --build
+# See docs/DESPLIEGUE.md for the first install, demo data, migrations and backups.
 
 name: fpdual
 
@@ -52,10 +53,22 @@ services:
       TRUST_PROXY: 1
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       APP_URL: ${APP_URL:?Set APP_URL in .env}
+      # smtp (Gmail, or the server in SMTP_HOST), mailpit (needs
+      # COMPOSE_PROFILES=mailpit) or log.
       MAIL_MODE: ${MAIL_MODE:-smtp}
       MAIL_REDIRECT_TO: ${MAIL_REDIRECT_TO:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       EMAIL_USER: ${EMAIL_USER:-}
       EMAIL_PASS: ${EMAIL_PASS:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      # Only used with MAIL_MODE=mailpit: the mailpit service below.
+      MAILPIT_HOST: mailpit
+      MAILPIT_PORT: 1025
+      # Staff logins of ./deploy/fpdual.sh demo.
+      DEMO_ADMIN_EMAIL: ${DEMO_ADMIN_EMAIL:-}
+      DEMO_COORD_EMAIL: ${DEMO_COORD_EMAIL:-}
       SIGNUP_MAX_PER_IP_HOUR: ${SIGNUP_MAX_PER_IP_HOUR:-10}
       SIGNUP_MAX_PER_DAY: ${SIGNUP_MAX_PER_DAY:-300}
       MAX_PLAZAS_POR_CICLO: ${MAX_PLAZAS_POR_CICLO:-20}
@@ -79,6 +92,10 @@ services:
       - web
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env}
+      # internal = certificate from Caddy's own authority, for an intranet name
+      # such as fpdual.centro.local (browsers warn until its root is trusted).
+      # An email address = Let's Encrypt, for a public domain.
+      CADDY_TLS: ${CADDY_TLS:-internal}
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
@@ -88,7 +105,26 @@ services:
       - caddy-data:/data
       - caddy-config:/config
 
+  # Optional (COMPOSE_PROFILES=mailpit in .env): catches every email the
+  # backend sends with MAIL_MODE=mailpit and shows it at http://<server>:8025.
+  # Nothing reaches real inboxes. MAILPIT_UI_AUTH=user:password protects that
+  # inbox; without it anyone on the network can read it.
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    profiles: ["mailpit"]
+    restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 2000
+      MP_UI_AUTH: ${MAILPIT_UI_AUTH:-}
+      TZ: Europe/Madrid
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    volumes:
+      - mailpit-data:/data
+
 volumes:
   db-data:
   caddy-data:
   caddy-config:
+  mailpit-data:

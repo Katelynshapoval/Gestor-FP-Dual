@@ -1,6 +1,6 @@
 # Runs the tests on every push and pull request:
 #   Backend, Frontend  unit tests with coverage minimums (no database)
-#   Database           backend/test/db against a real MySQL 8.0 (DB_INTEGRATION=1)
+#   Database           backend/test/db against a real MySQL 8.4, as in docker-compose.yml (DB_INTEGRATION=1)
 #   End to end         the Playwright journey in e2e/ (real backend, frontend and MySQL)
 # The two MySQL jobs use a throwaway service container: nothing outside the
 # runner is touched, and its root password is only valid inside the job.
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: ci-root
         ports:
@@ -115,7 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: ci-root
         ports:

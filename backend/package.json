@@ -9,7 +9,11 @@
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=93 --test-coverage-branches=84 --test-coverage-functions=92",
     "db:migrate": "node scripts/migrate.js",
     "db:schema": "node scripts/schema.js",
-    "db:backup": "node scripts/backup.js"
+    "db:backup": "node scripts/backup.js",
+    "db:admin": "node scripts/crearAdmin.js",
+    "db:plantillas": "node scripts/cargarPlantillas.js --yes",
+    "db:demo": "node scripts/seedDemo.js",
+    "mailpit": "docker compose -f ../docker-compose.dev.yml up -d"
   },
   "keywords": [],
   "author": "",
