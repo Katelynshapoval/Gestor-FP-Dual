@@ -49,8 +49,9 @@ export default defineConfig({
       include: ["src/**/*.{js,jsx}"],
       exclude: ["src/**/*.test.{js,jsx}", "src/setupTests.js", "src/index.jsx"],
       reporter: ["text", "text-summary"],
-      // Minimum coverage, carried over from the Jest setup; CI fails below it.
-      thresholds: { lines: 66, statements: 64, functions: 55, branches: 52 },
+      // Minimum coverage; CI fails below it. A few points under the current
+      // figures (85 / 83 / 79 / 75), so a new untested screen shows up in CI.
+      thresholds: { lines: 82, statements: 80, functions: 76, branches: 71 },
     },
   },
 });
