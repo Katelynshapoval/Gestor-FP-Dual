@@ -3,6 +3,8 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const { signupRateLimit } = require('../middleware/loginRateLimit');
 const asyncHandler = require('../middleware/asyncHandler');
 const svc = require('../services/solicitudesEmpresaService');
+const cambios = require('../services/solicitudEmpresaCambiosService');
+const ofertas = require('../services/solicitudEmpresaOfertasService');
 const baja = require('../services/bajaService').handlers('SOLICITUD_EMPRESA');
 
 const router = Router();
@@ -26,15 +28,15 @@ router.get('/solicitudes/empresa', requireAuth, requireRole('ADMINISTRADOR', 'CO
 router.get('/solicitudes/empresa/:id', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getById));
 router.get('/solicitudes/empresa/:id/especialidades', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getEspecialidades));
 router.post('/solicitudes/empresa/:id/convenio/sustituir', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.sustituirConvenio));
-router.post('/solicitudes/empresa/:id/especialidades', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.addEspecialidad));
-router.put('/solicitudes/empresa/:id/especialidades/:idOferta/cantidad', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.updateCupoEspecialidad));
+router.post('/solicitudes/empresa/:id/especialidades', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(ofertas.addEspecialidad));
+router.put('/solicitudes/empresa/:id/especialidades/:idOferta/cantidad', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(ofertas.updateCupoEspecialidad));
 router.get('/solicitudes/empresa/:id/documentos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getDocumentos));
-router.get('/solicitudes/empresa/:id/datos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getDatos));
-router.put('/solicitudes/empresa/:id/datos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.putDatos));
-router.get('/solicitudes/empresa/:id/cambios', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(svc.getCambio));
-router.post('/solicitudes/empresa/:id/cambios', requireAuth, requireRole('EMPRESA'), asyncHandler(svc.upsertCambio));
-router.post('/solicitudes/empresa/:id/cambios/:idCambio/aprobar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.aprobarCambio));
-router.post('/solicitudes/empresa/:id/cambios/:idCambio/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.rechazarCambio));
+router.get('/solicitudes/empresa/:id/datos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(cambios.getDatos));
+router.put('/solicitudes/empresa/:id/datos', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(cambios.putDatos));
+router.get('/solicitudes/empresa/:id/cambios', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'), asyncHandler(cambios.getCambio));
+router.post('/solicitudes/empresa/:id/cambios', requireAuth, requireRole('EMPRESA'), asyncHandler(cambios.upsertCambio));
+router.post('/solicitudes/empresa/:id/cambios/:idCambio/aprobar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(cambios.aprobarCambio));
+router.post('/solicitudes/empresa/:id/cambios/:idCambio/rechazar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(cambios.rechazarCambio));
 
 // Validate / reject application
 router.post('/solicitudes/empresa/:id/validar', requireAuth, requireRole('ADMINISTRADOR', 'COORDINADOR'), asyncHandler(svc.validar));

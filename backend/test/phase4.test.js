@@ -239,7 +239,9 @@ test('mail/config: development defaults to log mode and masks the recipient', ()
   const path = require('node:path');
   const file = require.resolve(path.join(__dirname, '..', 'src', 'mail', 'config.js'));
   const saved = { mode: process.env.MAIL_MODE, env: process.env.NODE_ENV };
-  delete process.env.MAIL_MODE;
+  // Empty, not deleted: dotenv never overrides a variable that exists, so a
+  // developer's backend/.env (often MAIL_MODE=smtp) cannot leak into the test.
+  process.env.MAIL_MODE = '';
   process.env.NODE_ENV = 'development';
   delete require.cache[file];
   const real = require(file);

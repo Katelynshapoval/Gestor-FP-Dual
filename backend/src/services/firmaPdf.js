@@ -1,4 +1,4 @@
-// Signature images inside PDFs (migration 027, docs/PLAN_FIRMAS.md).
+// Signature images inside PDFs (migration 027, docs/tecnica/logica-de-negocio/documentos-y-firmas.md § 4).
 //
 // Marks. A template says where each person signs with <<firmaEmpresa>>,
 // <<firmaCentro>>, <<firmaAlumno>> and <<firmaTutorLegal>>. Generation turns

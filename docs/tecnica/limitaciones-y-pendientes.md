@@ -43,11 +43,16 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | Subida del convenio por la empresa antes de que el centro lo genere | El portal ya no lo ofrece («en preparación por el centro»), pero `POST /documentos/subir` y `/documentos/empresa/:id/convenio` lo siguen aceptando |
 | «Generar convenios pendientes» se ejecuta dentro de la petición HTTP | Con muchas solicitudes puede superar el tiempo de espera de un proxy; sin cola ni indicador de progreso |
 | Formato del NSS del alumno | Solo se valida en el formulario. El DNI/NIE se valida también en el backend (SEC-001) |
+| Firma del centro | En desarrollo hay una imagen subida el 15/11/2026. Si es provisional, sustituirla por la definitiva (firma y sello que aporta el centro) en Configuración › Firma del centro |
+| Marcas de firma en las plantillas | Las plantillas activas aún no tienen `<<firmaEmpresa>>`, `<<firmaCentro>>`, `<<firmaAlumno>>` ni `<<firmaTutorLegal>>`: las firmas van en la «Hoja de firmas». Documentos › Plantillas avisa de las que faltan |
+| Texto de los correos del convenio | Siguen diciendo «firmadlo y subidlo»; ahora la empresa también puede firmarlo en el portal. Se editan en Configuración › Correos |
+| Plantillas que se usarán este curso | Pendiente de la tabla de documentos del centro. Se añaden en Configuración › Documentos sin programar |
+| Imagen de ayuda de coordinador y administrador | Se revisará cuando la aplicación esté desplegada en el centro |
 
 ## 5. Operación
 
-- Sin entorno de producción, guía de despliegue ni CI.
-- Una prueba del backend falla de forma preexistente (`mail/config: development defaults to log mode`).
+- Sin entorno de producción. Hay guía de despliegue con Docker ([`DESPLIEGUE.md`](../DESPLIEGUE.md)) y CI en GitHub Actions (pruebas de backend y frontend).
+- La 027 se comprobó a mano en `_verify` (aplicar, deshacer, aplicar); no tiene prueba `test/db/stage027.db.test.js` como la 025 y la 026.
 - `dual_especialidades` no tiene fichero de carga en el repositorio.
 - Pendientes de comprobar: lectura de pantalla con lector de pantalla y envío real de correo.
 
@@ -55,9 +60,6 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 
 | Dónde | Dice | Hace |
 | --- | --- | --- |
-| `convocatoriasService.update` | «updates a future (not yet active) convocatoria» | Permite editar cualquier convocatoria no activa, también pasadas |
-| `authService.getAll` | «admin/coordinador» | La ruta exige ADMINISTRADOR |
-| `solicitudesAlumnoService` (error del catálogo) | «Ejecuta la migración 008» | La 008 es un script retirado; el catálogo viene del baseline |
 | Mensaje de `trg_convocatorias_bu_una_activa` | «Use sp_activar_convocatoria…» | El procedimiento no se usa; la activación es por fechas |
 
 ## 7. Pendiente de confirmar
@@ -68,4 +70,4 @@ Ver [seguridad § 4](seguridad-y-permisos.md#4-riesgos-y-limitaciones-conocidos)
 | Volúmenes reales y tamaño de ficheros; cuenta de MySQL, zona horaria y despliegue de un entorno real | No hay producción |
 | Comportamiento detrás de un proxy inverso (CORS, servido de la SPA) | No hay configuración de despliegue. La IP del limitador se ajusta con `TRUST_PROXY` |
 | Uso previsto de `dual_documento_versiones` | Ningún código la lee |
-| Origen de las plantillas de `backend/required_documents/` | No se referencian desde el código |
+| `backend/required_documents/` | Plantillas .docx de partida (convenio y anexos) para editarlas y subirlas en Documentos › Plantillas; el código no las lee |

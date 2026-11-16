@@ -67,7 +67,7 @@ const DOCUMENTOS = {
   documento_rechazado_reserva: DOC_RESERVA,
 };
 
-// What each email is about (part C of docs/PLAN_DOCUMENTOS_DINAMICOS.md): any
+// What each email is about (docs/tecnica/api-e-integraciones/correo-electronico.md): any
 // active generated document of that request may go attached, including the
 // types the centre adds (migration 025). Emails about no single request
 // (password reset, the alert to the centre, places reduced, the footer) carry

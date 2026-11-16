@@ -1,7 +1,7 @@
 // Phase 2 state rules as pure functions (no database), shared by the services
 // and the tests. Each returns null when the transition is allowed, or
 // { status, error, code } describing why not. The tables in
-// docs/STATE_TRANSITIONS.md describe the same rules.
+// docs/tecnica/logica-de-negocio/README.md (state machines) describes the same rules.
 const { anexoClaveForContrato, familiaContrato, defByClave, pendingSignatures, actorLabel } = require("./documentCatalogue");
 
 function deny(status, code, error) {

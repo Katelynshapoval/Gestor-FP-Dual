@@ -1,4 +1,4 @@
-// Document types the centre can add (migration 025, docs/PLAN_DOCUMENTOS_DINAMICOS.md).
+// Document types the centre can add (migration 025; docs/tecnica/logica-de-negocio/documentos-y-firmas.md § 1.1).
 //
 // dual_tipos_documento holds every type. The 13 system types (es_sistema = 1)
 // keep their rules in documentCatalogue.CATALOGUE and are read-only here; only

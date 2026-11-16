@@ -228,7 +228,7 @@ exports.create = async function (req, res) {
     const idCv = await tipoIdByNombre('CV', conn);
     const idDga = await tipoIdByNombre('ANEXO_DGA', conn);
     if (!idCv || !idDga) {
-      throw new Error('El catálogo de documentos no está actualizado. Ejecuta la migración 008.');
+      throw new Error('El catálogo de documentos no está actualizado. Faltan los tipos CV o ANEXO_DGA en dual_tipos_documento (ver db/000_baseline.sql).');
     }
     await conn.query('CALL sp_guardar_documento(?, NULL, NULL, ?, ?)', [idSolicitudAlumno, idCv, cvFile.buffer]);
     await conn.query('CALL sp_guardar_documento(?, NULL, NULL, ?, ?)', [idSolicitudAlumno, idDga, anexoDgaFile.buffer]);

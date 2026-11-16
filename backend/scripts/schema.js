@@ -31,8 +31,8 @@ function render(objects, seeds, sourceDb) {
   out.push(
     '-- 000_baseline.sql',
     `-- Schema baseline generated from \`${sourceDb}\` by backend/scripts/schema.js.`,
-    '-- Equals the result of the retired scripts in db/legacy_migrations (002–011 as',
-    '-- actually applied). Structure plus lookup rows only: no personal data.',
+    '-- Equals the result of the retired scripts 002–011 (removed from the repository;',
+    '-- see git history) as actually applied. Structure plus lookup rows only.',
     '-- Applied automatically by `npm run db:migrate -- up` on an empty database.',
     '-- Do not edit by hand: later changes go in db/migrations/NNN_*.sql.',
     '',

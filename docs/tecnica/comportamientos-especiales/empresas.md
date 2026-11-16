@@ -41,7 +41,7 @@
 - **Condición**: nueva cantidad < reservas activas (pendientes + confirmadas) y ≥ confirmadas.
 - **Comportamiento**: primera llamada → 409 `requires_selection` con las pendientes y cuántas hay que cancelar. Segunda llamada con `confirmar_cancelaciones: true` e `ids_reservas_cancelar` con **exactamente** ese número de pendientes → se cancelan (motivo «Cupo reducido por la empresa.» o «…por administración.») y se cambia la cantidad, todo en una transacción. Si se envían más, menos o ids que no son pendientes de esa oferta → vuelve a 409.
 - **Consecuencias**: cada cancelación tiene su evento `CANCELAR` y el cambio de cupo su evento `OFERTA/CUPO` (desde la 018). El coordinador recibe un resumen (con nombre y DNI de cada alumno) y cada alumno un aviso de cancelación.
-- **Referencia**: `solicitudesEmpresaService.updateCupoEspecialidad`; `CupoReductionDialog.jsx`.
+- **Referencia**: `solicitudEmpresaOfertasService.updateCupoEspecialidad`; `CupoReductionDialog.jsx`.
 
 ### Reducción por debajo de las confirmadas
 - **Comportamiento**: 400 «No se puede reducir el número de plazas por debajo de los alumnos ya confirmados…». Respaldo en BD: `trg_dsee_bu_cupo`.

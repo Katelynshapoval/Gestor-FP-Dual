@@ -15,11 +15,11 @@ _Versión del manual: 28/10/2026. Describe la aplicación tal y como funciona en
 2. [Acceso a la aplicación](#acceso)
    - [Iniciar sesión](#iniciar-sesion) · [Cerrar sesión](#cerrar-sesion) · [Cambiar la contraseña](#cambiar-contrasena) · [Contraseña temporal](#contrasena-temporal) · [Sesión caducada](#sesion-caducada) · [Si no puedes entrar](#no-puedes-entrar) · [Recuperar la contraseña](#recuperar)
 3. [Navegación general](#navegacion)
-   - [Menú principal](#menu) · [Listas, búsqueda y filtros](#filtros) · [Estados e indicadores](#estados) · [Botones y ventanas habituales](#botones) · [La página de Ayuda](#ayuda)
+   - [Menú principal](#menu) · [Listas, búsqueda y filtros](#filtros) · [Estados e indicadores](#estados) · [Firmar documentos](#firmar-documentos) · [Botones y ventanas habituales](#botones) · [La página de Ayuda](#ayuda)
 4. [Solicitudes públicas (alumnos y empresas nuevos)](#solicitudes-publicas)
    - [Comprobar si el plazo está abierto](#plazo) · [Solicitud de alumno](#solicitud-alumno) · [Solicitud de empresa](#solicitud-empresa) · [Después de enviar](#despues-enviar)
 5. [Manual del administrador](#administrador)
-   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Personal](#personal-centro) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja) · [Correos automáticos](#correos) · [Documentos que pide el centro](#tipos-documento)
+   - [Panel](#panel) · [Convocatorias](#convocatorias) · [Personal](#personal-centro) · [Alumnos](#staff-alumnos) · [Empresas](#staff-empresas) · [Reservas](#staff-reservas) · [Documentos](#staff-documentos) · [Plantillas](#plantillas) · [Cuentas y contraseñas](#cuentas) · [Dar de baja](#baja) · [Correos automáticos](#correos) · [Documentos que pide el centro](#tipos-documento) · [Firma del centro](#firma-centro)
 6. [Manual del coordinador](#coordinador)
 7. [Manual de empresa](#empresa)
    - [Portal de la empresa](#portal-empresa) · [Datos y cambios](#empresa-datos) · [Ciclos y plazas](#empresa-plazas) · [Tutores](#empresa-tutores) · [Alumnos disponibles y reservas](#empresa-reservar) · [Documentos y firmas](#empresa-documentos) · [Nueva convocatoria](#empresa-reaplicar)
@@ -261,6 +261,12 @@ Los documentos se firman dentro de la aplicación: tu firma se inserta en el PDF
 - **Con el móvil**: en el ordenador aparece un código QR. Apunta con la cámara del móvil, dibuja la firma con el dedo y pulsa **«Enviar firma»**. La firma aparece en el ordenador; pulsa **«Guardar y continuar»** o **«Repetir»**. El código dura 10 minutos y sirve una vez.
 - **Dibujar aquí**: con el dedo, un lápiz o el ratón. **«Deshacer»** quita el último trazo y **«Borrar»** lo limpia todo.
 
+![Ventana «Crea tu firma» en la pestaña Con el móvil: un código QR y los tres pasos para firmar con el móvil](manual/imagenes/firma-movil-qr.png)
+_Crear la firma con el móvil: apunta con la cámara al código, firma con el dedo y la firma aparece en el ordenador._
+
+![Ventana «Crea tu firma» en la pestaña Dibujar aquí, con una firma dibujada y los botones Deshacer, Borrar y Guardar firma](manual/imagenes/mi-firma.png)
+_Crear la firma dibujándola en la pantalla._
+
 Después no se vuelve a pedir. Para cambiarla o eliminarla, entra en **«Mi firma»** (menú, junto a «Cambiar contraseña»). Los documentos que ya has firmado conservan la firma anterior.
 
 **Firmar.** Cuando tengas documentos por firmar aparece el botón rojo **«Firmar N documentos»** (en tu portal y, para el centro, en Documentos). También puedes pulsar **«Firmar»** en un documento concreto.
@@ -268,6 +274,9 @@ Después no se vuelve a pedir. Para cambiarla o eliminarla, entra en **«Mi firm
 2. Con las **flechas** (o las teclas ← →, o deslizando en el móvil) pasas de un documento a otro. La lupa amplía la página y **«Ver el documento completo»** abre el PDF entero.
 3. Si quieres dejar alguno para más tarde, desmarca **«Firmar este documento»**.
 4. Pulsa **«Firmar los N documentos»** y confirma. Si alguno no se puede firmar, se indica cuál y por qué; los demás quedan firmados.
+
+![Ventana Firmar documentos: a la izquierda la página del Anexo II; a la derecha quién ha firmado ya, la firma guardada y el botón Firmar el documento](manual/imagenes/firmar-documentos.png)
+_Un alumno con un Anexo II por firmar. La empresa y el centro ya han firmado; como esta plantilla no marca dónde firma el alumno, su firma irá en una hoja de firmas al final._
 
 - **Menores de edad**: hasta cumplir 18 años, tus documentos llevan también la firma de tu tutor o tutora legal. Se crea igual que la tuya (la dibuja tu tutor en persona) y se guarda en «Mi firma».
 - **Centro**: administración y coordinación firman con **la firma del centro**, una imagen con la firma y el sello que un administrador sube una vez en **Configuración › Firma del centro**. Mientras no exista, el personal no puede firmar.
@@ -336,7 +345,7 @@ Las convocatorias se abren y se cierran solas según sus fechas.
 **Antes de empezar:** ten a mano tu **CV** y el **Anexo DGA** firmado, los dos en **PDF** (máximo 10 MB cada uno). Si no tienes el Anexo DGA, pídelo en secretaría. Calcula unos 10 minutos.
 
 1. En la página de inicio pulsa **«Presentar candidatura»** (o «Solicitud de alumno» en el menú).
-2. Rellena los seis pasos. Pulsa **«Siguiente →»** para avanzar y **«← Anterior»** para volver sin perder nada:
+2. Rellena los siete pasos. Pulsa **«Siguiente →»** para avanzar y **«← Anterior»** para volver sin perder nada:
 
    | Paso | Qué se pide |
    | --- | --- |
@@ -344,8 +353,9 @@ Las convocatorias se abren y se cierran solas según sus fechas.
    | 2. Datos personales | **DNI / NIE** (con letra, sin espacios ni guiones; será tu usuario; se comprueba que la letra es correcta), nombre y apellidos, fecha de nacimiento, nacionalidad y sexo. **Si eres menor de edad**, también el nombre y el DNI/NIE de tu tutor o tutora legal. |
    | 3. Contacto y movilidad | Email personal, teléfono (9 cifras), domicilio, código postal, localidad, si tienes carnet de conducir y vehículo, idiomas y nivel, y el número de la Seguridad Social si ya lo tienes (es opcional). |
    | 4. Documentos | **Currículum (PDF)** y **Anexo DGA (PDF)**. |
-   | 5. Cuenta | La **contraseña** con la que entrarás al portal (mínimo 8 caracteres), dos veces. **Si ya tienes cuenta de un curso anterior, escribe aquí tu contraseña actual** ([más información](#faq-alumno-existente)). |
-   | 6. Revisión y envío | Un resumen de todo. Cada apartado tiene un botón **«Modificar»** para corregirlo. |
+   | 5. Firma | **Opcional.** Tu firma, dibujada con el dedo en el móvil o aquí mismo ([cómo](#firmar-documentos)). Con ella firmarás los documentos del programa con un clic. Si ahora no te viene bien, pulsa «Siguiente →»: se te pedirá la primera vez que tengas que firmar. |
+   | 6. Cuenta | La **contraseña** con la que entrarás al portal (mínimo 8 caracteres), dos veces. **Si ya tienes cuenta de un curso anterior, escribe aquí tu contraseña actual** ([más información](#faq-alumno-existente)). |
+   | 7. Revisión y envío | Un resumen de todo. Cada apartado tiene un botón **«Modificar»** para corregirlo. |
 
 3. Pulsa **«Enviar solicitud»** y espera a que termine: aparece «Enviando la solicitud. No cierres esta página.»
 
@@ -353,7 +363,7 @@ Los campos con **\*** son obligatorios. Si falta algo, al pulsar «Siguiente →
 
 Si desde la misma conexión se envían muchas solicitudes seguidas, aparece «Se han recibido demasiadas solicitudes. Vuelve a intentarlo más tarde.». Espera un rato y vuelve a enviarla.
 
-![Primer paso de la solicitud de alumno con el indicador de seis pasos](manual/imagenes/solicitud-alumno-paso1.png)
+![Primer paso de la solicitud de alumno con el indicador de siete pasos](manual/imagenes/solicitud-alumno-paso1.png)
 _Paso 1 de la solicitud de alumno. Los círculos de arriba muestran en qué paso estás._
 
 <a id="solicitud-empresa"></a>
@@ -809,6 +819,8 @@ Pestaña **«Plantillas»** dentro de Documentos. Aquí están las plantillas **
 
 Despliega **«Campos que puede usar la plantilla»** para ver los datos que se rellenan solos, escritos tal como hay que ponerlos en el Word (por ejemplo `<<razonSocial>>` o `<<alumno>>`). Dependen de a qué pertenece el documento: todos los de empresa usan los mismos campos que el convenio; todos los de reserva, los mismos que los anexos.
 
+**Dónde va cada firma.** Escribe en el Word, en el sitio de cada firma, `<<firmaEmpresa>>`, `<<firmaCentro>>`, `<<firmaAlumno>>` o `<<firmaTutorLegal>>` (tutor legal de un alumno menor). Al firmar, la imagen de la firma se coloca ahí. Si la plantilla activa no tiene el campo de alguien que firma ese documento, la tarjeta lo avisa y esa firma irá en una **hoja de firmas** al final del documento.
+
 - Cualquier miembro del personal puede **descargar** la plantilla activa.
 - 🔒 **Solo Administración** puede subirlas: selecciona un archivo **.docx** y pulsa **«Subir plantilla»** (o **«Reemplazar»** si ya hay una). Se guarda como versión nueva.
 
@@ -824,7 +836,7 @@ Cuando hay plantilla activa y alguna solicitud de empresa sigue sin convenio, ap
 
 No se toca ningún convenio que ya exista (generado o subido por la empresa), ni los de solicitudes rechazadas. Lo pueden usar Administración y Coordinación.
 
-![Pestaña Plantillas con el aviso de que no hay plantilla de Convenio, y Convenio, Anexo II y Anexo III con el botón Subir plantilla](manual/imagenes/plantillas.png)
+![Pestaña Plantillas con el aviso de que no hay plantilla de Convenio; Convenio, Anexo II y Anexo III con a qué pertenecen, los campos que pueden usar y el botón Subir plantilla](manual/imagenes/plantillas.png)
 _Plantillas vistas por Administración. En este ejemplo todavía no hay ninguna configurada, así que arriba aparece el aviso de que falta la plantilla de Convenio._
 
 <a id="cuentas"></a>
@@ -947,6 +959,22 @@ Si otra persona guarda el mismo correo mientras lo editas, al guardar se avisa y
 El documento aparece en las solicitudes y reservas como los demás: el centro lo **genera**, lo firman quienes hayas marcado (la empresa o el alumno firmante también puede subir la copia firmada) y el centro lo **valida**. Mientras no esté generado, la empresa y el alumno ven «En preparación por el centro».
 
 **Editar o desactivar.** «Editar» cambia el nombre, las firmas, si es obligatorio y en qué reservas. A qué pertenece solo se puede cambiar mientras no haya ningún documento de ese tipo. «Desactivar» deja de pedirlo en adelante; los que ya existen se conservan y se pueden consultar. Se puede volver a activar.
+
+<a id="firma-centro"></a>
+
+### 5.13 Firma del centro — 🔒 Solo Administración
+
+**Configuración › Firma del centro** guarda la imagen con **la firma y el sello** del centro. Es una sola para todo el personal: se coloca en los documentos cuando un administrador o un coordinador pulsa «Firmar» (el registro guarda quién lo hizo). Mientras no haya imagen, el personal no puede firmar.
+
+1. Escanea o fotografía la firma y el sello juntos, como quedan en papel, y recorta la imagen lo más ajustada posible.
+2. Pulsa **«Seleccionar imagen (PNG o JPG)»** y elígela.
+3. Deja marcado **«Quitar el fondo blanco»** si es una foto o un escaneado: así el texto del documento se ve a través, como con un sello de verdad.
+4. Pulsa **«Guardar firma del centro»** (si ya había una, **«Sustituir firma del centro»**).
+
+Los documentos ya firmados conservan la imagen con la que se firmaron.
+
+![Configuración › Firma del centro: a la izquierda la firma actual con el sello; a la derecha el formulario para sustituir la imagen](manual/imagenes/firma-centro.png)
+_La firma del centro guardada (imagen de ejemplo) y el formulario para cambiarla._
 
 <a id="coordinador"></a>
 

@@ -9,7 +9,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 
 export default [
-  { ignores: ["build/", "coverage/", "screenshots/"] },
+  { ignores: ["build/", "coverage/"] },
   // CRA did not report disable comments for rules it never enabled.
   { linterOptions: { reportUnusedDisableDirectives: "off" } },
   {

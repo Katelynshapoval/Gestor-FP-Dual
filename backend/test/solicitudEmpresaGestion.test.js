@@ -43,7 +43,12 @@ stub('src/services/documentGenerationService', {
 const avisos = [];
 stub('src/services/notificaciones', new Proxy({}, { get: (_t, n) => async (...a) => { avisos.push([n, ...a]); } }));
 
-const svc = load('src/services/solicitudesEmpresaService');
+// The three company application services, as the routes use them.
+const svc = {
+  ...load('src/services/solicitudesEmpresaService'),
+  ...load('src/services/solicitudEmpresaCambiosService'),
+  ...load('src/services/solicitudEmpresaOfertasService'),
+};
 
 const ADMIN = { id: 1, rol: 'ADMINISTRADOR' };
 const EMPRESA = { id: 3, rol: 'EMPRESA' };

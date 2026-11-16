@@ -29,7 +29,6 @@
     "puppeteer": "^25.16.0"
   },
   "devDependencies": {
-    "mysql": "^2.18.1",
     "nodemon": "^3.1.0"
   }
 }

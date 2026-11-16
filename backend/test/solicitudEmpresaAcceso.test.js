@@ -22,7 +22,12 @@ stub('src/services/empresaDatos', {
   loadEmpresaDatosRead: async (_conn, id) => (solicitudes[id] ? { ...solicitudes[id] } : null),
 });
 
-const svc = load('src/services/solicitudesEmpresaService');
+// The three company application services, as the routes use them.
+const svc = {
+  ...load('src/services/solicitudesEmpresaService'),
+  ...load('src/services/solicitudEmpresaCambiosService'),
+  ...load('src/services/solicitudEmpresaOfertasService'),
+};
 
 const solicitud = (extra = {}) => ({
   id_solicitud_empresa: 10, id_empresa: 100, empresa: 'ACME', convocatoria_activa: true,

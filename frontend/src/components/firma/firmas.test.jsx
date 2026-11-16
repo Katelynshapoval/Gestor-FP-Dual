@@ -1,4 +1,4 @@
-// Signatures in the browser (docs/PLAN_FIRMAS.md): the "Firmar documentos"
+// Signatures in the browser (docs/tecnica/logica-de-negocio/documentos-y-firmas.md § 4): the "Firmar documentos"
 // dialog (sign all, leave one out, what is asked before the first signature),
 // "Mi firma", the centre's image, and the page a phone opens from the QR.
 // jsdom has no canvas: drawing itself is checked in a real browser; here the

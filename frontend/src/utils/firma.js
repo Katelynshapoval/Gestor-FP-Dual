@@ -1,4 +1,4 @@
-// Signature images in the browser (docs/PLAN_FIRMAS.md). Everything the server
+// Signature images in the browser (docs/tecnica/logica-de-negocio/documentos-y-firmas.md § 4). Everything the server
 // stores is a PNG with a transparent background, cut to the ink.
 import { getJSON, publicJSON, apiError, readStoredSession } from "./api.js";
 

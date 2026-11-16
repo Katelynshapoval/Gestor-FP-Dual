@@ -1,6 +1,6 @@
 # Seguridad y permisos
 
-> Parte de la [documentación técnica](README.md). Flujo de autenticación en [autenticación y cuentas](logica-de-negocio/autenticacion-y-cuentas.md). Auditoría de seguridad del 28/10/2026 y sus correcciones (SEC-001 a SEC-013): [informe](../security/security-audit.md) · [corrección](../security/remediation.md).
+> Parte de la [documentación técnica](README.md). Flujo de autenticación en [autenticación y cuentas](logica-de-negocio/autenticacion-y-cuentas.md). Los identificadores SEC-001 a SEC-013 que aparecen aquí y en el código son los hallazgos de la auditoría de seguridad del 28/10/2026, ya corregidos.
 
 ## 1. Capas de control de acceso
 
@@ -58,8 +58,8 @@
 | Límite de altas públicas | 10 por IP y hora y 300 al día (configurables), para alumno y empresa (SEC-003) | `signupRateLimit` |
 | Recuperación de contraseña | Misma respuesta exista o no la cuenta (SEC-009). Solo envía el enlace a cuentas activas con correo. El enlace es de un solo uso y va ligado al hash; la clave es distinta de la de sesión | `passwordResetService.js` |
 | Formulario público sin sobrescritura | Alumno existente con cuenta: prueba su contraseña; ficha sin cuenta: se rechaza sin escribir nada (SEC-001); un único mensaje para todos los rechazos de identidad. DNI/NIE validado en el servidor. Empresa existente: 409 | `solicitudesAlumnoService`, `solicitudesEmpresaService` |
-| Ampliación de plazas | Una empresa validada solo puede reducir plazas; máximo `MAX_PLAZAS_POR_CICLO` por ciclo (SEC-002) | `solicitudesEmpresaService` |
-| Correcciones de datos con revisión | Empresa y alumno proponen; el centro aprueba. El DNI/NIE y el CIF no se cambian | `alumnoCambiosService`, `solicitudesEmpresaService` |
+| Ampliación de plazas | Una empresa validada solo puede reducir plazas; máximo `MAX_PLAZAS_POR_CICLO` por ciclo (SEC-002) | `solicitudEmpresaOfertasService` |
+| Correcciones de datos con revisión | Empresa y alumno proponen; el centro aprueba. El DNI/NIE y el CIF no se cambian | `alumnoCambiosService`, `solicitudEmpresaCambiosService` |
 | Coordinador protegido | La empresa no lo edita desde Tutores | `empresaTutoresService` |
 | Guarda única de subidas | Tipo, rol, propiedad, estado de reserva, familia, no reemplazar validados | `documentosService.assertCanUpload` |
 | Contenido de las subidas | PDF con firma `%PDF-`; plantillas DOCX con firma ZIP (SEC-008, SEC-012) | `pdfUpload.js`, `plantillasService` |

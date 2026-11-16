@@ -23,7 +23,7 @@ stub('src/services/reservasTx', { cancelarPendiente: async (_c, a) => { cancelad
 const avisos = [];
 stub('src/services/notificaciones', new Proxy({}, { get: (_t, n) => async (...a) => { avisos.push([n, ...a]); } }));
 
-const svc = load('src/services/solicitudesEmpresaService');
+const svc = load('src/services/solicitudEmpresaOfertasService');
 
 const EMPRESA = { id: 3, rol: 'EMPRESA' };
 const ADMIN = { id: 1, rol: 'ADMINISTRADOR' };

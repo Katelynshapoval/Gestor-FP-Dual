@@ -1,4 +1,4 @@
-// One convenio per company (migration 026, docs/PLAN_DOCUMENTOS_DINAMICOS.md part B).
+// One convenio per company (migration 026; docs/tecnica/logica-de-negocio/documentos-y-firmas.md § 1.2).
 //
 // A company signs its convenio once. A new application asking for the SAME
 // ciclos gets a copy of the company's validated convenio (origen HEREDADO,

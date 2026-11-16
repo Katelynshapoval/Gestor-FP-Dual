@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> Parte de la [base de datos](vision-general.md). Esquema de referencia: [`db/000_baseline.sql`](../../../db/000_baseline.sql) + [`db/migrations/012–021`](../../../db/migrations). Se describe el **estado tras la migración 021** (aplicada en desarrollo el 28/10/2026).
+> Parte de la [base de datos](vision-general.md). Esquema de referencia: [`db/000_baseline.sql`](../../../db/000_baseline.sql) + [`db/migrations/012–027`](../../../db/migrations). Se describe el **estado tras la migración 027** (aplicada en desarrollo el 15/11/2026).
 >
 > Notación: **PK** clave primaria · **FK** clave foránea · **UQ** único · **NN** `NOT NULL` · 🔒 tabla protegida.
 
@@ -24,9 +24,24 @@ Uso: casi todas las consultas filtran por `c.activa = 1` para decidir qué se pu
 | `dual_roles` | 1 ADMINISTRADOR · 2 COORDINADOR · 3 EMPRESA · 4 ALUMNO | `dual_usuarios.id_rol` |
 | `dual_estados_validacion` | 1 PENDIENTE · 2 VALIDADO · 3 RECHAZADO · 4 BAJA (016) | Solicitudes y documentos |
 | `dual_estados_reserva` | 1 PENDIENTE · 2 CONFIRMADA · 3 CANCELADA | Reservas |
-| `dual_tipos_documento` | 1 CV · 2 ANEXO_2 · 3 CONVENIO · 4 ANEXO_H · 5 OTRO · 6 ANEXO_DGA · 7 FORMULARIO · 8 ANEXO_XIV · 9 ANEXO_G · 10 ANEXO_II · 11 ANEXO_III · 12 CALENDARIO · 13 EXCEL | `ANEXO_2`, `ANEXO_H`, `FORMULARIO`, `OTRO` son **históricos** (siguen referenciados por datos antiguos; el catálogo de Node los marca `legacy` u omite `OTRO`) |
+| `dual_tipos_documento` | 1 CV · 2 ANEXO_2 · 3 CONVENIO · 4 ANEXO_H · 5 OTRO · 6 ANEXO_DGA · 7 FORMULARIO · 8 ANEXO_XIV · 9 ANEXO_G · 10 ANEXO_II · 11 ANEXO_III · 12 CALENDARIO · 13 EXCEL | `ANEXO_2`, `ANEXO_H`, `FORMULARIO`, `OTRO` son **históricos** (siguen referenciados por datos antiguos; el catálogo de Node los marca `legacy` u omite `OTRO`). Desde la 025 el centro puede añadir tipos (ids siguientes; columnas abajo) |
 | `dual_tipos_contrato` | 1 BECA · 2 CONTRATO_DE_FORMACION_EN_ALTERNANCIA · 3 CONVENIO · 4 OTRO (+ `nombre_mostrar`) | La familia de anexo se deduce del **nombre**: contiene «beca» → Anexo III; cualquier otro → Anexo II |
 | `dual_transportes` | 1 A_PIE · 2 COCHE · 3 AUTOBUS · 4 TRANVIA · 5 TREN · 6 BICICLETA | Transportes por solicitud de empresa |
+
+### `dual_tipos_documento` (columnas de la 025)
+Además de `id_tipo_documento` y `nombre` (la clave del catálogo):
+
+| Columna | Notas |
+| --- | --- |
+| `nombre_mostrar` VARCHAR(80) **UQ** | Nombre en la aplicación («Anexo IV») |
+| `ambito` | `solicitud_alumno` · `solicitud_empresa` · `reserva` (NULL solo en `OTRO`). Los triggers de `dual_documentos` lo leen para aceptar el tipo solo en su padre |
+| `generado` | Se genera desde la plantilla .docx activa. Obligatorio en los tipos añadidos (`chk_tipos_documento_generado`) |
+| `firma_empresa`, `firma_centro`, `firma_alumno` | Quién firma. El alumno no firma en la solicitud de empresa ni la empresa en la del alumno |
+| `requerido` | Bloquea validar al alumno o a la empresa, o confirmar la reserva |
+| `familia_contrato` | Solo reservas: NULL = todas, `beca` o `contrato` |
+| `activo` | Se ofrece en solicitudes nuevas. Los tipos nunca se borran |
+| `es_sistema` | Los 13 tipos de arriba: sus reglas siguen en `documentCatalogue.js` y solo cambia su plantilla |
+| `orden`, `creado_en` | Orden en las listas |
 
 ### `dual_especialidades`
 Ciclos formativos. **No están en el baseline** (datos del centro).
@@ -187,8 +202,10 @@ Documento **actual** (o histórico, si `es_actual = 0`) de un padre y tipo.
 | `motivo` | Solo si RECHAZADO |
 | `estado_workflow` VARCHAR(30) | Informativo heredado (`SUBIDO`, `SUBIDO_FIRMADO`); no gobierna reglas |
 | `es_actual` TINYINT NN, por defecto 1 | 0 = versión retirada (cambio de familia de contrato o, antes de la 018, reserva reactivada) que se conserva como historial |
-| `id_usuario_origen` FK, `origen_documento` (`CHECK IN ('SUBIDA','GENERADO','LEGACY')`), `id_plantilla` FK, `registrado_en` | Procedencia. `LEGACY` = anterior al registro de procedencia |
+| `id_usuario_origen` FK, `origen_documento` (`CHECK IN ('SUBIDA','GENERADO','LEGACY','HEREDADO')`), `id_plantilla` FK, `registrado_en` | Procedencia. `LEGACY` = anterior al registro de procedencia. `HEREDADO` (026) = copia del convenio vigente de la empresa en una solicitud nueva |
+| `id_documento_origen` FK NULL (026) | Documento del que es copia un `HEREDADO` (`chk_documentos_heredado`: HEREDADO ⇔ con origen) |
 | `firmas_exentas_legacy` TINYINT NN, por defecto 0 (013) | 1 solo en documentos que la 013 encontró ya VALIDADO sin filas de firma. Cualquier fichero nuevo lo vuelve a 0 |
+| `firma_posiciones` JSON NULL (027) | Página y rectángulo de cada marca de firma del fichero actual, y `_hoja` si se añadió una «Hoja de firmas». NULL = sin marcas |
 | `padre_actual` VARCHAR(16) (generada, 017) | `'A'|'E'|'R' + id` si `es_actual = 1`, si no NULL; **UQ `uq_dd_actual (padre_actual, id_tipo_documento)`** → como mucho un documento actual por padre y tipo |
 
 ### `dual_documento_versiones`
@@ -202,18 +219,48 @@ Una fila por documento y rol firmante.
 | `id_documento` FK, `rol` (`CHECK IN ('EMPRESA','GESTOR','ALUMNO')`) | **UQ `(id_documento, rol)`** |
 | `estado` (`SIN_FIRMAR` / `FIRMADO`), `firmado_en` | |
 | `firmado_por` FK → `dual_usuarios` (013) | Quién la registró |
-| `metodo` (013) | `CONFIRMACION_APP` (pulsó «Firmar») o `SUBIDA_FIRMADA` (subió el fichero declarando que lleva su firma). **Ninguno es verificación criptográfica** |
+| `metodo` (013) | `FIRMA_IMAGEN` (027: se estampó su firma guardada en el PDF), `SUBIDA_FIRMADA` (subió el fichero declarando que lleva su firma) o `CONFIRMACION_APP` (pulsó «Firmar» antes de la 027, o el PDF no admite imagen). **Ninguno es verificación criptográfica** |
+| `id_firma_imagen`, `id_firma_tutor` FK → `dual_firmas` (027) | Imagen estampada y, si firmó un menor, la de su tutor legal |
 
 Cada fichero nuevo **reinicia** las firmas de ese documento (se pierde quién firmó la versión anterior).
 
 ### `dual_documento_plantillas`
-Plantillas DOCX versionadas por tipo de documento generable (CONVENIO, ANEXO_II, ANEXO_III).
+Plantillas DOCX versionadas por tipo de documento generable (CONVENIO, ANEXO_II, ANEXO_III y los tipos añadidos por el centro).
 
 | Columna | Notas |
 | --- | --- |
 | `id_tipo_documento` FK, `version` | **UQ `(id_tipo_documento, version)`** |
 | `archivo` LONGBLOB NN, `nombre_archivo`, `mime_type`, `id_usuario_subida` FK, `creado_en` | |
 | `es_activa` + `activa_tipo` (generada) | **UQ `uq_plantilla_activa (activa_tipo)`** → una plantilla activa por tipo |
+
+### `dual_convenio_renovaciones` (026)
+Cada vez que el convenio de una empresa tiene que cambiar.
+
+| Columna | Notas |
+| --- | --- |
+| `id_renovacion` PK, `id_solicitud_empresa` FK | |
+| `motivo` | `CICLOS` (la empresa pide otros ciclos) o `MANUAL` («Sustituir convenio» del personal) |
+| `detalle` VARCHAR(500) NN | El motivo en palabras |
+| `ciclos_antes`, `ciclos_ahora` | Códigos de ciclo |
+| `id_documento_anterior`, `id_documento_nuevo` FK | Convenio retirado y el que lo sustituye |
+| `id_usuario` FK, `creado_en`, `resuelta_en` | Se resuelve al validar el convenio nuevo |
+| `abierta_solicitud` (generada) | **UQ `uq_dcr_una_abierta`** → como mucho una abierta por solicitud |
+
+### `dual_firmas` (027)
+Firmas guardadas. Ver [documentos y firmas § 4](../logica-de-negocio/documentos-y-firmas.md#4-firmar-migración-027).
+
+| Columna | Notas |
+| --- | --- |
+| `id_firma` PK | |
+| `titular` | `USUARIO` (alumno o empresa), `TUTOR` (tutor legal de un alumno menor, en la cuenta del alumno) o `CENTRO` (firma y sello, una para todo el personal) |
+| `id_usuario` FK NULL | NULL solo para `CENTRO` (`chk_firmas_propietario`) |
+| `imagen` MEDIUMBLOB, `ancho`, `alto` | PNG. Vacía cuando se elimina |
+| `origen` | `PANTALLA`, `MOVIL` o `FICHERO` |
+| `activa`, `retirada_en`, `creado_en`, `creado_por` FK | Cambiar la firma crea una fila nueva y retira la anterior |
+| `activa_clave` (generada) | **UQ `uq_firmas_activa`** → una activa por titular y usuario |
+
+### `dual_firma_sesiones` (027)
+Relevo para dibujar la firma en el móvil: `token_hash` **UQ** y `lectura_hash` (SHA-256 de los dos secretos), `estado` (`ABIERTA`, `RECIBIDA`, `CERRADA`), `imagen`, `creado_en`, `expira_en` (10 minutos). No pertenece a ninguna cuenta.
 
 ### `calendario` (obsoleta)
 Calendario por alumno-empresa con un BLOB, anterior al tipo de documento `CALENDARIO`. Sin uso.
@@ -238,8 +285,8 @@ Registro de auditoría **solo de inserción**: los triggers `trg_de_bu_inmutable
 | Columna | Notas |
 | --- | --- |
 | `id_evento` BIGINT PK | |
-| `entidad` | Desde la 022: `SOLICITUD_ALUMNO`, `SOLICITUD_EMPRESA`, `RESERVA`, `DOCUMENTO`, `OFERTA`, `TUTOR`, `USUARIO`, `CORREO`. `OFERTA` y `TUTOR` los aporta la migración de reservas 018; la 019 añade `USUARIO` y la 022 `CORREO` |
-| `id_entidad`, `accion` (VARCHAR 40) | Acciones usadas: `VALIDAR`, `RECHAZAR`, `REABRIR`, `BAJA`, `REACTIVAR`, `RESERVAR`, `CANCELAR`, `REASIGNAR`, `CONFIRMAR`, `TIPO_CONTRATO`, `TUTOR`, `SUBIR`, `GENERAR`, `FIRMAR`, `EXENCION_FIRMA_LEGACY`. En `SOLICITUD_ALUMNO`, además: `DATOS_CORREGIDOS`, `CAMBIO_SOLICITADO`, `CAMBIO_APROBADO`, `CAMBIO_RECHAZADO`. En `OFERTA`: `ALTA`, `CUPO`. En `TUTOR`: `ALTA`, `EDITAR`, `DESACTIVAR`. En `USUARIO`: `ALTA`, `BAJA`, `REACTIVAR`, `CAMBIAR_ROL`, `CAMBIAR_DATOS`, `RESETEAR_PASSWORD`. En `CORREO` (`id_entidad` = `id_historial`, `detalle` `{ clave, version, desde_version? }`, estados `ACTIVA`/`INACTIVA`): `EDITAR`, `RESTAURAR` |
+| `entidad` | `SOLICITUD_ALUMNO`, `SOLICITUD_EMPRESA`, `RESERVA`, `DOCUMENTO`, `OFERTA`, `TUTOR`, `USUARIO`, `CORREO`, `TIPO_DOCUMENTO`, `FIRMA`. `OFERTA` y `TUTOR` los aporta la 018, `USUARIO` la 019, `CORREO` la 022, `TIPO_DOCUMENTO` la 025 y `FIRMA` la 027 |
+| `id_entidad`, `accion` (VARCHAR 40) | Acciones usadas: `VALIDAR`, `RECHAZAR`, `REABRIR`, `BAJA`, `REACTIVAR`, `RESERVAR`, `CANCELAR`, `REASIGNAR`, `CONFIRMAR`, `TIPO_CONTRATO`, `TUTOR`, `SUBIR`, `GENERAR`, `FIRMAR`, `EXENCION_FIRMA_LEGACY`. En `SOLICITUD_ALUMNO`, además: `DATOS_CORREGIDOS`, `CAMBIO_SOLICITADO`, `CAMBIO_APROBADO`, `CAMBIO_RECHAZADO`. En `OFERTA`: `ALTA`, `CUPO`. En `TUTOR`: `ALTA`, `EDITAR`, `DESACTIVAR`. En `USUARIO`: `ALTA`, `BAJA`, `REACTIVAR`, `CAMBIAR_ROL`, `CAMBIAR_DATOS`, `RESETEAR_PASSWORD`. En `CORREO` (`id_entidad` = `id_historial`, `detalle` `{ clave, version, desde_version? }`, estados `ACTIVA`/`INACTIVA`): `EDITAR`, `RESTAURAR`. En `TIPO_DOCUMENTO`: `CREAR`, `EDITAR`, `ACTIVAR`, `DESACTIVAR`. En `FIRMA` (nunca con la imagen): `CREAR`, `CAMBIAR`, `ELIMINAR`. En `DOCUMENTO`, además: `HEREDAR` (026) |
 | `estado_anterior`, `estado_nuevo` VARCHAR(40) (018) | En `TIPO_CONTRATO` se guardan **ids** y los nombres en `detalle` |
 | `id_usuario` FK NULL, `rol_usuario` | NULL en acciones públicas (p. ej. generación del convenio en el alta) |
 | `motivo`, `detalle` JSON | Ids y metadatos; nunca nombres, DNI, emails ni ficheros |

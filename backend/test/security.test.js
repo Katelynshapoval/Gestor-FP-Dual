@@ -1,4 +1,4 @@
-// Security audit fixes (docs/security/security-audit.md): SEC-002, SEC-003,
+// Security audit fixes (docs/tecnica/seguridad-y-permisos.md): SEC-002, SEC-003,
 // SEC-004, SEC-008, SEC-012. SEC-001, SEC-006 and SEC-009 live next to the
 // tests of the same flows (authorization, auth, phase5).
 const test = require('node:test');
@@ -29,7 +29,7 @@ const inserts = () => pool.calls.filter((c) => c.sql.startsWith('INSERT INTO dua
 
 // ── SEC-002 ─────────────────────────────────────────────────────────────
 test('SEC-002: a validated company cannot add a ciclo by itself', async () => {
-  const svc = load('src/services/solicitudesEmpresaService');
+  const svc = load('src/services/solicitudEmpresaOfertasService');
   solicitud = { id_empresa: 7, estado_validacion: 'VALIDADO', convocatoria_activa: 1 };
   empresaDb();
   const res = mockRes();
@@ -40,7 +40,7 @@ test('SEC-002: a validated company cannot add a ciclo by itself', async () => {
 });
 
 test('SEC-002: staff can still add a ciclo to a validated application; a pending one stays open to the company', async () => {
-  const svc = load('src/services/solicitudesEmpresaService');
+  const svc = load('src/services/solicitudEmpresaOfertasService');
   solicitud = { id_empresa: 7, estado_validacion: 'VALIDADO', convocatoria_activa: 1 };
   empresaDb();
   let res = mockRes();
@@ -56,7 +56,7 @@ test('SEC-002: staff can still add a ciclo to a validated application; a pending
 });
 
 test('SEC-002: places per ciclo are capped', async () => {
-  const svc = load('src/services/solicitudesEmpresaService');
+  const svc = load('src/services/solicitudEmpresaOfertasService');
   solicitud = { id_empresa: 7, estado_validacion: 'PENDIENTE', convocatoria_activa: 1 };
   empresaDb();
   let res = mockRes();
@@ -73,7 +73,7 @@ test('SEC-002: places per ciclo are capped', async () => {
 });
 
 test('SEC-002: a validated company cannot raise its places, only lower them', async () => {
-  const svc = load('src/services/solicitudesEmpresaService');
+  const svc = load('src/services/solicitudEmpresaOfertasService');
   solicitud = { id_empresa: 7, estado_validacion: 'VALIDADO', convocatoria_activa: 1 };
   empresaDb();
   const base = handler;

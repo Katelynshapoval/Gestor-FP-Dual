@@ -204,7 +204,7 @@ exports.getMe = async function (req, res) {
   });
 };
 
-// GET /usuarios — admin/coordinador: full user list
+// GET /usuarios — ADMINISTRADOR only (route guard): full user list
 exports.getAll = async function (req, res) {
   const [rows] = await pool.query(
     `SELECT u.id_usuario, u.nombre_mostrar, u.email, u.activo, u.must_change_password,

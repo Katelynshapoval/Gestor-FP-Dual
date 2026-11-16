@@ -109,7 +109,7 @@ Consecuencias: cada fichero nuevo **reinicia la revisión y todas las firmas**; 
 
 ## 4. Firmar (migración 027)
 
-> Código: [`firmasService.js`](../../../backend/src/services/firmasService.js) (firmas guardadas y sesiones de móvil), [`firmaPdf.js`](../../../backend/src/services/firmaPdf.js) (marcas y estampado), `documentosService.firmarDocumento`. Frontend: [`components/firma/`](../../../frontend/src/components/firma/). Pruebas: `backend/test/firmas.test.js`, `documentosFlujos.test.js`, `frontend/src/components/firma/firmas.test.jsx`. Plan: [`PLAN_FIRMAS.md`](../../PLAN_FIRMAS.md).
+> Código: [`firmasService.js`](../../../backend/src/services/firmasService.js) (firmas guardadas y sesiones de móvil), [`firmaPdf.js`](../../../backend/src/services/firmaPdf.js) (marcas y estampado), `documentosService.firmarDocumento`. Frontend: [`components/firma/`](../../../frontend/src/components/firma/). Pruebas: `backend/test/firmas.test.js`, `documentosFlujos.test.js`, `frontend/src/components/firma/firmas.test.jsx`.
 
 Firmar ya no es solo una anotación: **inserta en el PDF la imagen de la firma guardada** de quien firma.
 

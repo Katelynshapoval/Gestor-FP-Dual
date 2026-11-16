@@ -773,7 +773,7 @@ test('test email: uploaded PDFs go with it; generated documents are named as mis
   assert.match(res.body.message, /Convenio no va en la prueba/);
 });
 
-// ── Part C: any generated document of the request (docs/PLAN_DOCUMENTOS_DINAMICOS.md) ──
+// ── Part C: any generated document of the request (documentos-y-firmas.md, emails) ──
 
 const catalogo = require('../src/services/documentCatalogue');
 const TIPO_IV = {

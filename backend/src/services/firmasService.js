@@ -1,4 +1,4 @@
-// Saved signatures (migration 027, docs/PLAN_FIRMAS.md).
+// Saved signatures (migration 027, docs/tecnica/logica-de-negocio/documentos-y-firmas.md § 4).
 //
 // Each person keeps ONE active signature image:
 //   USUARIO  a student's or a company's own (owner = their user)

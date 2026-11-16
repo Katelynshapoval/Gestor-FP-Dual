@@ -14,9 +14,14 @@
 - **Qué**: [`estadoReglas.js`](../../backend/src/services/estadoReglas.js) devuelve `null` o `{status, code, error}` sin acceder a BD; lo usan los servicios, la ficha de reserva y las pruebas.
 - **Consecuencia**: la ficha de reserva y el endpoint de confirmación nunca discrepan.
 
-## Catálogo de documentos en código (duplicado en BD)
-- **Qué**: [`documentCatalogue.js`](../../backend/src/services/documentCatalogue.js) define tipos, padres, actores, firmantes, revisión y generación; los tipos se resuelven **por nombre**.
-- **Duplicación**: `trg_dd_bi/bu_reglas` repiten la relación tipo → padre; `sp_confirmar_reserva` y `anexoClaveSql` repiten la regla de familia `'%beca%'`.
+## Catálogo de documentos: sistema en código, añadidos en BD
+- **Qué**: [`documentCatalogue.js`](../../backend/src/services/documentCatalogue.js) define las reglas especiales de los 13 tipos de sistema (CV, Anexo DGA, calendario…); los tipos que añade el centro (025) se leen de `dual_tipos_documento` y se convierten en la misma forma (`customDef`), así que listas, panel y firmas no tienen casos especiales. Los tipos se resuelven **por nombre**.
+- **Por qué**: los tipos de sistema tienen reglas que no caben en unas columnas (quién sube, exenciones antiguas); los nuevos siempre son «generado desde plantilla» y sí caben.
+- **Duplicación**: `sp_confirmar_reserva` y `anexoClaveSql` repiten la regla de familia `'%beca%'`. Los triggers de `dual_documentos` ya leen `ambito` (025).
+
+## Un convenio por empresa
+- **Qué**: el convenio validado se hereda (copia `HEREDADO`) en la solicitud del curso siguiente si la empresa pide los mismos ciclos; si cambian los ciclos o el personal lo sustituye, se abre una renovación (026).
+- **Por qué**: la empresa firma una vez; el convenio solo cambia cuando cambia lo que cubre. La empresa sigue validada durante la renovación para no parar sus reservas.
 
 ## Familia de anexo por nombre del tipo de contrato
 - **Qué**: «beca» en el nombre → Anexo III; cualquier otro → Anexo II.
@@ -54,8 +59,10 @@
 - **Qué**: PDF y DOCX como `LONGBLOB`.
 - **Motivo**: una transacción cubre fichero, versión, firmas y auditoría, y hay una sola copia de seguridad. Razonable hasta unos 5–10 GB.
 
-## Firmas como atestaciones
-- **Qué**: `SUBIDA_FIRMADA` y `CONFIRMACION_APP`; ninguna es criptográfica y el centro revisa el fichero.
+## Firmas con imagen (firma electrónica simple)
+- **Qué**: cada persona guarda una imagen de su firma; al pulsar «Firmar» se estampa en el PDF en la marca de la plantilla (`<<firmaAlumno>>`…) o en una «Hoja de firmas» al final (027). Ninguna firma es criptográfica: la prueba es el registro (cuenta, fecha, imagen usada, SHA-256 del fichero antes y después) y el centro revisa el fichero.
+- **Decisiones**: la firma se pone al pulsar «Firmar», no al generar (una firma puesta sin que la persona actúe no es una firma); el paso de firma del formulario de alumno es opcional (se pide en la primera firma); una sola imagen del centro (firma y sello) para todo el personal, subida solo por ADMINISTRADOR; el centro también firma el convenio (los validados antes de la 027 siguen valiendo); el tutor legal firma por los menores con una segunda firma guardada en la cuenta del alumno, sin cuenta propia; un documento validado ya no se firma (firmar cambia el fichero).
+- **Móvil**: el QR abre un relevo sin cuenta que solo acepta un dibujo; así sirve también en el formulario público, donde aún no hay cuenta.
 
 ## Activación de convocatorias por fechas
 - **Qué**: el indicador `activa` se deriva de las fechas con un temporizador interno.
@@ -75,7 +82,7 @@
 - **Qué**: sin cola; tras el commit; nunca hacen fallar la petición.
 
 ## Dependencias sin uso
-`google-auth-library`, `soffice`, `crypto-browserify` y `body-parser` se quitaron del backend (SEC-005). Siguen sin importarse en ningún sitio `@react-oauth/google` (frontend) y el paquete npm `mysql` (backend; `backup.js` usa el cliente de línea de comandos, no el paquete).
+`google-auth-library`, `soffice`, `crypto-browserify` y `body-parser` se quitaron del backend (SEC-005); el paquete npm `mysql` (backend), `@react-oauth/google`, `web-vitals` y `@fontsource/roboto` (frontend; la fuente se carga desde Google Fonts en `index.html`) se quitaron el 16/11/2026. Las bibliotecas de pruebas son `devDependencies`.
 
 ## Puntos especialmente delicados
 - Cualquier cambio en los procedimientos o triggers de `dual_reservas`, en `reservasTx.js` o en `db/transaction.js`: respetar el orden de bloqueo y pasar `test/db/stage2.db.test.js` (concurrencia real, inyección de fallos).

@@ -27,3 +27,7 @@ backend/.demo.local.json
 
 # Database backups (contain personal data; scripts/backup.js)
 backups/
+
+# Local Claude Code / editor launch settings
+.claude/launch.json
+.claude/settings.local.json

@@ -17,7 +17,7 @@ import { useUser } from "../../context/UserContext.jsx";
 import { useConfirm, useToast } from "../feedback/ToastProvider.jsx";
 import { isStaff } from "../../navigation.js";
 
-// "Firmar documentos" (docs/PLAN_FIRMAS.md § 4.4): every document the person
+// "Firmar documentos" (docs/tecnica/logica-de-negocio/documentos-y-firmas.md § 4.3): every document the person
 // can sign, one page at a time with arrows, their signature shown where it
 // will go, and ONE button to sign them all. The single "Firmar" buttons of the
 // app open this same dialog with one document.

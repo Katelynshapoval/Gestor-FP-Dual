@@ -66,19 +66,18 @@ backend/
     constants/               nombres de estados de reserva
   scripts/                   migraciones, esquema, copias de seguridad, BD de verificación, datos de prueba
   test/                      pruebas node:test (con BD simulada) y test/db (contra BD real *_verify)
-  required_documents/        plantillas DOCX de referencia (no las lee el código)
+  required_documents/        plantillas DOCX de partida para subir en Documentos › Plantillas (el código no las lee)
 frontend/src/
-  App.js, navigation.js      rutas y menús por rol
-  context/UserContext.js     sesión (localStorage) y caducidad
+  App.jsx, navigation.js     rutas y menús por rol
+  context/UserContext.jsx    sesión (localStorage) y caducidad
   utils/api.js               cliente HTTP con gestión de errores y 401
   pages/                     una carpeta por pantalla
-  components/                componentes compartidos (ReservaDetalle, Modal, PdfViewer…)
+  components/                componentes compartidos (ReservaDetalle, Modal, PdfViewer, firma/…)
 db/
   000_baseline.sql           esquema base (estructura + tablas de catálogo)
-  migrations/NNN_*.sql       cambios posteriores (012–017)
+  migrations/NNN_*.sql       cambios posteriores (012–027)
   rollback/NNN_*.down.sql    reversión manual de cada migración
-  legacy_migrations/         scripts retirados (002–011): solo historia, no ejecutar
-docs/                        manual de usuario y esta documentación
+docs/                        manual de usuario (lo sirve /ayuda), guía de despliegue y esta documentación
 ```
 
 ## 5. Arquitectura lógica

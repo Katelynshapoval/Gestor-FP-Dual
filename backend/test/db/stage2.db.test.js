@@ -608,7 +608,7 @@ test('quota reduction through the backend: common cancellation path, events for 
   const { idOferta } = fx.cupo;
   const pend = (await conn.query('SELECT id_reserva FROM dual_reservas WHERE id_solicitud_empresa_especialidad = ? AND id_estado_reserva = 1 ORDER BY id_reserva', [idOferta]))[0];
   await conn.query("UPDATE dual_reservas SET id_tipo_contrato = 1 WHERE id_reserva = ?", [pend[0].id_reserva]);
-  const empSvc = require('../../src/services/solicitudesEmpresaService');
+  const empSvc = require('../../src/services/solicitudEmpresaOfertasService');
   const params = { id: String(fx.e1.idSolicitud), idOferta: String(idOferta) };
 
   const sinSeleccion = await api(empSvc.updateCupoEspecialidad, { params, body: { cantidad: 1 } });
