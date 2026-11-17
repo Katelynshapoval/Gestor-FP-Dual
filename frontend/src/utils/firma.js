@@ -1,6 +1,6 @@
 // Signature images in the browser (docs/tecnica/logica-de-negocio/documentos-y-firmas.md § 4). Everything the server
 // stores is a PNG with a transparent background, cut to the ink.
-import { getJSON, publicJSON, apiError, readStoredSession } from "./api.js";
+import { getJSON, publicJSON, apiError, CSRF_HEADERS } from "./api.js";
 
 export const TINTA = "#1b2a5c"; // dark blue, like a pen: it stands out from printed text
 const MAX_ANCHO = 1000;
@@ -101,13 +101,13 @@ export async function prepararImagenCentro(file, { quitarFondo = true } = {}) {
 export const cargarMiFirma = () => getJSON("/firmas/mia");
 
 async function enviar(url, { method, form, headers = {} }) {
-  const token = readStoredSession()?.data?.token;
   let response;
   try {
     response = await fetch(url, {
       method,
       body: form,
-      headers: { ...(token && !headers["X-Firma-Token"] ? { Authorization: `Bearer ${token}` } : {}), ...headers },
+      // The session cookie goes with it; the phone relay authenticates with X-Firma-Token instead.
+      headers: { ...CSRF_HEADERS, ...headers },
     });
   } catch {
     throw apiError({ url, status: 0, body: { code: "NETWORK" }, message: "No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo." });

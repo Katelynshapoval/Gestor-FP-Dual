@@ -52,7 +52,7 @@
 
 ## Tablas protegidas
 - **Qué**: no se altera la estructura de `ge_empresas`, `ge_domicilios`, `ge_contactos`, `gf_alumnosfct`.
-- **Motivo**: regla del proyecto. Es probable que otras herramientas del centro las usen, pero no está confirmado ❓.
+- **Motivo**: otras aplicaciones del centro usan estas tablas para sus propios procesos. Un cambio de estructura podría romperlas.
 - **Consecuencia**: soluciones indirectas (empresa del contacto por su domicilio, ciclo por solicitud en una tabla nueva, motivos en eventos). Excepción aceptada: el índice único de DNI.
 
 ## Ficheros en la base de datos

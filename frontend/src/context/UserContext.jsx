@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { readStoredSession, SESSION_EXPIRED_EVENT, tokenExpiry } from "../utils/api.js";
+import { closeServerSession, readStoredSession, SESSION_EXPIRED_EVENT } from "../utils/api.js";
 
 const UserContext = createContext();
 
-// Used only when a token carries no readable `exp` (should not happen).
+// Used only when the server sends no `expira` (should not happen).
 const FALLBACK_DURATION = 8 * 60 * 60 * 1000;
 // How long before the end of the session people are warned to save their work.
 export const SESSION_WARNING_MS = 10 * 60 * 1000;
@@ -30,13 +30,17 @@ export const User = ({ children }) => {
   const [expiresSoon, setExpiresSoon] = useState(null);
   const endedRef = useRef(false);
 
-  // Save immediately to avoid auth race conditions after login. The expiry
-  // is the token's own `exp` (WF-16), so renewing the stored user (e.g. after
-  // changing the password) never extends a session the server will refuse.
+  // Save immediately to avoid auth race conditions after login. The expiry is
+  // the one the server gives with the session cookie (`expira`, WF-16), so
+  // renewing the stored user never extends a session the server will refuse.
+  // The token itself is never here: it lives in an HttpOnly cookie.
   const setUser = useCallback((newUser) => {
     if (newUser) {
-      const expires = tokenExpiry(newUser.token) || Date.now() + FALLBACK_DURATION;
-      localStorage.setItem("user", JSON.stringify({ data: newUser, expires }));
+      // A `token` field, if any, is dropped: the session lives in the HttpOnly cookie.
+      // eslint-disable-next-line no-unused-vars
+      const { expira, token, ...data } = newUser;
+      const expires = expira || readStoredSession()?.expires || Date.now() + FALLBACK_DURATION;
+      localStorage.setItem("user", JSON.stringify({ data, expires }));
       endedRef.current = false;
       setSessionNotice(null);
     } else {
@@ -49,6 +53,7 @@ export const User = ({ children }) => {
     if (endedRef.current) return;
     endedRef.current = true;
     localStorage.removeItem("user");
+    closeServerSession();
     setUserState(null);
     setSessionNotice(NOTICE[code] || NOTICE.EXPIRED);
   }, []);
@@ -65,7 +70,7 @@ export const User = ({ children }) => {
 
   // The session also ends on its own at the token's expiry, even when idle.
   useEffect(() => {
-    if (!user?.token) return undefined;
+    if (!user) return undefined;
     const expires = readStoredSession()?.expires;
     if (!expires) return undefined;
     const ms = expires - Date.now();
@@ -97,6 +102,7 @@ export const User = ({ children }) => {
   }, []);
 
   const logout = (navigate) => {
+    closeServerSession();
     setUser(null);
     setSessionNotice(null);
 

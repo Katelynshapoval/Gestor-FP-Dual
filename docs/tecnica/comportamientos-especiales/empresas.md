@@ -47,7 +47,7 @@
 - **Comportamiento**: 400 «No se puede reducir el número de plazas por debajo de los alumnos ya confirmados…». Respaldo en BD: `trg_dsee_bu_cupo`.
 
 ### Plazas a cero
-- **Comportamiento**: permitido en la edición (`cantidad ≥ 0`), no en el alta. La oferta sigue existiendo (no hay borrado de ofertas) y cuenta para «≥ 1 especialidad» al validar 🔶.
+- **Comportamiento**: permitido en la edición (`cantidad ≥ 0`), no en el alta. La oferta sigue existiendo (no hay borrado de ofertas) y cuenta para «≥ 1 especialidad» al validar: `sp_validar_solicitud_empresa` cuenta filas de oferta, no plazas.
 
 ### Ampliar plazas o añadir ciclos con la solicitud validada
 - **Comportamiento** (SEC-002): mientras la solicitud **no** está VALIDADO, la empresa puede subir plazas y añadir ciclos activos en la convocatoria activa, sin aprobación. Una vez validada, solo puede **reducir**: subir plazas o añadir un ciclo → 403 `REQUIERE_CENTRO`, y la pantalla oculta «Añadir ciclo» y lo explica. El personal puede ampliar siempre. Nadie puede pasar de `MAX_PLAZAS_POR_CICLO` (20) por ciclo.
@@ -55,7 +55,7 @@
 - **Auditoría**: `OFERTA/ALTA` y `OFERTA/CUPO`.
 
 ### Cupos de solicitudes no validadas
-- **Comportamiento**: `updateCupoEspecialidad` y `addEspecialidad` no comprueban el estado de la solicitud; solo que sea de la convocatoria activa. El personal podría modificar cupos de una solicitud RECHAZADO o en BAJA 🔶.
+- **Comportamiento**: `updateCupoEspecialidad` y `addEspecialidad` no comprueban el estado de la solicitud; solo que sea de la convocatoria activa. El personal puede cambiar los cupos de una solicitud en cualquier estado, también RECHAZADO o BAJA.
 
 ## Tutores
 

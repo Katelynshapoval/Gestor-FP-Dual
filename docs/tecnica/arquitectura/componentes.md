@@ -87,7 +87,7 @@ Puntos delicados de acoplamiento:
 
 - **`documentCatalogue.js` es la fuente única** de qué documentos existen, a qué padre pertenecen, quién sube, firma o revisa y si se generan. Lo consumen reglas, listados, subidas, firmas y el panel. Pero **los triggers `trg_dd_bi_reglas` / `trg_dd_bu_reglas` duplican la lista «tipo → padre»** y `sp_confirmar_reserva` duplica la regla de familia de anexo (`'%beca%'`). Cambiar el catálogo exige revisar esas tres piezas ([decisiones técnicas](../decisiones-tecnicas.md#catálogo-de-documentos-en-código-duplicado-en-bd)).
 - **`documentosWorkflow.projectItem`** proyecta cada documento para un rol (estado operativo, acción pendiente, `puede_*`). Todas las pantallas (portales, Seguimiento, panel, ficha de reserva) usan esta proyección, de modo que muestran los mismos estados.
-- **`empresaDatos.js`** concentra la lectura y escritura de los datos de empresa (tablas protegidas `ge_*`) y la lógica de copia en escritura; la usan la edición directa, la aprobación de cambios, la reaplicación y la generación del convenio.
+- **`empresaDatos.js`** concentra la lectura y escritura de los datos de empresa (tablas `ge_*`, compartidas con otras aplicaciones del centro) y la lógica de copia en escritura; la usan la edición directa, la aprobación de cambios, la reaplicación y la generación del convenio.
 - **`alumnoDatos.js`** hace lo mismo con los datos del alumno: campos editables, validación, reglas (convocatoria activa, sin baja, DNI fijo, ciclo sin reservas activas) y escritura. Lo usan la edición directa del personal y la aprobación de las peticiones del alumno.
 - **`reservasTx.js`** es el único módulo que llama a los procedimientos de reservas, siempre con la conexión de `inTransaction`, y escribe su evento en la misma transacción. Lo usan `reservasService`, la baja y la reducción de cupo.
 
@@ -105,9 +105,9 @@ Puntos delicados de acoplamiento:
 
 | Elemento | Responsabilidad |
 | --- | --- |
-| [`App.js`](../../../frontend/src/App.js) | Rutas. Las privadas se envuelven en `RequireRole` (solo redirige; la seguridad real está en el backend). Redirecciones de rutas antiguas (`/linkStudents` → `/alumnos`, `/companiesView` → `/empresas`, `/documentsView` → `/documentos`). |
+| [`App.jsx`](../../../frontend/src/App.jsx) | Rutas. Las privadas se envuelven en `RequireRole` (solo redirige; la seguridad real está en el backend). Redirecciones de rutas antiguas (`/linkStudents` → `/alumnos`, `/companiesView` → `/empresas`, `/documentsView` → `/documentos`). |
 | [`navigation.js`](../../../frontend/src/navigation.js) | Menú y página de inicio por rol (`homeForRole`), títulos de página. |
-| [`context/UserContext.js`](../../../frontend/src/context/UserContext.js) | Sesión en `localStorage["user"] = { data, expires }`; `expires` = `exp` del JWT. Cierra la sesión al caducar, ante el evento `fpdual:session-expired` y sincroniza entre pestañas. |
+| [`context/UserContext.jsx`](../../../frontend/src/context/UserContext.jsx) | Usuario conectado en `localStorage["user"] = { data, expires }`, **sin el token** (va en la cookie `HttpOnly`); `expires` = `expira` que da el servidor. Cierra la sesión al caducar, ante el evento `fpdual:session-expired` y sincroniza entre pestañas. |
 | [`utils/api.js`](../../../frontend/src/utils/api.js) | `getJSON`, `postJSON`, `putJSON`, `patchJSON`, `postForm`, `getBlob`, `publicJSON`. Todo error lanza `Error` con `status`, `code` y `body`; un 401 con token (salvo `/auth/login` y `/auth/changePassword`) dispara el evento de sesión caducada. |
 | `utils/labels.js`, `utils/reservaEstados.js`, `utils/documentos.js`, `utils/cupos.js` | Etiquetas en español y variantes de insignia de cada valor del backend. |
 | `hooks/useUrlFilters.js` | Filtros persistidos en la URL (listas de Alumnos, Empresas, Reservas, Seguimiento). |

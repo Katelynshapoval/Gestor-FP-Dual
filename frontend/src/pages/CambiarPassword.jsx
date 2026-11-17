@@ -107,8 +107,8 @@ const CambiarPassword = () => {
     setSubmitting(true);
     try {
       const data = await postJSON("/auth/changePassword", { currentPassword, newPassword });
-      // The old token stops working once the password changes.
-      if (data?.token) setUser({ ...user, token: data.token });
+      // The server has replaced the session cookie; keep its new expiry.
+      if (data?.expira) setUser({ ...user, expira: data.expira });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

@@ -37,8 +37,8 @@
 - **Consecuencias**: generaciones simultáneas multiplican el consumo de memoria.
 
 ### Ventanas entre comprobación y bloqueo
-- **Comportamiento**: algunas comprobaciones de Node se hacen con lecturas simples antes del bloqueo para dar mensajes claros: `validateReservaTargets` (elegibilidad de reservas), `assertCanUpload` (estado del documento actual) y `missingStudentValidation`. En reservas, desde la 018 la elegibilidad, las plazas y las firmas de la confirmación se vuelven a comprobar **dentro** de la transacción y bajo bloqueo. Sigue sin repetirse bajo bloqueo el «documento validado no se reemplaza» (solo lo comprueba Node) 🔶.
-- **Ejemplo**: el centro valida el anexo mientras la empresa sube uno nuevo; si la subida pasa la guarda justo antes de la validación, el fichero nuevo sustituye al validado y lo devuelve a PENDIENTE 🔶.
+- **Comportamiento**: algunas comprobaciones de Node se hacen con lecturas simples antes del bloqueo para dar mensajes claros: `validateReservaTargets` (elegibilidad de reservas), `assertCanUpload` (estado del documento actual) y `missingStudentValidation`. En reservas, desde la 018 la elegibilidad, las plazas y las firmas de la confirmación se vuelven a comprobar **dentro** de la transacción y bajo bloqueo. El «documento validado no se reemplaza» se comprueba también dentro de `saveByClave`, después de bloquear el padre y con lectura bloqueante del documento actual.
+- **Ejemplo**: el centro valida el anexo mientras la empresa sube uno nuevo. Si la validación llega primero, la subida responde **409 `DOCUMENTO_VALIDADO`** («Este documento se acaba de validar…») y el documento validado no cambia.
 
 ### Alta pública y datos a medio enviar
 - **Comportamiento**: todas las inserciones del alta están en una transacción; una validación que falla a mitad (p. ej. oferta con cantidad 0, domicilio de trabajo incompleto) hace `ROLLBACK` y no deja empresa, contactos ni usuario.

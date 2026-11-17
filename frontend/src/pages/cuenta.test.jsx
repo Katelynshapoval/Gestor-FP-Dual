@@ -17,6 +17,8 @@ function entrar(usuario = "  ana@centro.test ", password = "secreta123") {
   fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 }
 
+const EXPIRA = Date.now() + 8 * 3600_000;
+
 describe("login", () => {
   test.each([
     ["COORDINADOR", "/panel"],
@@ -24,12 +26,17 @@ describe("login", () => {
     ["EMPRESA", "/companyMain"],
     ["ALUMNO", "/studentMain"],
   ])("%s goes to %s and the session is stored", async (rol, destino) => {
-    const { llamadas } = simularApi({ "POST /auth/login": { token: "tok", user: { id: 1, rol, nombre: "X" } } });
+    const { llamadas } = simularApi({ "POST /auth/login": { expira: EXPIRA, user: { id: 1, rol, nombre: "X" } } });
     renderPagina(<Login />, { ruta: "/login", patron: "/login" });
     entrar();
     await waitFor(() => expect(ruta()).toBe(destino));
     expect(llamadas[0].body).toEqual({ username: "ana@centro.test", password: "secreta123" });
-    expect(JSON.parse(localStorage.getItem("user")).data).toMatchObject({ rol, token: "tok" });
+    const guardada = JSON.parse(localStorage.getItem("user"));
+    expect(guardada.data).toMatchObject({ rol });
+    // The token lives only in the HttpOnly cookie: page storage never has it.
+    expect(guardada.data.token).toBeUndefined();
+    expect(guardada.expires).toBe(EXPIRA);
+    expect(llamadas[0].headers["X-Requested-With"]).toBe("fpdual");
   });
 
   test("wrong credentials show the server's message and keep the user on the page", async () => {
@@ -43,8 +50,8 @@ describe("login", () => {
 
   test("a temporary password forces a new one before entering, and the session starts only then", async () => {
     const { llamadas } = simularApi({
-      "POST /auth/login": { token: "temporal", user: { id: 1, rol: "EMPRESA", must_change_password: true } },
-      "POST /auth/changePassword": { token: "nuevo" },
+      "POST /auth/login": { expira: EXPIRA, user: { id: 1, rol: "EMPRESA", must_change_password: true } },
+      "POST /auth/changePassword": { expira: EXPIRA + 1 },
       "GET /auth/me": { id: 1, rol: "EMPRESA", nombre: "ACME" },
     });
     renderPagina(<Login />, { ruta: "/login", patron: "/login" });
@@ -67,15 +74,20 @@ describe("login", () => {
     fireEvent.click(screen.getByRole("button", { name: "Establecer contraseña" }));
     await waitFor(() => expect(ruta()).toBe("/companyMain"));
     const cambio = llamadas.find((l) => l.path === "/auth/changePassword");
-    expect(cambio.headers.Authorization).toBe("Bearer temporal");
+    // Authorised by the cookie the login set; only the CSRF header is added.
+    expect(cambio.headers.Authorization).toBeUndefined();
+    expect(cambio.headers["X-Requested-With"]).toBe("fpdual");
     expect(cambio.body).toEqual({ currentPassword: "temporal1", newPassword: "nueva-clave" });
-    expect(llamadas.find((l) => l.path === "/auth/me").headers.Authorization).toBe("Bearer nuevo");
-    expect(JSON.parse(localStorage.getItem("user")).data).toMatchObject({ token: "nuevo", must_change_password: false });
+    expect(llamadas.find((l) => l.path === "/auth/me").headers.Authorization).toBeUndefined();
+    const guardada = JSON.parse(localStorage.getItem("user"));
+    expect(guardada.data).toMatchObject({ rol: "EMPRESA", must_change_password: false });
+    expect(guardada.data.token).toBeUndefined();
+    expect(guardada.expires).toBe(EXPIRA + 1);
   });
 
   test("a failed forced change shows the error", async () => {
     simularApi({
-      "POST /auth/login": { token: "t", user: { id: 1, rol: "ALUMNO", must_change_password: true } },
+      "POST /auth/login": { expira: EXPIRA, user: { id: 1, rol: "ALUMNO", must_change_password: true } },
       "POST /auth/changePassword": { status: 400, body: { error: "Contraseña débil." } },
     });
     renderPagina(<Login />, { ruta: "/login", patron: "/login" });
@@ -166,15 +178,16 @@ describe("voluntary password change", () => {
     expect(llamadas).toHaveLength(0);
   });
 
-  test("on success the new token replaces the old one and the form is cleared", async () => {
-    const { llamadas } = simularApi({ "POST /auth/changePassword": { token: "nuevo" } });
+  test("on success the session keeps the new expiry and the form is cleared", async () => {
+    const { llamadas } = simularApi({ "POST /auth/changePassword": { expira: EXPIRA + 5 } });
     renderPagina(<CambiarPassword />);
     escribir("Contraseña actual", "vieja-clave");
     escribir("Nueva contraseña", "nueva-clave");
     escribir("Confirmar nueva contraseña", "nueva-clave");
     fireEvent.click(screen.getByRole("button", { name: /Cambiar contraseña|Guardar/ }));
-    await waitFor(() => expect(JSON.parse(localStorage.getItem("user")).data.token).toBe("nuevo"));
-    expect(llamadas[0].headers.Authorization).toBe("Bearer t");
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("user")).expires).toBe(EXPIRA + 5));
+    expect(llamadas[0].headers.Authorization).toBeUndefined();
+    expect(llamadas[0].headers["X-Requested-With"]).toBe("fpdual");
     expect(screen.getByLabelText("Contraseña actual")).toHaveValue("");
   });
 

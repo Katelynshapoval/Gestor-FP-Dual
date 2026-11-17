@@ -22,7 +22,7 @@ FP Dual es el portal que gestiona el programa de Formación Profesional Dual de 
 | Base de datos | MySQL 8 (InnoDB, `utf8mb4_0900_ai_ci`), procedimientos almacenados y triggers | [`db/000_baseline.sql`](../../../db/000_baseline.sql), [`db/migrations/`](../../../db/migrations) |
 | Pruebas | `node:test` con un arnés propio de *stubs* (backend); Vitest + Testing Library (frontend) | [`backend/test/helpers/harness.js`](../../../backend/test/helpers/harness.js) |
 
-Dependencias declaradas pero **no usadas** por el código actual: `google-auth-library`, `soffice`, `crypto-browserify`, `body-parser` (backend) y `@react-oauth/google` (frontend). Ningún fichero de `src/`, `scripts/` ni `test/` las importa. El motivo de su presencia no consta 🔶 (probablemente restos de versiones anteriores).
+Todas las dependencias declaradas en los dos `package.json` las usa el código. `npm audit --omit=dev` no da avisos en ninguno de los dos.
 
 ## 3. Topología de ejecución
 
@@ -39,7 +39,7 @@ flowchart LR
   DB[("MySQL 8<br/>proyecto_dual")]
   SMTP["Gmail SMTP<br/>(solo MAIL_MODE=smtp)"]
 
-  SPA -- "fetch JSON / multipart<br/>Authorization: Bearer JWT" --> EXP
+  SPA -- "fetch JSON / multipart<br/>cookie de sesión HttpOnly" --> EXP
   EXP -- "mysql2 pool (10 conexiones)" --> DB
   SCH --> DB
   EXP --> GEN
@@ -68,7 +68,7 @@ backend/
   test/                      pruebas node:test (con BD simulada) y test/db (contra BD real *_verify)
 frontend/src/
   App.jsx, navigation.js     rutas y menús por rol
-  context/UserContext.jsx    sesión (localStorage) y caducidad
+  context/UserContext.jsx    usuario conectado y caducidad de la sesión
   utils/api.js               cliente HTTP con gestión de errores y 401
   pages/                     una carpeta por pantalla
   components/                componentes compartidos (ReservaDetalle, Modal, PdfViewer, firma/…)

@@ -1,7 +1,7 @@
-import { getJSON, postJSON, SESSION_EXPIRED_EVENT, tokenExpiry } from "./api.js";
+import { getJSON, postJSON, SESSION_EXPIRED_EVENT } from "./api.js";
 
-function storeSession(token = "a.eyJleHAiOjQxMDI0NDQ4MDB9.s") {
-  localStorage.setItem("user", JSON.stringify({ data: { token }, expires: Date.now() + 60_000 }));
+function storeSession() {
+  localStorage.setItem("user", JSON.stringify({ data: { id: 1, rol: "ALUMNO" }, expires: Date.now() + 60_000 }));
 }
 
 function respond(status, body) {
@@ -62,9 +62,12 @@ describe("api error handling (WF-16, WF-17)", () => {
     expect(expired).toEqual([]);
   });
 
-  test("tokenExpiry reads the JWT exp claim", () => {
-    // payload {"exp":4102444800} → 2100-01-01
-    expect(tokenExpiry("a.eyJleHAiOjQxMDI0NDQ4MDB9.s")).toBe(4102444800 * 1000);
-    expect(tokenExpiry("not-a-token")).toBeNull();
+  test("requests carry the CSRF header and never an Authorization token (the session is an HttpOnly cookie)", async () => {
+    storeSession();
+    respond(200, { ok: 1 });
+    await postJSON("/reservas", { a: 1 });
+    const headers = global.fetch.mock.calls[0][1].headers;
+    expect(headers["X-Requested-With"]).toBe("fpdual");
+    expect(headers.Authorization).toBeUndefined();
   });
 });

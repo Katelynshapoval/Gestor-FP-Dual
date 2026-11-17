@@ -38,6 +38,7 @@ En `.env` hay que rellenar como mínimo:
 | `CADDY_TLS` | `internal` en una intranet (certificado propio de Caddy). Un correo electrónico para usar Let's Encrypt con un dominio público. |
 | `DBADMIN_PASS`, `DBPASS`, `DB_ROOT_PASSWORD` | Tres contraseñas largas distintas: `openssl rand -base64 33`. `DBADMIN_USER` (por defecto `fpdual_admin`) es la cuenta dueña del esquema, con la que se aplican las migraciones; `DBUSER` (por defecto `fpdual_app`) es la de la API, que `instalar` y `migrar` crean con solo los permisos que usa. |
 | `JWT_SECRET` | 32 caracteres o más: `openssl rand -base64 48`. |
+| `BACKUP_KEY` | 32 caracteres o más: `openssl rand -base64 33`. Cifra las copias de seguridad; guarda también una copia de la clave fuera del servidor. |
 | `MAIL_MODE` | `mailpit` para la demo (con `COMPOSE_PROFILES=mailpit`), `smtp` para enviar de verdad, `log` para no enviar nada. |
 
 `NODE_ENV=production` ya lo fija `docker-compose.yml`. Después:
@@ -122,11 +123,11 @@ Para y vuelve a arrancar los contenedores; los datos siguen en los volúmenes. *
 ## Copias de seguridad
 
 ```bash
-./deploy/fpdual.sh copia                                   # backups/fpdual_AAAAMMDD_HHMMSS.sql.gz
-./deploy/fpdual.sh restaurar backups/fpdual_....sql.gz     # SUSTITUYE los datos actuales
+./deploy/fpdual.sh copia                                   # backups/fpdual_AAAAMMDD_HHMMSS.sql.gz.enc
+./deploy/fpdual.sh restaurar backups/fpdual_....sql.gz.enc # SUSTITUYE los datos actuales
 ```
 
-`copia` hace un volcado completo (estructura, datos, procedimientos, disparadores) y comprueba que ha terminado bien. Contiene datos personales: guárdala fuera del servidor. Con `BACKUP_DIR=/ruta` se guarda en otra carpeta. Haz una antes de la demo y antes de cada actualización.
+`copia` hace un volcado completo (estructura, datos con todos los ficheros, procedimientos, disparadores), lo comprime y lo **cifra** con AES-256 y una clave derivada de `BACKUP_KEY` antes de escribirlo, y comprueba que se descifra y está completo. Sin `BACKUP_KEY` no se puede leer: guarda la copia y la clave fuera del servidor, por separado. `restaurar` admite `.sql.gz.enc`, `.sql.gz` y `.sql`. Con `BACKUP_DIR=/ruta` se guarda en otra carpeta. Haz una antes de la demo y antes de cada actualización.
 
 ### Traer la base de datos de desarrollo
 

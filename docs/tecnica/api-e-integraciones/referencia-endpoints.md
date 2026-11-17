@@ -6,11 +6,12 @@
 
 | Método y ruta | Acceso | Entrada | Salida / efecto |
 | --- | --- | --- | --- |
-| `POST /auth/login` | Público | `{ username | email, password }` | `{ token, user }` · 400 · 401 · 403 · 429 |
+| `POST /auth/login` | Público | `{ username | email, password }` | `{ user, expira }` y la cookie `HttpOnly` `fpdual_sesion` · 400 · 401 · 403 · 429 |
+| `POST /auth/logout` | Público | — | Borra la cookie de sesión |
 | `POST /auth/forgotPassword` | Público | `{ username }` | 200 con el mismo mensaje exista o no la cuenta (solo se envía el enlace a cuentas activas con correo) · 429 · 500 sin `APP_URL` |
 | `POST /auth/resetPassword` | Público | `{ token, newPassword }` | 200 · 400 `ENLACE_NO_VALIDO` |
 | `GET /auth/me` | Autenticado (aunque deba cambiar contraseña) | — | Usuario con `cif`/`dni` |
-| `POST /auth/changePassword` | Autenticado (ídem) | `{ currentPassword?, newPassword }` | 200 `{ token }` nuevo (las demás sesiones se cierran) · 400 · 401 |
+| `POST /auth/changePassword` | Autenticado (ídem) | `{ currentPassword?, newPassword }` | 200 `{ expira }` y una cookie de sesión nueva (las demás sesiones se cierran) · 400 · 401 |
 | `GET /usuarios` | ADMINISTRADOR | — | Lista de todos los usuarios (sin hash). Ninguna pantalla la usa |
 | `GET /usuarios/personal` | ADMINISTRADOR | — | Solo administradores y coordinadores |
 | `POST /usuarios/personal` | ADMINISTRADOR | `{ nombre, email, rol }` | 201 `{ usuario, newPassword }` · 400 · 409 `EMAIL_DUPLICADO` |

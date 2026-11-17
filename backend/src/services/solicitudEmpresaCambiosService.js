@@ -433,16 +433,22 @@ exports.rechazarCambio = async function (req, res) {
       .json({ error: "Esta solicitud de cambio ya está resuelta." });
   }
 
-  await pool.query(
+  // Only a change still PENDIENTE is rejected: if someone resolved it in the
+  // meantime, nothing is overwritten and the answer says so.
+  const [upd] = await pool.query(
     `UPDATE dual_empresa_cambios
      SET
        estado = ?,
        fecha_resolucion = NOW(),
        id_usuario_resolutor = ?,
        motivo = ?
-     WHERE id_cambio = ?`,
-    [empresaDatos.ESTADOS_CAMBIO.RECHAZADO, req.user.id, motivo, idCambio],
+     WHERE id_cambio = ?
+       AND estado = ?`,
+    [empresaDatos.ESTADOS_CAMBIO.RECHAZADO, req.user.id, motivo, idCambio, empresaDatos.ESTADOS_CAMBIO.PENDIENTE],
   );
+  if (!upd.affectedRows) {
+    return res.status(409).json({ error: "Esta solicitud de cambio ya está resuelta.", code: "CAMBIO_RESUELTO" });
+  }
 
   return res.json({
     message: "Solicitud de cambio rechazada.",

@@ -8,6 +8,7 @@ const reset = require('../services/passwordResetService');
 const router = Router();
 
 router.post('/auth/login', asyncHandler(svc.loginWithCredentials));
+router.post('/auth/logout', asyncHandler(svc.logout));
 // Public: «¿Has olvidado tu contraseña?» (reset link by email, Phase 5)
 router.post('/auth/forgotPassword', asyncHandler(reset.solicitar));
 router.post('/auth/resetPassword', asyncHandler(reset.restablecer));

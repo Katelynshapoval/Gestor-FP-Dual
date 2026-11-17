@@ -271,6 +271,25 @@ test('PM-6: a failure after the procedure rolls the whole save back', async () =
   assert.equal(pool.calls.filter((c) => c.sql === 'COMMIT').length, 0);
 });
 
+test('a document validated between the upload guard and the save is not replaced (checked under the lock)', async () => {
+  const { saveByClave } = load('src/services/documentosStore');
+  reset((sql) => {
+    if (sql.startsWith('SELECT id_tipo_documento')) return [{ id_tipo_documento: 10 }];
+    if (sql.startsWith('SELECT ev.nombre AS estado')) return [{ estado: 'VALIDADO' }];
+    if (sql.startsWith('CALL sp_guardar_documento')) return [[{ id_documento: 21 }]];
+    return { affectedRows: 1 };
+  });
+  await assert.rejects(() => saveByClave('ANEXO_II', { id_reserva: 3 }, Buffer.from('%PDF'), { origen: 'SUBIDA', idUsuario: 8 }),
+    (err) => err.status === 409 && err.code === 'DOCUMENTO_VALIDADO');
+  const sqls = pool.calls.map((c) => c.sql);
+  const lockPadre = sqls.findIndex((s) => /FROM dual_reservas WHERE id_reserva = \? FOR UPDATE/.test(s));
+  const comprobacion = sqls.findIndex((s) => s.startsWith('SELECT ev.nombre AS estado'));
+  assert.ok(lockPadre >= 0 && comprobacion > lockPadre, 'the check runs after the parent lock');
+  assert.match(sqls[comprobacion], /FOR UPDATE/);
+  assert.ok(!sqls.some((s) => s.startsWith('CALL sp_guardar_documento')), 'the file is not written');
+  assert.equal(sqls.at(-1), 'ROLLBACK');
+});
+
 function reservaDb({ estado = 'PENDIENTE', tipo = 'BECA', idTipo = 1, anexos = [], firmas = [] } = {}) {
   return (sql) => {
     if (sql.startsWith('SELECT r.id_reserva, r.id_tipo_contrato, er.nombre AS estado')) {
@@ -410,7 +429,7 @@ test('D4: transports are written per application and mark the data as known', as
   const conn = await pool.getConnection();
   await empresaDatos.replaceTransportesSolicitud(conn, 8, [2, 3]);
   assert.deepEqual(calls('DELETE FROM dual_solicitud_empresa_transportes')[0].params, [8]);
-  assert.equal(calls('INSERT IGNORE INTO dual_solicitud_empresa_transportes').length, 2);
+  assert.equal(calls('INSERT INTO dual_solicitud_empresa_transportes').length, 2);
   assert.ok(!pool.calls.some((c) => /dual_empresa_transportes/.test(c.sql)), 'company-wide table no longer written');
 });
 

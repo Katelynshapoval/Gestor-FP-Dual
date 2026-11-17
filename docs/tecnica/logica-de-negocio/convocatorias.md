@@ -13,7 +13,7 @@
 | Si falla | `safeSync` registra el error en consola y devuelve `null`; las lecturas siguen con el indicador que hubiera. |
 | Afecta a | Todo lo que depende de `activa = 1`: altas de solicitudes (trigger), reaplicación, reapertura, edición de datos, cambios, cupos, ciclos, alumnos visibles y reservas de empresa. |
 
-Las operaciones de escritura leen la convocatoria activa con `getActiveConvocatoria`, que **no sincroniza**: entre la medianoche del cambio de fechas y la siguiente sincronización (como mucho 15 min, o antes si alguien abre una pantalla que consulta `/convocatorias/estado`) se usa el indicador anterior 🔶.
+Las operaciones de escritura leen la convocatoria activa con `getActiveConvocatoria`, que **no sincroniza**: entre la medianoche del cambio de fechas y la siguiente sincronización (como mucho 15 min, o antes si alguien abre una pantalla que consulta `/convocatorias/estado`) se usa el indicador anterior.
 
 ## 2. Consultas
 

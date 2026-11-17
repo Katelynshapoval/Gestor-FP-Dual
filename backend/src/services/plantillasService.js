@@ -2,7 +2,7 @@ const pool = require("../db/pool");
 const { generatedDefs, CONTEXTO_LABEL } = require("./documentCatalogue");
 const { variablesPorAmbito } = require("./documentGenerationConfig");
 const workflow = require("./documentosWorkflow");
-const { getActiveConvocatoria } = require("../helpers/dbHelpers");
+const { getActiveConvocatoria, sendSqlError } = require("../helpers/dbHelpers");
 const conveniosPendientes = require("./conveniosPendientes");
 const mammoth = require("mammoth");
 const firmaPdf = require("./firmaPdf");
@@ -162,7 +162,8 @@ exports.upload = async function (req, res) {
     });
   } catch (err) {
     await conn.rollback();
-    throw err;
+    // Two uploads of the same type at once: the second gets a clear 409 (dbHelpers).
+    return sendSqlError(res, err);
   } finally {
     conn.release();
   }

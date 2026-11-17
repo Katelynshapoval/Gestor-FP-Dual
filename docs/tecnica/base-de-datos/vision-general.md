@@ -10,9 +10,9 @@
 | Juego de caracteres | `utf8mb4` / `utf8mb4_0900_ai_ci` (comparaciones **insensibles a mayúsculas y acentos**) | `000_baseline.sql` |
 | Aislamiento | `REPEATABLE READ` (valor por defecto de InnoDB; verificado en desarrollo). Las transacciones de `inTransaction` usan `READ COMMITTED` | Auditoría § 2, [`db/transaction.js`](../../../backend/src/db/transaction.js) |
 | `sql_mode` | Incluye `STRICT_TRANS_TABLES` y `ONLY_FULL_GROUP_BY` (verificado en desarrollo) | Auditoría § 2 |
-| Zona horaria | `SYSTEM` del servidor. `CURDATE()` decide qué convocatoria está activa | `convocatoriasService.syncConvocatoriaActiva` |
+| Zona horaria | `Europe/Madrid` en el servidor (`docker-compose.yml`); la del sistema en un equipo de desarrollo. `CURDATE()` decide qué convocatoria está activa | `convocatoriasService.syncConvocatoriaActiva` |
 | Conexión de la aplicación | Pool `mysql2` de 10 conexiones, `dateStrings: ['DATE']` | [`backend/src/db/pool.js`](../../../backend/src/db/pool.js) |
-| Cuenta usada | `root@localhost` en desarrollo (de la auditoría) ❓ en cualquier otro entorno | Auditoría § 10 |
+| Cuentas | La API usa `DBUSER` (`fpdual_app`), sin permisos sobre el esquema; los scripts, la cuenta dueña `DBADMIN_USER` (§ 3.1) | [`scripts/cuentaApp.js`](../../../backend/scripts/cuentaApp.js) |
 
 `dateStrings: ['DATE']` hace que las columnas `DATE` (fechas de convocatoria, `fechaNacimiento`, `fechaconvenio`) lleguen al backend como texto `'AAAA-MM-DD'`, evitando el desplazamiento de un día al serializar a JSON en UTC. Las columnas `DATETIME` (`fecha_solicitud`, `creado_en`, `registrado_en`…) siguen llegando como `Date` de JavaScript y se serializan en ISO UTC.
 
@@ -54,7 +54,7 @@ flowchart TB
 
 ### 2.1 Tablas protegidas
 
-`ge_empresas`, `ge_domicilios`, `ge_contactos` y `gf_alumnosfct` proceden de un sistema anterior del centro (gestión de FCT) y **su estructura no debe modificarse** (regla del proyecto recogida en la auditoría y en el plan de mejora). El portal sí **lee y escribe filas** en ellas. Consecuencias de diseño:
+`ge_empresas`, `ge_domicilios`, `ge_contactos` y `gf_alumnosfct` son tablas del sistema de gestión de FCT del centro que **también usan otras aplicaciones del centro** para sus propios procesos. Por eso su estructura no se modifica. El portal **lee y escribe filas** en ellas. Consecuencias de diseño:
 
 - `ge_contactos` **no tiene columna de empresa**: la empresa de un contacto se deduce por `ge_contactos.iddomicilio → ge_domicilios.idempresa`. Los triggers `trg_dse_*` y la tabla `dual_empresa_tutores` compensan esta carencia ([relaciones](relaciones.md#4-relaciones-implícitas)).
 - Columnas heredadas de FCT en `gf_alumnosfct` (`idempresa`, `iddomicilio`, `idrepresentante`, `idtutorempresa`, `mesFCT`) no las usa el portal.
@@ -90,7 +90,7 @@ El código resuelve los estados **por nombre** (funciones `fn_id_estado_*` en BD
 | Triggers | 13 | [integridad](integridad-y-transacciones.md#4-triggers) |
 | Claves foráneas | 68 (todas `RESTRICT`, salvo las `CASCADE` de las tablas de correo) | [relaciones](relaciones.md) |
 
-La 028 quitó lo que no usaba nada: tres vistas, dos funciones, dos procedimientos, las tablas `dual_empresa_transportes` y `dual_documento_versiones` y tres índices redundantes. Queda la tabla `calendario` (2 filas con fichero en desarrollo): no la usa la aplicación, pero puede leerla otra herramienta del centro ([limitaciones](../limitaciones-y-pendientes.md)).
+La 028 quitó lo que no usaba nada: tres vistas, dos funciones, dos procedimientos, las tablas `dual_empresa_transportes` y `dual_documento_versiones` y tres índices redundantes. Queda la tabla `calendario` (2 filas con fichero en desarrollo): no la usa la aplicación, pero puede leerla otra herramienta del centro ([limitaciones](../limitaciones.md)).
 
 ### 3.1 Cuentas de MySQL
 
@@ -112,7 +112,7 @@ La 028 quitó lo que no usaba nada: tres vistas, dos funciones, dos procedimient
 ## 5. Cómo usa la aplicación la base de datos
 
 - **Acceso directo con SQL parametrizado** desde los servicios; no hay ORM ni repositorios.
-- **Lecturas de listados**: consultas con muchos `JOIN` sobre claves primarias/foráneas (los planes revisados en la auditoría son `eq_ref`/`ref`). Los listados del personal **no filtran por convocatoria en SQL** (`GET /reservas`, Seguimiento, `/solicitudes/empresa/todas`): cargan todos los años y, en Seguimiento, filtran y paginan en memoria ([limitaciones](../limitaciones-y-pendientes.md#2-rendimiento)).
+- **Lecturas de listados**: consultas con muchos `JOIN` sobre claves primarias/foráneas (los planes revisados en la auditoría son `eq_ref`/`ref`). Los listados del personal **no filtran por convocatoria en SQL** (`GET /reservas`, Seguimiento, `/solicitudes/empresa/todas`): cargan todos los años y, en Seguimiento, filtran y paginan en memoria ([limitaciones](../limitaciones.md#2-rendimiento)).
 - **Ficheros**: PDF y DOCX se guardan en la base de datos (`LONGBLOB` en `dual_documentos.archivo` y `dual_documento_plantillas.archivo`; imágenes de firma y PDF adjuntos de correo en `MEDIUMBLOB`). Así un documento, sus firmas, su estado y su evento se guardan juntos o no se guarda nada, y una sola copia de la base lo incluye todo. InnoDB guarda los ficheros grandes fuera de la fila, y los listados nunca seleccionan `archivo` (calculan `archivo IS NULL` como `tiene_archivo`), así que no los leen. La descarga comprueba el permiso antes de leer el fichero. Al sustituir un fichero no se guarda el anterior (028). Si el volumen llegara a varios GB, la alternativa es guardar en la base solo la ruta y una suma de comprobación ([decisiones técnicas](../decisiones-tecnicas.md)).
 - **Escrituras críticas** dentro de transacciones del backend. Desde la 018 ningún procedimiento abre su propia transacción: las reservas se hacen con `inTransaction` ([integridad y transacciones](integridad-y-transacciones.md)).
 - **Auditoría** en `dual_eventos` (solo ids y estados, sin datos personales).

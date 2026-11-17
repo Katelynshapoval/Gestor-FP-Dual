@@ -68,6 +68,28 @@ async function saveByClave(clave, parents, buffer, provenance = {}, { conn = nul
       err.status = 400;
       throw err;
     }
+    // "A validated document is not replaced" is checked before (assertCanUpload,
+    // documentGenerationService) for a clear message, and again here, after the
+    // parent lock: a validation that lands between that check and this save
+    // would otherwise be overwritten by the new file.
+    if (def && !def.replaceIfValidated) {
+      const [actual] = await tx.query(
+        `SELECT ev.nombre AS estado
+           FROM dual_documentos d
+           JOIN dual_estados_validacion ev ON ev.id_estado_validacion = d.id_estado_validacion
+          WHERE d.${columna} = ? AND d.id_tipo_documento = ? AND d.es_actual = 1
+          ORDER BY d.id_documento DESC LIMIT 1
+          FOR UPDATE`,
+        [idPadre, idTipo],
+      );
+      if (actual[0]?.estado === "VALIDADO") {
+        const err = new Error("Este documento se acaba de validar: ya no se puede sustituir.");
+        err.status = 409;
+        err.code = "DOCUMENTO_VALIDADO";
+        throw err;
+      }
+    }
+
     const origen = provenance.origen === "GENERADO" ? "GENERADO" : "SUBIDA";
     const idUsuario = provenance.idUsuario || null;
     const idPlantilla = provenance.idPlantilla || null;

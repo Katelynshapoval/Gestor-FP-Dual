@@ -677,9 +677,11 @@ async function freezeCoordinadorForOtherSolicitudes(conn, idContacto, keepIdSoli
 
 async function replaceTransportesSolicitud(conn, idSolicitud, ids) {
   await conn.query('DELETE FROM dual_solicitud_empresa_transportes WHERE id_solicitud_empresa = ?', [idSolicitud]);
-  for (const idT of ids) {
+  // Repeated ids are merged here; an unknown one fails on the foreign key
+  // (409 REFERENCIA) instead of being dropped, as INSERT IGNORE would do.
+  for (const idT of [...new Set(ids.map(Number))]) {
     await conn.query(
-      'INSERT IGNORE INTO dual_solicitud_empresa_transportes (id_solicitud_empresa, id_transporte) VALUES (?, ?)',
+      'INSERT INTO dual_solicitud_empresa_transportes (id_solicitud_empresa, id_transporte) VALUES (?, ?)',
       [idSolicitud, idT]
     );
   }

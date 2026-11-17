@@ -1,6 +1,6 @@
 # Autenticación y cuentas
 
-> Código: [`authService.js`](../../../backend/src/services/authService.js), [`personalService.js`](../../../backend/src/services/personalService.js), [`passwordResetService.js`](../../../backend/src/services/passwordResetService.js), [`middleware/auth.js`](../../../backend/src/middleware/auth.js), [`middleware/loginRateLimit.js`](../../../backend/src/middleware/loginRateLimit.js). Frontend: [`Login.js`](../../../frontend/src/pages/Login.js), [`Personal.jsx`](../../../frontend/src/pages/Personal/Personal.jsx), [`UserContext.js`](../../../frontend/src/context/UserContext.js). Pruebas: `backend/test/auth.test.js`, `personal.test.js`, `phase5.test.js`.
+> Código: [`authService.js`](../../../backend/src/services/authService.js), [`personalService.js`](../../../backend/src/services/personalService.js), [`passwordResetService.js`](../../../backend/src/services/passwordResetService.js), [`middleware/auth.js`](../../../backend/src/middleware/auth.js), [`middleware/loginRateLimit.js`](../../../backend/src/middleware/loginRateLimit.js). Frontend: [`Login.jsx`](../../../frontend/src/pages/Login.jsx), [`Personal.jsx`](../../../frontend/src/pages/Personal/Personal.jsx), [`UserContext.jsx`](../../../frontend/src/context/UserContext.jsx). Pruebas: `backend/test/auth.test.js`, `personal.test.js`, `phase5.test.js`.
 
 ## 1. Creación de cuentas
 
@@ -23,14 +23,14 @@ Una empresa tiene, en la práctica, **un único usuario EMPRESA** (el del coordi
 | Limitador | Antes de buscar: si hay ≥ 5 fallos del par IP+identificador o ≥ 30 de la IP en 15 min → **429 `TOO_MANY_ATTEMPTS`** con `Retry-After`. |
 | Usuario no encontrado / contraseña incorrecta | 401 «Credenciales incorrectas.» y se cuenta un fallo. |
 | Cuenta inactiva | Solo **después** de comprobar la contraseña: 403 «La cuenta está desactivada…». Así no se revela si existe una cuenta desactivada a quien no sabe la contraseña. No cuenta como fallo. |
-| Éxito | Borra el contador del identificador (no el de la IP). Devuelve `{ token, user: { id, nombre, email, rol, must_change_password, cif, dni } }`. |
+| Éxito | Borra el contador del identificador (no el de la IP). Pone el token en la cookie `fpdual_sesion` (`HttpOnly`, `SameSite=Strict`, `Secure` en producción, 8 h) y responde `{ user: { id, nombre, email, rol, must_change_password, cif, dni }, expira }`. El token nunca va en el cuerpo. |
 | Token | JWT **HS256** con `JWT_SECRET` (al verificar solo se admite HS256), caducidad **8 h**. Carga útil: `id, email, nombre, rol, id_contacto, id_alumno` y `pwd`, una huella del hash de la contraseña (SEC-006). |
 
-En el frontend, si `must_change_password` es verdadero, el token se guarda solo en memoria y se muestra el cambio de contraseña obligatorio; la sesión se persiste en `localStorage` después del cambio.
+En el frontend, si `must_change_password` es verdadero, se muestra el cambio de contraseña obligatorio; la cookie del login lo autoriza, y el usuario se guarda en la página después del cambio. Mientras tanto, el backend rechaza cualquier otra ruta (`PASSWORD_CHANGE_REQUIRED`).
 
 ## 3. Validación de cada petición — `requireAuth`
 
-1. Cabecera `Authorization: Bearer …` ausente → 401 `AUTH_REQUIRED`.
+1. El token se lee de `Authorization: Bearer …` (scripts y pruebas) o de la cookie `fpdual_sesion` (navegador). Ninguno → 401 `AUTH_REQUIRED`. Con la cookie, una petición que no sea `GET`, `HEAD` u `OPTIONS` debe llevar `X-Requested-With: fpdual` → si no, **403 `CSRF`**.
 2. Firma inválida o caducada → 401 `TOKEN_INVALID`.
 3. Relee `activo`, `must_change_password`, el hash de la contraseña y el rol **de la base de datos**:
    - usuario inexistente o inactivo → 401 `ACCOUNT_DISABLED`;
@@ -39,14 +39,14 @@ En el frontend, si `must_change_password` es verdadero, el token se guarda solo 
    - `must_change_password = 1` → 403 `PASSWORD_CHANGE_REQUIRED`, salvo en `/auth/me` y `/auth/changePassword` (`requireAuthAllowPasswordChange`).
 4. `req.user` = carga útil del token con el **rol de BD**.
 
-Efecto: desactivar una cuenta (p. ej. por una baja), cambiar su rol o **cambiar su contraseña** (por el propio usuario, por enlace de recuperación o con una contraseña temporal) expulsa las sesiones abiertas en su siguiente petición, aunque el token no haya caducado (SEC-006). Rotar `JWT_SECRET` expulsa a todos. Al desplegar SEC-006 todas las sesiones anteriores caducaron una vez, porque sus tokens no llevaban la huella.
+Efecto: desactivar una cuenta (p. ej. por una baja), cambiar su rol o **cambiar su contraseña** (por el propio usuario, por enlace de recuperación o con una contraseña temporal) expulsa las sesiones abiertas en su siguiente petición, aunque el token no haya caducado (SEC-006). Rotar `JWT_SECRET` expulsa a todos.
 
 ## 4. Cambio de contraseña — `POST /auth/changePassword`
 
 - Nueva contraseña ≥ 8 caracteres y distinta de la actual (comparada con bcrypt).
 - La contraseña actual es **obligatoria**, salvo si `must_change_password = 1` en BD (cambio forzado tras una contraseña temporal). Si se envía, se comprueba (401 si es incorrecta).
 - Guarda el nuevo hash (bcrypt coste 10) y pone `must_change_password = 0`.
-- Devuelve un **token nuevo** (el anterior deja de valer con el hash nuevo). El frontend lo sustituye en la sesión, tanto en «Cambiar contraseña» como en el cambio obligatorio del login. Las demás sesiones del usuario se cierran.
+- Pone una **cookie de sesión nueva** (el token anterior deja de valer con el hash nuevo) y responde `{ expira }`. Las demás sesiones del usuario se cierran.
 
 ## 5. Recuperación de contraseña
 
@@ -70,7 +70,7 @@ Efecto: desactivar una cuenta (p. ej. por una baja), cambiar su rol o **cambiar 
 - Genera 16 caracteres hexadecimales aleatorios, guarda el hash y pone `must_change_password = 1`.
 - Devuelve la contraseña **una sola vez** en la respuesta (`newPassword`); no se guarda en claro ni se envía por correo.
 - No comprueba el rol ni el estado de la cuenta destino (puede aplicarse a cualquier usuario, incluido otro administrador).
-- Si el destino es ADMINISTRADOR o COORDINADOR, el reseteo se audita (`USUARIO` / `RESETEAR_PASSWORD`) en la misma transacción. El de un alumno o una empresa **no** se audita.
+- Todo reseteo se audita (`USUARIO` / `RESETEAR_PASSWORD`, con el rol y `activo`, nunca la contraseña) en la misma transacción, sea cual sea el rol de la cuenta.
 - Desde la interfaz se usa en la pestaña «Cuenta» de las tarjetas de alumno y empresa y en la pantalla Personal (`ResetPasswordButton`).
 
 ## 7. Personal del centro — solo ADMINISTRADOR
@@ -99,7 +99,10 @@ Devuelve todos los usuarios sin hash, alumnos y empresas incluidos. Ninguna pant
 
 ## 9. Sesión en el navegador
 
-- `localStorage["user"] = { data: {…usuario, token}, expires }`, con `expires` = `exp` del JWT.
+- El token vive en la cookie `fpdual_sesion` (`HttpOnly`): ningún script de la página puede leerlo.
+- `localStorage["user"] = { data: {…usuario}, expires }`, con `expires` = `expira` del login o del cambio de contraseña. Sirve para los menús y el aviso de caducidad; no autoriza nada.
+- Todas las peticiones llevan `X-Requested-With: fpdual` (`CSRF_HEADERS` en `utils/api.js`). Otro sitio no puede añadir esa cabecera sin un permiso CORS que la API no da, y la cookie `SameSite=Strict` no viaja desde otro sitio.
+- Cerrar sesión llama a `POST /auth/logout`, que borra la cookie.
 - Al cargar, si la sesión ha caducado se borra. Un temporizador cierra la sesión exactamente al caducar.
 - Cualquier 401 de una llamada autenticada (excepto login y cambio de contraseña) emite `fpdual:session-expired`; `UserContext` borra la sesión y la página de login muestra el motivo (`ACCOUNT_DISABLED`, `SESSION_STALE` o caducada).
 - Iniciar o cerrar sesión en una pestaña se refleja en las demás (evento `storage`).

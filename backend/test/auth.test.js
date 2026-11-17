@@ -144,7 +144,7 @@ test('SEC-006: only HS256 tokens are accepted', async () => {
   assert.equal(r.res.body.code, 'TOKEN_INVALID');
 });
 
-test('SEC-006: changing the password returns a new token bound to the new password', async () => {
+test('SEC-006: changing the password sets a new session cookie bound to the new password, never a token in the body', async () => {
   process.env.JWT_SECRET = SECRET;
   const svc = load('src/services/authService');
   const res = mockRes();
@@ -153,7 +153,11 @@ test('SEC-006: changing the password returns a new token bound to the new passwo
     body: { currentPassword: 'correcta1', newPassword: 'nuevaClave1' },
   }), res);
   assert.equal(res.statusCode, 200);
-  const payload = jwt.verify(res.body.token, SECRET);
+  assert.equal(res.body.token, undefined);
+  assert.ok(res.body.expira > Date.now());
+  const cookie = res.cookies.fpdual_sesion;
+  assert.deepEqual([cookie.options.httpOnly, cookie.options.sameSite], [true, 'strict']);
+  const payload = jwt.verify(cookie.value, SECRET);
   assert.equal(payload.id, 1);
   assert.equal(payload.rol, 'ADMINISTRADOR');
   assert.equal(payload.must_change_password, undefined);
@@ -213,7 +217,8 @@ test('Login limiter: 5 failures for one identifier → 429 with Retry-After; oth
   res = mockRes();
   await svc.loginWithCredentials(mockReq({ ip: '10.0.0.2', body: { username: 'admin@x', password: 'correcta1' } }), res);
   assert.equal(res.statusCode, 200);
-  assert.ok(res.body.token);
+  assert.ok(res.cookies.fpdual_sesion.value);
+  assert.equal(res.body.token, undefined);
   loginRateLimiter.reset();
 });
 
@@ -252,4 +257,78 @@ test('optionalAuth: valid sessions get their role, anything else is an anonymous
     assert.equal(r.req.user, undefined);
     assert.notEqual(r.res.statusCode, 401);
   }
+});
+
+// ── Session in an HttpOnly cookie, CSRF header on writes ───────────────────
+const sessionCookie = (payload) => `otra=1; fpdual_sesion=${encodeURIComponent(jwt.sign(withPwd(payload), SECRET))}`;
+const browserReq = (method, payload, csrf) => mockReq({
+  method,
+  headers: { cookie: sessionCookie(payload), ...(csrf ? { 'x-requested-with': csrf } : {}) },
+  get(name) { return this.headers[name.toLowerCase()]; },
+});
+
+test('cookie session: reads pass; writes need the CSRF header, otherwise 403 CSRF', async () => {
+  process.env.JWT_SECRET = SECRET;
+  const auth = load('src/middleware/auth');
+  const admin = { id: 1, rol: 'ADMINISTRADOR' };
+
+  const read = await runMiddleware(auth.requireAuth, browserReq('GET', admin));
+  assert.equal(read.nextCalled, true);
+  assert.equal(read.req.user.id, 1);
+
+  const forged = await runMiddleware(auth.requireAuth, browserReq('POST', admin));
+  assert.equal(forged.nextCalled, false);
+  assert.deepEqual([forged.res.statusCode, forged.res.body.code], [403, 'CSRF']);
+
+  const wrong = await runMiddleware(auth.requireAuth, browserReq('DELETE', admin, 'otro'));
+  assert.equal(wrong.res.statusCode, 403);
+
+  const page = await runMiddleware(auth.requireAuth, browserReq('POST', admin, 'fpdual'));
+  assert.equal(page.nextCalled, true);
+
+  // A Bearer header (scripts, tests) is not sent by browsers on their own: no CSRF header needed.
+  const script = await runMiddleware(auth.requireAuth, mockReq({ method: 'POST', headers: bearer(admin) }));
+  assert.equal(script.nextCalled, true);
+});
+
+test('cookie session: optionalAuth treats a write without the CSRF header as an anonymous visit', async () => {
+  process.env.JWT_SECRET = SECRET;
+  const auth = load('src/middleware/auth');
+  const admin = { id: 1, rol: 'ADMINISTRADOR' };
+  const anon = await runMiddleware(auth.optionalAuth, browserReq('POST', admin));
+  assert.deepEqual([anon.nextCalled, anon.req.user], [true, undefined]);
+  const known = await runMiddleware(auth.optionalAuth, browserReq('POST', admin, 'fpdual'));
+  assert.equal(known.req.user.rol, 'ADMINISTRADOR');
+});
+
+test('login sets the HttpOnly, SameSite=Strict cookie (Secure in production); logout clears it', async () => {
+  process.env.JWT_SECRET = SECRET;
+  const svc = load('src/services/authService');
+  const login = async () => {
+    const res = mockRes();
+    await svc.loginWithCredentials(mockReq({ ip: '10.9.9.9', body: { username: 'admin@x', password: 'correcta1' } }), res);
+    return res;
+  };
+  let res = await login();
+  assert.equal(res.statusCode, 200);
+  const { value, options } = res.cookies.fpdual_sesion;
+  assert.equal(jwt.verify(value, SECRET).id, 1);
+  assert.deepEqual([options.httpOnly, options.sameSite, options.path, options.secure], [true, 'strict', '/', false]);
+  assert.equal(options.maxAge, 8 * 60 * 60 * 1000);
+  assert.equal(res.body.expira, jwt.decode(value).exp * 1000);
+  assert.deepEqual(Object.keys(res.body).sort(), ['expira', 'user']);
+
+  const prev = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  try {
+    res = await login();
+    assert.equal(res.cookies.fpdual_sesion.options.secure, true);
+  } finally {
+    process.env.NODE_ENV = prev;
+  }
+
+  const out = mockRes();
+  await svc.logout(mockReq(), out);
+  assert.equal(out.cookies.fpdual_sesion.cleared, true);
+  assert.equal(out.cookies.fpdual_sesion.options.httpOnly, true);
 });

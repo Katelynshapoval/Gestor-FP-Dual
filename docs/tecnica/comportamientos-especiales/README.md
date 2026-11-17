@@ -2,7 +2,7 @@
 
 > Parte de la [documentación técnica](../README.md). Lo que **no** es el camino feliz: reglas condicionales, valores ausentes, repeticiones, fallos parciales y concurrencia. Los flujos normales están en [lógica de negocio](../logica-de-negocio/README.md); los casos límite de autenticación, convocatorias y bajas están al final de sus documentos.
 
-Cada caso indica **condición**, **comportamiento** y, cuando consta, **motivo**, **consecuencias** y **referencia** (fichero o función). 🔶 = inferido del código; ❓ = pendiente de confirmar.
+Cada caso indica **condición**, **comportamiento** y, cuando consta, **motivo**, **consecuencias** y **referencia** (fichero o función).
 
 | Documento | Casos |
 | --- | --- |

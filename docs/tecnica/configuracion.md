@@ -7,6 +7,7 @@
 | Variable | Obligatoria | Por defecto | Uso |
 | --- | --- | --- | --- |
 | `DBHOST`, `DBUSER`, `DBPASS`, `DBNAME` | Sí | — (`.env.example` sugiere `localhost`, `fpdual_app` y `proyecto_dual`) | Pool de la API: una cuenta con solo los permisos que usa, nunca `root` ([`scripts/cuentaApp.js`](../../backend/scripts/cuentaApp.js)) |
+| `COOKIE_SECURE` | No | `false` (y `true` siempre con `NODE_ENV=production`) | Marca la cookie de sesión como `Secure` (solo HTTPS) también fuera de producción |
 | `DBADMIN_USER`, `DBADMIN_PASS` | No | `DBUSER` / `DBPASS` | Solo los scripts (migraciones, copias, demo, pruebas de BD): la cuenta dueña del esquema |
 | `DBSSL`, `DBSSL_CA` | No | `false`, vacío | TLS hacia MySQL (SEC-010); obligatorio si la BD está en otra máquina. `DBSSL_CA` = ruta del certificado de la CA si no es de confianza pública |
 | `PORT` | No | `3001` | Puerto HTTP. El *proxy* del frontend espera 3001 |

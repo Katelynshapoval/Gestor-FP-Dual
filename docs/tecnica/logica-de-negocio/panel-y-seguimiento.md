@@ -19,7 +19,7 @@
 
 **Respuesta**: `{ items, pagination, summary: { total, pendientes, accionCentro }, filtros: { convocatorias, documentos, alumnos, empresas, especialidades, estados (con recuento), contextos, acciones } }`. Las opciones de filtro se calculan sobre la convocatoria elegida.
 
-**Coste**: proporcional a todos los años acumulados; no hay filtro en SQL (ver [limitaciones](../limitaciones-y-pendientes.md#2-rendimiento)).
+**Coste**: proporcional a todos los años acumulados; no hay filtro en SQL (ver [limitaciones](../limitaciones.md#2-rendimiento)).
 
 ## 2. Panel — `GET /panel/resumen?convocatoria=<id>` (personal)
 

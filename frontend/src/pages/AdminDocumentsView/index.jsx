@@ -17,22 +17,32 @@ export default function AdminDocumentsView() {
   const [summary, setSummary] = useState(null);
 
   // Like every other staff list, Seguimiento starts on the active convocatoria
-  // (a link or bookmark with ?convocatoria= keeps its own choice).
+  // (a link or bookmark with ?convocatoria= keeps its own choice). Seguimiento
+  // reads its filters from the URL once, when it mounts, so it is shown only
+  // when the URL already carries the default: React Router applies the
+  // navigation as a transition, after this render. Once done, a convocatoria
+  // the user removes from the filter is not put back.
   const [params, setParams] = useSearchParams();
   const estado = useConvocatoriaEstado();
   const [defaultReady, setDefaultReady] = useState(() => params.has("convocatoria"));
   useEffect(() => {
-    if (defaultReady || estado.status === "loading") return;
-    const activa = estado.data?.activa?.id_convocatoria;
-    if (activa) {
-      setParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("convocatoria", String(activa));
-        return next;
-      }, { replace: true });
+    if (defaultReady) return;
+    if (params.has("convocatoria")) {
+      setDefaultReady(true);
+      return;
     }
-    setDefaultReady(true);
-  }, [defaultReady, estado.status, estado.data, setParams]);
+    if (estado.status === "loading") return;
+    const activa = estado.data?.activa?.id_convocatoria;
+    if (!activa) {
+      setDefaultReady(true);
+      return;
+    }
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("convocatoria", String(activa));
+      return next;
+    }, { replace: true });
+  }, [defaultReady, params, estado.status, estado.data, setParams]);
 
 
   return (

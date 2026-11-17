@@ -26,7 +26,7 @@ sequenceDiagram
   participant DB as MySQL
   participant RR as requireRole
   participant SV as Servicio
-  UI->>MW: Authorization: Bearer <JWT>
+  UI->>MW: cookie fpdual_sesion (+ X-Requested-With en escrituras)
   MW->>MW: jwt.verify(JWT_SECRET)
   alt firma inválida o caducada
     MW-->>UI: 401 TOKEN_INVALID
@@ -43,7 +43,7 @@ sequenceDiagram
   RR-->>UI: 403 FORBIDDEN si el rol no está permitido
   RR->>SV: handler
   SV-->>UI: JSON (o error {error, code})
-  Note over UI: Un 401 con token → evento fpdual:session-expired → UserContext cierra la sesión
+  Note over UI: Un 401 con sesión abierta → evento fpdual:session-expired → UserContext cierra la sesión
 ```
 
 ## 3. Solicitud pública de alumno

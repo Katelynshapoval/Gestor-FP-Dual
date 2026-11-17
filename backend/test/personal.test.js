@@ -258,7 +258,7 @@ test('editing name or role records the change without the email address', async 
   assert.equal(detalle.activo, 1);
 });
 
-test('resetting a staff password is audited and a student reset is not', async () => {
+test('every password reset is audited, without the password or personal data', async () => {
   setup();
   const staffRes = mockRes();
   await auth.resetPassword(mockReq({ user: admin, params: { id: '2' } }), staffRes);
@@ -272,7 +272,8 @@ test('resetting a staff password is audited and a student reset is not', async (
   const studentRes = mockRes();
   await auth.resetPassword(mockReq({ user: admin, params: { id: '9' } }), studentRes);
   assert.equal(studentRes.statusCode, 200);
-  assert.equal(db.events.length, 1);
+  assert.equal(db.events.length, 2);
+  assert.equal(eventText().includes(studentRes.body.newPassword), false);
 });
 
 test('the list is only staff and a coordinator is forbidden', async () => {

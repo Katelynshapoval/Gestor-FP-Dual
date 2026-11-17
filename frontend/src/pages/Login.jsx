@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useUser } from '../context/UserContext';
 import { useToast } from "../components/feedback/ToastProvider.jsx";
+import { CSRF_HEADERS } from "../utils/api.js";
 
 // Redirects the user to their role's home page after a successful login
 function redirectByRole(rol, navigate) {
@@ -22,7 +23,6 @@ const Login = () => {
 
   // Tracks the mandatory password-change flow triggered on first login
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [tempToken, setTempToken] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -34,7 +34,7 @@ const Login = () => {
     try {
       const res = await fetch("/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...CSRF_HEADERS, "Content-Type": "application/json" },
         body: JSON.stringify({ username: username.trim(), password }),
       });
       const data = await res.json();
@@ -42,13 +42,13 @@ const Login = () => {
 
       if (data.user.must_change_password) {
         // The session is stored only after the new password is set; the
-        // backend also blocks every other route until then.
-        setTempToken(data.token);
+        // backend also blocks every other route until then. The session
+        // cookie set by the login authorises the password change.
         setMustChangePassword(true);
         return;
       }
 
-      setUser({ ...data.user, token: data.token });
+      setUser({ ...data.user, expira: data.expira });
       redirectByRole(data.user.rol, navigate);
     } catch (err) {
       setError(err.message);
@@ -75,23 +75,19 @@ const Login = () => {
       const res = await fetch("/auth/changePassword", {
         method: "POST",
         headers: {
+          ...CSRF_HEADERS,
           "Content-Type": "application/json",
-          Authorization: `Bearer ${tempToken}`,
         },
         body: JSON.stringify({ currentPassword: password, newPassword }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al cambiar contraseña");
-      // The old token stops working once the password changes.
-      const token = data.token;
-
-      const meRes = await fetch("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // The server has replaced the session cookie: the old one no longer works.
+      const meRes = await fetch("/auth/me", { headers: { ...CSRF_HEADERS } });
       if (meRes.ok) {
         const me = await meRes.json();
         setPassword("");
-        setUser({ ...me, token, must_change_password: false });
+        setUser({ ...me, expira: data.expira, must_change_password: false });
         toast.success("Contraseña actualizada.");
         redirectByRole(me.rol, navigate);
       } else {

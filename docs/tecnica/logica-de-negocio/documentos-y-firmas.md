@@ -105,13 +105,13 @@ No se comprueba la convocatoria ni el estado de la solicitud.
 4. **Firmas**: para cada firmante del tipo, si el que sube es ese firmante y es una subida, `FIRMADO` con método **`SUBIDA_FIRMADA`** (declara que el fichero lleva su firma); el resto, `SIN_FIRMAR`. Un fichero **generado** queda sin ninguna firma.
 5. Evento `SUBIR` o `GENERAR` (con `firma_declarada` si procede).
 
-Consecuencias: cada fichero nuevo **reinicia la revisión y todas las firmas**; la versión anterior se archiva sin sus firmas. Ejemplo: la empresa sube el Anexo II → firma EMPRESA declarada, GESTOR y ALUMNO pendientes.
+Consecuencias: cada fichero nuevo **reinicia la revisión y todas las firmas**; el fichero anterior y sus firmas no se guardan. Ejemplo: la empresa sube el Anexo II → firma EMPRESA declarada, GESTOR y ALUMNO pendientes.
 
 ## 4. Firmar (migración 027)
 
 > Código: [`firmasService.js`](../../../backend/src/services/firmasService.js) (firmas guardadas y sesiones de móvil), [`firmaPdf.js`](../../../backend/src/services/firmaPdf.js) (marcas y estampado), `documentosService.firmarDocumento`. Frontend: [`components/firma/`](../../../frontend/src/components/firma/). Pruebas: `backend/test/firmas.test.js`, `documentosFlujos.test.js`, `frontend/src/components/firma/firmas.test.jsx`.
 
-Firmar ya no es solo una anotación: **inserta en el PDF la imagen de la firma guardada** de quien firma.
+Firmar **inserta en el PDF la imagen de la firma guardada** de quien firma.
 
 ### 4.1 Firmas guardadas — `dual_firmas`
 
@@ -183,7 +183,7 @@ El PDF refleja los datos **del momento**: cambios posteriores (tutor, datos de e
 
 ## 7. Plantillas (`/documentos/plantillas`)
 
-- Listar y descargar: personal. Subir: **solo ADMINISTRADOR** (las plantillas ya no ejecutan código, pero definen el contenido legal de los documentos).
+- Listar y descargar: personal. Subir: **solo ADMINISTRADOR** (las plantillas no ejecutan código, pero definen el contenido legal de los documentos).
 - Subida: clave generable, fichero `.docx` (extensión, MIME DOCX, `application/zip` u `octet-stream`, **y** firma ZIP en los primeros bytes, SEC-012), ≤ 10 MB. El nombre original se limpia y solo se muestra en las listas. En transacción: siguiente `version`, desactiva la anterior e inserta la nueva activa.
 - Descarga: el servidor fija el tipo DOCX y el nombre `plantilla-<clave>-v<versión>.docx` (SEC-012), como `attachment`.
 - No hay borrado ni reactivación de versiones antiguas (se vuelve a subir el fichero).

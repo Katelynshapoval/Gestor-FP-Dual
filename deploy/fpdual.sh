@@ -14,7 +14,8 @@
 #   migrar                   apply pending migrations
 #   logs [servicio]          follow the logs (backend, db, web, caddy, mailpit)
 #   reiniciar                stop and start again; the data stays (never -v)
-#   copia                    database dump to backups/ (BACKUP_DIR to change it)
+#   copia                    encrypted database dump to backups/ (BACKUP_KEY;
+#                            BACKUP_DIR to change the folder)
 #   restaurar <fichero>      load a dump made with "copia" (REPLACES the data)
 #   certificado              export Caddy's root certificate (CADDY_TLS=internal),
 #                            to install on the computers that open the app
@@ -36,7 +37,7 @@ valor_env() { grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- || true; 
 comprobar_env() {
   [ -f .env ] || fallo "Falta .env. Créalo con: cp .env.example .env && chmod 600 .env, y rellénalo."
   local falta=()
-  for v in SITE_ADDRESS APP_URL DBADMIN_PASS DBPASS DB_ROOT_PASSWORD JWT_SECRET; do
+  for v in SITE_ADDRESS APP_URL DBADMIN_PASS DBPASS DB_ROOT_PASSWORD JWT_SECRET BACKUP_KEY; do
     [ -n "$(valor_env "$v")" ] || falta+=("$v")
   done
   [ ${#falta[@]} -eq 0 ] || fallo "En .env faltan valores: ${falta[*]}"
@@ -69,6 +70,16 @@ cuenta_app() {
     "${DC[@]}" run --rm --no-deps -T -e DBADMIN_USER -e DBADMIN_PASS backend \
     node scripts/cuentaApp.js --yes --allow-production --host %
 }
+
+# Key of the encrypted backups (BACKUP_KEY in .env, 32 characters or more).
+clave_copias() {
+  local k
+  k="$(valor_env BACKUP_KEY)"
+  [ "${#k}" -ge 32 ] || fallo "Falta BACKUP_KEY en .env (32 caracteres o más: openssl rand -base64 33). Las copias se cifran con ella; guárdala también fuera del servidor."
+  printf '%s' "$k"
+}
+
+descifrar() { BACKUP_KEY="$(clave_copias)" openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_KEY -in "$1"; }
 
 confirmar() {
   local palabra="$1" texto="$2"
@@ -148,18 +159,26 @@ EOF
     "${DC[@]}" ps
     ;;
   copia)
+    command -v openssl >/dev/null || fallo "Falta openssl en el servidor: las copias se cifran con él."
+    clave_copias >/dev/null
     mkdir -p "$BACKUP_DIR"
-    fichero="$BACKUP_DIR/fpdual_$(date +%Y%m%d_%H%M%S).sql.gz"
-    "${DC[@]}" exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --routines --triggers --events --hex-blob "$MYSQL_DATABASE"' | gzip > "$fichero"
+    fichero="$BACKUP_DIR/fpdual_$(date +%Y%m%d_%H%M%S).sql.gz.enc"
+    # Personal data and every stored file: the dump is compressed and encrypted
+    # (AES-256 with a key derived from BACKUP_KEY) before it touches the disk.
+    "${DC[@]}" exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --routines --triggers --events --hex-blob "$MYSQL_DATABASE"'       | gzip | BACKUP_KEY="$(clave_copias)" openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:BACKUP_KEY > "$fichero"
     chmod 600 "$fichero"
-    [ "$(gzip -cd "$fichero" | tail -1 | grep -c 'Dump completed')" = 1 ] || fallo "La copia $fichero parece incompleta."
-    echo "Copia: $fichero ($(du -h "$fichero" | cut -f1)). Contiene datos personales: guárdala fuera del servidor."
+    [ "$(descifrar "$fichero" | gzip -cd | tail -1 | grep -c 'Dump completed')" = 1 ] || fallo "La copia $fichero parece incompleta."
+    echo "Copia cifrada: $fichero ($(du -h "$fichero" | cut -f1)). Guárdala fuera del servidor; sin BACKUP_KEY no se puede leer."
     ;;
   restaurar)
-    [ $# -ge 1 ] && [ -f "$1" ] || fallo 'Uso: ./deploy/fpdual.sh restaurar <fichero .sql o .sql.gz>'
+    [ $# -ge 1 ] && [ -f "$1" ] || fallo 'Uso: ./deploy/fpdual.sh restaurar <fichero .sql.gz.enc, .sql.gz o .sql>'
     confirmar RESTAURAR "Esto SUSTITUYE los datos actuales por los de $1."
-    if [[ "$1" == *.gz ]]; then lector=(gzip -cd "$1"); else lector=(cat "$1"); fi
-    "${lector[@]}" | "${DC[@]}" exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot "$MYSQL_DATABASE"'
+    case "$1" in
+      *.enc) lector() { descifrar "$1" | gzip -cd; } ;;
+      *.gz) lector() { gzip -cd "$1"; } ;;
+      *) lector() { cat "$1"; } ;;
+    esac
+    lector "$1" | "${DC[@]}" exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot "$MYSQL_DATABASE"'
     backend_run node scripts/migrate.js status
     "${DC[@]}" restart backend
     ;;

@@ -149,7 +149,8 @@ test('login: staff by email, companies by CIF, students by DNI — never mixed',
   let res = await login({ email: 'ana@centro.test', password: 'secreta123' }, [["r.nombre IN ('ADMINISTRADOR', 'COORDINADOR')", [ROW]]]);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.user.rol, 'COORDINADOR');
-  assert.ok(res.body.token);
+  assert.ok(res.cookies.fpdual_sesion.value, 'the session goes in the HttpOnly cookie');
+  assert.equal(res.body.token, undefined, 'never in the body');
   res = await login({ username: ' b12345674 ', password: 'secreta123' }, [["r.nombre = 'EMPRESA'", (s, p) => (p[0] === 'B12345674' ? [{ ...ROW, rol: 'EMPRESA', cif: 'B12345674' }] : [])]]);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.user.cif, 'B12345674');
@@ -207,7 +208,7 @@ async function reset(id, respuestas = []) {
   return res;
 }
 
-test('admin password reset: a temporary password shown once, change forced; staff resets audited', async () => {
+test('admin password reset: a temporary password shown once, change forced; every reset audited', async () => {
   assert.equal((await reset('x')).statusCode, 400);
   assert.equal((await reset('7')).statusCode, 404);
   let res = await reset('7', [['FOR UPDATE', [{ id_usuario: 7, activo: 1, rol: 'COORDINADOR' }]]]);
@@ -223,7 +224,7 @@ test('admin password reset: a temporary password shown once, change forced; staf
   assert.equal(pool.calls.find((c) => c.sql.startsWith('INSERT INTO dual_eventos')).params[2], 'RESETEAR_PASSWORD');
 
   res = await reset('7', [['FOR UPDATE', [{ id_usuario: 7, activo: 1, rol: 'ALUMNO' }]]]);
-  assert.ok(!pool.calls.some((c) => c.sql.startsWith('INSERT INTO dual_eventos')), 'student resets are not audited');
+  assert.equal(pool.calls.find((c) => c.sql.startsWith('INSERT INTO dual_eventos')).params[2], 'RESETEAR_PASSWORD', 'student resets are audited too');
 });
 
 test('admin password reset: missing migration 019 is a clear 503', async () => {

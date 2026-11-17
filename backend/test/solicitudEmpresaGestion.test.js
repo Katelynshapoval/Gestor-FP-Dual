@@ -211,7 +211,7 @@ test('re-apply: reuses the previous data, keeps the coordinator, adds ciclos and
   assert.ok(!escrituras().some((c) => c.sql.startsWith('UPDATE ge_contactos')));
   assert.ok(escrituras().some((c) => c.sql.startsWith('INSERT IGNORE INTO dual_empresa_tutores') && c.params[1] === 41));
   assert.deepEqual(escrituras().find((c) => c.sql.startsWith('INSERT INTO dual_solicitud_empresa_especialidades')).params, [500, 2, 2]);
-  assert.ok(escrituras().some((c) => c.sql.startsWith('INSERT IGNORE INTO dual_solicitud_empresa_transportes') && c.params[1] === 3));
+  assert.ok(escrituras().some((c) => c.sql.startsWith('INSERT INTO dual_solicitud_empresa_transportes') && c.params[1] === 3));
   assert.ok(hubo('COMMIT'));
   assert.deepEqual(generados.map((g) => [g.clave, g.parents.id_solicitud_empresa, g.userId]), [['CONVENIO', 500, 3]]);
   assert.deepEqual(avisos, [['solicitudEmpresaRecibida', 500, null]]);
@@ -345,7 +345,13 @@ test('reject: needs a reason; only pending requests; the reason is stored', asyn
   assert.equal((await llamar('rechazarCambio', { params: { idCambio: '7' }, body: {} })).statusCode, 400);
   assert.equal((await llamar('rechazarCambio', { params: { idCambio: '7' }, body: { motivo: 'No' } })).statusCode, 404);
   assert.equal((await llamar('rechazarCambio', { params: { idCambio: '7' }, body: { motivo: 'No' }, respuestas: [['SELECT id_cambio, estado', [{ id_cambio: 7, estado: 'RECHAZADO' }]]] })).statusCode, 400);
-  const res = await llamar('rechazarCambio', { params: { idCambio: '7' }, body: { motivo: ' Datos falsos ' }, respuestas: [['SELECT id_cambio, estado', [{ id_cambio: 7, estado: 'PENDIENTE' }]]] });
+  const pendiente = [['SELECT id_cambio, estado', [{ id_cambio: 7, estado: 'PENDIENTE' }]]];
+  const res = await llamar('rechazarCambio', { params: { idCambio: '7' }, body: { motivo: ' Datos falsos ' }, respuestas: [...pendiente, ['UPDATE dual_empresa_cambios', { affectedRows: 1 }]] });
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(escrituras()[0].params, ['RECHAZADO', 1, 'Datos falsos', 7]);
+  assert.deepEqual(escrituras()[0].params, ['RECHAZADO', 1, 'Datos falsos', 7, 'PENDIENTE']);
+  assert.match(escrituras()[0].sql, /AND estado = \?/);
+
+  // Resolved by someone else between the read and the update: nothing is overwritten.
+  const tarde = await llamar('rechazarCambio', { params: { idCambio: '7' }, body: { motivo: 'No' }, respuestas: [...pendiente, ['UPDATE dual_empresa_cambios', { affectedRows: 0 }]] });
+  assert.deepEqual([tarde.statusCode, tarde.body.code], [409, 'CAMBIO_RESUELTO']);
 });

@@ -83,6 +83,10 @@ function mockRes() {
     json(payload) { this.body = payload; return this; },
     set(name, value) { this.headers[name.toLowerCase()] = value; return this; },
     send(payload) { this.body = payload; return this; },
+    // Session cookie set or cleared by the handler: { name: { value, options } }.
+    cookies: {},
+    cookie(name, value, options) { this.cookies[name] = { value, options }; return this; },
+    clearCookie(name, options) { this.cookies[name] = { value: '', options, cleared: true }; return this; },
   };
   return res;
 }

@@ -14,7 +14,7 @@
 - **Condición**: el DNI existe pero no hay usuario.
 - **Comportamiento** (SEC-001): **no se hace nada**. Responde 401 `IDENTIDAD_NO_VERIFICADA`, con el mismo mensaje que una contraseña incorrecta, y cuenta como intento fallido. No se crea la cuenta, no se escribe la ficha ni se abre la solicitud.
 - **Motivo**: nadie ha probado quién envía el formulario anónimo; antes cualquiera podía crear la cuenta de ese alumno con su DNI.
-- **Consecuencias**: el alumno tiene que pasar por el centro, y el portal todavía **no tiene pantalla** para que Administración le cree la cuenta. En desarrollo no hay ninguna ficha así con solicitud.
+- **Consecuencias**: el alumno tiene que pasar por el centro, y el portal **no tiene pantalla** para que Administración le cree la cuenta. En desarrollo no hay ninguna ficha así con solicitud.
 
 ### DNI del alumno en el backend
 - **Comportamiento** (SEC-001): el backend normaliza el DNI (trim + mayúsculas) y comprueba su formato y letra con `dniNieValido` → 400 «No es un DNI/NIE válido.». El NSS y la exigencia de tutor legal para menores se validan solo en el formulario (`formatValidation.js`, `AddDualStudent`).
@@ -68,10 +68,10 @@
 - **Comportamiento**: se validan con `dniNieValido` pero se guardan **sin normalizar** en el alta; las ediciones (`empresaDatos`) los guardan normalizados. Comparaciones posteriores (`valuesEqual`) normalizan, así que no generan cambios espurios.
 
 ### Errores de catálogo en el alta
-- **Comportamiento**: una especialidad repetida en la lista → `ER_DUP_ENTRY` → 409 «Ya existe un registro con esos datos.»; un id de especialidad inexistente → error de FK no mapeado → **500** 🔶; un id de transporte inexistente se **descarta en silencio** porque `replaceTransportesSolicitud` usa `INSERT IGNORE` 🔶 (comportamiento de MySQL con `IGNORE` sobre FK). Los transportes se validan explícitamente solo en la edición de datos.
+- **Comportamiento**: una especialidad repetida en la lista → `ER_DUP_ENTRY` → 409 «Ya existe un registro con esos datos.»; un id de especialidad o de transporte inexistente → error de clave foránea → **409 `REFERENCIA`** («Alguno de los datos elegidos ya no existe…») y no se guarda nada. Un transporte repetido en la lista se guarda una vez. Los transportes se validan explícitamente solo en la edición de datos.
 
 ### Validar una empresa sin ofertas
-- **Comportamiento**: `sp_validar_solicitud_empresa` exige ≥ 1 oferta. Como las ofertas pueden bajar a 0 plazas pero no borrarse, en la práctica siempre hay al menos una fila; una oferta con 0 plazas cuenta 🔶.
+- **Comportamiento**: `sp_validar_solicitud_empresa` exige ≥ 1 oferta. Como las ofertas pueden bajar a 0 plazas pero no borrarse, en la práctica siempre hay al menos una fila; el procedimiento cuenta filas, así que una oferta con 0 plazas cuenta.
 
 ### Una empresa VALIDADO no se puede rechazar
 - **Comportamiento**: `solicitudTransicion` solo permite rechazar desde PENDIENTE. La única salida es la baja.

@@ -1,13 +1,11 @@
 # Documentación técnica de FP Dual
 
-Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, reglas de negocio, comportamientos especiales, API y operación. Describe **cómo funciona realmente** el sistema según el código, las migraciones y las pruebas del repositorio, en el estado posterior a la migración 027 (firmas con imagen) y a las correcciones de la auditoría de seguridad (SEC-001 a SEC-013, resumidas en [seguridad y permisos](seguridad-y-permisos.md)).
+Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, reglas de negocio, comportamientos especiales, API y operación. Describe **cómo funciona realmente** el sistema según el código, las migraciones y las pruebas del repositorio, con la base de datos en la migración 028. Las medidas de seguridad, incluidas las de la auditoría SEC-001 a SEC-013, están en [seguridad y permisos](seguridad-y-permisos.md).
 
 ## Cómo leer esta documentación
 
-- Salvo indicación contraria, cada afirmación está **confirmada** por el código o por pruebas, con referencia al fichero o función.
-- 🔶 **Inferido**: deducido razonablemente del código, pero no verificado por completo (p. ej. comportamiento de MySQL o de un despliegue que no existe).
-- ❓ **Pendiente de confirmar**: no puede determinarse con la información del repositorio.
-- Si esta documentación contradice el código, **prevalece el código**; las discrepancias entre comentarios del código y comportamiento están en [limitaciones § 6](limitaciones-y-pendientes.md#6-discrepancias-entre-comentarios-del-código-y-comportamiento).
+- Cada afirmación describe el código, las migraciones o las pruebas del repositorio, con referencia al fichero o función.
+- Si esta documentación contradice el código, **prevalece el código**.
 
 ## Índice
 
@@ -41,7 +39,7 @@ Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, r
 - [Seguridad y permisos](seguridad-y-permisos.md)
 - [Configuración](configuracion.md)
 - [Decisiones técnicas](decisiones-tecnicas.md)
-- [Limitaciones y pendientes](limitaciones-y-pendientes.md)
+- [Limitaciones conocidas](limitaciones.md)
 
 ## Búsqueda rápida
 
@@ -74,7 +72,7 @@ Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, r
 | Personal | ADMINISTRADOR o COORDINADOR |
 | Coordinador principal | Contacto de la empresa ligado a su usuario EMPRESA (`id_coordinador_empresa`); también tutor |
 | Baja | Retirada del programa por Administración (estado `BAJA`) |
-| Tablas protegidas | `ge_empresas`, `ge_domicilios`, `ge_contactos`, `gf_alumnosfct` (estructura intocable) |
+| Tablas protegidas | `ge_empresas`, `ge_domicilios`, `ge_contactos`, `gf_alumnosfct`: las comparten otras aplicaciones del centro, así que su estructura no se modifica |
 | Copia en escritura | Clonar datos compartidos entre convocatorias antes de editarlos |
 
 ## Otra documentación
@@ -87,5 +85,5 @@ Referencia técnica interna del portal FP Dual: arquitectura, modelo de datos, r
 - Al añadir una migración: actualizar [migraciones](base-de-datos/migraciones.md), el [modelo de datos](base-de-datos/modelo-de-datos.md) y, si cambia un procedimiento o trigger, [integridad](base-de-datos/integridad-y-transacciones.md).
 - Al añadir o cambiar un endpoint: [referencia de endpoints](api-e-integraciones/referencia-endpoints.md), la [matriz de permisos](seguridad-y-permisos.md) y el documento del dominio.
 - Al cambiar una regla de `estadoReglas.js` o del catálogo: el documento del dominio y sus [casos especiales](comportamientos-especiales/README.md).
-- Al resolver una limitación: moverla de [limitaciones](limitaciones-y-pendientes.md) al documento correspondiente.
+- Cuando cambia una limitación: actualizar [limitaciones](limitaciones.md) y el documento del dominio.
 - Al editar el manual de usuario: cada capítulo (`##`) y cada apartado al que se quiera enlazar (`###`) necesita su `<a id="…"></a>` justo antes; sin él, la página Ayuda no lo trata como capítulo ni lo encuentra el buscador. Si se renombra un ancla, revisar los `href` de [`faq.js`](../../frontend/src/pages/Ayuda/faq.js). Las capturas van en `docs/manual/imagenes/` y se enlazan como `manual/imagenes/<archivo>`.

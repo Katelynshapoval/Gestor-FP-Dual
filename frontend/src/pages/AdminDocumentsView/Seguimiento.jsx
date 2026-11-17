@@ -110,18 +110,21 @@ export default function Seguimiento({ onOpenTemplates, onSummary }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [query, setQuery] = useState(initialQuery);
 
+  // Writes the filters into the URL only when they differ from it. On mount
+  // they were read from the URL, so nothing is written: the page may still be
+  // adding the default convocatoria (a navigation React Router runs as a
+  // transition), and a write from a stale URL here would drop it.
   useEffect(() => {
-    setParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        for (const key of [...Object.keys(EMPTY_FILTERS), "search"]) next.delete(key);
-        if (query.search) next.set("search", query.search);
-        for (const [key, value] of Object.entries(query.filters)) if (value) next.set(key, value);
-        return next;
-      },
-      { replace: true },
-    );
-  }, [query.search, query.filters, setParams]);
+    const conFiltros = (base) => {
+      const next = new URLSearchParams(base);
+      for (const key of [...Object.keys(EMPTY_FILTERS), "search"]) next.delete(key);
+      if (query.search) next.set("search", query.search);
+      for (const [key, value] of Object.entries(query.filters)) if (value) next.set(key, value);
+      return next;
+    };
+    if (conFiltros(params).toString() === params.toString()) return;
+    setParams(conFiltros, { replace: true });
+  }, [query.search, query.filters, params, setParams]);
   const [payload, setPayload] = useState(null);
   const [appliedKey, setAppliedKey] = useState("");
   const [loading, setLoading] = useState(true);

@@ -97,7 +97,7 @@
 - **Comportamiento**: CV y Anexo DGA del formulario se guardan llamando al procedimiento directamente: tienen procedencia (`SUBIDA`, usuario, fecha) pero **no** evento `SUBIR` en `dual_eventos`. Las sustituciones posteriores sí lo tienen.
 
 ### Plantilla subida dos veces a la vez
-- **Comportamiento**: ambas calculan la misma versión; la segunda falla por `uq_plantilla_tipo_version` y, como `plantillasService.upload` relanza el error, responde **500** 🔶.
+- **Comportamiento**: ambas calculan la misma versión; la segunda falla por `uq_plantilla_tipo_version` y responde **409 `PLANTILLA_CONCURRENTE`**; no se guarda nada de ella.
 
 ### Validar un convenio con la empresa ya validada o rechazada
 - **Comportamiento**: se valida solo el documento; la cascada a la solicitud de empresa ocurre únicamente si estaba **PENDIENTE**.

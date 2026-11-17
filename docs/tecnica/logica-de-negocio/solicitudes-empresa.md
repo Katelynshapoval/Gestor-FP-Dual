@@ -1,6 +1,6 @@
 # Solicitudes de empresa
 
-> Código: [`solicitudesEmpresaService.js`](../../../backend/src/services/solicitudesEmpresaService.js), [`solicitudEmpresaCambiosService.js`](../../../backend/src/services/solicitudEmpresaCambiosService.js), [`solicitudEmpresaOfertasService.js`](../../../backend/src/services/solicitudEmpresaOfertasService.js), [`empresaDatos.js`](../../../backend/src/services/empresaDatos.js), [`solicitudTransiciones.js`](../../../backend/src/services/solicitudTransiciones.js), `sp_validar_solicitud_empresa`, `trg_dse_*`, `trg_dsee_bu_cupo`. Frontend: [`AddCompanyRequest`](../../../frontend/src/pages/AddCompanyRequest/index.js), [`CompanyView`](../../../frontend/src/pages/CompanyView/index.js), [`AdminCompanyView`](../../../frontend/src/pages/AdminCompanyView/AdminCompanyView.jsx). Pruebas: `phase2.test.js`, `phase3.test.js`, `stage1.test.js`.
+> Código: [`solicitudesEmpresaService.js`](../../../backend/src/services/solicitudesEmpresaService.js), [`solicitudEmpresaCambiosService.js`](../../../backend/src/services/solicitudEmpresaCambiosService.js), [`solicitudEmpresaOfertasService.js`](../../../backend/src/services/solicitudEmpresaOfertasService.js), [`empresaDatos.js`](../../../backend/src/services/empresaDatos.js), [`solicitudTransiciones.js`](../../../backend/src/services/solicitudTransiciones.js), `sp_validar_solicitud_empresa`, `trg_dse_*`, `trg_dsee_bu_cupo`. Frontend: [`AddCompanyRequest`](../../../frontend/src/pages/AddCompanyRequest/index.jsx), [`CompanyView`](../../../frontend/src/pages/CompanyView/index.jsx), [`AdminCompanyView`](../../../frontend/src/pages/AdminCompanyView/AdminCompanyView.jsx). Pruebas: `phase2.test.js`, `phase3.test.js`, `stage1.test.js`.
 
 ## 1. Alta pública — `POST /solicitudes/empresa`
 
@@ -80,7 +80,7 @@ La razón social, CIF, domicilios y representante no se cambian al reaplicar: se
 
 ### 4.4 Rechazar — `…/rechazar {motivo}` (personal)
 
-Motivo obligatorio; debe estar PENDIENTE; marca RECHAZADO. Se hace sin transacción explícita (dos aprobaciones/rechazos simultáneos podrían pisarse; el efecto es solo el estado final de la fila 🔶).
+Motivo obligatorio; debe estar PENDIENTE; marca RECHAZADO. La escritura solo afecta a una petición todavía PENDIENTE (`WHERE … AND estado = 'PENDIENTE'`): si otra persona la resolvió entretanto, responde **409 `CAMBIO_RESUELTO`** y no cambia nada.
 
 `GET …/cambios` devuelve la pendiente y la última resuelta, cada una con su `diff` respecto a los datos actuales.
 
@@ -115,7 +115,7 @@ flowchart TD
 - Desde la 018 las cancelaciones pasan por `sp_cancelar_reserva` (vía `reservasTx.cancelarPendiente`), cada una con su evento `CANCELAR`, y el cambio registra `OFERTA/CUPO` con la cantidad anterior y la nueva. **Todo o nada.**
 - Si una reserva elegida dejó de estar PENDIENTE → 409 y no se cambia nada.
 - `trg_dsee_bu_cupo` impide en BD bajar por debajo de las reservas activas (respaldo).
-- No se comprueba el estado de la solicitud (también se pueden cambiar plazas de una solicitud PENDIENTE o RECHAZADO; una empresa en BAJA no puede entrar, pero el personal sí podría) 🔶.
+- El estado de la solicitud no se comprueba: el personal puede cambiar plazas de una solicitud PENDIENTE, RECHAZADO o BAJA. Una empresa en BAJA no puede entrar en el portal.
 
 `GET /solicitudes/empresa/:id/especialidades` devuelve cada oferta con `plazas_disponibles`, `plazas_ocupadas`, `plazas_confirmadas`, `plazas_pendientes`. `GET /cupos/empresa` (EMPRESA) da lo mismo solo para ofertas de solicitudes VALIDADO de la convocatoria activa.
 

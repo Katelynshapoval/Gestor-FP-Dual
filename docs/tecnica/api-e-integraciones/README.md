@@ -7,7 +7,7 @@
 - **Base**: la API se sirve en la raíz del servidor Node (sin prefijo `/api`). En desarrollo el frontend llama a rutas relativas y el *proxy* de CRA las reenvía a `http://localhost:3001`.
 - **Formato**: JSON (`express.json`, cuerpos de 100 KB como máximo), salvo subidas `multipart/form-data` (`multer` en memoria, 10 MB por fichero) y descargas binarias (PDF/DOCX, siempre como `attachment`).
 - **Cabeceras de seguridad** en todas las respuestas: `X-Content-Type-Options: nosniff`, `X-Frame-Options`, `Referrer-Policy`, CSP restrictiva y HSTS cuando la petición llega por HTTPS; sin `X-Powered-By` (SEC-007).
-- **Autenticación**: `Authorization: Bearer <JWT>`. Ver [seguridad y permisos](../seguridad-y-permisos.md).
+- **Autenticación**: el navegador envía la sesión en la cookie `HttpOnly` `fpdual_sesion`, y en cada escritura la cabecera `X-Requested-With: fpdual`. Los scripts y las pruebas pueden enviar `Authorization: Bearer <JWT>`. Ver [seguridad y permisos](../seguridad-y-permisos.md).
 - **Identificadores** en la URL: enteros; `parseInt` inválido suele dar 400 «… no válido/a».
 - **Fechas**: columnas `DATE` como `'AAAA-MM-DD'`; `DATETIME` como ISO 8601 UTC.
 - **Booleanos de BD** (`activa`, `activo`, `tiene_archivo`…) llegan como `0/1` salvo donde el servicio los convierte (`convocatoria_activa`, `transportes_conocidos`).
@@ -82,4 +82,4 @@ Varios servicios capturan antes casos concretos (p. ej. CIF duplicado en el alta
 | **Chromium** (`puppeteer`) | DOCX→HTML→PDF | Navegador descargado por `puppeteer`; sin JavaScript y sin red (solo `data:`) | Ninguno; `waitUntil: 'load'` sin timeout propio | Error en la petición de generación; consola en el alta de empresa |
 | **`docx-templates` / `mammoth`** | Relleno de plantillas y conversión | Plantilla activa en BD | — | Ídem |
 
-No hay integraciones con servicios externos del centro (secretaría, Gobierno de Aragón u otros): los documentos oficiales (Anexo DGA, Anexo XIV…) se intercambian como PDF subidos por los usuarios 🔶. `google-auth-library` se quitó del backend (SEC-005); `@react-oauth/google` sigue instalado en el frontend pero **no se usa**.
+No hay integraciones con servicios externos del centro (secretaría, Gobierno de Aragón u otros): los documentos oficiales (Anexo DGA, Anexo XIV…) se intercambian como PDF que suben los usuarios.

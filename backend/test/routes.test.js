@@ -25,6 +25,7 @@ stub('src/middleware/auth', {
 
 const ESPERADO = [
   'POST /auth/login :: PUBLIC',
+  'POST /auth/logout :: PUBLIC',
   'POST /auth/forgotPassword :: PUBLIC',
   'POST /auth/resetPassword :: PUBLIC',
   'GET /auth/me :: AUTH_PWD',
@@ -201,6 +202,7 @@ test('only the expected endpoints are public', () => {
     'GET /transportes',
     'POST /auth/forgotPassword',
     'POST /auth/login',
+    'POST /auth/logout',
     'POST /auth/resetPassword',
     'POST /firmas/sesiones',
     'POST /firmas/sesiones/movil',

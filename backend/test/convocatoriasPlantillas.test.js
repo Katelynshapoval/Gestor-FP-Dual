@@ -197,14 +197,30 @@ test('template upload: next version, the previous one deactivated, a safe file n
   assert.ok(hubo('COMMIT'));
 });
 
-test('template upload: an unconfigured type is refused; a database error rolls back', async () => {
+test('template upload: an unconfigured type is refused; a database error rolls back; a concurrent upload is a 409', async () => {
   let res = await llamar(plant, 'upload', { body: { clave: 'CONVENIO' }, file: docx() });
   assert.equal(res.statusCode, 400);
   assert.match(res.body.error, /no configurado/);
   st = { respuestas: [['FROM dual_tipos_documento WHERE nombre = ?', [{ id_tipo_documento: 3 }]], ['INSERT INTO dual_documento_plantillas', () => { throw new Error('caída'); }]] };
   pool.calls.length = 0;
-  await assert.rejects(plant.upload(mockReq({ body: { clave: 'CONVENIO' }, file: docx(), user: { id: 1 } }), mockRes()), /caída/);
+  const original = console.error;
+  console.error = () => {};
+  try {
+    const caida = mockRes();
+    await plant.upload(mockReq({ body: { clave: 'CONVENIO' }, file: docx(), user: { id: 1 } }), caida);
+    assert.deepEqual([caida.statusCode, caida.body.code], [500, 'INTERNAL']);
+  } finally {
+    console.error = original;
+  }
   assert.ok(hubo('ROLLBACK'));
+
+  // Two uploads of the same type at once: the second is a clear 409, not a 500.
+  st = { respuestas: [['FROM dual_tipos_documento WHERE nombre = ?', [{ id_tipo_documento: 3 }]], ['INSERT INTO dual_documento_plantillas', () => {
+    throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY', sqlMessage: "Duplicate entry '3-2' for key 'dual_documento_plantillas.uq_plantilla_tipo_version'" });
+  }]] };
+  const doble = mockRes();
+  await plant.upload(mockReq({ body: { clave: 'CONVENIO' }, file: docx(), user: { id: 1 } }), doble);
+  assert.deepEqual([doble.statusCode, doble.body.code], [409, 'PLANTILLA_CONCURRENTE']);
 });
 
 test('template list: every generated type with its active version and history', async () => {

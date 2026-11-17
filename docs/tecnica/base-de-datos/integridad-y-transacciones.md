@@ -178,7 +178,7 @@ Atómico (todo o nada):
 | Interbloqueo | `inTransaction` repite **toda** la operación con otra conexión (máx. 2 reintentos); fuera de `inTransaction`, `mapSqlError` | Si persiste, 409 `CONCURRENCIA` |
 | Espera de bloqueo agotada (50 s) | `mapSqlError` (017) | 409 `CONCURRENCIA`, sin reintento |
 | Comprobaciones previas en Node (guardas de subida, `missingStudentValidation`) | Repetidas en procedimiento/trigger cuando es crítico. Las de reservas se hacen dentro de la transacción y bajo bloqueo | — |
-| Subida de dos plantillas a la vez | `MAX(version) … FOR UPDATE` + `uq_plantilla_tipo_version` | La segunda puede fallar con `ER_DUP_ENTRY`; `plantillasService.upload` relanza el error → **500** 🔶 |
+| Subida de dos plantillas a la vez | `MAX(version) … FOR UPDATE` + `uq_plantilla_tipo_version` | La segunda falla con `ER_DUP_ENTRY` y responde **409 `PLANTILLA_CONCURRENTE`** («Se acaba de subir otra plantilla de este tipo…») |
 
 ## 6. Consultas y patrones de acceso importantes
 

@@ -81,7 +81,7 @@ Relaciones que la aplicación da por hechas pero **no están declaradas** como F
 | --- | --- | --- |
 | Contacto → empresa | `ge_contactos.iddomicilio → ge_domicilios.idempresa` | Nada en el contacto. Los triggers `trg_dse_bi/bu_reglas` comprueban que representante, coordinador y domicilios de una solicitud son de su empresa |
 | Usuario EMPRESA → empresa | `dual_usuarios.id_contacto → ge_contactos → ge_domicilios.idempresa` ([`getCompanyIdFromUser`](../../../backend/src/helpers/dbHelpers.js)) | Toda comprobación de propiedad de una empresa depende de esta cadena |
-| Login de empresa por CIF | `ge_empresas.cif` → cualquier `dual_usuarios` EMPRESA de esa empresa (`LIMIT 1`) | Si una empresa tuviera varios usuarios EMPRESA, el elegido no es determinista 🔶 (el código solo crea uno por empresa) |
+| Login de empresa por CIF | `ge_empresas.cif` → el usuario EMPRESA de esa empresa | El alta crea una cuenta por empresa; si hubiera varias, el login usa siempre la misma: la activa y, entre ellas, la más antigua (`ORDER BY u.activo DESC, u.id_usuario`) (el código solo crea uno por empresa) |
 | Tutor de la reserva ∈ empresa de la reserva | `dual_empresa_tutores.id_empresa = solicitud_empresa.id_empresa` | Solo Node (`empresaTutoresService.assignToReserva`); sin comprobación en BD |
 | Alumno y oferta de la misma convocatoria y ciclo | `sa.id_convocatoria = se.id_convocatoria`, `sa.id_especialidad = ee.id_especialidad` | `trg_dr_bi_reglas` al insertar (desde la 018 todo intento es un `INSERT`, así que siempre se comprueba) |
 | Coordinador principal ↔ tutor | El mismo `id_contacto` en `dual_solicitudes_empresa.id_coordinador_empresa` y en `dual_empresa_tutores` | Alta de empresa y reaplicación; `es_coordinador` se calcula con `EXISTS` |
@@ -106,7 +106,7 @@ Relaciones que la aplicación da por hechas pero **no están declaradas** como F
 | `ge_empresas` (razón social, CIF, web, teléfono) | Sí | **Ninguna**: se edita en el sitio |
 | Tutores | Sí (por empresa) | **Ninguna**: `PATCH /tutores/:id` edita el contacto en el sitio; reservas de años anteriores muestran los datos nuevos |
 | Datos personales del alumno | Sí | Ninguna (una ficha por persona); los PDF ya generados conservan los datos del día. Solo se corrigen sobre la solicitud de la convocatoria activa, directamente (Administración) o por petición del alumno (`dual_alumno_cambios`) |
-| Ciclo del alumno | Antes de 017 sí; ahora por solicitud | `dual_solicitudes_alumno.id_especialidad` |
+| Ciclo del alumno | Por solicitud (017) | `dual_solicitudes_alumno.id_especialidad` |
 | Transportes | Por solicitud desde 014 | Solicitudes anteriores a 014 con `transportes_conocidos = 0` |
 
 ### 5.3 Estrategia de borrado y actualización

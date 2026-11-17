@@ -1,6 +1,14 @@
 const bcrypt = require('bcrypt');
 const pool = require('../db/pool');
-const { signToken } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+const { signToken, setSessionCookie, clearSessionCookie } = require('../middleware/auth');
+
+// Starts a browser session: the token goes only into the HttpOnly cookie; the
+// page gets its expiry (ms since epoch) to warn before the session ends.
+function abrirSesion(res, token) {
+  setSessionCookie(res, token);
+  return jwt.decode(token).exp * 1000;
+}
 const { normalizeCif, normalizeDni, sendSqlError } = require('../helpers/dbHelpers');
 const { recordEvent } = require('./auditLog');
 const { loginRateLimiter } = require('../middleware/loginRateLimit');
@@ -63,6 +71,9 @@ async function findUserByIdentifier(identifier) {
        JOIN ge_empresas emp ON emp.idempresa = d.idempresa
       WHERE r.nombre = 'EMPRESA'
         AND emp.cif = ?
+      -- One account per company is the rule; if there were more, always the
+      -- same one: the active one first, then the oldest.
+      ORDER BY u.activo DESC, u.id_usuario
       LIMIT 1`,
     [cifNorm]
   );
@@ -126,7 +137,14 @@ exports.loginWithCredentials = async function (req, res) {
   }
 
   loginRateLimiter.recordSuccess(ip, identifier);
-  return res.json(buildResponse(user));
+  const { token, user: publico } = buildResponse(user);
+  return res.json({ user: publico, expira: abrirSesion(res, token) });
+};
+
+// POST /auth/logout — public: ends the browser session even when it has expired.
+exports.logout = async function (_req, res) {
+  clearSessionCookie(res);
+  return res.json({ message: 'Sesión cerrada.' });
 };
 
 // POST /auth/changePassword
@@ -172,7 +190,7 @@ exports.changePassword = async function (req, res) {
   const { iat, exp, ...claims } = req.user;
   delete claims.must_change_password;
   const token = signToken(claims, hash);
-  return res.json({ message: 'Contraseña actualizada correctamente.', token });
+  return res.json({ message: 'Contraseña actualizada correctamente.', expira: abrirSesion(res, token) });
 };
 
 // GET /auth/me
@@ -217,7 +235,7 @@ exports.getAll = async function (req, res) {
 };
 
 // POST /usuarios/:id/resetPassword — generates a temporary password returned once to the admin.
-// Staff resets are audited (entidad USUARIO). Student and company resets are not.
+// Every reset is audited (entidad USUARIO): who reset which account, never the password.
 exports.resetPassword = async function (req, res) {
   const idUsuario = parseInt(req.params.id, 10);
   if (!Number.isInteger(idUsuario) || idUsuario <= 0) {
@@ -248,17 +266,15 @@ exports.resetPassword = async function (req, res) {
       'UPDATE dual_usuarios SET password_hash = ?, must_change_password = 1 WHERE id_usuario = ?',
       [hash, idUsuario],
     );
-    if (target.rol === 'ADMINISTRADOR' || target.rol === 'COORDINADOR') {
-      await recordEvent(conn, {
-        entidad: 'USUARIO',
-        id: idUsuario,
-        accion: 'RESETEAR_PASSWORD',
-        antes: target.rol,
-        despues: target.rol,
-        user: req.user,
-        detalle: { activo: Number(target.activo) === 1 ? 1 : 0 },
-      });
-    }
+    await recordEvent(conn, {
+      entidad: 'USUARIO',
+      id: idUsuario,
+      accion: 'RESETEAR_PASSWORD',
+      antes: target.rol,
+      despues: target.rol,
+      user: req.user,
+      detalle: { activo: Number(target.activo) === 1 ? 1 : 0 },
+    });
     await conn.commit();
   } catch (err) {
     await conn.rollback();

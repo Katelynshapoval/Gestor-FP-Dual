@@ -165,14 +165,15 @@ describe("utils/firma", () => {
     expect(firma.fechaFirma("2026-11-15T10:00:00Z")).toMatch(/2026/);
   });
 
-  test("guardarFirma: own and guardian signatures go to /firmas/mia, the centre's to /firmas/centro, with the session token", async () => {
+  test("guardarFirma: own and guardian signatures go to /firmas/mia, the centre's to /firmas/centro, with the session cookie and the CSRF header", async () => {
     const { llamadas } = simularApi({ "PUT /firmas/mia": { ok: 1 }, "PUT /firmas/centro": { ok: 1 } });
     const blob = new Blob(["x"], { type: "image/png" });
     await firma.guardarFirma({ blob });
     await firma.guardarFirma({ blob, titular: "TUTOR", origen: "MOVIL" });
     await firma.guardarFirma({ blob, titular: "CENTRO", origen: "FICHERO" });
     expect(llamadas.map((l) => l.path)).toEqual(["/firmas/mia", "/firmas/mia", "/firmas/centro"]);
-    expect(llamadas[0].headers.Authorization).toBe("Bearer t");
+    expect(llamadas[0].headers.Authorization).toBeUndefined();
+    expect(llamadas[0].headers["X-Requested-With"]).toBe("fpdual");
     expect(llamadas[1].body.get("titular")).toBe("TUTOR");
     expect(llamadas[1].body.get("origen")).toBe("MOVIL");
   });

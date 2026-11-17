@@ -127,6 +127,8 @@ const DUPLICADOS = {
   uq_dd_actual: { status: 409, code: 'DOCUMENTO_CONCURRENTE', message: 'Este documento se acaba de guardar desde otra sesión. Recarga la página y vuelve a intentarlo.' },
   uq_dual_convocatorias_una_activa: { status: 409, code: 'CONVOCATORIA_ACTIVA', message: 'Ya hay otra convocatoria activa. Solo puede haber una.' },
   uq_dual_convocatorias_nombre: { status: 409, code: 'DUPLICADO', message: 'Ya existe una convocatoria con ese nombre.' },
+  uq_plantilla_tipo_version: { status: 409, code: 'PLANTILLA_CONCURRENTE', message: 'Se acaba de subir otra plantilla de este tipo. Recarga la página y vuelve a intentarlo.' },
+  uq_plantilla_activa: { status: 409, code: 'PLANTILLA_CONCURRENTE', message: 'Se acaba de subir otra plantilla de este tipo. Recarga la página y vuelve a intentarlo.' },
 };
 
 // CHECK constraints the user can reach through a form. The rest describe

@@ -163,7 +163,7 @@ test('job description and transports belong to this application only', async () 
   const w = escrituras(conn);
   assert.deepEqual(w[0].params, ['Joyería fina', 10]);
   assert.deepEqual(w.slice(1).map((c) => c.sql.split(' ').slice(0, 3).join(' ')), [
-    'DELETE FROM dual_solicitud_empresa_transportes', 'INSERT IGNORE INTO', 'INSERT IGNORE INTO', 'UPDATE dual_solicitudes_empresa SET',
+    'DELETE FROM dual_solicitud_empresa_transportes', 'INSERT INTO dual_solicitud_empresa_transportes', 'INSERT INTO dual_solicitud_empresa_transportes', 'UPDATE dual_solicitudes_empresa SET',
   ]);
   conn = conexion({ transportesValidos: [1] });
   await assert.rejects(aplicar(conn, { transportes: [1, 99] }), (e) => e.status === 400 && /transporte/.test(e.message));

@@ -1,5 +1,9 @@
-// Authenticated HTTP utilities. All functions read the JWT from localStorage
-// and attach it as a Bearer token so the backend can verify the session.
+// Authenticated HTTP utilities. The session token lives in an HttpOnly cookie
+// set by the backend at login: page scripts never read it, and the browser
+// sends it with every same-origin request. localStorage keeps only who is
+// logged in and until when (for the menus and the expiry warning), never the
+// token. Every request carries CSRF_HEADERS: the backend refuses a write sent
+// with the session cookie but without it.
 //
 // Errors (WF-16, WF-17): every failure throws an Error with
 //   err.status  HTTP status (0 when the server could not be reached)
@@ -9,11 +13,14 @@
 //   err.body    the parsed response body
 // Callers decide by status/code, never by parsing the message.
 //
-// A 401 on a request that carried a session token means the session is no
-// longer valid: the app is told once (SESSION_EXPIRED_EVENT) and UserContext
-// clears the session and sends the user to the login page.
+// A 401 on a request made during a session means the session is no longer
+// valid: the app is told once (SESSION_EXPIRED_EVENT) and UserContext clears
+// the session and sends the user to the login page.
 
 export const SESSION_EXPIRED_EVENT = "fpdual:session-expired";
+
+// Must match CSRF_VALUE in backend/src/middleware/auth.js.
+export const CSRF_HEADERS = Object.freeze({ "X-Requested-With": "fpdual" });
 
 const STORAGE_KEY = "user";
 
@@ -22,22 +29,24 @@ export function readStoredSession() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return null;
     const parsed = JSON.parse(saved);
-    if (!parsed?.data?.token || !(parsed.expires > Date.now())) return null;
+    if (!parsed?.data?.rol || !(parsed.expires > Date.now())) return null;
     return parsed;
   } catch {
     return null;
   }
 }
 
-function getToken() {
-  return readStoredSession()?.data?.token ?? null;
+function authHeaders(extra = {}) {
+  return { ...CSRF_HEADERS, ...extra };
 }
 
-function authHeaders(extra = {}) {
-  const token = getToken();
-  const headers = { ...extra };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  return headers;
+// Ends the session on the server too (clears the cookie). Never fails.
+export async function closeServerSession() {
+  try {
+    await fetch("/auth/logout", { method: "POST", headers: { ...CSRF_HEADERS } });
+  } catch {
+    // Offline: the cookie expires on its own.
+  }
 }
 
 async function readResponseBody(response) {
@@ -74,13 +83,13 @@ export function apiError({ url, status, body = {}, message }) {
 // Login and password endpoints answer 401 for wrong credentials: that is not an expired session.
 const AUTH_FORM_URLS = ["/auth/login", "/auth/changePassword"];
 
-function notifyUnauthorized(url, sentToken, body) {
-  if (!sentToken || AUTH_FORM_URLS.some((u) => url.startsWith(u))) return;
+function notifyUnauthorized(url, inSession, body) {
+  if (!inSession || AUTH_FORM_URLS.some((u) => url.startsWith(u))) return;
   window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT, { detail: { code: body?.code || "UNAUTHORIZED", message: body?.error } }));
 }
 
 async function send(url, options = {}) {
-  const sentToken = Boolean(options.headers?.Authorization);
+  const inSession = Boolean(readStoredSession());
   let response;
   try {
     response = await fetch(url, options);
@@ -94,7 +103,7 @@ async function send(url, options = {}) {
   }
   if (!response.ok) {
     const body = await readResponseBody(response);
-    if (response.status === 401) notifyUnauthorized(url, sentToken, body);
+    if (response.status === 401) notifyUnauthorized(url, inSession, body);
     throw apiError({ url, status: response.status, body });
   }
   return response;
@@ -134,20 +143,9 @@ export const postForm = (url, formData) =>
     body: formData,
   });
 
-// Public (no token) JSON request with the same error handling.
+// Public JSON request (no session needed) with the same error handling.
 export const publicJSON = (url, options = {}) =>
   requestJSON(url, {
     ...options,
-    headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) },
+    headers: { ...CSRF_HEADERS, ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) },
   });
-
-// Expiry of a JWT in ms since epoch, or null when it cannot be read.
-export function tokenExpiry(token) {
-  try {
-    const part = String(token).split(".")[1];
-    const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
-    return typeof json.exp === "number" ? json.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}

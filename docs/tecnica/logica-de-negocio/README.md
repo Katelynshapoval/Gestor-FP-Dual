@@ -87,4 +87,4 @@ Las firmas son independientes del estado de revisión: cada fichero nuevo las re
 - **Cupos**: las empresas pueden subir plazas y añadir ciclos sin aprobación del centro **solo mientras su solicitud no está validada**; después solo pueden reducirlas (SEC-002). Máximo 20 plazas por ciclo.
 - **Reservas**: cada intento es una fila; una reserva cancelada es definitiva y conserva su tipo de contrato, tutor y documentos (018).
 - **Datos de alumno**: el alumno pide la corrección y Administración la aprueba; el DNI/NIE no se cambia (020).
-- **Pendiente de decidir**: qué pasa con una empresa ya validada cuyo convenio se rechaza (hoy sigue VALIDADO).
+- Una empresa ya validada cuyo convenio se rechaza sigue VALIDADO.
