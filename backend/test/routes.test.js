@@ -43,6 +43,9 @@ const ESPERADO = [
   'POST /convocatorias :: AUTH ROLE:ADMINISTRADOR',
   'PUT /convocatorias/:id :: AUTH ROLE:ADMINISTRADOR',
   'GET /especialidades :: PUBLIC',
+  'GET /especialidades/todas :: AUTH ROLE:ADMINISTRADOR',
+  'POST /especialidades :: AUTH ROLE:ADMINISTRADOR',
+  'PUT /especialidades/:id :: AUTH ROLE:ADMINISTRADOR',
   'GET /transportes :: PUBLIC',
   'GET /tiposContrato :: PUBLIC',
   'POST /solicitudes/alumno :: PUBLIC',
@@ -212,7 +215,7 @@ test('only the expected endpoints are public', () => {
 });
 
 test('staff-only areas are never open to companies or students', () => {
-  const soloPersonal = /^(GET|POST|PUT|PATCH|DELETE) \/(usuarios|correos|tipos-documento|panel|convocatorias(?!\/(activa|estado)))/;
+  const soloPersonal = /^(GET|POST|PUT|PATCH|DELETE) \/(usuarios|correos|tipos-documento|panel|convocatorias(?!\/(activa|estado))|especialidades\/)|^(POST|PUT) \/especialidades/;
   for (const r of rutas().filter((x) => soloPersonal.test(x))) {
     assert.ok(!/EMPRESA|ALUMNO/.test(r), r);
     assert.match(r, /ROLE:/, r);

@@ -56,7 +56,7 @@ const PageLayout = ({ children }) => {
       </a>
       <Header sidebarCollapsed={sidebarCollapsed} onSidebarToggle={() => setSidebarCollapsed((value) => !value)} />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col md:col-start-2 md:row-start-2">
+      <div className="columna-pagina flex min-h-0 min-w-0 flex-1 flex-col md:col-start-2 md:row-start-2">
         <main id="contenido" ref={mainRef} tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
           <SessionWarning />
           {/* A soft fade-and-rise when moving to another section of the app

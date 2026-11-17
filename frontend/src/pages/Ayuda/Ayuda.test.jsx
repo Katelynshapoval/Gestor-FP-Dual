@@ -56,6 +56,14 @@ describe("Ayuda", () => {
     expect(screen.getByText("He olvidado la contraseña")).toBeInTheDocument();
   });
 
+  test("while the manual loads, it says so; the message goes once it arrives", async () => {
+    simularApi({ "GET /ayuda/manual": { markdown: MANUAL } });
+    renderPagina(<Ayuda />);
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando el manual…");
+    expect(await screen.findByText(/FP Dual gestiona la Formación Profesional Dual/)).toBeInTheDocument();
+    expect(screen.queryByText("Cargando el manual…")).toBeNull();
+  });
+
   test("a load error is shown with a link back to Ayuda", async () => {
     simularApi({ "GET /ayuda/manual": { status: 500, body: { error: "No se ha podido cargar el manual." } } });
     renderPagina(<Ayuda />);

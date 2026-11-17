@@ -27,7 +27,7 @@ test("the tab of the address is selected and its content shown", () => {
   abrir("/configuracion/personal");
   expect(screen.getByRole("heading", { level: 1, name: "Configuración" })).toBeInTheDocument();
   const tabs = screen.getAllByRole("tab").map((t) => t.textContent);
-  expect(tabs).toEqual(["Convocatorias", "Personal", "Correos", "Documentos", "Firma del centro"]);
+  expect(tabs).toEqual(["Convocatorias", "Ciclos", "Personal", "Correos", "Documentos", "Firma del centro"]);
   expect(screen.getByRole("tab", { name: "Personal" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByRole("tabpanel")).toHaveTextContent("Contenido personal");
 });

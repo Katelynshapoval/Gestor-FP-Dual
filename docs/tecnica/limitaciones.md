@@ -10,7 +10,7 @@
 | Deshacer la 018 | Solo es posible antes del primer reintento de un par alumno–oferta y del primer evento `OFERTA` o `TUTOR`; después, solo restaurando una copia |
 | Ficheros sustituidos | Al subir o generar un fichero nuevo, el anterior y sus firmas no se guardan |
 | Convenio heredado (026) | Guarda su propia copia del PDF del convenio original: un PDF por empresa y año |
-| Auditoría (`dual_eventos`) | Registra solicitudes, reservas, documentos, ofertas, tutores, cuentas (altas, cambios, bajas y contraseñas temporales de todos los roles), correos, tipos de documento y firmas. No registra los cambios de datos de empresa, convocatorias ni plantillas |
+| Auditoría (`dual_eventos`) | Registra solicitudes, reservas, documentos, ofertas, tutores, cuentas (altas, cambios, bajas y contraseñas temporales de todos los roles), correos, tipos de documento y firmas. No registra los cambios de datos de empresa, convocatorias, ciclos ni plantillas |
 | Historial de empresas y tutores | `ge_empresas` y los tutores se editan en la misma fila: no guardan versiones anteriores |
 | Familia del anexo | Se deduce del nombre del tipo de contrato: si contiene «beca», Anexo III; si no, Anexo II (`documentCatalogue.familiaContrato` y `sp_confirmar_reserva`) |
 | Tabla `calendario` | No la usa esta aplicación. Se conserva sin cambios |
@@ -46,5 +46,5 @@
 - La zona horaria del servidor es `Europe/Madrid` (la fija `docker-compose.yml`); `CURDATE()` decide qué convocatoria está activa.
 - Detrás de Caddy (HTTPS) y nginx, la API recibe la IP del cliente con `TRUST_PROXY=1`; los límites de intentos se aplican por esa IP.
 - Las migraciones 025, 026 y 028 tienen prueba de base de datos propia (aplicar, reglas, deshacer, volver a aplicar); la 027 se comprobó a mano en `_verify`.
-- `dual_especialidades` (los ciclos) no tiene fichero de carga en el repositorio: se crean desde la aplicación o con los datos de demostración.
+- Los ciclos (`dual_especialidades`) se gestionan en Configuración › Ciclos; el repositorio no trae ninguno.
 - No se ha probado la aplicación con un lector de pantalla ni con envío de correo real a buzones externos.

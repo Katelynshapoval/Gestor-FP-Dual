@@ -37,11 +37,14 @@
 | `GET /ayuda/manual` | Público | `{ markdown }` con [`docs/MANUAL_DE_USUARIO.md`](../../MANUAL_DE_USUARIO.md) tal cual; 404 si no se puede leer. La página `/ayuda` lo divide en capítulos en el navegador |
 | `GET /ayuda/imagenes/:file` | Público | Captura de `docs/manual/imagenes/`. Solo nombres simples `png`, `jpg`, `jpeg`, `webp` o `gif` (400 si no, sin rutas); 404 si no existe |
 
-## Catálogos públicos
+## Catálogos
 
 | Método y ruta | Notas |
 | --- | --- |
 | `GET /especialidades` | Solo activas, con `turno` como texto |
+| `GET /especialidades/todas` | ADMINISTRADOR · todas, con `turno` (0/1), `turno_nombre`, `activa` y su uso (`solicitudes`, `ofertas`, `alumnos`, `en_uso`) |
+| `POST /especialidades` | ADMINISTRADOR · `{ codigo, nombre, turno }` → 201. Código en mayúsculas (hasta 20), nombre de 3 a 150, turno 0 o 1 · 400 · 409 `CICLO_DUPLICADO` (mismo código y turno) |
+| `PUT /especialidades/:id` | ADMINISTRADOR · cualquiera de `{ codigo, nombre, turno, activa }` · 404 · 409 `CICLO_EN_USO` si cambia código o turno de un ciclo con solicitudes, ofertas o alumnos |
 | `GET /transportes` | Catálogo completo |
 | `GET /tiposContrato` | Catálogo completo |
 

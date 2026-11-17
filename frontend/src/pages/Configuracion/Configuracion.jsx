@@ -6,6 +6,7 @@ import Tabs from "../../components/ui/Tabs.jsx";
 // (/configuracion/<tab>), so back, bookmarks and page titles keep working.
 export const CONFIG_TABS = [
   { id: "convocatorias", label: "Convocatorias" },
+  { id: "ciclos", label: "Ciclos" },
   { id: "personal", label: "Personal" },
   { id: "correos", label: "Correos" },
   { id: "documentos", label: "Documentos" },
@@ -21,15 +22,17 @@ export default function Configuracion() {
     return <Navigate to="/configuracion/convocatorias" replace />;
   }
 
-  // Correos has a list beside the editor and needs the extra width.
-  const ancho = actual === "correos" ? " max-w-[100rem]" : "";
+  // Every tab keeps the same container, so the title and the tabs never move.
+  // Correos (a list beside the editor and its preview) spreads its content
+  // wider, centred on the same axis (.contenido-amplio).
+  const amplio = actual === "correos" ? " contenido-amplio" : "";
 
   return (
-    <div className={`page-container${ancho}`}>
+    <div className="page-container">
       <PageHeader
         kicker="Administración"
         title="Configuración"
-        subtitle="Periodos de solicitud, cuentas del personal, correos automáticos, documentos y la firma del centro."
+        subtitle="Periodos de solicitud, ciclos, cuentas del personal, correos automáticos, documentos y la firma del centro."
         espacio="corto"
       />
       <Tabs
@@ -38,7 +41,7 @@ export default function Configuracion() {
         value={actual}
         onChange={(id) => navigate(`/configuracion/${id}`)}
       >
-        <div key={actual} className="animate-fade-in">
+        <div key={actual} className={`animate-fade-in${amplio}`}>
           <Outlet />
         </div>
       </Tabs>

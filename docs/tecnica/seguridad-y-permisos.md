@@ -19,6 +19,8 @@
 | Ver/validar/rechazar/reabrir solicitudes | ✔ | ✔ | | | |
 | Dar de baja / reactivar | ✔ | | | | |
 | Crear/editar convocatorias | ✔ | | | | |
+| Ciclos: añadir, editar, activar y desactivar | ✔ | | | | |
+| Ver los ciclos activos | ✔ | ✔ | ✔ | ✔ | ✔ |
 | Ver convocatorias (lista) | ✔ | ✔ | | | estado y activa |
 | Editar datos de empresa directamente | ✔ | ✔ | | | |
 | Pedir cambio de datos de empresa | | | ✔ propia | | |

@@ -14,6 +14,7 @@ import {
   FaXmark,
 } from "react-icons/fa6";
 import PageHeader from "../../components/ui/PageHeader";
+import { Bar, InlineLoading, useAparecer } from "../../components/ui/Loading.jsx";
 import { getJSON } from "../../utils/api";
 import { useUser } from "../../context/UserContext";
 import { coincide } from "../../utils/busqueda";
@@ -183,7 +184,7 @@ function SearchResults({ query, preguntas, hits, hasAnchor, onGo }) {
   );
 }
 
-function ChapterNav({ chapters, active, onGo }) {
+function ChapterNav({ chapters, active, onGo, loading }) {
   return (
     <nav
       aria-label="Contenido de la ayuda"
@@ -198,6 +199,16 @@ function ChapterNav({ chapters, active, onGo }) {
         Preguntas frecuentes
       </a>
       <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-widest text-muted">Manual</p>
+      {loading && chapters.length === 0 && (
+        <ol aria-hidden="true" className="m-0 flex list-none flex-col gap-3 p-0 px-2 pt-1 motion-safe:animate-pulse">
+          {["w-32", "w-40", "w-36", "w-44", "w-28", "w-40", "w-36", "w-32", "w-44"].map((w, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <Bar w="w-3" h="h-3.5" tono="bg-surface-300" />
+              <Bar w={w} h="h-3.5" tono="bg-surface-300" />
+            </li>
+          ))}
+        </ol>
+      )}
       <ol className="m-0 flex list-none flex-col gap-0.5 p-0 text-sm">
         {chapters.map((chapter, position) => {
           const isActive = chapter.id === active?.id;
@@ -243,16 +254,22 @@ function ChapterNav({ chapters, active, onGo }) {
   );
 }
 
+// While the manual loads: a sentence with a spinner straight away, then, if
+// it takes a moment, the shape of a chapter in the same card as ChapterReader.
 function ManualSkeleton() {
+  const forma = useAparecer(150);
   return (
-    <div aria-busy="true" aria-label="Cargando el manual" className="motion-safe:animate-pulse rounded-lg border border-surface-200 bg-white p-6 shadow-card">
-      <div className="mb-5 h-6 w-1/2 rounded bg-surface-200" />
-      {[100, 92, 96, 70, 0, 100, 88, 60].map((width, index) =>
-        width ? (
-          <div key={index} className="mb-3 h-3 rounded bg-surface-100" style={{ width: `${width}%` }} />
-        ) : (
-          <div key={index} className="h-4" />
-        ),
+    <div aria-busy="true" className="overflow-hidden rounded-lg border border-surface-200 bg-white shadow-card">
+      <div className="border-b border-surface-200 bg-surface-50 px-5 py-5 sm:px-8">
+        <InlineLoading>Cargando el manual…</InlineLoading>
+        {forma && <Bar w="w-1/2" h="h-7" tono="bg-surface-300" className="mt-3 motion-safe:animate-pulse" />}
+      </div>
+      {forma && (
+        <div aria-hidden="true" className="space-y-3 px-5 py-6 motion-safe:animate-pulse sm:px-8">
+          {["w-full", "w-11/12", "w-full", "w-3/4", null, "w-1/3", "w-full", "w-10/12", "w-2/3"].map((w, i) =>
+            w ? <Bar key={i} w={w} h="h-3.5" tono="bg-surface-200" /> : <div key={i} className="h-3" />,
+          )}
+        </div>
       )}
     </div>
   );
@@ -445,7 +462,7 @@ export default function Ayuda() {
       {!searching && <ProfileCards perfiles={perfiles} onGo={go} />}
 
       <div className="grid items-start gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] xl:gap-10">
-        <ChapterNav chapters={chapters} active={chapter} onGo={go} />
+        <ChapterNav chapters={chapters} active={chapter} onGo={go} loading={loading} />
 
         <div className="min-w-0">
           <section id="preguntas" className="scroll-mt-24" aria-live={searching ? "polite" : undefined}>

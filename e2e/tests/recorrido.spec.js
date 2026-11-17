@@ -4,7 +4,9 @@
 //   2. coordination validates the CV, the Anexo DGA and the application;
 //   3. the company (already validated, with places) books the student as Beca;
 //   4. the student sees the booking in the portal;
-//   5. coordination opens the booking: contract Beca, so the Anexo III applies.
+//   5. coordination opens the booking: contract Beca, so the Anexo III applies;
+//   6. administration adds a ciclo, the public form offers it, and once
+//      switched off it is gone again.
 const fs = require('node:fs');
 const path = require('node:path');
 const { test, expect } = require('@playwright/test');
@@ -125,4 +127,36 @@ test('5. coordination opens the booking: Beca, so the Anexo III applies', async 
   await expect(panel.getByLabel('Tipo de contrato', { exact: true })).toHaveValue('1');
   await expect(panel.getByText('Anexo III').first()).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Confirmar reserva' })).toHaveCount(0);
+});
+
+test('6. administration adds a ciclo; the form offers it until it is switched off', async ({ page }) => {
+  const { admin } = datos();
+  const NOMBRE = 'Ciclo E2E de Prueba';
+  await entrar(page, admin.email, admin.password);
+  await page.goto('/configuracion/ciclos');
+  await page.getByRole('button', { name: /Nuevo ciclo/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Nuevo ciclo' });
+  await dialog.getByLabel('Código').fill('e2e_x');
+  await dialog.getByLabel('Nombre').fill(NOMBRE);
+  await dialog.getByRole('radio', { name: 'Vespertino' }).check();
+  await dialog.getByRole('button', { name: 'Añadir ciclo' }).click();
+  await expect(page.getByText(`Ciclo «${NOMBRE}» añadido.`)).toBeVisible();
+  const activos = page.getByRole('region', { name: 'Activos' });
+  const fila = activos.getByRole('listitem').filter({ hasText: NOMBRE });
+  await expect(fila.getByText('E2E_X')).toBeVisible();
+
+  const opciones = async () => {
+    await page.goto('/addDualStudent');
+    const select = page.getByLabel(/^Ciclo \(especialidad\)/);
+    await expect(select.locator('option').nth(1)).toBeAttached();
+    return select.locator('option').allTextContents();
+  };
+  expect((await opciones()).some((o) => o.includes(NOMBRE))).toBe(true);
+
+  await page.goto('/configuracion/ciclos');
+  await page.getByRole('region', { name: 'Activos' }).getByRole('listitem').filter({ hasText: NOMBRE })
+    .getByRole('button', { name: 'Desactivar' }).click();
+  await page.getByRole('dialog', { name: new RegExp(`Desactivar «${NOMBRE}»`) }).getByRole('button', { name: 'Desactivar' }).click();
+  await expect(page.getByRole('region', { name: 'Desactivados' }).getByText(NOMBRE)).toBeVisible();
+  expect((await opciones()).some((o) => o.includes(NOMBRE))).toBe(false);
 });

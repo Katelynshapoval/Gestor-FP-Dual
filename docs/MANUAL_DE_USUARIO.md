@@ -976,6 +976,23 @@ Los documentos ya firmados conservan la imagen con la que se firmaron.
 ![Configuración › Firma del centro: a la izquierda la firma actual con el sello; a la derecha el formulario para sustituir la imagen](manual/imagenes/firma-centro.png)
 _La firma del centro guardada (imagen de ejemplo) y el formulario para cambiarla._
 
+<a id="ciclos"></a>
+
+### 5.14 Ciclos — 🔒 Solo Administración
+
+**Configuración › Ciclos** muestra los ciclos que ofrece el centro, cada uno con su **código**, su **turno** (diurno o vespertino) y cuántas solicitudes, ofertas y alumnos lo usan. Los ciclos **activos** son los que aparecen en las solicitudes de alumnos y empresas: sin ningún ciclo activo, nadie puede presentar una solicitud.
+
+**Añadir un ciclo**
+
+1. Pulsa **«Nuevo ciclo»**.
+2. Escribe el **código** (por ejemplo «DAM»; se guarda en mayúsculas) y el **nombre** completo.
+3. Elige el **turno**. Un mismo código puede existir una vez en cada turno.
+4. Pulsa **«Añadir ciclo»**.
+
+**Editar.** El nombre se puede cambiar siempre. El código y el turno solo mientras nadie use el ciclo: en cuanto tiene una solicitud, una oferta o un alumno, quedan fijos.
+
+**Desactivar y activar.** Un ciclo no se borra. **«Desactivar»** lo quita de las solicitudes nuevas; las solicitudes, ofertas y reservas que ya lo usan no cambian. **«Activar»** lo vuelve a ofrecer.
+
 <a id="coordinador"></a>
 
 ## 6. Manual del coordinador

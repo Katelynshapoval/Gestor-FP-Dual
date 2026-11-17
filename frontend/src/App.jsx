@@ -26,6 +26,7 @@ import Ayuda from "./pages/Ayuda/Ayuda.jsx";
 import MiFirma from "./pages/MiFirma.jsx";
 import FirmaMovil from "./pages/FirmaMovil.jsx";
 import FirmaCentro from "./pages/Configuracion/FirmaCentro.jsx";
+import Ciclos from "./pages/Ciclos/Ciclos.jsx";
 import { FirmarDocumentosProvider } from "./components/firma/FirmarDocumentos.jsx";
 import { STAFF } from "./navigation.js";
 
@@ -65,6 +66,7 @@ function App() {
                 <Route path="/documentos" element={guard(STAFF, <AdminDocumentsView />)} />
                 <Route path="/configuracion" element={guard(["ADMINISTRADOR"], <Configuracion />)}>
                   <Route path="convocatorias" element={<Convocatorias />} />
+                  <Route path="ciclos" element={<Ciclos />} />
                   <Route path="personal" element={<Personal />} />
                   <Route path="correos" element={<Correos />} />
                   <Route path="documentos" element={<TiposDocumento />} />

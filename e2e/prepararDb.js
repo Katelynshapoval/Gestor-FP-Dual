@@ -4,8 +4,8 @@
 // backend/scripts/verifyDb.js, which refuses any name that does not end in
 // _verify. It never reads or writes the development database.
 //
-// Seeds SYNTHETIC data only: an active convocatoria, one ciclo, a coordinator
-// and a validated company with places in that ciclo (and its portal account).
+// Seeds SYNTHETIC data only: an active convocatoria, one ciclo, an administrator,
+// a coordinator and a validated company with places in that ciclo (and its portal account).
 // Random passwords go to e2e/.e2e.local.json (git-ignored), read by the tests.
 const path = require('node:path');
 const fs = require('node:fs');
@@ -47,7 +47,11 @@ async function main() {
   const bcrypt = requireBackend('bcrypt');
   const conn = await connect(DB);
   const clave = () => crypto.randomBytes(12).toString('base64url');
-  const datos = { coordinador: { email: 'coord.e2e@example.test', password: clave() }, empresa: { cif: cif('B', '7654321'), password: clave() } };
+  const datos = {
+    admin: { email: 'admin.e2e@example.test', password: clave() },
+    coordinador: { email: 'coord.e2e@example.test', password: clave() },
+    empresa: { cif: cif('B', '7654321'), password: clave() },
+  };
   try {
     const hoy = new Date();
     const y = hoy.getFullYear();
@@ -62,6 +66,10 @@ async function main() {
       `INSERT INTO dual_usuarios (nombre_mostrar, email, password_hash, id_rol, activo, must_change_password)
        VALUES ('Coordinación E2E', ?, ?, (SELECT id_rol FROM dual_roles WHERE nombre = 'COORDINADOR'), 1, 0)`,
       [datos.coordinador.email, await bcrypt.hash(datos.coordinador.password, 10)]);
+    await conn.query(
+      `INSERT INTO dual_usuarios (nombre_mostrar, email, password_hash, id_rol, activo, must_change_password)
+       VALUES ('Administración E2E', ?, ?, (SELECT id_rol FROM dual_roles WHERE nombre = 'ADMINISTRADOR'), 1, 0)`,
+      [datos.admin.email, await bcrypt.hash(datos.admin.password, 10)]);
 
     const [e] = await conn.query("INSERT INTO ge_empresas (cif, empresa, observaciones) VALUES (?, 'Talleres Ficticios E2E S.L.', '')", [datos.empresa.cif]);
     const [d] = await conn.query(

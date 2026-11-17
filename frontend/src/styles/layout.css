@@ -5,6 +5,20 @@
     @apply mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 py-6 text-base sm:px-6 md:px-8 md:py-8;
   }
 
+  /* The column beside the sidebar that holds every page. It is a query
+     container, so a section can measure that column (cqw). Overlays (Modal,
+     Tooltip, toasts) render through portals, outside it. */
+  .columna-pagina {
+    container-type: inline-size;
+  }
+
+  /* A section wider than .page-container, centred on the same axis: the page
+     title and tabs above it keep their place. Up to 100rem, never wider than
+     the column minus the page gutters (2rem each side). */
+  .contenido-amplio {
+    margin-inline: min(0px, calc((100% - min(100rem, 100cqw - 4rem)) / 2));
+  }
+
   .page-title {
     @apply m-0 break-words text-2xl font-semibold tracking-normal text-charcoal-950 md:text-[1.75rem];
   }

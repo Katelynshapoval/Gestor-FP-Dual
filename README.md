@@ -77,7 +77,7 @@ Requisitos: Node.js 24 (npm 11) y MySQL 8.
    npm run db:demo -- --yes
    ```
 
-   Con datos reales, en cambio, crea la primera cuenta de Administración (la contraseña temporal sale en pantalla); los ciclos y la convocatoria se crean desde la aplicación:
+   Con datos reales, en cambio, crea la primera cuenta de Administración (la contraseña temporal sale en pantalla); la convocatoria y los ciclos se crean desde la aplicación (Configuración › Convocatorias y Configuración › Ciclos):
 
    ```bash
    npm run db:admin -- --email tu@correo.es --nombre "Tu nombre" --yes

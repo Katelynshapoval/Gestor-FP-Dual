@@ -83,6 +83,7 @@ const TITLES = {
   "/documentos": "Documentos",
   "/configuracion": "Configuración",
   "/configuracion/convocatorias": "Convocatorias · Configuración",
+  "/configuracion/ciclos": "Ciclos · Configuración",
   "/configuracion/personal": "Personal · Configuración",
   "/configuracion/correos": "Correos · Configuración",
   "/configuracion/documentos": "Documentos · Configuración",
