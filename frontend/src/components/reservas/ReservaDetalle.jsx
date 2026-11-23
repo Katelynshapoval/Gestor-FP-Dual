@@ -227,10 +227,14 @@ export default function ReservaDetalle({ idReserva: idInicial, open, onClose, on
                         onSaved={changed}
                         labelOculto
                         bare
+                        permitirForzar={Boolean(acciones.cambio_familia_forzado?.permitido)}
                         familiaFija={r.anexo_clave && acciones.cambio_familia && !acciones.cambio_familia.permitido ? r.anexo_clave : null}
                       />
                       {r.anexo_clave && !acciones.cambio_familia?.permitido && (
-                        <p className="mb-0 mt-2 text-xs leading-5 text-amber-800">{acciones.cambio_familia.motivo}</p>
+                        <p className="mb-0 mt-2 text-xs leading-5 text-amber-800">
+                          {acciones.cambio_familia.motivo}
+                          {acciones.cambio_familia_forzado?.permitido && " Si te has equivocado, elige el otro tipo: el documento se retira y todos tendrán que firmar el nuevo."}
+                        </p>
                       )}
                     </>
                   ) : (

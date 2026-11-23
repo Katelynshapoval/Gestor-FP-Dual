@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getJSON, postJSON } from "../utils/api.js";
-import { useToast } from "./feedback/ToastProvider.jsx";
+import { useConfirm, useToast } from "./feedback/ToastProvider.jsx";
 
 // One request per page load for the contract-type catalogue.
 let tiposPromise = null;
@@ -27,8 +27,9 @@ export const familiaAnexo = (t) => (/beca/i.test(`${t.nombre || ""} ${t.nombre_m
 // `familiaFija` (D2): once an annex of one family is under review or validated,
 // types of the other family are shown disabled (the backend refuses them too).
 // `bare` drops the grey box when the caller already frames it (ReservaDetalle).
-const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = null, labelOculto = false, bare = false, className = "" }) => {
+const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = null, permitirForzar = false, labelOculto = false, bare = false, className = "" }) => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [tipos, setTipos] = useState([]);
   const [value, setValue] = useState(idTipoContrato != null ? String(idTipoContrato) : "");
   const [saving, setSaving] = useState(false);
@@ -54,11 +55,22 @@ const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = 
   const handleChange = async (next) => {
     if (!next || next === value) return;
     const prev = value;
+    const tipo = tipos.find((t) => String(t.id_tipo_contrato) === next);
+    const forzar = Boolean(familiaFija) && permitirForzar && tipo && familiaAnexo(tipo) !== familiaFija;
+    if (forzar) {
+      const aceptado = await confirm({
+        title: "Cambiar el tipo de contrato",
+        message: `El documento actual (${familiaFija === "ANEXO_II" ? "Anexo II" : "Anexo III"}) se retira, con sus firmas, y se guarda en el historial. Habrá que generar el ${familiaFija === "ANEXO_II" ? "Anexo III" : "Anexo II"} y volver a firmarlo todas las partes: empresa, centro y alumno.`,
+        confirmLabel: "Cambiar y rehacer firmas",
+      });
+      if (!aceptado) return;
+    }
     setValue(next);
     setSaving(true);
     try {
       await postJSON(`/reservas/${idReserva}/tipo-contrato`, {
         id_tipo_contrato: Number(next),
+        ...(forzar ? { forzar: true } : {}),
       });
       toast.success("Tipo de contrato guardado. Ya puede subirse o generarse el Anexo II o III correspondiente.");
       if (onSaved) await onSaved();
@@ -92,11 +104,12 @@ const TipoContratoSelect = ({ idReserva, idTipoContrato, onSaved, familiaFija = 
             Sin indicar
           </option>
           {tipos.map((t) => {
-            const bloqueado = Boolean(familiaFija) && familiaAnexo(t) !== familiaFija;
+            const bloqueado = Boolean(familiaFija) && !permitirForzar && familiaAnexo(t) !== familiaFija;
+            const rehace = Boolean(familiaFija) && permitirForzar && familiaAnexo(t) !== familiaFija;
             return (
               <option key={t.id_tipo_contrato} value={t.id_tipo_contrato} disabled={bloqueado}>
                 {t.nombre_mostrar || t.nombre}
-                {bloqueado ? " (no disponible)" : ""}
+                {bloqueado ? " (no disponible)" : rehace ? " (rehace las firmas)" : ""}
               </option>
             );
           })}

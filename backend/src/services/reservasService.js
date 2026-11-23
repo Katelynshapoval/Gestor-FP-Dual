@@ -808,9 +808,13 @@ function clavesDeFamilia() {
 // POST /reservas/:id/tipo-contrato — staff records the contract family before confirmation.
 // D2: a mistaken type can be corrected while no file of its annex is under review or
 // validated. A rejected annex of the old family is moved to history.
+// `forzar: true` (this route is administrator/coordinator only) switches family anyway:
+// the signed or validated annex of the old family goes to history too, so the new
+// annex has to be generated and signed again by everyone.
 exports.setTipoContrato = async function (req, res) {
   const idReserva = parseId(req.params.id);
   const idTipo = parseId(req.body?.id_tipo_contrato);
+  const forzar = req.body?.forzar === true;
   if (!idReserva || !idTipo) {
     return res.status(400).json({ error: 'Indica la reserva y el tipo de contrato.' });
   }
@@ -832,7 +836,9 @@ exports.setTipoContrato = async function (req, res) {
     if (rows[0] && !tipos[0]) throw new HttpError(400, 'Tipo de contrato no válido.');
     const anexos = rows[0] ? await currentAnexos(conn, idReserva, { lock: true }) : [];
     const denied = reglas.tipoContratoCambiable(rows[0] || null, tipos[0]?.nombre, anexos);
-    if (denied) throw new HttpError(denied.status, denied.error, { code: denied.code });
+    if (denied && !(forzar && denied.code === 'ANEXO_EXISTENTE')) {
+      throw new HttpError(denied.status, denied.error, { code: denied.code });
+    }
     if (rows[0].id_tipo_contrato === idTipo) return { body: { message: 'Tipo de contrato actualizado.' } };
 
     await conn.query('UPDATE dual_reservas SET id_tipo_contrato = ? WHERE id_reserva = ?', [idTipo, idReserva]);
@@ -857,6 +863,7 @@ exports.setTipoContrato = async function (req, res) {
         tipo_anterior: rows[0].tipo_contrato || null,
         tipo_nuevo: tipos[0].nombre,
         ...(retirados.length ? { documentos_retirados: retirados } : {}),
+        ...(denied ? { cambio_forzado: true } : {}),
       },
     });
     return { body: { message: 'Tipo de contrato actualizado.', documentos_retirados: retirados } };
@@ -1080,6 +1087,8 @@ exports.getDetalle = async function (req, res) {
         : 'La reserva está cancelada.')
       : permitido(false, 'Solo el centro indica el tipo de contrato.'),
     cambio_familia: tipoBloqueo ? permitido(false, tipoBloqueo.error) : permitido(true),
+    // Staff may still switch family; the signed annex is retired and all sign anew.
+    cambio_familia_forzado: permitido(isStaff && Boolean(tipoBloqueo), null),
     confirmar: isStaff
       ? permitido(!bloqueoConfirmar, bloqueoConfirmar?.error)
       : permitido(false, 'Solo el centro confirma la reserva.'),
