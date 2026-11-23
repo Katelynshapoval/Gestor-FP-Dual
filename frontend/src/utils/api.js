@@ -65,7 +65,7 @@ const GENERIC_CODE = { 400: "VALIDATION", 401: "UNAUTHORIZED", 403: "FORBIDDEN",
 
 function messageFromBody(body, status) {
   const raw = body?.error || body?.message;
-  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  if (typeof raw === "string" && raw.trim() && !/^\s*</.test(raw)) return raw.trim();
   if (status === 403) return "No tienes permiso para realizar esta acción.";
   if (status >= 500) return "Error del servidor. Inténtalo de nuevo en unos minutos.";
   return `Error ${status} en la petición.`;
@@ -107,6 +107,25 @@ async function send(url, options = {}) {
     throw apiError({ url, status: response.status, body });
   }
   return response;
+}
+
+// For the login-type pages that read the status themselves: a fetch that never
+// throws the browser's English errors ("Failed to fetch", "Unexpected token…").
+// Resolves { res, data }; rejects with a Spanish message when the server is
+// unreachable.
+export async function fetchLoose(url, options) {
+  let res;
+  try {
+    res = await fetch(url, options);
+  } catch {
+    throw apiError({ url, status: 0, body: { code: "NETWORK" }, message: "No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo." });
+  }
+  const data = await readResponseBody(res);
+  if (!res.ok && typeof data.error === "string" && /^\s*</.test(data.error)) {
+    // An HTML error page from a proxy: not something to show the user.
+    data.error = res.status >= 500 ? "Error del servidor. Inténtalo de nuevo en unos minutos." : "";
+  }
+  return { res, data };
 }
 
 async function requestJSON(url, options) {

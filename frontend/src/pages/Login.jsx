@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useUser } from '../context/UserContext';
 import { useToast } from "../components/feedback/ToastProvider.jsx";
-import { CSRF_HEADERS } from "../utils/api.js";
+import { CSRF_HEADERS, fetchLoose } from "../utils/api.js";
 
 // Redirects the user to their role's home page after a successful login
 function redirectByRole(rol, navigate) {
@@ -32,13 +32,12 @@ const Login = () => {
     clearSessionNotice();
     setLoading(true);
     try {
-      const res = await fetch("/auth/login", {
+      const { res, data } = await fetchLoose("/auth/login", {
         method: "POST",
         headers: { ...CSRF_HEADERS, "Content-Type": "application/json" },
         body: JSON.stringify({ username: username.trim(), password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Credenciales incorrectas");
+      if (!res.ok) throw new Error(data.error || (res.status === 401 ? "Credenciales incorrectas" : "No se pudo iniciar sesión."));
 
       if (data.user.must_change_password) {
         // The session is stored only after the new password is set; the
@@ -72,7 +71,7 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const res = await fetch("/auth/changePassword", {
+      const { res, data } = await fetchLoose("/auth/changePassword", {
         method: "POST",
         headers: {
           ...CSRF_HEADERS,
@@ -80,7 +79,6 @@ const Login = () => {
         },
         body: JSON.stringify({ currentPassword: password, newPassword }),
       });
-      const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al cambiar contraseña");
       // The server has replaced the session cookie: the old one no longer works.
       const meRes = await fetch("/auth/me", { headers: { ...CSRF_HEADERS } });

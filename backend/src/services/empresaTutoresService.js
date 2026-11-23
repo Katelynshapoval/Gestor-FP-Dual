@@ -156,6 +156,26 @@ async function tutorConEmail(conn, idEmpresa, email, exceptoIdTutor = null) {
   return rows[0] || null;
 }
 
+// Another tutor of the company with the same DNI/NIE.
+async function tutorConDni(conn, idEmpresa, dni, exceptoIdTutor = null) {
+  const [rows] = await conn.query(
+    `SELECT t.id_empresa_tutor, t.activo, c.nombre
+       FROM dual_empresa_tutores t
+       JOIN ge_contactos c ON c.idcontacto = t.id_contacto
+      WHERE t.id_empresa = ? AND UPPER(c.dni) = ?
+        AND (? IS NULL OR t.id_empresa_tutor <> ?)
+      LIMIT 1`,
+    [idEmpresa, dni, exceptoIdTutor, exceptoIdTutor]
+  );
+  return rows[0] || null;
+}
+
+function dniRepetido(otro) {
+  return Number(otro.activo)
+    ? `${otro.nombre} ya es tutor de esta empresa con ese DNI/NIE.`
+    : `${otro.nombre} ya está registrado con ese DNI/NIE, pero desactivado: reactívalo en lugar de crearlo de nuevo.`;
+}
+
 function emailRepetido(otro) {
   return Number(otro.activo)
     ? `${otro.nombre} ya es tutor de esta empresa con ese email.`
@@ -245,6 +265,14 @@ exports.create = async function (req, res) {
     if (otro) {
       await conn.rollback();
       return res.status(409).json({ error: emailRepetido(otro), code: 'EMAIL_REPETIDO', id_empresa_tutor: otro.id_empresa_tutor });
+    }
+
+    if (dni) {
+      const mismoDni = await tutorConDni(conn, idEmpresa, dni);
+      if (mismoDni) {
+        await conn.rollback();
+        return res.status(409).json({ error: dniRepetido(mismoDni), code: 'DNI_REPETIDO', id_empresa_tutor: mismoDni.id_empresa_tutor });
+      }
     }
 
     const idDomicilio = await getWorkDomicilioId(conn, idEmpresa);
@@ -376,6 +404,15 @@ exports.update = async function (req, res) {
       if (otro) {
         await conn.rollback();
         return res.status(409).json({ error: emailRepetido(otro), code: 'EMAIL_REPETIDO', id_empresa_tutor: otro.id_empresa_tutor });
+      }
+    }
+
+    if (fields.dni && Object.prototype.hasOwnProperty.call(req.body, 'dni')) {
+      await conn.query('SELECT idempresa FROM ge_empresas WHERE idempresa = ? FOR UPDATE', [tutor.id_empresa]);
+      const mismoDni = await tutorConDni(conn, tutor.id_empresa, fields.dni, idTutor);
+      if (mismoDni) {
+        await conn.rollback();
+        return res.status(409).json({ error: dniRepetido(mismoDni), code: 'DNI_REPETIDO', id_empresa_tutor: mismoDni.id_empresa_tutor });
       }
     }
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { fetchLoose } from "../utils/api.js";
 import { useToast } from "../components/feedback/ToastProvider.jsx";
 
 const inputCls =
@@ -7,8 +8,7 @@ const inputCls =
 const labelCls = "text-xs font-semibold uppercase tracking-wide text-muted";
 
 async function post(url, body) {
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
+  const { res, data } = await fetchLoose(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(data.error || "No se pudo completar la solicitud.");
   return data;
 }

@@ -10,7 +10,7 @@ import { iniciarSesion, renderPagina, simularApi } from "../testUtils";
 
 const TUTORES = [
   { id_empresa_tutor: 1, nombre: "Luis", email: "l@acme.test", telefono: "600", cargo: "Coordinador", activo: 1, es_coordinador: 1 },
-  { id_empresa_tutor: 2, nombre: "Pepe", email: "p@acme.test", telefono: "611", cargo: "Tutor", dni: "", activo: 1, es_coordinador: 0 },
+  { id_empresa_tutor: 2, nombre: "Pepe", email: "p@acme.test", telefono: "611222333", cargo: "Tutor", dni: "", activo: 1, es_coordinador: 0 },
 ];
 
 describe("tutors", () => {
@@ -32,14 +32,22 @@ describe("tutors", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Añadir tutor" }));
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Eva" } });
     fireEvent.change(screen.getByLabelText("Teléfono"), { target: { value: "622" } });
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByText("El email es obligatorio.")).toBeInTheDocument();
+    expect(screen.getByText(/No es un teléfono válido/)).toBeInTheDocument();
+    expect(llamadas.some((l) => l.method === "POST")).toBe(false);
+    fireEvent.change(screen.getByLabelText("Teléfono"), { target: { value: "622 333 444" } });
+    fireEvent.change(screen.getByLabelText("DNI / NIE"), { target: { value: "12345678A" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByText(/No es un DNI\/NIE válido/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("DNI / NIE"), { target: { value: "" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "eva@acme.test" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(await screen.findByText("Este contacto ya está registrado como tutor de la empresa.")).toBeInTheDocument();
     respuesta = { id_empresa_tutor: 3 };
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(await screen.findByText("Tutor añadido.")).toBeInTheDocument();
-    expect(llamadas.filter((l) => l.method === "POST").at(-1).body).toMatchObject({ nombre: "Eva", email: "eva@acme.test", telefono: "622" });
+    expect(llamadas.filter((l) => l.method === "POST").at(-1).body).toMatchObject({ nombre: "Eva", email: "eva@acme.test", telefono: "622333444" });
     expect(llamadas.filter((l) => l.path === "/tutores/empresa" && l.method === "GET").length).toBe(2);
   });
 
@@ -50,7 +58,7 @@ describe("tutors", () => {
     fireEvent.change(screen.getByDisplayValue("Tutor"), { target: { value: "Jefe de taller" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(await screen.findByText("Tutor actualizado.")).toBeInTheDocument();
-    expect(llamadas.find((l) => l.method === "PATCH").body).toEqual({ nombre: "Pepe", dni: "", email: "p@acme.test", telefono: "611", cargo: "Jefe de taller" });
+    expect(llamadas.find((l) => l.method === "PATCH").body).toEqual({ nombre: "Pepe", dni: "", email: "p@acme.test", telefono: "611222333", cargo: "Jefe de taller" });
   });
 
   test("deactivating asks first", async () => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getJSON, patchJSON, postJSON } from "../../utils/api.js";
 import { useConfirm, useToast } from "../../components/feedback/ToastProvider.jsx";
 import { SkeletonRows } from "../../components/ui/Loading.jsx";
+import { dniNieValido, normalizarEmail, normalizarTelefono, telefonoValido } from "../../utils/formatValidation.js";
 
 const emptyForm = () => ({
   nombre: "",
@@ -10,6 +11,37 @@ const emptyForm = () => ({
   telefono: "",
   cargo: "TUTOR EMPRESA",
 });
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// What is wrong with the form, field by field (the server checks the same).
+function validar(form, tutores, exceptoId = null) {
+  const e = {};
+  if (!form.nombre.trim()) e.nombre = "El nombre es obligatorio.";
+  const email = normalizarEmail(form.email);
+  if (!email) e.email = "El email es obligatorio.";
+  else if (!EMAIL_RE.test(email)) e.email = "No es un email válido (ej.: nombre@empresa.com).";
+  else if (tutores.some((t) => t.id_empresa_tutor !== exceptoId && String(t.email || "").toLowerCase() === email)) {
+    e.email = "Ya hay un tutor de esta empresa con ese email.";
+  }
+  if (!form.telefono.trim()) e.telefono = "El teléfono es obligatorio.";
+  else if (!telefonoValido(form.telefono)) e.telefono = "No es un teléfono válido (9 cifras).";
+  const dni = form.dni.trim().toUpperCase();
+  if (dni) {
+    if (!dniNieValido(dni)) e.dni = "No es un DNI/NIE válido (8 números y letra, o X/Y/Z, 7 números y letra).";
+    else if (tutores.some((t) => t.id_empresa_tutor !== exceptoId && String(t.dni || "").toUpperCase() === dni)) {
+      e.dni = "Ya hay un tutor de esta empresa con ese DNI/NIE.";
+    }
+  }
+  return e;
+}
+
+const FieldError = ({ id, message }) =>
+  message ? (
+    <p id={id} className="mt-1 text-xs text-red-700" role="alert">
+      {message}
+    </p>
+  ) : null;
 
 // The company's tutors. Without idEmpresa it is the company's own portal tab;
 // with it, the same list inside the staff company card (Empresas › Tutores).
@@ -28,6 +60,8 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [editErrors, setEditErrors] = useState({});
 
   const load = useCallback(async () => {
     try {
@@ -52,15 +86,25 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
 
   const handleCreate = async () => {
     if (submitting) return;
+    const found = validar(form, tutores);
+    setErrors(found);
+    if (Object.keys(found).length) return;
     setSubmitting(true);
     try {
-      await postJSON(base, form);
+      await postJSON(base, {
+        ...form,
+        email: normalizarEmail(form.email),
+        telefono: normalizarTelefono(form.telefono),
+      });
       setForm(emptyForm());
+      setErrors({});
       setAdding(false);
       toast.success("Tutor añadido.");
       await load();
     } catch (err) {
-      toast.error(err.message || "Error al añadir el tutor.");
+      if (err.code === "EMAIL_REPETIDO") setErrors({ email: err.message });
+      else if (err.code === "DNI_REPETIDO") setErrors({ dni: err.message });
+      else toast.error(err.message || "Error al añadir el tutor.");
     } finally {
       setSubmitting(false);
     }
@@ -68,6 +112,7 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
 
   const startEdit = (t) => {
     setEditingId(t.id_empresa_tutor);
+    setEditErrors({});
     setEditForm({
       nombre: t.nombre || "",
       dni: t.dni || "",
@@ -79,14 +124,23 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
 
   const handleUpdate = async () => {
     if (!editingId || submitting) return;
+    const found = validar(editForm, tutores, editingId);
+    setEditErrors(found);
+    if (Object.keys(found).length) return;
     setSubmitting(true);
     try {
-      await patchJSON(`/tutores/${editingId}`, editForm);
+      await patchJSON(`/tutores/${editingId}`, {
+        ...editForm,
+        email: normalizarEmail(editForm.email),
+        telefono: normalizarTelefono(editForm.telefono),
+      });
       setEditingId(null);
       toast.success("Tutor actualizado.");
       await load();
     } catch (err) {
-      toast.error(err.message || "Error al actualizar el tutor.");
+      if (err.code === "EMAIL_REPETIDO") setEditErrors({ email: err.message });
+      else if (err.code === "DNI_REPETIDO") setEditErrors({ dni: err.message });
+      else toast.error(err.message || "Error al actualizar el tutor.");
     } finally {
       setSubmitting(false);
     }
@@ -180,24 +234,29 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
           <div className="grid gap-x-4 md:grid-cols-2">
             <div className="field">
               <label htmlFor="new_tutor_nombre">Nombre</label>
-              <input id="new_tutor_nombre" className="input" value={form.nombre} onChange={(e) => setField(setForm, "nombre", e.target.value)} maxLength={100} />
-            </div>
+              <input id="new_tutor_nombre" className="input" value={form.nombre} onChange={(e) => setField(setForm, "nombre", e.target.value)} maxLength={100} placeholder="Ej.: María López" aria-invalid={errors.nombre ? "true" : undefined} />
+            <FieldError message={errors.nombre} />
+              </div>
             <div className="field">
               <label htmlFor="new_tutor_dni">DNI / NIE</label>
-              <input id="new_tutor_dni" className="input" value={form.dni} onChange={(e) => setField(setForm, "dni", e.target.value.toUpperCase())} maxLength={15} />
-            </div>
+              <input id="new_tutor_dni" className="input" value={form.dni} onChange={(e) => setField(setForm, "dni", e.target.value.toUpperCase())} maxLength={15} placeholder="Ej.: 12345678Z" aria-invalid={errors.dni ? "true" : undefined} />
+            <FieldError message={errors.dni} />
+              </div>
             <div className="field">
               <label htmlFor="new_tutor_email">Email</label>
-              <input id="new_tutor_email" className="input" type="email" value={form.email} onChange={(e) => setField(setForm, "email", e.target.value)} maxLength={100} />
-            </div>
+              <input id="new_tutor_email" className="input" type="email" value={form.email} onChange={(e) => setField(setForm, "email", e.target.value)} maxLength={100} placeholder="Ej.: maria@empresa.com" aria-invalid={errors.email ? "true" : undefined} />
+            <FieldError message={errors.email} />
+              </div>
             <div className="field">
               <label htmlFor="new_tutor_tel">Teléfono</label>
-              <input id="new_tutor_tel" className="input" value={form.telefono} onChange={(e) => setField(setForm, "telefono", e.target.value)} maxLength={20} />
-            </div>
+              <input id="new_tutor_tel" className="input" value={form.telefono} onChange={(e) => setField(setForm, "telefono", e.target.value)} maxLength={20} placeholder="Ej.: 976 123 456" aria-invalid={errors.telefono ? "true" : undefined} />
+            <FieldError message={errors.telefono} />
+              </div>
             <div className="field md:col-span-2">
               <label htmlFor="new_tutor_cargo">Cargo</label>
-              <input id="new_tutor_cargo" className="input" value={form.cargo} onChange={(e) => setField(setForm, "cargo", e.target.value)} maxLength={100} />
-            </div>
+              <input id="new_tutor_cargo" className="input" value={form.cargo} onChange={(e) => setField(setForm, "cargo", e.target.value)} maxLength={100} placeholder="Ej.: Responsable de formación" aria-invalid={errors.cargo ? "true" : undefined} />
+            <FieldError message={errors.cargo} />
+              </div>
           </div>
           <div className="flex justify-end gap-2">
             <button
@@ -205,6 +264,7 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
               className="btn btn-secondary btn-sm"
               onClick={() => {
                 setAdding(false);
+                setErrors({});
                 setForm(emptyForm());
               }}
             >
@@ -214,7 +274,7 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
               type="button"
               className={`btn btn-outline-brand btn-sm`}
               onClick={handleCreate}
-              disabled={submitting || !form.nombre || !form.email || !form.telefono}
+              disabled={submitting}
             >
               {submitting ? "Guardando…" : "Guardar"}
             </button>
@@ -333,24 +393,29 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
                     <div className="grid gap-x-4 md:grid-cols-2">
                       <div className="field">
                         <label htmlFor={`tutor-${t.id_empresa_tutor}-nombre`}>Nombre</label>
-                        <input id={`tutor-${t.id_empresa_tutor}-nombre`} className="input" value={editForm.nombre} onChange={(e) => setField(setEditForm, "nombre", e.target.value)} maxLength={100} />
-                      </div>
+                        <input id={`tutor-${t.id_empresa_tutor}-nombre`} className="input" value={editForm.nombre} onChange={(e) => setField(setEditForm, "nombre", e.target.value)} maxLength={100} placeholder="Ej.: María López" aria-invalid={editErrors.nombre ? "true" : undefined} />
+                      <FieldError message={editErrors.nombre} />
+              </div>
                       <div className="field">
                         <label htmlFor={`tutor-${t.id_empresa_tutor}-dni`}>DNI / NIE</label>
-                        <input id={`tutor-${t.id_empresa_tutor}-dni`} className="input" value={editForm.dni} onChange={(e) => setField(setEditForm, "dni", e.target.value.toUpperCase())} maxLength={15} />
-                      </div>
+                        <input id={`tutor-${t.id_empresa_tutor}-dni`} className="input" value={editForm.dni} onChange={(e) => setField(setEditForm, "dni", e.target.value.toUpperCase())} maxLength={15} placeholder="Ej.: 12345678Z" aria-invalid={editErrors.dni ? "true" : undefined} />
+                      <FieldError message={editErrors.dni} />
+              </div>
                       <div className="field">
                         <label htmlFor={`tutor-${t.id_empresa_tutor}-email`}>Email</label>
-                        <input id={`tutor-${t.id_empresa_tutor}-email`} className="input" type="email" value={editForm.email} onChange={(e) => setField(setEditForm, "email", e.target.value)} maxLength={100} />
-                      </div>
+                        <input id={`tutor-${t.id_empresa_tutor}-email`} className="input" type="email" value={editForm.email} onChange={(e) => setField(setEditForm, "email", e.target.value)} maxLength={100} placeholder="Ej.: maria@empresa.com" aria-invalid={editErrors.email ? "true" : undefined} />
+                      <FieldError message={editErrors.email} />
+              </div>
                       <div className="field">
                         <label htmlFor={`tutor-${t.id_empresa_tutor}-telefono`}>Teléfono</label>
-                        <input id={`tutor-${t.id_empresa_tutor}-telefono`} className="input" value={editForm.telefono} onChange={(e) => setField(setEditForm, "telefono", e.target.value)} maxLength={20} />
-                      </div>
+                        <input id={`tutor-${t.id_empresa_tutor}-telefono`} className="input" value={editForm.telefono} onChange={(e) => setField(setEditForm, "telefono", e.target.value)} maxLength={20} placeholder="Ej.: 976 123 456" aria-invalid={editErrors.telefono ? "true" : undefined} />
+                      <FieldError message={editErrors.telefono} />
+              </div>
                       <div className="field md:col-span-2">
                         <label htmlFor={`tutor-${t.id_empresa_tutor}-cargo`}>Cargo</label>
-                        <input id={`tutor-${t.id_empresa_tutor}-cargo`} className="input" value={editForm.cargo} onChange={(e) => setField(setEditForm, "cargo", e.target.value)} maxLength={100} />
-                      </div>
+                        <input id={`tutor-${t.id_empresa_tutor}-cargo`} className="input" value={editForm.cargo} onChange={(e) => setField(setEditForm, "cargo", e.target.value)} maxLength={100} placeholder="Ej.: Responsable de formación" aria-invalid={editErrors.cargo ? "true" : undefined} />
+                      <FieldError message={editErrors.cargo} />
+              </div>
                     </div>
                     <div className="flex justify-end gap-2">
                       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditingId(null)}>

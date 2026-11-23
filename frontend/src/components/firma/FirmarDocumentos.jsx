@@ -609,7 +609,6 @@ function FirmarDocumentosDialog({ ids, onClose, onFirmado }) {
         description={descripcion}
         size={size}
         busy={fase === "firmando" || guardando}
-        closeOnOverlay={false}
         footer={pie}
       >
         {cuerpo}
