@@ -1,0 +1,60 @@
+# Updates the school server to a released version, after a person approves it.
+#
+#   1. Publishing a release on GitHub (tag vX.Y.Z), or Actions › Deploy ›
+#      "Run workflow" with a tag, starts this workflow.
+#   2. The tests (tests.yml) run on that tag on GitHub's machines.
+#   3. The deploy job waits on the "production" environment: a reviewer
+#      presses "Review deployments › Approve and deploy".
+#   4. The runner installed on the server (labels self-hosted, fpdual) runs
+#      ./deploy/fpdual.sh actualizar <tag>: backup, checkout, build, migrate, start.
+#
+# The server is only reachable from the school network, so GitHub never
+# connects to it: the runner on the server connects out to GitHub and picks
+# up the approved job. Setup: docs/DESPLIEGUE.md, section 5.14.
+name: Deploy
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Etiqueta que se despliega (p. ej. v1.1.0)
+        required: true
+        type: string
+
+# One deploy at a time; a second one waits instead of interrupting the first.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests
+    # Pre-releases are not deployed.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    uses: ./.github/workflows/tests.yml
+    with:
+      ref: refs/tags/${{ inputs.version || github.event.release.tag_name }}
+
+  deploy:
+    name: Actualizar el servidor
+    needs: tests
+    runs-on: [self-hosted, fpdual]
+    environment: production
+    timeout-minutes: 45
+    env:
+      # Through env, never pasted into the script: the value comes from a form.
+      VERSION: ${{ inputs.version || github.event.release.tag_name }}
+      # The folder of the installation on the server (repository variable);
+      # ~/fpdual when it is not set.
+      FPDUAL_DIR: ${{ vars.FPDUAL_DIR }}
+    steps:
+      - name: fpdual.sh actualizar
+        run: |
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "La versión tiene que ser una etiqueta vX.Y.Z: $VERSION"; exit 1; }
+          cd "${FPDUAL_DIR:-$HOME/fpdual}"
+          ./deploy/fpdual.sh actualizar "$VERSION"

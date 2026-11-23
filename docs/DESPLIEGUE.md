@@ -73,6 +73,7 @@ Todas se ejecutan desde la carpeta del proyecto (`cd ~/fpdual`).
 | `./deploy/fpdual.sh copia` | Copia de seguridad **cifrada** de toda la base de datos (con los documentos) en `backups/` | Antes de cada cambio y de forma periódica |
 | `./deploy/fpdual.sh restaurar <fichero>` | Carga una copia. **Sustituye** todos los datos actuales | Solo para recuperar |
 | `./deploy/fpdual.sh migrar` | Aplica las migraciones nuevas y actualiza la cuenta de la aplicación | En cada actualización |
+| `./deploy/fpdual.sh actualizar v1.1.0` | Hace una copia, cambia a esa versión, construye, migra y arranca. Si falla, dice cómo volver atrás | Para actualizar ([5.6](#56-actualizar-a-una-versión-nueva)); es lo que ejecuta el botón de GitHub ([5.14](#514-actualizar-desde-github-con-un-botón)) |
 | `./deploy/fpdual.sh demo --conservar-personal` | **Borra todos los datos** y carga empresas, alumnos y reservas ficticios | Solo para una demostración |
 | `./deploy/fpdual.sh certificado` | Exporta el certificado HTTPS para instalarlo en los ordenadores del centro | Solo en una intranet (`CADDY_TLS=internal`) |
 
@@ -291,6 +292,17 @@ Si Mailpit estaba en marcha, primero `docker compose down` (con la configuració
 
 ### 5.6 Actualizar a una versión nueva
 
+Lee antes las notas de la versión y `db/README.md`. Después, una sola orden:
+
+```bash
+cd ~/fpdual
+./deploy/fpdual.sh actualizar v1.1.0   # la versión nueva
+```
+
+Hace una copia de seguridad, cambia a esa versión, construye las imágenes, aplica las migraciones y arranca la versión nueva. Se niega si hay ficheros del repositorio cambiados en el servidor. Si algo falla, se para y muestra las órdenes para volver a la versión anterior y la copia que acaba de hacer. También se puede lanzar desde GitHub con un botón ([5.14](#514-actualizar-desde-github-con-un-botón)).
+
+Las versiones anteriores a la que trae `actualizar` (como `v1.0.0`) no tienen esta orden: la primera vez se actualiza a mano, paso a paso:
+
 ```bash
 cd ~/fpdual
 ./deploy/fpdual.sh copia            # siempre antes de actualizar
@@ -391,6 +403,33 @@ Con la cuenta de Administración, en **Configuración › Ciclos**:
 3. **«Desactivar»**: el ciclo deja de aparecer en las solicitudes nuevas; lo que ya lo usa se conserva. **«Activar»** lo vuelve a ofrecer. Los ciclos no se borran.
 
 Sin ningún ciclo activo, nadie puede presentar una solicitud: la pestaña lo avisa.
+
+### 5.14 Actualizar desde GitHub con un botón
+
+El servidor solo es accesible desde la red del centro, así que GitHub no puede entrar en él. En su lugar, en el servidor se instala un **runner de GitHub Actions**: un programa que se conecta **hacia fuera** a GitHub (HTTPS, puerto 443), espera trabajos y los ejecuta allí. No hace falta abrir ningún puerto.
+
+Con eso, actualizar queda así:
+
+1. En GitHub, **Releases › Draft a new release**: crea la etiqueta (p. ej. `v1.1.0`) y publícala. Una *pre-release* no se despliega.
+2. El flujo **Deploy** (`.github/workflows/deploy.yml`) pasa los tests sobre esa etiqueta.
+3. Se para y espera: en **Actions › Deploy**, botón **Review deployments › Approve and deploy**.
+4. El runner del servidor ejecuta `./deploy/fpdual.sh actualizar v1.1.0` y el registro se ve en GitHub.
+
+Para volver a desplegar una versión cualquiera sin publicar otra: **Actions › Deploy › Run workflow**, escribiendo la etiqueta.
+
+**Preparación (una vez, desde la red del centro):**
+
+1. **Comprobar que el servidor llega a GitHub**: `curl -sI https://api.github.com | head -1` debe responder `HTTP/2 200`. Si el cortafuegos del centro lo bloquea, Informática tiene que permitir la salida HTTPS a `github.com`, `api.github.com`, `*.actions.githubusercontent.com` y `objects.githubusercontent.com`.
+2. **Instalar el runner**: en GitHub, **Settings › Actions › Runners › New self-hosted runner › Linux**, y copia en el servidor las órdenes que muestra, con el mismo usuario que tiene la instalación (el del grupo `docker`). Cuando `config.sh` pregunte por etiquetas adicionales, escribe `fpdual`. Después, para que arranque solo con el servidor:
+   ```bash
+   sudo ./svc.sh install $USER
+   sudo ./svc.sh start
+   ```
+3. **Crear el botón de aprobación**: **Settings › Environments › New environment** llamado `production`. Marca **Required reviewers** y añade a quien puede aprobar. Sin revisores, el despliegue empieza sin esperar.
+4. **Si la instalación no está en `~/fpdual`**: **Settings › Secrets and variables › Actions › Variables**, variable `FPDUAL_DIR` con la ruta.
+5. **Proteger el runner** (el repositorio es público): en **Settings › Actions › General**, en *Fork pull request workflows*, elige **Require approval for all external contributors**. Así nadie de fuera puede hacer que un pull request ejecute código en el servidor.
+
+Si el runner está desconectado (servidor apagado o sin red), el trabajo aprobado espera hasta 24 horas a que vuelva.
 
 ---
 

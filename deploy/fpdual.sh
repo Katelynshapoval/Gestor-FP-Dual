@@ -12,6 +12,8 @@
 #                            and bookings; prints every login
 #   estado                   containers and migrations
 #   migrar                   apply pending migrations
+#   actualizar <vX.Y.Z>      backup, check out that git tag, rebuild, migrate and
+#                            restart (what .github/workflows/deploy.yml runs)
 #   logs [servicio]          follow the logs (backend, db, web, caddy, mailpit)
 #   reiniciar                stop and start again; the data stays (never -v)
 #   copia                    encrypted database dump to backups/ (BACKUP_KEY;
@@ -81,6 +83,20 @@ clave_copias() {
 
 descifrar() { BACKUP_KEY="$(clave_copias)" openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_KEY -in "$1"; }
 
+# Encrypted dump to $BACKUP_DIR; leaves its path in COPIA.
+hacer_copia() {
+  command -v openssl >/dev/null || fallo "Falta openssl en el servidor: las copias se cifran con él."
+  clave_copias >/dev/null
+  mkdir -p "$BACKUP_DIR"
+  COPIA="$BACKUP_DIR/fpdual_$(date +%Y%m%d_%H%M%S).sql.gz.enc"
+  # Personal data and every stored file: the dump is compressed and encrypted
+  # (AES-256 with a key derived from BACKUP_KEY) before it touches the disk.
+  "${DC[@]}" exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --routines --triggers --events --hex-blob "$MYSQL_DATABASE"'     | gzip | BACKUP_KEY="$(clave_copias)" openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:BACKUP_KEY > "$COPIA"
+  chmod 600 "$COPIA"
+  [ "$(descifrar "$COPIA" | gzip -cd | tail -1 | grep -c 'Dump completed')" = 1 ] || fallo "La copia $COPIA parece incompleta."
+  echo "Copia cifrada: $COPIA ($(du -h "$COPIA" | cut -f1)). Guárdala fuera del servidor; sin BACKUP_KEY no se puede leer."
+}
+
 confirmar() {
   local palabra="$1" texto="$2"
   rojo "$texto"
@@ -149,6 +165,43 @@ EOF
     migrar
     "${DC[@]}" restart backend
     ;;
+  actualizar)
+    # Part 1 runs with the script of the version installed now: backup and
+    # checkout. Part 2 (_actualizar) runs with the script of the new version,
+    # so its build and migration steps are the ones that version expects.
+    version="${1:-}"
+    [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fallo 'Uso: ./deploy/fpdual.sh actualizar vX.Y.Z (una etiqueta de git)'
+    comprobar_env
+    [ -z "$(git status --porcelain --untracked-files=no)" ] \
+      || fallo "Hay ficheros del repositorio modificados en el servidor (git status). Deshaz esos cambios antes de actualizar."
+    anterior="$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)"
+    paso "Descargando las versiones"
+    git fetch --tags --force origin
+    git rev-parse -q --verify "refs/tags/$version^{commit}" >/dev/null || fallo "No existe la etiqueta $version en el repositorio."
+    paso "Copia de seguridad antes de actualizar"
+    hacer_copia
+    paso "Cambiando de $anterior a $version"
+    git -c advice.detachedHead=false checkout "refs/tags/$version"
+    exec ./deploy/fpdual.sh _actualizar "$version" "$anterior" "$COPIA"
+    ;;
+  _actualizar)
+    version="$1" anterior="$2" copia="$3"
+    # EXIT, not ERR: set -e leaves from inside functions, where ERR does not fire.
+    trap 'st=$?; [ $st -eq 0 ] || rojo "
+La actualización a $version ha fallado. Para volver a $anterior:
+  git checkout $anterior && docker compose build && docker compose up -d
+Si ya se aplicó alguna migración, restaura también la copia de antes:
+  ./deploy/fpdual.sh restaurar $copia"' EXIT
+    paso "Construyendo las imágenes"
+    "${DC[@]}" build
+    paso "Aplicando migraciones"
+    "${DC[@]}" up -d --wait --wait-timeout 180 db
+    migrar
+    paso "Arrancando la versión nueva"
+    "${DC[@]}" up -d --wait --wait-timeout 180
+    "${DC[@]}" ps
+    echo "Actualizado a $version (antes: $anterior). Copia previa: $copia"
+    ;;
   logs)
     "${DC[@]}" logs -f --tail=100 "$@"
     ;;
@@ -159,16 +212,7 @@ EOF
     "${DC[@]}" ps
     ;;
   copia)
-    command -v openssl >/dev/null || fallo "Falta openssl en el servidor: las copias se cifran con él."
-    clave_copias >/dev/null
-    mkdir -p "$BACKUP_DIR"
-    fichero="$BACKUP_DIR/fpdual_$(date +%Y%m%d_%H%M%S).sql.gz.enc"
-    # Personal data and every stored file: the dump is compressed and encrypted
-    # (AES-256 with a key derived from BACKUP_KEY) before it touches the disk.
-    "${DC[@]}" exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --routines --triggers --events --hex-blob "$MYSQL_DATABASE"'       | gzip | BACKUP_KEY="$(clave_copias)" openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:BACKUP_KEY > "$fichero"
-    chmod 600 "$fichero"
-    [ "$(descifrar "$fichero" | gzip -cd | tail -1 | grep -c 'Dump completed')" = 1 ] || fallo "La copia $fichero parece incompleta."
-    echo "Copia cifrada: $fichero ($(du -h "$fichero" | cut -f1)). Guárdala fuera del servidor; sin BACKUP_KEY no se puede leer."
+    hacer_copia
     ;;
   restaurar)
     [ $# -ge 1 ] && [ -f "$1" ] || fallo 'Uso: ./deploy/fpdual.sh restaurar <fichero .sql.gz.enc, .sql.gz o .sql>'
