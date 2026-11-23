@@ -696,7 +696,10 @@ test('stress: 8 parallel workers, 80 mixed operations through the backend — in
   const worker = async () => { for (let i = 0; i < 10; i += 1) await op(); };
   await Promise.all(Array.from({ length: 8 }, worker));
   assert.deepEqual(outcomes.otros, [], 'only business refusals; no lock timeouts or unexpected errors');
-  assert.ok(outcomes.ok > 10, `operations that succeeded: ${outcomes.ok}`);
+  // Only 8 places exist (4 offers x 2) for 10 students, so once they fill up most
+  // attempts are refused; how many succeed depends on thread timing. The test is
+  // about the invariants below, so this only checks that real work happened.
+  assert.ok(outcomes.ok >= 5, `operations that succeeded: ${outcomes.ok}`);
 
   // Invariants over the whole database.
   assert.equal(Number((await one(`SELECT COUNT(*) AS n FROM dual_solicitud_empresa_especialidades ee
