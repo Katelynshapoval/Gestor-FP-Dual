@@ -77,7 +77,6 @@ export function anexoNombre(clave) {
 export const TIPO_CONTRATO = Object.freeze({
   BECA: "Beca",
   CONTRATO_DE_FORMACION_EN_ALTERNANCIA: "Contrato de formación en alternancia",
-  CONVENIO: "Convenio",
   OTRO: "Otro",
 });
 

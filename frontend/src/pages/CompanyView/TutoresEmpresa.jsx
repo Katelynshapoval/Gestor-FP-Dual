@@ -303,11 +303,11 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
             return (
               <article
                 key={t.id_empresa_tutor}
-                className={`rounded-lg border bg-white p-5 shadow-card ${
+                className={`min-w-0 rounded-lg border bg-white p-5 shadow-card ${
                   activo ? "border-surface-200" : "border-surface-200 bg-surface-50"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className={`truncate text-base font-semibold ${activo ? "text-charcoal-950" : "text-muted"}`} title={t.nombre || undefined}>
                       {t.nombre}
@@ -328,7 +328,7 @@ const TutoresEmpresa = ({ idEmpresa = null }) => {
                     )}
                   </div>
                   {!isEditing && (puedeEditar || puedeActivar) && (
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
                       {puedeEditar && (
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => startEdit(t)}>
                           Editar

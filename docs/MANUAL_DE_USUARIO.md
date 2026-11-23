@@ -743,7 +743,7 @@ La empresa lo elige al reservar. Si la reserva la creó el centro, o hay que cor
 | Tipo de contrato | Anexo que hay que preparar |
 | --- | --- |
 | Beca | **Anexo III** |
-| Contrato de formación en alternancia, Convenio u Otro | **Anexo II** |
+| Contrato de formación en alternancia u Otro | **Anexo II** |
 
 Al guardarlo aparece el anexo correspondiente en **«Documentos de la reserva»**. Mientras no se indique, se muestra «El Anexo II o III aparece cuando se indica el tipo de contrato.» Ver también [«Tipo de contrato y anexos»](#faq-anexos).
 
@@ -1373,7 +1373,7 @@ Las solicitudes solo se admiten mientras hay una **convocatoria activa**, y eso 
 ### Tipo de contrato y anexos
 
 - **¿Quién elige el tipo de contrato?** La **empresa**, al reservar al alumno (beca o contrato). El **centro** puede cambiarlo en el panel de la reserva mientras esté pendiente, e indicarlo en las reservas que crea él; en esas, hasta que lo indique, la empresa y el alumno ven «El centro indicará el tipo de contrato; entonces aparecerá el Anexo II o III.»
-- **¿Qué anexo toca?** **Beca → Anexo III.** Contrato de formación en alternancia, Convenio u Otro → **Anexo II.**
+- **¿Qué anexo toca?** **Beca → Anexo III.** Contrato de formación en alternancia u Otro → **Anexo II.**
 - **¿Por qué no aparece el anexo?** Porque todavía no se ha indicado el tipo de contrato. También puede estar «Pendiente de generar» si el centro tiene que generarlo y aún no lo ha hecho (o no hay plantilla).
 - **¿Se puede cambiar el tipo de contrato?** Entre tipos del mismo anexo, sí. Para pasar de Anexo II a Anexo III (o al revés), **no**, cuando el anexo actual ya está subido pendiente de revisión o validado; la aplicación lo indica. En una reserva **confirmada** el tipo ya no se puede cambiar.
 - **¿Por qué no se puede confirmar la reserva?** Porque falta algo: el tipo de contrato, el anexo, alguna firma o la validación. Hasta entonces el botón «Confirmar reserva» no aparece; el anexo, en «Documentos de la reserva», indica qué falta y de quién. El Calendario no es necesario para confirmar.
