@@ -18,6 +18,8 @@
 #   reiniciar                stop and start again; the data stays (never -v)
 #   copia                    encrypted database dump to backups/ (BACKUP_KEY;
 #                            BACKUP_DIR to change the folder)
+#   podar [N]                keep the N newest backups (BACKUP_KEEP in .env, default
+#                            30) and delete the older ones; run it after "copia"
 #   restaurar <fichero>      load a dump made with "copia" (REPLACES the data)
 #   certificado              export Caddy's root certificate (CADDY_TLS=internal),
 #                            to install on the computers that open the app
@@ -213,6 +215,19 @@ Si ya se aplicó alguna migración, restaura también la copia de antes:
     ;;
   copia)
     hacer_copia
+    ;;
+  podar)
+    # Keeps the N newest backups (the timestamp in the name orders them) and
+    # deletes the rest. By count, not by age: if backups ever stop (server off,
+    # wrong key), nothing gets deleted. Chain it after "copia" with &&, so it
+    # only runs when a new backup has just been made and checked.
+    n="${1:-$(valor_env BACKUP_KEEP)}"
+    n="${n:-30}"
+    { [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ]; } || fallo 'Uso: ./deploy/fpdual.sh podar [N]   (N = cuántas copias se guardan; al menos 1; por defecto BACKUP_KEEP de .env o 30)'
+    mapfile -t sobran < <(ls -1 "$BACKUP_DIR"/fpdual_*.sql.gz.enc 2>/dev/null | sort -r | tail -n +"$((n + 1))")
+    for f in ${sobran[@]+"${sobran[@]}"}; do rm -f -- "$f"; done
+    quedan="$(ls -1 "$BACKUP_DIR"/fpdual_*.sql.gz.enc 2>/dev/null | wc -l)"
+    echo "Copias: se guardan las $n más recientes; borradas ${#sobran[@]}, quedan $quedan en $BACKUP_DIR."
     ;;
   restaurar)
     [ $# -ge 1 ] && [ -f "$1" ] || fallo 'Uso: ./deploy/fpdual.sh restaurar <fichero .sql.gz.enc, .sql.gz o .sql>'

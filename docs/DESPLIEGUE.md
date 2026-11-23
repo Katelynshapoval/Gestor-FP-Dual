@@ -71,6 +71,7 @@ Todas se ejecutan desde la carpeta del proyecto (`cd ~/fpdual`).
 | `./deploy/fpdual.sh logs` | Muestra lo que van escribiendo los servicios (`Ctrl+C` para salir). `logs backend` solo la API | Cuando algo falla |
 | `./deploy/fpdual.sh reiniciar` | Para y vuelve a arrancar todo. Los datos se conservan | Si algo se queda colgado |
 | `./deploy/fpdual.sh copia` | Copia de seguridad **cifrada** de toda la base de datos (con los documentos) en `backups/` | Antes de cada cambio y de forma periódica |
+| `./deploy/fpdual.sh podar [N]` | Borra las copias más antiguas y conserva las `N` más recientes (por defecto `BACKUP_KEEP` de `.env`, o 30) | Después de `copia`, en el programador de tareas ([paso 7](#paso-7-programar-las-copias-de-seguridad)) |
 | `./deploy/fpdual.sh restaurar <fichero>` | Carga una copia. **Sustituye** todos los datos actuales | Solo para recuperar |
 | `./deploy/fpdual.sh migrar` | Aplica las migraciones nuevas y actualiza la cuenta de la aplicación | En cada actualización |
 | `./deploy/fpdual.sh actualizar v1.1.0` | Hace una copia, cambia a esa versión, construye, migra y arranca. Si falla, dice cómo volver atrás | Para actualizar ([5.6](#56-actualizar-a-una-versión-nueva)); es lo que ejecuta el botón de GitHub ([5.14](#514-actualizar-desde-github-con-un-botón)) |
@@ -168,19 +169,22 @@ Con la cuenta de Administración, dentro del portal:
 
 ### Paso 7. Programar las copias de seguridad
 
-Haz una copia ahora y programa una cada noche. Abre el programador de tareas del usuario:
+Haz una copia ahora y programa una cada noche. Si `crontab` dice `command not found`, el servidor no tiene el programador instalado (pasa en las instalaciones mínimas de Ubuntu): instálalo primero con `sudo apt update && sudo apt install -y cron && sudo systemctl enable --now cron`. Después abre el programador de tareas del usuario:
 
 ```bash
 ./deploy/fpdual.sh copia
 crontab -e
 ```
 
-Añade estas dos líneas al final (copia diaria a las 2:00 y borrado de las de más de 30 días). Cambia `usuario` por el tuyo:
+Añade esta línea al final (copia cada noche a las 2:00 y, solo si ha salido bien, borrado de las más antiguas). Cambia `usuario` por el tuyo:
 
 ```
-0 2 * * * cd /home/usuario/fpdual && ./deploy/fpdual.sh copia >> backups/copias.log 2>&1
-30 2 * * * find /home/usuario/fpdual/backups -name 'fpdual_*.sql.gz.enc' -mtime +30 -delete
+0 2 * * * cd /home/usuario/fpdual && ./deploy/fpdual.sh copia && ./deploy/fpdual.sh podar >> backups/copias.log 2>&1
 ```
+
+- **Cada cuánto**: cada noche. Si el servidor está apagado a esa hora, ese día no hay copia: elige una hora a la que esté encendido (el primer número es el minuto y el segundo la hora).
+- **Cuántas se guardan**: las **30 más recientes** (unos 30 días). `podar` conserva ese número de copias, no una edad: si las copias dejaran de hacerse (servidor apagado, clave mal puesta), **no se borra ninguna**. Para cambiarlo, pon `BACKUP_KEEP=60` en `.env` (o `./deploy/fpdual.sh podar 60`). Las copias que hace `actualizar` antes de cada versión también cuentan.
+- **Ver que funciona**: `tail backups/copias.log` y `ls -lh backups/`. Cada noche debe haber un fichero nuevo.
 
 Las copias deben guardarse **también fuera del servidor** (otro equipo, un disco del centro, la nube del centro). Por ejemplo, desde otro ordenador:
 
