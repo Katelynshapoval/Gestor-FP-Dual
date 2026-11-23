@@ -124,8 +124,9 @@
 | --- | --- | --- |
 | `GET|POST /tutores/empresa` | EMPRESA | Propios |
 | `GET|POST /tutores/empresa/:idEmpresa` | Personal, EMPRESA (solo la suya) | `?activo=1` en GET |
-| `PATCH /tutores/:id` | Personal, EMPRESA (propiedad) | Campos parciales · 403 `COORDINADOR_PRINCIPAL` |
-| `POST /tutores/:id/desactivar` | Personal, EMPRESA (propiedad) | Idempotente |
+| `PATCH /tutores/:id` | Personal, EMPRESA (propiedad) | Campos parciales · 403 `COORDINADOR_PRINCIPAL` · 409 `EMAIL_REPETIDO` |
+| `POST /tutores/:id/desactivar` | Personal, EMPRESA (propiedad) | Idempotente · 409 `TUTOR_ASIGNADO` |
+| `POST /tutores/:id/activar` | Personal, EMPRESA (propiedad) | Idempotente |
 | `PATCH /reservas/:id/tutor` | Personal, EMPRESA (propiedad) | `{ id_empresa_tutor | null }` |
 
 ## Documentos — `documentosRoute`

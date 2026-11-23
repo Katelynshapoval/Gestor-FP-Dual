@@ -45,6 +45,12 @@ router.post(
   requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'),
   asyncHandler(svc.deactivate)
 );
+router.post(
+  '/tutores/:id/activar',
+  requireAuth,
+  requireRole('ADMINISTRADOR', 'COORDINADOR', 'EMPRESA'),
+  asyncHandler(svc.activate)
+);
 
 // Assign / clear tutor on a reservation
 router.patch(

@@ -34,6 +34,18 @@ function formatoTutor(fields) {
   return null;
 }
 
+// Reservations a tutor is looking after now: not cancelled, in the active
+// convocatoria. A confirmed placement of an earlier year is finished, so it
+// does not hold the tutor back.
+const RESERVAS_EN_CURSO_JOINS = `
+    FROM dual_reservas r_ac
+    JOIN dual_estados_reserva er_ac ON er_ac.id_estado_reserva = r_ac.id_estado_reserva
+    JOIN dual_solicitud_empresa_especialidades ee_ac
+      ON ee_ac.id_solicitud_empresa_especialidad = r_ac.id_solicitud_empresa_especialidad
+    JOIN dual_solicitudes_empresa se_ac ON se_ac.id_solicitud_empresa = ee_ac.id_solicitud_empresa
+    JOIN dual_convocatorias cv_ac ON cv_ac.id_convocatoria = se_ac.id_convocatoria`;
+const RESERVAS_EN_CURSO_WHERE = `er_ac.nombre <> 'CANCELADA' AND cv_ac.activa = 1`;
+
 function tutorSelectSql(whereSql) {
   return `
     SELECT
@@ -52,7 +64,12 @@ function tutorSelectSql(whereSql) {
         SELECT 1 FROM dual_solicitudes_empresa se_coord
          WHERE se_coord.id_empresa = t.id_empresa
            AND se_coord.id_coordinador_empresa = t.id_contacto
-      ) AS es_coordinador
+      ) AS es_coordinador,
+      (SELECT COUNT(*) ${RESERVAS_EN_CURSO_JOINS}
+        WHERE ${RESERVAS_EN_CURSO_WHERE}
+          AND r_ac.id_empresa_tutor = t.id_empresa_tutor) AS reservas_en_curso,
+      (SELECT COUNT(*) FROM dual_reservas r_all
+        WHERE r_all.id_empresa_tutor = t.id_empresa_tutor) AS reservas_total
     FROM dual_empresa_tutores t
     JOIN ge_contactos c ON c.idcontacto = t.id_contacto
     ${whereSql}
@@ -102,6 +119,48 @@ async function getWorkDomicilioId(conn, idEmpresa) {
 // change it through the reviewed "Editar datos" workflow, not from Tutores.
 const COORDINADOR_PROTEGIDO =
   'El coordinador principal no se modifica desde Tutores. Usa «Mis datos › Editar datos»; el cambio lo revisa el centro.';
+
+// Staff may switch the coordinator's tutor entry on and off, but its data is
+// changed only through the company's «Editar datos», which keeps earlier
+// years' applications pointing at the old values (WF-11, empresaDatos.js).
+const COORDINADOR_DATOS_STAFF =
+  'Los datos del coordinador principal se cambian en «Información» con el lápiz (editar datos de la empresa), que conserva los de años anteriores.';
+
+// Students whose current placement has this tutor (names, for the message).
+async function alumnosEnCurso(conn, idEmpresaTutor) {
+  const [rows] = await conn.query(
+    `SELECT a.nombre AS alumno
+       ${RESERVAS_EN_CURSO_JOINS}
+       JOIN dual_solicitudes_alumno sa_ac ON sa_ac.id_solicitud_alumno = r_ac.id_solicitud_alumno
+       JOIN gf_alumnosfct a ON a.idalumno = sa_ac.id_alumno
+      WHERE ${RESERVAS_EN_CURSO_WHERE}
+        AND r_ac.id_empresa_tutor = ?
+      ORDER BY a.nombre`,
+    [idEmpresaTutor]
+  );
+  return rows.map((r) => r.alumno);
+}
+
+// Another tutor of the company with the same email (active or not): it is the
+// same person, so they are edited or reactivated instead of duplicated.
+async function tutorConEmail(conn, idEmpresa, email, exceptoIdTutor = null) {
+  const [rows] = await conn.query(
+    `SELECT t.id_empresa_tutor, t.activo, c.nombre
+       FROM dual_empresa_tutores t
+       JOIN ge_contactos c ON c.idcontacto = t.id_contacto
+      WHERE t.id_empresa = ? AND LOWER(c.email) = ?
+        AND (? IS NULL OR t.id_empresa_tutor <> ?)
+      LIMIT 1`,
+    [idEmpresa, email, exceptoIdTutor, exceptoIdTutor]
+  );
+  return rows[0] || null;
+}
+
+function emailRepetido(otro) {
+  return Number(otro.activo)
+    ? `${otro.nombre} ya es tutor de esta empresa con ese email.`
+    : `${otro.nombre} ya está registrado con ese email, pero desactivado: reactívalo en lugar de crearlo de nuevo.`;
+}
 
 async function isCoordinadorDeEmpresa(conn, idContacto, idEmpresa) {
   const [rows] = await conn.query(
@@ -181,6 +240,13 @@ exports.create = async function (req, res) {
       return res.status(404).json({ error: 'Empresa no encontrada.' });
     }
 
+    // The company row lock above makes two simultaneous adds take turns.
+    const otro = await tutorConEmail(conn, idEmpresa, email);
+    if (otro) {
+      await conn.rollback();
+      return res.status(409).json({ error: emailRepetido(otro), code: 'EMAIL_REPETIDO', id_empresa_tutor: otro.id_empresa_tutor });
+    }
+
     const idDomicilio = await getWorkDomicilioId(conn, idEmpresa);
     if (!idDomicilio) {
       await conn.rollback();
@@ -249,9 +315,10 @@ exports.update = async function (req, res) {
       return res.status(error.status).json({ error: error.message });
     }
 
-    if (req.user.rol === 'EMPRESA' && await isCoordinadorDeEmpresa(conn, tutor.id_contacto, tutor.id_empresa)) {
+    if (await isCoordinadorDeEmpresa(conn, tutor.id_contacto, tutor.id_empresa)) {
       await conn.rollback();
-      return res.status(403).json({ error: COORDINADOR_PROTEGIDO, code: 'COORDINADOR_PRINCIPAL' });
+      const error = req.user.rol === 'EMPRESA' ? COORDINADOR_PROTEGIDO : COORDINADOR_DATOS_STAFF;
+      return res.status(403).json({ error, code: 'COORDINADOR_PRINCIPAL' });
     }
 
     const fields = {
@@ -300,6 +367,16 @@ exports.update = async function (req, res) {
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'telefono') && !fields.telefono) {
       await conn.rollback();
       return res.status(400).json({ error: 'El teléfono del tutor es obligatorio.' });
+    }
+
+    if (fields.email && Object.prototype.hasOwnProperty.call(req.body, 'email')) {
+      // Same turn-taking as an add: two edits cannot both take one email.
+      await conn.query('SELECT idempresa FROM ge_empresas WHERE idempresa = ? FOR UPDATE', [tutor.id_empresa]);
+      const otro = await tutorConEmail(conn, tutor.id_empresa, fields.email, idTutor);
+      if (otro) {
+        await conn.rollback();
+        return res.status(409).json({ error: emailRepetido(otro), code: 'EMAIL_REPETIDO', id_empresa_tutor: otro.id_empresa_tutor });
+      }
     }
 
     params.push(tutor.id_contacto);
@@ -359,6 +436,19 @@ exports.deactivate = async function (req, res) {
       return res.json(current);
     }
 
+    // A student must not be left with an inactive tutor. No race with an
+    // assignment: assignToReserva locks this same tutor row and re-reads
+    // `activo`, so whichever commits second sees the other's change.
+    const alumnos = await alumnosEnCurso(conn, idTutor);
+    if (alumnos.length) {
+      await conn.rollback();
+      return res.status(409).json({
+        error: `No se puede desactivar: es el tutor de ${alumnos.join(', ')} este curso. Asigna otro tutor en sus reservas y vuelve a intentarlo.`,
+        code: 'TUTOR_ASIGNADO',
+        alumnos,
+      });
+    }
+
     await conn.query(
       'UPDATE dual_empresa_tutores SET activo = 0 WHERE id_empresa_tutor = ?',
       [idTutor]
@@ -367,6 +457,61 @@ exports.deactivate = async function (req, res) {
       entidad: 'TUTOR', id: idTutor, accion: 'DESACTIVAR', antes: 'ACTIVO', despues: 'INACTIVO',
       user: req.user, detalle: { id_empresa: tutor.id_empresa },
     });
+
+    const updated = await loadTutorForEmpresa(conn, idTutor, tutor.id_empresa);
+    await conn.commit();
+    return res.json(updated);
+  } catch (err) {
+    await conn.rollback();
+    return sendSqlError(res, err);
+  } finally {
+    conn.release();
+  }
+};
+
+// POST /tutores/:id/activar — undoes a deactivation
+exports.activate = async function (req, res) {
+  const idTutor = parseId(req.params.id);
+  if (!idTutor) return res.status(400).json({ error: 'Identificador de tutor no válido.' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [rows] = await conn.query(
+      `SELECT t.id_empresa_tutor, t.id_empresa, t.id_contacto, t.activo
+         FROM dual_empresa_tutores t
+        WHERE t.id_empresa_tutor = ?
+        FOR UPDATE`,
+      [idTutor]
+    );
+    const tutor = rows[0];
+    if (!tutor) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Tutor no encontrado.' });
+    }
+
+    const { error } = await resolveOwnedEmpresaId(req, tutor.id_empresa);
+    if (error) {
+      await conn.rollback();
+      return res.status(error.status).json({ error: error.message });
+    }
+
+    if (req.user.rol === 'EMPRESA' && await isCoordinadorDeEmpresa(conn, tutor.id_contacto, tutor.id_empresa)) {
+      await conn.rollback();
+      return res.status(403).json({ error: COORDINADOR_PROTEGIDO, code: 'COORDINADOR_PRINCIPAL' });
+    }
+
+    if (!tutor.activo) {
+      await conn.query(
+        'UPDATE dual_empresa_tutores SET activo = 1 WHERE id_empresa_tutor = ?',
+        [idTutor]
+      );
+      await recordEvent(conn, {
+        entidad: 'TUTOR', id: idTutor, accion: 'ACTIVAR', antes: 'INACTIVO', despues: 'ACTIVO',
+        user: req.user, detalle: { id_empresa: tutor.id_empresa },
+      });
+    }
 
     const updated = await loadTutorForEmpresa(conn, idTutor, tutor.id_empresa);
     await conn.commit();

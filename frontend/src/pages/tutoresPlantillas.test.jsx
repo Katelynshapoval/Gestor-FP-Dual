@@ -63,6 +63,51 @@ describe("tutors", () => {
     expect(await screen.findByText("Tutor desactivado.")).toBeInTheDocument();
     expect(llamadas.some((l) => l.path === "/tutores/2/desactivar")).toBe(true);
   });
+
+  test("a tutor with students this year cannot be deactivated; an edit warns about its reservations", async () => {
+    simularApi({ "GET /tutores/empresa": [TUTORES[0], { ...TUTORES[1], reservas_en_curso: 2, reservas_total: 3 }] });
+    renderPagina(<TutoresEmpresa />);
+    expect(await screen.findByRole("button", { name: "Desactivar" })).toBeDisabled();
+    expect(screen.getByText(/Tutor de 2 alumnos este curso/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    expect(screen.getByText(/Tiene 3 reservas: el cambio se verá en todas/)).toBeInTheDocument();
+  });
+
+  test("an inactive tutor can be reactivated", async () => {
+    const { llamadas } = simularApi({
+      "GET /tutores/empresa": [TUTORES[0], { ...TUTORES[1], activo: 0 }],
+      "POST /tutores/2/activar": {},
+    });
+    renderPagina(<TutoresEmpresa />);
+    fireEvent.click(await screen.findByRole("button", { name: "Reactivar" }));
+    expect(await screen.findByText("Tutor reactivado.")).toBeInTheDocument();
+    expect(llamadas.some((l) => l.method === "POST" && l.path === "/tutores/2/activar")).toBe(true);
+  });
+});
+
+describe("tutors in the staff company card", () => {
+  beforeEach(() => iniciarSesion({ id: 1, rol: "ADMINISTRADOR" }));
+
+  test("uses the company's id; the coordinator can be switched off but not edited", async () => {
+    const { llamadas } = simularApi({
+      "GET /tutores/empresa/100": TUTORES,
+      "POST /tutores/empresa/100": { id_empresa_tutor: 3 },
+      "POST /tutores/1/desactivar": {},
+    });
+    renderPagina(<TutoresEmpresa idEmpresa={100} />);
+    expect(await screen.findByText(/se cambian en «Información» con el lápiz \(editar/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Editar" })).toHaveLength(1, "only Pepe");
+    expect(screen.getAllByRole("button", { name: "Desactivar" })).toHaveLength(2, "the coordinator too");
+
+    fireEvent.click(screen.getByRole("button", { name: "Añadir tutor" }));
+    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Eva" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "eva@acme.test" } });
+    fireEvent.change(screen.getByLabelText("Teléfono"), { target: { value: "622000000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByText("Tutor añadido.")).toBeInTheDocument();
+    expect(llamadas.some((l) => l.method === "POST" && l.path === "/tutores/empresa/100")).toBe(true);
+    expect(llamadas.some((l) => l.path === "/tutores/empresa")).toBe(false);
+  });
 });
 
 // ── Templates ───────────────────────────────────────────────────────────────

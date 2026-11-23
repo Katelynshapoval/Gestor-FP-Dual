@@ -29,7 +29,7 @@
 | Rechazar el convenio de una empresa ya validada | El convenio pasa a RECHAZADO y la solicitud de empresa sigue VALIDADO |
 | Plazas y ciclos de una empresa | Mientras su solicitud no está validada, la empresa sube plazas y añade ciclos sin aprobación del centro. Validada, solo puede reducirlas. Máximo `MAX_PLAZAS_POR_CICLO` (20) por ciclo (SEC-002) |
 | Ficha de alumno sin cuenta (importada) | No puede darse de alta desde el formulario público (SEC-001) y el portal no tiene pantalla para que Administración le cree la cuenta |
-| Tutores desactivados | No hay endpoint para reactivarlos |
+| Tutores | No se borran, solo se desactivan (y se reactivan). Los datos se editan en el sitio: el cambio se ve en las reservas de todos los cursos |
 | Borrado | No se borran convocatorias, ofertas ni plantillas |
 | Datos del alumno | Administración los edita directamente; el alumno pide la corrección desde el portal (020). Solo en la convocatoria activa |
 | Avisos por correo | No se envían al reabrir, reactivar, cambiar el tipo de contrato ni al resolver cambios de datos de **empresa** (los de alumno sí) |

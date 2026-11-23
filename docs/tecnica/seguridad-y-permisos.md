@@ -30,7 +30,7 @@
 | Aprobar/rechazar correcciones de alumno | ✔ | | | | |
 | Añadir ciclos / subir cupos | ✔ | ✔ | ✔ propia, solo sin validar | | |
 | Reducir cupos | ✔ | ✔ | ✔ propia | | |
-| Tutores (crear, editar, desactivar) | ✔ | ✔ | ✔ propia (no el coordinador) | | |
+| Tutores (crear, editar, desactivar, reactivar) | ✔ (datos del coordinador no) | ✔ (datos del coordinador no) | ✔ propia (no el coordinador) | | |
 | Asignar tutor a reserva | ✔ | ✔ | ✔ propia | | |
 | Ver alumnos disponibles | | | ✔ | | |
 | Reservar | ✔ (`/admin`) | ✔ (`/admin`) | ✔ ofertas propias | | |
@@ -64,7 +64,7 @@
 | Formulario público sin sobrescritura | Alumno existente con cuenta: prueba su contraseña; ficha sin cuenta: se rechaza sin escribir nada (SEC-001); un único mensaje para todos los rechazos de identidad. DNI/NIE validado en el servidor. Empresa existente: 409 | `solicitudesAlumnoService`, `solicitudesEmpresaService` |
 | Ampliación de plazas | Una empresa validada solo puede reducir plazas; máximo `MAX_PLAZAS_POR_CICLO` por ciclo (SEC-002) | `solicitudEmpresaOfertasService` |
 | Correcciones de datos con revisión | Empresa y alumno proponen; el centro aprueba. El DNI/NIE y el CIF no se cambian | `alumnoCambiosService`, `solicitudEmpresaCambiosService` |
-| Coordinador protegido | La empresa no lo edita desde Tutores | `empresaTutoresService` |
+| Coordinador protegido | Nadie edita sus datos desde Tutores (van por «Editar datos», con copia en escritura); la empresa tampoco lo desactiva | `empresaTutoresService` |
 | Guarda única de subidas | Tipo, rol, propiedad, estado de reserva, familia, no reemplazar validados | `documentosService.assertCanUpload` |
 | Contenido de las subidas | PDF con firma `%PDF-`; plantillas DOCX con firma ZIP (SEC-008, SEC-012) | `pdfUpload.js`, `plantillasService` |
 | Descargas | PDF como `attachment`; nombre y tipo de las plantillas fijados por el servidor (SEC-008, SEC-012) | `documentosService`, `plantillasService` |

@@ -60,7 +60,10 @@
 ## Tutores
 
 ### Tutor desactivado que sigue en reservas
-- **Comportamiento**: desactivar un tutor no lo quita de sus reservas; las fichas muestran `tutor_activo = 0`. No puede asignarse a reservas nuevas. **No hay forma de reactivarlo** desde la aplicación; habría que crearlo de nuevo (otro contacto) o reactivarlo en BD.
+- **Comportamiento**: un tutor con reservas no CANCELADAS de la convocatoria activa no se puede desactivar (409 `TUTOR_ASIGNADO`, con los nombres de los alumnos). Las reservas de cursos anteriores y las canceladas lo conservan al desactivarlo; las fichas muestran `tutor_activo = 0`. No puede asignarse a reservas nuevas hasta que se reactive (`POST /tutores/:id/activar`). Los datos anteriores a este cambio pueden tener tutores inactivos en reservas en curso: siguen mostrándose y se pueden reasignar.
+
+### Un email, un tutor
+- **Comportamiento**: dentro de una empresa no puede haber dos tutores con el mismo email (sin distinguir mayúsculas), contando los desactivados (409 `EMAIL_REPETIDO`). Lo comprueba Node bloqueando la fila de la empresa; no hay índice único en BD, así que los duplicados anteriores a este cambio siguen ahí.
 
 ### Tutor creado sin solicitud previa
 - **Comportamiento**: el contacto se crea en el domicilio de trabajo de la solicitud más reciente de la empresa; si la empresa no tiene solicitudes, en su último domicilio; si no tiene ninguno → 400.

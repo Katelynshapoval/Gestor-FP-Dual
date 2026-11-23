@@ -600,7 +600,7 @@ Menú **«Empresas»**. Arriba se resume cuántas empresas tienen el convenio va
 ![Lista de empresas con los contadores de convenio, los filtros y las tarjetas](manual/imagenes/empresas.png)
 _Lista de empresas._
 
-Cada tarjeta tiene las pestañas **«Información»** y **«Reservas»**.
+Cada tarjeta tiene las pestañas **«Información»**, **«Reservas»**, **«Tutores»** y **«Cuenta»**.
 
 ![Tarjeta de empresa desplegada con los datos de la empresa, las especialidades solicitadas, la descripción del puesto y el convenio](manual/imagenes/empresa-detalle.png)
 _Pestaña «Información» de una empresa._
@@ -685,6 +685,16 @@ En la pestaña **«Reservas»** de la tarjeta, pulsa **«Asignar alumno»**:
 
 Para gestionar una reserva ya creada, usa **«Gestionar reserva»**.
 
+#### Pestaña «Tutores» de la empresa
+
+Los mismos tutores que la empresa ve en su portal ([Tutores](#empresa-tutores)), y con los mismos botones: **«Añadir tutor»**, **«Editar»**, **«Desactivar»** y **«Reactivar»**. Los tutores son de la empresa, no de una convocatoria: sirven para todos los cursos.
+
+- Un tutor **no se puede desactivar** mientras tenga alumnos asignados este curso: la tarjeta dice cuántos. Primero asígnales otro tutor en **«Gestionar reserva › Tutor de empresa»**.
+- Los tutores no se borran: desactivado, deja de aparecer al elegir tutor para una reserva, pero sigue en las reservas antiguas. **«Reactivar»** lo vuelve a ofrecer.
+- No puede haber dos tutores con el mismo email en una empresa. Si ya existe (aunque esté desactivado), el aviso lo dice: reactívalo o edítalo.
+- Al editar un tutor con reservas, el cambio se ve en todas ellas, también en las de otros cursos, y en los documentos que se generen desde entonces. Si es otra persona, añádela como tutor nuevo.
+- El **coordinador principal** también es tutor. Se puede desactivar como tutor, pero sus datos se cambian en «Información» con el lápiz, que conserva los datos de los cursos anteriores.
+
 #### Pestaña «Cuenta» de la empresa
 
 Igual que en los alumnos ([pestaña «Cuenta»](#staff-alumnos)): **«Acceso al portal»** muestra el usuario (el CIF) y el estado de la cuenta, y **«Participación en el programa»** el estado de la solicitud. 🔒 Solo Administración tiene **«Resetear contraseña»** y **«Dar de baja»** / **«Reactivar»**.
@@ -768,7 +778,7 @@ Mientras falte algo, el estado del anexo en «Documentos de la reserva» indica 
 **Calendario y tutor**
 
 - El **Calendario** lo sube la empresa (o el centro) y lo firman los tres desde «Firmar». No lo revisa nadie y **no es necesario para confirmar** la reserva.
-- En **«Tutor de empresa»** se elige el tutor de la empresa para esa reserva. Los tutores los da de alta la empresa en su portal.
+- En **«Tutor de empresa»** se elige el tutor de la empresa para esa reserva. Los tutores los da de alta la empresa en su portal o el centro en la pestaña «Tutores» de la empresa.
 
 #### Cancelar una reserva
 
@@ -1108,7 +1118,8 @@ En la pestaña **«Tutores»** gestionáis a las personas que tutelan a los alum
 
 - **Añadir**: pulsa **«Añadir tutor»**, rellena nombre, email y teléfono (obligatorios), DNI/NIE y cargo, y pulsa **«Guardar»**.
 - **Modificar**: pulsa **«Editar»** en el tutor y luego **«Guardar»**.
-- **Dar de baja**: pulsa **«Desactivar»**. El tutor deja de estar disponible, pero sigue apareciendo en las reservas antiguas.
+- **Dar de baja**: pulsa **«Desactivar»**. El tutor deja de estar disponible, pero sigue apareciendo en las reservas antiguas. No se puede mientras tenga alumnos asignados este curso: asígnales antes otro tutor. **«Reactivar»** lo vuelve a dar de alta.
+- No puede haber dos tutores con el mismo email.
 
 El **coordinador principal** aparece marcado y no se edita aquí: sus datos se cambian con «Editar datos» en «Datos de la empresa», y el centro revisa el cambio. El acceso al portal sigue siendo con el CIF.
 

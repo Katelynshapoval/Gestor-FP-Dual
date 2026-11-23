@@ -11,7 +11,13 @@ const emptyForm = () => ({
   cargo: "TUTOR EMPRESA",
 });
 
-const TutoresEmpresa = () => {
+// The company's tutors. Without idEmpresa it is the company's own portal tab;
+// with it, the same list inside the staff company card (Empresas › Tutores).
+// The server enforces every rule; the buttons only avoid sending what it
+// would refuse (the coordinator's data, deactivating a tutor in use).
+const TutoresEmpresa = ({ idEmpresa = null }) => {
+  const staff = idEmpresa != null;
+  const base = staff ? `/tutores/empresa/${idEmpresa}` : "/tutores/empresa";
   const toast = useToast();
   const confirm = useConfirm();
   const [tutores, setTutores] = useState([]);
@@ -25,7 +31,7 @@ const TutoresEmpresa = () => {
 
   const load = useCallback(async () => {
     try {
-      const data = await getJSON("/tutores/empresa");
+      const data = await getJSON(base);
       setTutores(Array.isArray(data) ? data : []);
       setLoadError("");
     } catch (err) {
@@ -34,7 +40,7 @@ const TutoresEmpresa = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [base]);
 
   useEffect(() => {
     load();
@@ -48,7 +54,7 @@ const TutoresEmpresa = () => {
     if (submitting) return;
     setSubmitting(true);
     try {
-      await postJSON("/tutores/empresa", form);
+      await postJSON(base, form);
       setForm(emptyForm());
       setAdding(false);
       toast.success("Tutor añadido.");
@@ -89,7 +95,7 @@ const TutoresEmpresa = () => {
   const handleDeactivate = async (t) => {
     const accepted = await confirm({
       title: "Desactivar tutor",
-      message: `¿Desactivar a ${t.nombre}? Seguirá visible en reservas históricas.`,
+      message: `¿Desactivar a ${t.nombre}? No se podrá asignar a más alumnos; sigue en las reservas antiguas y se puede reactivar.`,
       confirmLabel: "Desactivar",
     });
     if (!accepted) return;
@@ -100,6 +106,22 @@ const TutoresEmpresa = () => {
       await load();
     } catch (err) {
       toast.error(err.message || "Error al desactivar el tutor.");
+      // Someone may have assigned the tutor meanwhile: show the current counts.
+      await load();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleActivate = async (t) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await postJSON(`/tutores/${t.id_empresa_tutor}/activar`, {});
+      toast.success("Tutor reactivado.");
+      await load();
+    } catch (err) {
+      toast.error(err.message || "Error al reactivar el tutor.");
     } finally {
       setSubmitting(false);
     }
@@ -117,19 +139,34 @@ const TutoresEmpresa = () => {
 
   return (
     <div className="space-y-4">
-      <div className="form-card flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="form-section-title mb-1">Tutores</h2>
-          <p className="text-sm text-muted">
-            {activos} en activo, {tutores.length} en total. El acceso al portal sigue siendo el CIF; los datos del coordinador principal están en «Datos de la empresa».
+      {staff ? (
+        // Inside the staff company card: a slim row like the Reservas tab's,
+        // not a second boxed header.
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 text-sm text-muted">
+            {activos} en activo, {tutores.length} en total. Solo los activos se pueden asignar a una reserva.
           </p>
+          {!adding && (
+            <button type="button" className="btn btn-outline-brand btn-sm shrink-0" onClick={() => setAdding(true)}>
+              Añadir tutor
+            </button>
+          )}
         </div>
-        {!adding && (
-          <button type="button" className="btn btn-primary shrink-0" onClick={() => setAdding(true)}>
-            Añadir tutor
-          </button>
-        )}
-      </div>
+      ) : (
+        <div className="form-card flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="form-section-title mb-1">Tutores</h2>
+            <p className="text-sm text-muted">
+              {activos} en activo, {tutores.length} en total. El acceso al portal sigue siendo el CIF; los datos del coordinador principal están en «Datos de la empresa».
+            </p>
+          </div>
+          {!adding && (
+            <button type="button" className="btn btn-primary shrink-0" onClick={() => setAdding(true)}>
+              Añadir tutor
+            </button>
+          )}
+        </div>
+      )}
 
       {loadError && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
@@ -194,8 +231,14 @@ const TutoresEmpresa = () => {
           {tutores.map((t) => {
             const isEditing = editingId === t.id_empresa_tutor;
             const activo = Number(t.activo) === 1;
-            // The principal coordinator changes only through «Datos de la empresa» (reviewed by the centre)
+            // The principal coordinator's data changes only through «Editar datos»
+            // (reviewed by the centre; staff use the pencil on the card). Staff may
+            // still switch its tutor entry on and off.
             const esCoordinador = Number(t.es_coordinador) === 1;
+            const puedeEditar = !esCoordinador;
+            const puedeActivar = !esCoordinador || staff;
+            const enCurso = Number(t.reservas_en_curso) || 0;
+            const total = Number(t.reservas_total) || 0;
 
             return (
               <article
@@ -224,19 +267,32 @@ const TutoresEmpresa = () => {
                       </span>
                     )}
                   </div>
-                  {!isEditing && !esCoordinador && (
+                  {!isEditing && (puedeEditar || puedeActivar) && (
                     <div className="flex shrink-0 gap-2">
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => startEdit(t)}>
-                        Editar
-                      </button>
-                      {activo && (
+                      {puedeEditar && (
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => startEdit(t)}>
+                          Editar
+                        </button>
+                      )}
+                      {puedeActivar && activo && (
                         <button
                           type="button"
                           className="btn btn-danger btn-sm"
                           onClick={() => handleDeactivate(t)}
-                          disabled={submitting}
+                          disabled={submitting || enCurso > 0}
+                          title={enCurso > 0 ? "Tiene alumnos asignados este curso: asígnales otro tutor antes." : undefined}
                         >
                           Desactivar
+                        </button>
+                      )}
+                      {puedeActivar && !activo && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleActivate(t)}
+                          disabled={submitting}
+                        >
+                          Reactivar
                         </button>
                       )}
                     </div>
@@ -245,7 +301,16 @@ const TutoresEmpresa = () => {
 
                 {!isEditing && esCoordinador && (
                   <p className="mt-2 text-xs text-muted">
-                    Para cambiar sus datos usa «Datos de la empresa › Editar datos»; el centro revisa el cambio.
+                    {staff
+                      ? "Sus datos se cambian en «Información» con el lápiz (editar datos de la empresa)."
+                      : "Para cambiar sus datos usa «Datos de la empresa › Editar datos»; el centro revisa el cambio."}
+                  </p>
+                )}
+
+                {!isEditing && enCurso > 0 && (
+                  <p className="mt-2 text-xs text-muted">
+                    Tutor de {enCurso} {enCurso === 1 ? "alumno" : "alumnos"} este curso.
+                    {activo && " Para desactivarlo, primero asígnales otro tutor en sus reservas."}
                   </p>
                 )}
 
@@ -260,6 +325,11 @@ const TutoresEmpresa = () => {
 
                 {isEditing && (
                   <div className="mt-4 border-t border-surface-200 pt-4">
+                    {total > 0 && (
+                      <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        Tiene {total} {total === 1 ? "reserva" : "reservas"}: el cambio se verá en todas, también en las de otros cursos, y en los documentos que se generen desde ahora (los ya generados no cambian). Si es otra persona, añádela como tutor nuevo.
+                      </p>
+                    )}
                     <div className="grid gap-x-4 md:grid-cols-2">
                       <div className="field">
                         <label htmlFor={`tutor-${t.id_empresa_tutor}-nombre`}>Nombre</label>

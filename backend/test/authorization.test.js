@@ -110,6 +110,7 @@ function tutorDb({ esCoordinador }) {
     }
     if (sql.startsWith('SELECT d.idempresa FROM dual_usuarios')) return [{ idempresa: 7 }];
     if (sql.startsWith('SELECT 1 AS es FROM dual_solicitudes_empresa')) return esCoordinador ? [{ es: 1 }] : [];
+    if (sql.includes('LOWER(c.email) = ?') || sql.includes('JOIN gf_alumnosfct a')) return [];
     if (sql.includes('FROM dual_empresa_tutores t JOIN ge_contactos c')) return [{ id_empresa_tutor: 1, es_coordinador: esCoordinador ? 1 : 0 }];
     return { affectedRows: 1 };
   };
@@ -131,17 +132,25 @@ test('SEC-4: a company cannot edit or deactivate its principal coordinator via T
   assert.ok(!pool.calls.some((c) => c.sql.startsWith('UPDATE dual_empresa_tutores')));
 });
 
-test('SEC-4: other tutors stay editable by the company; staff may still edit the coordinator', async () => {
+test('SEC-4: other tutors stay editable by the company; staff may switch the coordinator off but not edit its data here', async () => {
   const svc = load('src/services/empresaTutoresService');
   tutorDb({ esCoordinador: false });
   let res = mockRes();
   await svc.update(mockReq({ user: { id: 1, rol: 'EMPRESA' }, params: { id: '1' }, body: { email: 'nuevo@x.es' } }), res);
   assert.equal(res.statusCode, 200);
 
+  // Its data goes through empresaDatos, which keeps earlier years (WF-11).
   tutorDb({ esCoordinador: true });
   res = mockRes();
   await svc.update(mockReq({ user: { id: 2, rol: 'COORDINADOR' }, params: { id: '1' }, body: { email: 'nuevo@x.es' } }), res);
+  assert.equal(res.statusCode, 403);
+  assert.ok(!pool.calls.some((c) => c.sql.startsWith('UPDATE ge_contactos')));
+
+  tutorDb({ esCoordinador: true });
+  res = mockRes();
+  await svc.deactivate(mockReq({ user: { id: 2, rol: 'COORDINADOR' }, params: { id: '1' } }), res);
   assert.equal(res.statusCode, 200);
+  assert.ok(pool.calls.some((c) => c.sql.startsWith('UPDATE dual_empresa_tutores SET activo = 0')));
 });
 
 // ── SEC-5 ───────────────────────────────────────────────────────────────

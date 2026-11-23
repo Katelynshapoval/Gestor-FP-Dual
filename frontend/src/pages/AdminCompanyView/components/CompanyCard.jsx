@@ -19,6 +19,7 @@ import EstadoSolicitudEmpresa from "./EstadoSolicitudEmpresa.jsx";
 import CardActions, { cardHeaderActions, cardHeaderBadges, cardHeaderGrid, cardHeaderName } from "../../../components/ui/CardActions.jsx";
 import RenovacionConvenio from "./RenovacionConvenio.jsx";
 import CuentaPanel from "../../../components/CuentaPanel.jsx";
+import TutoresEmpresa from "../../CompanyView/TutoresEmpresa.jsx";
 import CupoReductionDialog from "../../../components/CupoReductionDialog.jsx";
 import { postJSON, putJSON } from "../../../utils/api.js";
 import { cicloLabel, countChanged, espId } from "../../../utils/especialidades.js";
@@ -308,12 +309,30 @@ function AddRow({ missing, newEspId, newCantidad, setNewEspId, setNewCantidad, s
 
 // Reservations of THIS application (this convocatoria only, WF-9). Each one
 // opens the shared ReservaDetalle panel.
+const ESTADOS_RESERVA = [
+  ["CONFIRMADA", "confirmada", "confirmadas"],
+  ["PENDIENTE", "pendiente", "pendientes"],
+  ["CANCELADA", "cancelada", "canceladas"],
+];
+
+// "4 reservas en esta convocatoria: 2 confirmadas, 1 pendiente, 1 cancelada."
+function resumenReservas(reservations) {
+  const total = reservations?.length || 0;
+  if (!total) return "Ninguna reserva en esta convocatoria.";
+  const partes = ESTADOS_RESERVA.map(([estado, uno, varios]) => {
+    const n = reservations.filter((r) => r.estado_reserva === estado).length;
+    return n ? `${n} ${n === 1 ? uno : varios}` : null;
+  }).filter(Boolean);
+  return `${total} ${total === 1 ? "reserva" : "reservas"} en esta convocatoria${partes.length ? `: ${partes.join(", ")}` : ""}.`;
+}
+
 const ReservasList = ({ reservations, onAssign, onUpdated }) => {
   const [abierta, setAbierta] = useState(null);
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <button type="button" className="btn btn-outline-brand btn-sm" onClick={onAssign}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="min-w-0 text-sm text-muted">{resumenReservas(reservations)}</p>
+        <button type="button" className="btn btn-outline-brand btn-sm shrink-0" onClick={onAssign}>
           Asignar alumno
         </button>
       </div>
@@ -506,6 +525,12 @@ const CompanyCard = ({
                 )}
               </button>
               <button
+                className={innerTabCls(innerTab === "tutores")}
+                onClick={() => setInnerTab("tutores")}
+              >
+                Tutores
+              </button>
+              <button
                 className={innerTabCls(innerTab === "cuenta")}
                 onClick={() => setInnerTab("cuenta")}
               >
@@ -665,6 +690,10 @@ const CompanyCard = ({
                 onChanged={onUpdated}
               />
             )}
+
+            {/* Tutors tab: the company's tutors (per company, not per year). Mounted
+                only while open, so it loads fresh each time it is shown. */}
+            {innerTab === "tutores" && <TutoresEmpresa idEmpresa={empresa.id_empresa} />}
 
             {/* Reservations tab */}
             {innerTab === "reservas" && (

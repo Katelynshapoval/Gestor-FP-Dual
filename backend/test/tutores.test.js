@@ -1,6 +1,7 @@
-// Company tutors: who may list, add, edit and deactivate them (a company only
-// its own; never its principal coordinator from here), required data, audit,
-// and assigning a tutor to a reservation.
+// Company tutors: who may list, add, edit, deactivate and reactivate them (a
+// company only its own; the principal coordinator's data never from here),
+// required data, one tutor per email, never deactivating a tutor a current
+// student has, audit, and assigning a tutor to a reservation.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { stub, load, fakePool, mockReq, mockRes } = require('./helpers/harness');
@@ -16,6 +17,8 @@ const pool = fakePool((sql, params) => {
   if (sql.startsWith('SELECT iddomicilio FROM ge_domicilios')) return st.domEmpresa ? [{ iddomicilio: st.domEmpresa }] : [];
   if (sql.startsWith('SELECT t.id_empresa_tutor, t.id_empresa, t.id_contacto, t.activo FROM dual_empresa_tutores t')) return st.tutor ? [st.tutor] : [];
   if (sql.startsWith('SELECT 1 AS es FROM dual_solicitudes_empresa')) return st.esCoordinador ? [{ es: 1 }] : [];
+  if (sql.includes('LOWER(c.email) = ?')) return st.otroConEmail ? [st.otroConEmail] : [];
+  if (sql.includes('JOIN gf_alumnosfct a')) return (st.alumnos || []).map((alumno) => ({ alumno }));
   if (sql.includes('FROM dual_empresa_tutores t JOIN ge_contactos c')) return [{ id_empresa_tutor: params[0], nombre: 'Tutor' }];
   if (sql.startsWith('INSERT')) {
     if (st.duplicado && sql.startsWith('INSERT INTO dual_empresa_tutores')) throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY' });
@@ -113,16 +116,72 @@ test('edit: only sent fields; required ones cannot be emptied; the DNI can be cl
   assert.equal((await llamar('update', { params: { id: '5' }, tutor: null, body: { cargo: 'x' } })).statusCode, 404);
 });
 
-test('edit and deactivate: never another company\'s tutor, never the principal coordinator from here', async () => {
-  for (const fn of ['update', 'deactivate']) {
-    let res = await llamar(fn, { params: { id: '5' }, tutor: { ...TUTOR, id_empresa: 200 }, body: { cargo: 'x' } });
+test('edit, deactivate and reactivate: never another company\'s tutor, never the principal coordinator from here', async () => {
+  for (const fn of ['update', 'deactivate', 'activate']) {
+    const tutor = fn === 'activate' ? { ...TUTOR, activo: 0 } : TUTOR;
+    let res = await llamar(fn, { params: { id: '5' }, tutor: { ...tutor, id_empresa: 200 }, body: { cargo: 'x' } });
     assert.equal(res.statusCode, 403, fn);
-    res = await llamar(fn, { params: { id: '5' }, tutor: TUTOR, esCoordinador: true, body: { cargo: 'x' } });
+    res = await llamar(fn, { params: { id: '5' }, tutor, esCoordinador: true, body: { cargo: 'x' } });
     assert.equal(res.statusCode, 403, fn);
     assert.equal(res.body.code, 'COORDINADOR_PRINCIPAL');
-    res = await llamar(fn, { user: ADMIN, params: { id: '5' }, tutor: TUTOR, esCoordinador: true, body: { cargo: 'x' } });
+    assert.equal(escrituras().length, 0, fn);
+  }
+  // Staff switch the coordinator's tutor entry on and off...
+  for (const [fn, activo] of [['deactivate', 1], ['activate', 0]]) {
+    const res = await llamar(fn, { user: ADMIN, params: { id: '5' }, tutor: { ...TUTOR, activo }, esCoordinador: true });
     assert.equal(res.statusCode, 200, `${fn}: staff may`);
   }
+  // ...but its data only through «Editar datos», which keeps earlier years (WF-11).
+  const res = await llamar('update', { user: ADMIN, params: { id: '5' }, tutor: TUTOR, esCoordinador: true, body: { cargo: 'x' } });
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.code, 'COORDINADOR_PRINCIPAL');
+  assert.match(res.body.error, /lápiz/);
+  assert.equal(escrituras().length, 0);
+});
+
+test('one tutor per email in a company: adding or editing to an email in use is refused', async () => {
+  const otro = { id_empresa_tutor: 9, activo: 0, nombre: 'Ana' };
+  let res = await llamar('create', { body: NUEVO, otroConEmail: otro });
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.code, 'EMAIL_REPETIDO');
+  assert.match(res.body.error, /Ana.*reactívalo/);
+  assert.equal(escrituras().length, 0);
+  const consulta = pool.calls.find((c) => c.sql.includes('LOWER(c.email) = ?'));
+  assert.deepEqual(consulta.params, [100, 'p@acme.test', null, null], 'compared in lower case');
+
+  res = await llamar('update', { params: { id: '5' }, tutor: TUTOR, body: { email: 'A@acme.test' }, otroConEmail: { ...otro, activo: 1 } });
+  assert.equal(res.statusCode, 409);
+  assert.match(res.body.error, /Ana ya es tutor/);
+  assert.equal(escrituras().length, 0);
+  assert.deepEqual(pool.calls.find((c) => c.sql.includes('LOWER(c.email) = ?')).params, [100, 'a@acme.test', 5, 5], 'not against itself');
+
+  res = await llamar('update', { params: { id: '5' }, tutor: TUTOR, body: { cargo: 'Jefe' } });
+  assert.equal(res.statusCode, 200);
+  assert.ok(!pool.calls.some((c) => c.sql.includes('LOWER(c.email) = ?')), 'no email, no check');
+});
+
+test('deactivate: refused while a student of this year has the tutor, naming them', async () => {
+  const res = await llamar('deactivate', { params: { id: '5' }, tutor: TUTOR, alumnos: ['Hugo Bueno', 'Eva Sanz'] });
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.code, 'TUTOR_ASIGNADO');
+  assert.deepEqual(res.body.alumnos, ['Hugo Bueno', 'Eva Sanz']);
+  assert.match(res.body.error, /Hugo Bueno, Eva Sanz/);
+  assert.equal(escrituras().length, 0);
+  const consulta = pool.calls.find((c) => c.sql.includes('JOIN gf_alumnosfct a'));
+  assert.match(consulta.sql, /er_ac\.nombre <> 'CANCELADA' AND cv_ac\.activa = 1/, 'only live placements of the active convocatoria');
+});
+
+test('reactivate: marks active and audits; an active tutor is left as is', async () => {
+  let res = await llamar('activate', { params: { id: '5' }, tutor: { ...TUTOR, activo: 0 } });
+  assert.equal(res.statusCode, 200);
+  assert.equal(escrituras()[0].sql, 'UPDATE dual_empresa_tutores SET activo = 1 WHERE id_empresa_tutor = ?');
+  assert.equal(escrituras()[1].params[2], 'ACTIVAR');
+  assert.ok(hubo('COMMIT'));
+  res = await llamar('activate', { params: { id: '5' }, tutor: TUTOR });
+  assert.equal(res.statusCode, 200);
+  assert.equal(escrituras().length, 0);
+  assert.equal((await llamar('activate', { params: { id: '5' }, tutor: null })).statusCode, 404);
+  assert.equal((await llamar('activate', { params: { id: 'x' } })).statusCode, 400);
 });
 
 test('deactivate: marks inactive and audits; an inactive tutor is left as is', async () => {
